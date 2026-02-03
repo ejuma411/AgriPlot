@@ -1,0 +1,785 @@
+<!-- templates/dashboard/staff_dashboard.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Staff Dashboard - AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Dashboard Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-header">
+                <div class="dashboard-header-content">
+                    <div class="dashboard-title">
+                        <h2>
+                            <i class="fas fa-tachometer-alt me-2"></i>
+                            {{ profile_type }} Dashboard
+                        </h2>
+                        <p class="dashboard-subtitle">
+                            Welcome back, {{ request.user.get_full_name|default:request.user.username }}!
+                        </p>
+                    </div>
+                    <div class="dashboard-stats-summary">
+                        <div class="stat-badge">
+                            <span class="stat-badge-value">👤</span>
+                            <span class="stat-badge-label">{{ profile_type }}</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-badge-value">{{ request.user.date_joined|date:"M 'y" }}</span>
+                            <span class="stat-badge-label">Member Since</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-badge-value {% if profile.verified %}text-success{% else %}text-warning{% endif %}">
+                                {% if profile.verified %}✓{% else %}⏳{% endif %}
+                            </span>
+                            <span class="stat-badge-label">
+                                {% if profile.verified %}Verified{% else %}Pending{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats Overview Table -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-chart-bar me-2"></i>Overview Statistics
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="stats-table-container">
+                        <table class="stats-table">
+                            <thead>
+                                <tr>
+                                    <th>Total Plots</th>
+                                    <th>Verified Plots</th>
+                                    <th>Pending Verification</th>
+                                    <th>Buyer Interests</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="stat-value">{{ total_plots }}</td>
+                                    <td class="stat-value text-success">{{ verified_plots }}</td>
+                                    <td class="stat-value text-warning">{{ pending_plots }}</td>
+                                    <td class="stat-value text-info">{{ recent_interests|length }}</td>
+                                </tr>
+                                <tr class="stat-percentages">
+                                    <td class="stat-percentage">
+                                        {% if total_plots > 0 %}
+                                            <span class="percentage-badge">100%</span>
+                                        {% else %}
+                                            <span class="percentage-badge text-muted">0%</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="stat-percentage">
+                                        {% if total_plots > 0 %}
+                                            <span class="percentage-badge bg-success-light">
+                                                {{ verified_percentage|floatformat:0 }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="percentage-badge text-muted">0%</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="stat-percentage">
+                                        {% if total_plots > 0 %}
+                                            <span class="percentage-badge bg-warning-light">
+                                                {{ pending_percentage|floatformat:0 }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="percentage-badge text-muted">0%</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="stat-percentage">
+                                        {% if total_plots > 0 %}
+                                            <span class="percentage-badge bg-info-light">
+                                                {{ buyer_interest_percentage|default:"0"|floatformat:0 }}%
+                                            </span>
+                                        {% else %}
+                                            <span class="percentage-badge text-muted">0%</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions & Recent Plots -->
+    <div class="row mb-4">
+        <!-- Quick Actions Table -->
+        <div class="col-lg-4 mb-4">
+            <div class="dashboard-card h-100">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="quick-actions-table">
+                        <table class="actions-table">
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'listings:add_plot' %}" class="action-link">
+                                            <div class="action-icon bg-success-light">
+                                                <i class="fas fa-plus-circle text-success"></i>
+                                            </div>
+                                            <span>Add New Plot</span>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'listings:my_plots' %}" class="action-link">
+                                            <div class="action-icon bg-primary-light">
+                                                <i class="fas fa-list text-primary"></i>
+                                            </div>
+                                            <span>View All Plots</span>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'listings:buyer_interests' %}" class="action-link">
+                                            <div class="action-icon bg-info-light">
+                                                <i class="fas fa-envelope text-info"></i>
+                                            </div>
+                                            <span>Buyer Interests</span>
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'listings:profile_management' %}" class="action-link">
+                                            <div class="action-icon bg-warning-light">
+                                                <i class="fas fa-user-edit text-warning"></i>
+                                            </div>
+                                            <span>Update Profile</span>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2">
+                                        <a href="#" class="action-link">
+                                            <div class="action-icon bg-danger-light">
+                                                <i class="fas fa-chart-line text-danger"></i>
+                                            </div>
+                                            <span>View Analytics</span>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Plots -->
+        <div class="col-lg-8 mb-4">
+            <div class="dashboard-card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title">
+                        <i class="fas fa-map-marked-alt me-2"></i>Recent Plots
+                    </h6>
+                    <a href="{% url 'listings:my_plots' %}" class="btn btn-sm btn-outline-primary">
+                        View All <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="recent-plots-table">
+                        <table class="plots-table">
+                            <thead>
+                                <tr>
+                                    <th>Plot Title</th>
+                                    <th>Location</th>
+                                    <th>Price (KES)</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for plot in plots %}
+                                <tr>
+                                    <td>
+                                        <strong class="plot-title">{{ plot.title|truncatechars:25 }}</strong>
+                                    </td>
+                                    <td>{{ plot.location|truncatechars:20 }}</td>
+                                    <td>{{ plot.price|floatformat:0 }}</td>
+                                    <td>
+                                        {% if plot.verification_status %}
+                                            {% if plot.verification_status.status == 'verified' %}
+                                                <span class="status-badge bg-success">✓ Verified</span>
+                                            {% elif plot.verification_status.status == 'pending' %}
+                                                <span class="status-badge bg-warning">⏳ Pending</span>
+                                            {% elif plot.verification_status.status == 'rejected' %}
+                                                <span class="status-badge bg-danger">✗ Rejected</span>
+                                            {% else %}
+                                                <span class="status-badge bg-info">{{ plot.verification_status.status|title }}</span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="status-badge bg-secondary">No Status</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'listings:plot_verification_detail' plot.id %}" 
+                                           class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <div class="empty-state">
+                                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                            <p class="text-muted">No plots listed yet.</p>
+                                            <a href="{% url 'listings:add_plot' %}" class="btn btn-primary">
+                                                <i class="fas fa-plus me-1"></i> Add Your First Plot
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Plot Status Overview Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-chart-pie me-2"></i>Plot Status Distribution
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="status-table-container">
+                        <table class="status-distribution-table">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Count</th>
+                                    <th>Percentage</th>
+                                    <th>Progress</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        <span class="status-indicator bg-success"></span>
+                                        Verified
+                                    </td>
+                                    <td class="fw-bold">{{ verified_plots }}</td>
+                                    <td>{{ verified_percentage|default:0|floatformat:1 }}%</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-success" 
+                                                 style="width: {{ verified_percentage|default:0 }}%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span class="status-indicator bg-warning"></span>
+                                        Pending
+                                    </td>
+                                    <td class="fw-bold">{{ pending_plots }}</td>
+                                    <td>{{ pending_percentage|default:0|floatformat:1 }}%</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-warning" 
+                                                 style="width: {{ pending_percentage|default:0 }}%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span class="status-indicator bg-danger"></span>
+                                        Rejected
+                                    </td>
+                                    <td class="fw-bold">{{ rejected_plots }}</td>
+                                    <td>{{ rejected_percentage|default:0|floatformat:1 }}%</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-danger" 
+                                                 style="width: {{ rejected_percentage|default:0 }}%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="total-row">
+                                    <td class="fw-bold">Total Plots</td>
+                                    <td class="fw-bold text-primary">{{ total_plots }}</td>
+                                    <td>100%</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" style="width: 100%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ===== CSS Variables ===== */
+    :root {
+        --primary: #4e73df;
+        --primary-light: #e3ebf7;
+        --success: #1cc88a;
+        --success-light: #d4edda;
+        --warning: #f6c23e;
+        --warning-light: #fff3cd;
+        --danger: #e74a3b;
+        --danger-light: #f8d7da;
+        --info: #36b9cc;
+        --info-light: #d1ecf1;
+        --gray-100: #f8f9fa;
+        --gray-200: #e9ecef;
+        --gray-300: #dee2e6;
+        --gray-600: #6c757d;
+        --gray-800: #343a40;
+        --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        --card-radius: 0.75rem;
+        --transition: all 0.2s ease;
+    }
+
+    /* ===== Dashboard Header ===== */
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--primary) 0%, #3a5bd9 100%);
+        border-radius: var(--card-radius);
+        padding: 2rem;
+        color: white;
+        margin-bottom: 1.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-header::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 200px;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    }
+
+    .dashboard-header-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .dashboard-title h2 {
+        font-size: 1.75rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: white;
+    }
+
+    .dashboard-subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+        margin-bottom: 0;
+    }
+
+    .dashboard-stats-summary {
+        display: flex;
+        gap: 2rem;
+        margin-top: 1rem;
+    }
+
+    .stat-badge {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .stat-badge-value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+
+    .stat-badge-label {
+        font-size: 0.875rem;
+        opacity: 0.8;
+    }
+
+    /* ===== Dashboard Cards ===== */
+    .dashboard-card {
+        border: none;
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        transition: var(--transition);
+        height: 100%;
+    }
+
+    .dashboard-card:hover {
+        box-shadow: 0 0.35rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    }
+
+    .dashboard-card .card-header {
+        background: white;
+        border-bottom: 1px solid var(--gray-200);
+        padding: 1.25rem 1.5rem;
+    }
+
+    .dashboard-card .card-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--gray-800);
+        margin: 0;
+        display: flex;
+        align-items: center;
+    }
+
+    .dashboard-card .card-body {
+        padding: 1.5rem;
+    }
+
+    /* ===== Stats Overview Table ===== */
+    .stats-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        text-align: center;
+    }
+
+    .stats-table th {
+        background: var(--gray-100);
+        padding: 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--gray-300);
+    }
+
+    .stats-table td {
+        padding: 1rem;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--gray-800);
+    }
+
+    .stat-percentages tr {
+        background: var(--gray-100);
+    }
+
+    .percentage-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .bg-success-light { background-color: var(--success-light); color: #155724; }
+    .bg-warning-light { background-color: var(--warning-light); color: #856404; }
+    .bg-info-light { background-color: var(--info-light); color: #0c5460; }
+
+    /* ===== Quick Actions Table ===== */
+    .actions-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 0.75rem;
+    }
+
+    .actions-table td {
+        padding: 0.5rem;
+        text-align: center;
+    }
+
+    .action-link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-decoration: none;
+        color: var(--gray-700);
+        transition: var(--transition);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        border: 1px solid var(--gray-200);
+        background: white;
+    }
+
+    .action-link:hover {
+        background: var(--gray-100);
+        border-color: var(--primary);
+        color: var(--primary);
+        text-decoration: none;
+        transform: translateY(-2px);
+    }
+
+    .action-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        margin-bottom: 0.75rem;
+        transition: var(--transition);
+    }
+
+    .action-link:hover .action-icon {
+        transform: scale(1.1);
+    }
+
+    /* ===== Recent Plots Table ===== */
+    .plots-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .plots-table thead th {
+        background: var(--gray-100);
+        padding: 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--gray-300);
+        text-align: left;
+    }
+
+    .plots-table tbody tr {
+        transition: var(--transition);
+    }
+
+    .plots-table tbody tr:hover {
+        background: var(--gray-100);
+    }
+
+    .plots-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--gray-200);
+        color: var(--gray-700);
+    }
+
+    .plot-title {
+        font-weight: 600;
+        color: var(--gray-800);
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .status-badge {
+        padding: 0.35em 0.65em;
+        font-weight: 500;
+        border-radius: 50px;
+        font-size: 0.75em;
+        letter-spacing: 0.5px;
+    }
+
+    /* ===== Status Distribution Table ===== */
+    .status-distribution-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .status-distribution-table thead th {
+        background: var(--gray-100);
+        padding: 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--gray-300);
+        text-align: left;
+    }
+
+    .status-distribution-table tbody tr {
+        transition: var(--transition);
+    }
+
+    .status-distribution-table tbody tr:hover {
+        background: var(--gray-100);
+    }
+
+    .status-distribution-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--gray-200);
+        color: var(--gray-700);
+    }
+
+    .status-indicator {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        margin-right: 0.75rem;
+        vertical-align: middle;
+    }
+
+    .total-row {
+        background: var(--gray-100);
+        font-weight: 600;
+    }
+
+    .total-row td {
+        border-top: 2px solid var(--gray-300);
+        border-bottom: none !important;
+    }
+
+    /* ===== Empty State ===== */
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+    }
+
+    .empty-state i {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        opacity: 0.3;
+    }
+
+    .empty-state p {
+        font-size: 1.1rem;
+        margin-bottom: 1.5rem;
+        color: var(--gray-600);
+    }
+
+    /* ===== Responsive Design ===== */
+    @media (max-width: 1200px) {
+        .dashboard-header {
+            padding: 1.5rem;
+        }
+        
+        .dashboard-title h2 {
+            font-size: 1.5rem;
+        }
+        
+        .dashboard-stats-summary {
+            gap: 1.5rem;
+        }
+        
+        .stat-value {
+            font-size: 1.75rem;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .stats-table th,
+        .stats-table td {
+            padding: 0.75rem;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+        }
+        
+        .action-link {
+            padding: 0.75rem;
+        }
+        
+        .action-icon {
+            width: 40px;
+            height: 40px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-header {
+            text-align: center;
+            padding: 1.25rem;
+        }
+        
+        .dashboard-stats-summary {
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .stat-badge {
+            min-width: 80px;
+        }
+        
+        .stats-table {
+            display: block;
+            overflow-x: auto;
+        }
+        
+        .actions-table {
+            display: block;
+            overflow-x: auto;
+        }
+        
+        .plots-table {
+            display: block;
+            overflow-x: auto;
+        }
+        
+        .status-distribution-table {
+            display: block;
+            overflow-x: auto;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .dashboard-card .card-body {
+            padding: 1rem;
+        }
+        
+        .plots-table tbody td,
+        .plots-table thead th,
+        .status-distribution-table tbody td,
+        .status-distribution-table thead th {
+            padding: 0.75rem;
+            font-size: 0.9rem;
+        }
+        
+        .action-link span {
+            font-size: 0.875rem;
+        }
+    }
+
+    /* ===== Animations ===== */
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .dashboard-header,
+    .dashboard-card {
+        animation: fadeIn 0.5s ease-out;
+    }
+</style>
+{% endblock %}

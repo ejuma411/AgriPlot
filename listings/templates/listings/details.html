@@ -1,0 +1,767 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ plot.title }} — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-header">
+                <div class="dashboard-header-content">
+                    <div class="dashboard-title">
+                        <h2>{{ plot.title }}</h2>
+                        <p class="dashboard-subtitle">Plot ID: #{{ plot.id }} • {{ plot.location }}</p>
+                    </div>
+                    <div class="dashboard-stats-summary">
+                        <div class="stat-badge">
+                            <span class="stat-badge-value text-primary">KES {{ plot.price|floatformat:0 }}</span>
+                            <span class="stat-badge-label">Price</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-badge-value text-success">{{ plot.area|floatformat:1 }}</span>
+                            <span class="stat-badge-label">Acres</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-badge-value">
+                                {% if plot.verification_status.status == 'verified' %}
+                                <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                <i class="fas fa-clock text-warning"></i>
+                                {% endif %}
+                            </span>
+                            <span class="stat-badge-label">
+                                {% if plot.verification_status.status == 'verified' %}Verified{% else %}Pending{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav class="detail-navigation">
+                <a href="{% url 'listings:home' %}" class="nav-link">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Listings
+                </a>
+                <a href="#details" class="nav-link active">Details</a>
+                <a href="#images" class="nav-link">Images</a>
+                <a href="#documents" class="nav-link">Documents</a>
+                <a href="#broker" class="nav-link">Broker</a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="row">
+        <!-- Left Column: Images Gallery -->
+        <div class="col-lg-8 mb-4">
+            <!-- Image Gallery -->
+            <div class="dashboard-card mb-4" id="images">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-images me-2"></i>Plot Images
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% if plot.plot_images.exists %}
+                    <div class="image-gallery">
+                        <div class="main-image-container">
+                            {% with plot.plot_images.first as main_image %}
+                            <img src="{{ main_image.image.url }}" 
+                                 alt="{{ plot.title }}" 
+                                 class="main-image"
+                                 id="mainImage">
+                            {% endwith %}
+                        </div>
+                        <div class="thumbnail-grid">
+                            {% for image in plot.plot_images.all %}
+                            <div class="thumbnail-item {% if forloop.first %}active{% endif %}" 
+                                 data-image="{{ image.image.url }}">
+                                <img src="{{ image.image.url }}" 
+                                     alt="Plot image {{ forloop.counter }}"
+                                     class="thumbnail">
+                                {% if image.caption %}
+                                <div class="thumbnail-caption">{{ image.caption }}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-gallery text-center py-5">
+                        <i class="fas fa-image fa-4x text-muted mb-3"></i>
+                        <h5>No Images Available</h5>
+                        <p class="text-muted mb-0">This plot doesn't have any images yet.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Plot Details Table -->
+            <div class="dashboard-card" id="details">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>Plot Details
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="details-table">
+                        <table class="plot-details-table">
+                            <tbody>
+                                <tr>
+                                    <td class="detail-label">Title</td>
+                                    <td class="detail-value">{{ plot.title }}</td>
+                                </tr>
+                                <tr>
+                                    <td class="detail-label">Location</td>
+                                    <td class="detail-value">
+                                        <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                        {{ plot.location }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="detail-label">Area</td>
+                                    <td class="detail-value">
+                                        <i class="fas fa-ruler-combined text-warning me-2"></i>
+                                        {{ plot.area|floatformat:1 }} Acres
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="detail-label">Price</td>
+                                    <td class="detail-value">
+                                        <i class="fas fa-money-bill-wave text-success me-2"></i>
+                                        KES {{ plot.price|floatformat:0 }}
+                                        {% if plot.area and plot.area > 0 %}
+                                        <small class="text-muted d-block mt-1">
+                                            (KES {% widthratio plot.price plot.area 1 as price_per_acre %}{{ price_per_acre|floatformat:0 }} per acre)
+                                        </small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="detail-label">Soil Type</td>
+                                    <td class="detail-value">
+                                        <i class="fas fa-seedling text-success me-2"></i>
+                                        {{ plot.soil_type|default:"Not specified" }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="detail-label">Crop Suitability</td>
+                                    <td class="detail-value">
+                                        <i class="fas fa-leaf text-info me-2"></i>
+                                        {{ plot.crop_suitability|default:"Various crops" }}
+                                    </td>
+                                </tr>
+                                {% if plot.ph_level %}
+                                <tr>
+                                    <td class="detail-label">pH Level</td>
+                                    <td class="detail-value">
+                                        <i class="fas fa-flask text-primary me-2"></i>
+                                        {{ plot.ph_level }}
+                                        <span class="ph-indicator 
+                                            {% if plot.ph_level < 5 %}text-danger{% elif plot.ph_level > 8 %}text-warning{% else %}text-success{% endif %}">
+                                            {% if plot.ph_level < 5 %}(Acidic){% elif plot.ph_level > 8 %}(Alkaline){% else %}(Neutral){% endif %}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <td class="detail-label">Verification Status</td>
+                                    <td class="detail-value">
+                                        {% if plot.verification_status.status == 'verified' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check-circle me-1"></i>Verified
+                                        </span>
+                                        {% elif plot.verification_status.status == 'pending' %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-clock me-1"></i>Pending
+                                        </span>
+                                        {% elif plot.verification_status.status == 'rejected' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-times-circle me-1"></i>Rejected
+                                        </span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">
+                                            {{ plot.verification_status.status|title }}
+                                        </span>
+                                        {% endif %}
+                                        {% if plot.verification_status.reviewed_at %}
+                                        <small class="text-muted d-block mt-1">
+                                            Reviewed: {{ plot.verification_status.reviewed_at|date:"M d, Y" }}
+                                        </small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="detail-label">Date Listed</td>
+                                    <td class="detail-value">
+                                        <i class="fas fa-calendar text-primary me-2"></i>
+                                        {{ plot.created_at|date:"F d, Y" }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Documents & Broker Info -->
+        <div class="col-lg-4 mb-4">
+            <!-- Documents -->
+            <div class="dashboard-card mb-4" id="documents">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-file-alt me-2"></i>Documents
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="documents-list">
+                        <div class="document-item {% if plot.title_deed %}available{% else %}missing{% endif %}">
+                            <div class="document-icon">
+                                <i class="fas fa-file-contract fa-2x"></i>
+                            </div>
+                            <div class="document-info">
+                                <h6>Title Deed</h6>
+                                {% if plot.title_deed %}
+                                <a href="{{ plot.title_deed.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-download me-1"></i>View Document
+                                </a>
+                                {% else %}
+                                <small class="text-muted">Not uploaded</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="document-item {% if plot.soil_report %}available{% else %}missing{% endif %}">
+                            <div class="document-icon">
+                                <i class="fas fa-flask fa-2x"></i>
+                            </div>
+                            <div class="document-info">
+                                <h6>Soil Test Report</h6>
+                                {% if plot.soil_report %}
+                                <a href="{{ plot.soil_report.url }}" target="_blank" class="btn btn-sm btn-outline-info">
+                                    <i class="fas fa-download me-1"></i>View Report
+                                </a>
+                                {% else %}
+                                <small class="text-muted">Optional - Not uploaded</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Broker Information -->
+            <div class="dashboard-card mb-4" id="broker">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-user-tie me-2"></i>Broker Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="broker-profile">
+                        <div class="broker-header">
+                            <div class="broker-avatar">
+                                <i class="fas fa-user-circle fa-3x text-primary"></i>
+                            </div>
+                            <div class="broker-name">
+                                <h5>{{ plot.broker.user.get_full_name|default:plot.broker.user.username }}</h5>
+                                <span class="broker-badge {% if plot.broker.verified %}verified{% else %}pending{% endif %}">
+                                    {% if plot.broker.verified %}
+                                    <i class="fas fa-check-circle me-1"></i>Verified Broker
+                                    {% else %}
+                                    <i class="fas fa-clock me-1"></i>Pending Verification
+                                    {% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        
+                        <div class="broker-contact mt-4">
+                            <h6>Contact Broker</h6>
+                            <div class="contact-actions">
+                                <a href="mailto:{{ plot.broker.user.email }}?subject=Inquiry about {{ plot.title }}&body=Hello, I'm interested in the plot titled '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                   class="btn btn-success w-100 mb-2">
+                                    <i class="fas fa-envelope me-2"></i>Send Email
+                                </a>
+                                <button class="btn btn-outline-primary w-100" id="showContactBtn">
+                                    <i class="fas fa-phone me-2"></i>Request Phone Number
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-bolt me-2"></i>Quick Actions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="quick-actions-grid">
+                        {% if user.is_authenticated %}
+                            {% if user == plot.broker.user %}
+                            <a href="{% url 'listings:edit_plot' plot.id %}" class="btn btn-outline-warning w-100 mb-2">
+                                <i class="fas fa-edit me-2"></i>Edit Listing
+                            </a>
+                            {% endif %}
+                            <a href="{% url 'listings:add_plot' %}" class="btn btn-outline-primary w-100 mb-2">
+                                <i class="fas fa-plus-circle me-2"></i>List Similar Plot
+                            </a>
+                        {% else %}
+                            <a href="{% url 'register' %}?next={{ request.path }}" class="btn btn-primary w-100 mb-2">
+                                <i class="fas fa-user-plus me-2"></i>Register to Contact
+                            </a>
+                            <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary w-100">
+                                <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Contact Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-phone me-2"></i>Contact Information
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>To protect broker privacy, phone numbers are shared upon request through our secure system.</p>
+                <p>Click the button below to request the broker's contact information:</p>
+                <button class="btn btn-success w-100" id="requestContactBtn">
+                    <i class="fas fa-paper-plane me-2"></i>Request Contact Details
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ===== DETAIL PAGE STYLES ===== */
+    .detail-navigation {
+        display: flex;
+        gap: 1rem;
+        background: white;
+        padding: 1rem;
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        overflow-x: auto;
+    }
+    
+    .nav-link {
+        padding: 0.5rem 1rem;
+        text-decoration: none;
+        color: var(--gray-600);
+        border-radius: 6px;
+        white-space: nowrap;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+    }
+    
+    .nav-link:hover,
+    .nav-link.active {
+        background: var(--primary);
+        color: white;
+    }
+    
+    /* ===== IMAGE GALLERY ===== */
+    .image-gallery {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .main-image-container {
+        width: 100%;
+        height: 400px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 2px solid var(--gray-200);
+    }
+    
+    .main-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+    
+    .main-image:hover {
+        transform: scale(1.02);
+    }
+    
+    .thumbnail-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    .thumbnail-item {
+        position: relative;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 2px solid var(--gray-300);
+        cursor: pointer;
+        transition: all 0.3s ease;
+        height: 80px;
+    }
+    
+    .thumbnail-item:hover,
+    .thumbnail-item.active {
+        border-color: var(--primary);
+        transform: translateY(-2px);
+    }
+    
+    .thumbnail {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    
+    .thumbnail-caption {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 0.7rem;
+        padding: 0.25rem;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .empty-gallery {
+        padding: 3rem;
+        background: var(--gray-50);
+        border-radius: 10px;
+        border: 2px dashed var(--gray-300);
+    }
+    
+    /* ===== PLOT DETAILS TABLE ===== */
+    .plot-details-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .plot-details-table tr {
+        border-bottom: 1px solid var(--gray-200);
+        transition: background-color 0.3s ease;
+    }
+    
+    .plot-details-table tr:hover {
+        background-color: var(--gray-50);
+    }
+    
+    .plot-details-table td {
+        padding: 1rem;
+        vertical-align: top;
+    }
+    
+    .detail-label {
+        width: 35%;
+        font-weight: 600;
+        color: var(--gray-700);
+        border-right: 1px solid var(--gray-200);
+    }
+    
+    .detail-value {
+        width: 65%;
+        color: var(--gray-800);
+    }
+    
+    .ph-indicator {
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-left: 0.5rem;
+    }
+    
+    /* ===== DOCUMENTS LIST ===== */
+    .documents-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .document-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 2px solid;
+        transition: all 0.3s ease;
+    }
+    
+    .document-item.available {
+        border-color: var(--success);
+        background: var(--success-light);
+    }
+    
+    .document-item.missing {
+        border-color: var(--gray-300);
+        background: var(--gray-50);
+    }
+    
+    .document-icon {
+        flex-shrink: 0;
+    }
+    
+    .document-item.available .document-icon {
+        color: var(--success);
+    }
+    
+    .document-item.missing .document-icon {
+        color: var(--gray-500);
+    }
+    
+    .document-info h6 {
+        margin-bottom: 0.5rem;
+        color: var(--gray-800);
+    }
+    
+    /* ===== BROKER PROFILE ===== */
+    .broker-profile {
+        text-align: center;
+    }
+    
+    .broker-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--gray-200);
+    }
+    
+    .broker-avatar {
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-100);
+        border-radius: 50%;
+    }
+    
+    .broker-name h5 {
+        margin-bottom: 0.5rem;
+        color: var(--gray-800);
+    }
+    
+    .broker-badge {
+        display: inline-block;
+        padding: 0.35em 0.75em;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .broker-badge.verified {
+        background: var(--success-light);
+        color: var(--success-dark);
+    }
+    
+    .broker-badge.pending {
+        background: var(--warning-light);
+        color: var(--warning-dark);
+    }
+    
+    .broker-contact h6 {
+        margin-bottom: 1rem;
+        color: var(--gray-700);
+    }
+    
+    /* ===== RESPONSIVE DESIGN ===== */
+    @media (max-width: 992px) {
+        .main-image-container {
+            height: 300px;
+        }
+        
+        .thumbnail-grid {
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+        }
+        
+        .thumbnail-item {
+            height: 70px;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .detail-navigation {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 0.75rem;
+        }
+        
+        .nav-link {
+            font-size: 0.9rem;
+            padding: 0.4rem 0.75rem;
+        }
+        
+        .main-image-container {
+            height: 250px;
+        }
+        
+        .plot-details-table {
+            display: block;
+        }
+        
+        .plot-details-table tr {
+            display: block;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+        }
+        
+        .plot-details-table td {
+            display: block;
+            width: 100% !important;
+            border: none !important;
+            padding: 0.5rem 0;
+        }
+        
+        .detail-label {
+            font-size: 0.9rem;
+            margin-bottom: 0.25rem;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .dashboard-title h2 {
+            font-size: 1.5rem;
+        }
+        
+        .main-image-container {
+            height: 200px;
+        }
+        
+        .thumbnail-grid {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        
+        .broker-header {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .document-item {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Image gallery functionality
+        const thumbnails = document.querySelectorAll('.thumbnail-item');
+        const mainImage = document.getElementById('mainImage');
+        
+        thumbnails.forEach(thumbnail => {
+            thumbnail.addEventListener('click', function() {
+                // Update active class
+                thumbnails.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Update main image
+                const imageUrl = this.getAttribute('data-image');
+                if (mainImage && imageUrl) {
+                    mainImage.src = imageUrl;
+                    mainImage.alt = this.querySelector('img').alt;
+                }
+            });
+        });
+        
+        // Contact modal
+        const showContactBtn = document.getElementById('showContactBtn');
+        const contactModal = new bootstrap.Modal(document.getElementById('contactModal'));
+        const requestContactBtn = document.getElementById('requestContactBtn');
+        
+        if (showContactBtn) {
+            showContactBtn.addEventListener('click', function() {
+                contactModal.show();
+            });
+        }
+        
+        if (requestContactBtn) {
+            requestContactBtn.addEventListener('click', function() {
+                // In a real application, this would send a request to the server
+                alert('Contact request sent to broker. They will contact you shortly.');
+                contactModal.hide();
+            });
+        }
+        
+        // Smooth scroll for navigation
+        document.querySelectorAll('.nav-link[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                if (targetId !== '#') {
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        // Update active nav link
+                        document.querySelectorAll('.nav-link').forEach(link => {
+                            link.classList.remove('active');
+                        });
+                        this.classList.add('active');
+                        
+                        // Scroll to element
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
+        
+        // Update active nav link on scroll
+        const sections = document.querySelectorAll('[id]');
+        const navLinks = document.querySelectorAll('.nav-link[href^="#"]');
+        
+        function updateActiveNavLink() {
+            let currentSection = '';
+            const scrollPosition = window.scrollY + 100;
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.clientHeight;
+                if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                    currentSection = '#' + section.id;
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === currentSection) {
+                    link.classList.add('active');
+                }
+            });
+        }
+        
+        window.addEventListener('scroll', updateActiveNavLink);
+        updateActiveNavLink(); // Initial call
+    });
+</script>
+{% endblock %}

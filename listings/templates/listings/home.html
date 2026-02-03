@@ -1,0 +1,1245 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Home — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Hero Banner -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="hero-banner">
+                <div class="hero-content">
+                    <h1 class="hero-title">Discover Agricultural Land in Kenya</h1>
+                    <p class="hero-subtitle">Find the perfect plot using soil type, crop suitability, location, and price filters.</p>
+                    
+                    <!-- Search Form -->
+                    <div class="search-card">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="fas fa-search me-2"></i>Advanced Plot Search
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <form method="GET" action="" class="search-form-table">
+                                <table class="search-filters">
+                                    <tbody>
+                                        <tr>
+                                            <td class="filter-label">
+                                                <label for="soil_type">
+                                                    <i class="fas fa-seedling me-1"></i>Soil Type
+                                                </label>
+                                            </td>
+                                            <td class="filter-label">
+                                                <label for="crop">
+                                                    <i class="fas fa-leaf me-1"></i>Suitable Crop
+                                                </label>
+                                            </td>
+                                            <td class="filter-label">
+                                                <label for="location">
+                                                    <i class="fas fa-map-marker-alt me-1"></i>Location
+                                                </label>
+                                            </td>
+                                            <td class="filter-label">
+                                                <label for="max_price">
+                                                    <i class="fas fa-money-bill-wave me-1"></i>Max Price
+                                                </label>
+                                            </td>
+                                            <td class="filter-action"></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="filter-input">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">
+                                                        <i class="fas fa-seedling"></i>
+                                                    </span>
+                                                    <select class="form-select" name="soil_type" id="soil_type">
+                                                        <option value="">Any Soil Type</option>
+                                                        <option value="loam">Loam</option>
+                                                        <option value="clay">Clay</option>
+                                                        <option value="sandy">Sandy</option>
+                                                        <option value="silt">Silt</option>
+                                                        <option value="clay_loam">Clay Loam</option>
+                                                        <option value="sandy_loam">Sandy Loam</option>
+                                                    </select>
+                                                </div>
+                                            </td>
+                                            <td class="filter-input">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">
+                                                        <i class="fas fa-leaf"></i>
+                                                    </span>
+                                                    <select class="form-select" name="crop" id="crop">
+                                                        <option value="">Any Crop</option>
+                                                        <option value="maize">Maize</option>
+                                                        <option value="wheat">Wheat</option>
+                                                        <option value="coffee">Coffee</option>
+                                                        <option value="tea">Tea</option>
+                                                        <option value="beans">Beans</option>
+                                                        <option value="potatoes">Potatoes</option>
+                                                        <option value="sugarcane">Sugarcane</option>
+                                                        <option value="rice">Rice</option>
+                                                    </select>
+                                                </div>
+                                            </td>
+                                            <td class="filter-input">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">
+                                                        <i class="fas fa-map-marker-alt"></i>
+                                                    </span>
+                                                    <input type="text" name="location" id="location" 
+                                                           class="form-control" placeholder="e.g., Nairobi">
+                                                </div>
+                                            </td>
+                                            <td class="filter-input">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">KES</span>
+                                                    <input type="number" name="max_price" id="max_price" 
+                                                           class="form-control" placeholder="Maximum price">
+                                                </div>
+                                            </td>
+                                            <td class="filter-action">
+                                                <button type="submit" class="btn btn-success">
+                                                    <i class="fas fa-search me-2"></i>Search Plots
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </form>
+                        </div>
+                    </div>
+                    
+                    <!-- Call to Action -->
+                    <div class="cta-table">
+                        <table class="cta-grid">
+                            <tbody>
+                                <tr>
+                                    {% if user.is_authenticated %}
+                                    <td class="cta-cell">
+                                        <a href="{% url 'listings:add_plot' %}" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-plus-circle me-2"></i>List Your Plot
+                                        </a>
+                                    </td>
+                                    <td class="cta-cell">
+                                        <a href="{% url 'listings:my_plots' %}" class="btn btn-outline-primary btn-lg">
+                                            <i class="fas fa-chart-line me-2"></i>View Dashboard
+                                        </a>
+                                    </td>
+                                    {% else %}
+                                    <td class="cta-cell">
+                                        <a href="{% url 'register' %}" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-user-plus me-2"></i>Register Now
+                                        </a>
+                                    </td>
+                                    <td class="cta-cell">
+                                        <a href="{% url 'login' %}" class="btn btn-outline-primary btn-lg">
+                                            <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                                        </a>
+                                    </td>
+                                    {% endif %}
+                                    <td class="cta-cell">
+                                        <a href="#featured" class="btn btn-outline-success btn-lg">
+                                            <i class="fas fa-star me-2"></i>View Featured
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Featured Plots Section -->
+    <div class="row mb-4" id="featured">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title">
+                        <i class="fas fa-star me-2"></i>Featured Agricultural Plots
+                    </h6>
+                    <a href="#" class="btn btn-sm btn-outline-primary">
+                        View All <i class="fas fa-arrow-right ms-1"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <!-- Featured Plots Table -->
+                    {% if featured_plots %}
+                    <div class="plots-table-container">
+                        <table class="plots-grid-table">
+                            <thead>
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Plot Details</th>
+                                    <th>Location</th>
+                                    <th>Soil Type</th>
+                                    <th>Crop Suitability</th>
+                                    <th>Area</th>
+                                    <th>Price</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for plot in featured_plots %}
+                                <tr>
+                                    <!-- Image Column -->
+                                    <td>
+                                        <div class="plot-image-display">
+                                            {% with plot.plot_images.first as first_image %}
+                                                {% if first_image %}
+                                                    <img src="{{ first_image.image.url }}" 
+                                                        alt="{{ plot.title }}"
+                                                        class="plot-thumbnail"
+                                                        onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'no-image\'><i class=\'fas fa-image fa-2x text-muted\'></i></div>';">
+                                                {% else %}
+                                                    <div class="no-image">
+                                                        <i class="fas fa-image fa-2x text-muted"></i>
+                                                    </div>
+                                                {% endif %}
+                                            {% endwith %}
+                                            
+                                            {% if plot.plot_images.count > 1 %}
+                                            <small class="badge bg-info image-count-badge">
+                                                +{{ plot.plot_images.count|add:"-1" }}
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- Plot Details -->
+                                    <td>
+                                        <div class="plot-info">
+                                            <strong class="plot-title">{{ plot.title|truncatechars:30 }}</strong>
+                                            <div class="plot-meta">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-user-tie me-1"></i>
+                                                    {{ plot.broker.user.get_full_name|default:plot.broker.user.username }}
+                                                </small>
+                                                {% if plot.verification_status.status == 'verified' %}
+                                                <small class="text-success d-block">
+                                                    <i class="fas fa-check-circle me-1"></i>
+                                                    Verified
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    
+                                    <!-- Rest of columns -->
+                                    <td>
+                                        <div class="location-info">
+                                            <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                            {{ plot.location|truncatechars:20 }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="soil-badge">{{ plot.soil_type|default:"Not specified" }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="crop-info">
+                                            <i class="fas fa-leaf text-success me-1"></i>
+                                            {{ plot.crop_suitability|default:"Various"|truncatechars:15 }}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="area-info">
+                                            <i class="fas fa-ruler-combined text-warning me-1"></i>
+                                            {{ plot.area|floatformat:1 }} Acres
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="price-info">
+                                            <strong class="text-primary">KES {{ plot.price|floatformat:0 }}</strong>
+                                            {% if plot.area and plot.area > 0 %}
+                                            <small class="d-block text-muted">
+                                                {% widthratio plot.price plot.area 1 as price_per_acre %}
+                                                KES {{ price_per_acre|floatformat:0 }} per acre
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'listings:plot_detail' plot.id %}" 
+                                          class="btn btn-sm btn-outline-info">
+                                            <i class="fas fa-eye me-1"></i> View
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <!-- Empty State (only shown when no plots) -->
+                    <div class="empty-state">
+                        <div class="empty-content text-center py-5">
+                            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                            <h5>No Featured Plots Available</h5>
+                            <p class="text-muted">
+                                {% if filter_soil_type or filter_crop %}
+                                    No verified plots match your current filters.
+                                {% else %}
+                                    Check back later for new listings or list your own plot.
+                                {% endif %}
+                            </p>
+                            <div class="d-flex justify-content-center gap-2">
+                                {% if filter_soil_type or filter_crop %}
+                                <a href="{% url 'listings:home' %}" class="btn btn-outline-primary">
+                                    <i class="fas fa-times me-1"></i> Clear Filters
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'listings:add_plot' %}" class="btn btn-primary">
+                                    <i class="fas fa-plus me-1"></i> List Your Plot
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-play-circle me-2"></i>How AgriPlot Connect Works
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="process-table">
+                        <table class="steps-table">
+                            <tbody>
+                                <tr>
+                                    <td class="step-cell">
+                                        <div class="step-number">1</div>
+                                        <div class="step-content">
+                                            <h6>Search with Precision</h6>
+                                            <p>Use our advanced filters to find plots matching your soil and crop requirements.</p>
+                                        </div>
+                                    </td>
+                                    <td class="step-cell">
+                                        <div class="step-number">2</div>
+                                        <div class="step-content">
+                                            <h6>Explore Verified Listings</h6>
+                                            <p>View detailed information and documents for each verified agricultural plot.</p>
+                                        </div>
+                                    </td>
+                                    <td class="step-cell">
+                                        <div class="step-number">3</div>
+                                        <div class="step-content">
+                                            <h6>Connect & Negotiate</h6>
+                                            <p>Contact sellers directly and negotiate terms securely through our platform.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Benefits Section -->
+    <div class="row">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-award me-2"></i>Why Choose AgriPlot Connect
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="benefits-grid">
+                        <table class="benefits-table">
+                            <tbody>
+                                <tr>
+                                    <td class="benefit-cell">
+                                        <div class="benefit-icon">
+                                            <i class="fas fa-shield-alt fa-2x text-success"></i>
+                                        </div>
+                                        <div class="benefit-content">
+                                            <h6>Verified Listings</h6>
+                                            <p class="mb-0">All plots are verified with authentic documentation for your security.</p>
+                                        </div>
+                                    </td>
+                                    <td class="benefit-cell">
+                                        <div class="benefit-icon">
+                                            <i class="fas fa-filter fa-2x text-primary"></i>
+                                        </div>
+                                        <div class="benefit-content">
+                                            <h6>Advanced Filters</h6>
+                                            <p class="mb-0">Search by soil type, crop suitability, pH levels, and more.</p>
+                                        </div>
+                                    </td>
+                                    <td class="benefit-cell">
+                                        <div class="benefit-icon">
+                                            <i class="fas fa-handshake fa-2x text-warning"></i>
+                                        </div>
+                                        <div class="benefit-content">
+                                            <h6>Direct Contact</h6>
+                                            <p class="mb-0">Connect directly with sellers and brokers for transparent negotiations.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="benefit-cell">
+                                        <div class="benefit-icon">
+                                            <i class="fas fa-chart-line fa-2x text-info"></i>
+                                        </div>
+                                        <div class="benefit-content">
+                                            <h6>Market Insights</h6>
+                                            <p class="mb-0">Access pricing trends and market data for informed decisions.</p>
+                                        </div>
+                                    </td>
+                                    <td class="benefit-cell">
+                                        <div class="benefit-icon">
+                                            <i class="fas fa-file-contract fa-2x text-danger"></i>
+                                        </div>
+                                        <div class="benefit-content">
+                                            <h6>Document Verification</h6>
+                                            <p class="mb-0">View title deeds and soil reports before making decisions.</p>
+                                        </div>
+                                    </td>
+                                    <td class="benefit-cell">
+                                        <div class="benefit-icon">
+                                            <i class="fas fa-mobile-alt fa-2x text-purple"></i>
+                                        </div>
+                                        <div class="benefit-content">
+                                            <h6>Mobile Friendly</h6>
+                                            <p class="mb-0">Access our platform from any device, anywhere in Kenya.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="stats-table">
+                <table class="quick-stats">
+                    <tbody>
+                        <tr>
+                            <td class="stat-cell">
+                                <div class="stat-value text-primary">100+</div>
+                                <div class="stat-label">Active Listings</div>
+                            </td>
+                            <td class="stat-cell">
+                                <div class="stat-value text-success">50+</div>
+                                <div class="stat-label">Verified Plots</div>
+                            </td>
+                            <td class="stat-cell">
+                                <div class="stat-value text-warning">24h</div>
+                                <div class="stat-label">Avg. Response Time</div>
+                            </td>
+                            <td class="stat-cell">
+                                <div class="stat-value text-info">10+</div>
+                                <div class="stat-label">Soil Types</div>
+                            </td>
+                            <td class="stat-cell">
+                                <div class="stat-value text-danger">47</div>
+                                <div class="stat-label">Counties Covered</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ===== HERO BANNER ===== */
+    .hero-banner {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border-radius: var(--card-radius);
+        padding: 3rem 2rem;
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-banner::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 300px;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+    }
+
+    .hero-content {
+        position: relative;
+        z-index: 1;
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .hero-title {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 1rem;
+        color: white;
+    }
+
+    .hero-subtitle {
+        font-size: 1.2rem;
+        opacity: 0.9;
+        margin-bottom: 2rem;
+    }
+
+    /* ===== SEARCH FORM ===== */
+    .search-card {
+        background: white;
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        margin-bottom: 2rem;
+    }
+
+    .search-form-table {
+        width: 100%;
+    }
+
+    .search-filters {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .search-filters tr:first-child td {
+        padding-bottom: 0.75rem;
+    }
+
+    .search-filters tr:last-child td {
+        padding-top: 0;
+    }
+
+    .filter-label {
+        padding: 0 0.5rem;
+        text-align: center;
+    }
+
+    .filter-label label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--gray-700);
+        margin-bottom: 0;
+    }
+
+    .filter-input {
+        padding: 0 0.5rem;
+        width: 22%;
+    }
+
+    .filter-action {
+        width: 12%;
+        padding: 0 0.5rem;
+    }
+
+    .filter-action .btn {
+        width: 100%;
+        padding: 0.75rem;
+    }
+
+    /* ===== CTA GRID ===== */
+    .cta-table {
+        margin-top: 2rem;
+    }
+
+    .cta-grid {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .cta-cell {
+        padding: 0 0.5rem;
+        width: 33.33%;
+        text-align: center;
+    }
+
+    .cta-cell .btn {
+        width: 100%;
+        padding: 0.875rem 1.5rem;
+        font-weight: 500;
+    }
+
+    /* ===== FEATURED PLOTS TABLE ===== */
+    .plots-grid-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .plots-grid-table thead th {
+        background: var(--gray-100);
+        padding: 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--gray-300);
+        text-align: left;
+    }
+
+    .plots-grid-table tbody tr {
+        transition: var(--transition);
+    }
+
+    .plots-grid-table tbody tr:hover {
+        background: var(--gray-50);
+    }
+
+    .plots-grid-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .plot-info {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .plot-image {
+        flex-shrink: 0;
+    }
+
+    .document-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-100);
+        border-radius: 8px;
+    }
+
+    .plot-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .plot-title {
+        font-weight: 600;
+        color: var(--gray-800);
+        display: block;
+        margin-bottom: 0.25rem;
+    }
+
+    .soil-badge {
+        display: inline-block;
+        padding: 0.35em 0.65em;
+        background: var(--success-light);
+        color: var(--success-dark);
+        border-radius: 50px;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .location-info,
+    .crop-info,
+    .area-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .price-info strong {
+        font-size: 1.1rem;
+    }
+
+    /* ===== PROCESS STEPS ===== */
+    .process-table {
+        width: 100%;
+    }
+
+    .steps-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 1rem;
+    }
+
+    .step-cell {
+        width: 33.33%;
+        padding: 0 1rem;
+        vertical-align: top;
+        text-align: center;
+    }
+
+    .step-number {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--primary);
+        color: white;
+        border-radius: 50%;
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 auto 1rem;
+    }
+
+    .step-content h6 {
+        font-weight: 600;
+        color: var(--gray-800);
+        margin-bottom: 0.5rem;
+    }
+
+    .step-content p {
+        font-size: 0.95rem;
+        color: var(--gray-600);
+        line-height: 1.5;
+    }
+
+    /* ===== PLOT IMAGE DISPLAY ===== */
+    .plot-image-display {
+        position: relative;
+        width: 100px;
+        height: 80px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid var(--gray-200);
+    }
+
+    .plot-thumbnail {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .plot-thumbnail:hover {
+        transform: scale(1.1);
+    }
+
+    .no-image {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-100);
+    }
+
+    .image-count-badge {
+        position: absolute;
+        bottom: 4px;
+        right: 4px;
+        font-size: 0.65rem;
+        padding: 0.15em 0.4em;
+    }
+
+    .plot-meta {
+        margin-top: 0.5rem;
+    }
+
+    /* ===== IMAGE UPLOAD IN FORM ===== */
+    .images-upload-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .images-upload-table thead th {
+        background: var(--gray-100);
+        padding: 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--gray-300);
+    }
+
+    .images-upload-table tbody tr:hover {
+        background: var(--gray-50);
+    }
+
+    .images-upload-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .image-upload-area {
+        border: 2px dashed var(--gray-400);
+        border-radius: 10px;
+        padding: 2rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-height: 150px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .image-upload-area:hover {
+        border-color: var(--info);
+        background: rgba(54, 185, 204, 0.05);
+    }
+
+    .upload-content i {
+        opacity: 0.7;
+        transition: opacity 0.3s ease;
+    }
+
+    .image-upload-area:hover .upload-content i {
+        opacity: 1;
+    }
+
+    .existing-images {
+        padding: 1rem;
+        background: var(--gray-50);
+        border-radius: 8px;
+    }
+
+    .existing-images h6 {
+        margin-bottom: 1rem;
+        color: var(--gray-700);
+    }
+
+    #currentImages {
+        min-height: 60px;
+    }
+
+    .current-image-item {
+        width: 80px;
+        height: 60px;
+        position: relative;
+        border-radius: 6px;
+        overflow: hidden;
+        border: 2px solid var(--gray-300);
+    }
+
+    .current-image-item img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .remove-image-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 20px;
+        height: 20px;
+        background: var(--danger);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .image-previews-section {
+        padding: 1rem;
+        background: var(--gray-50);
+        border-radius: 8px;
+    }
+
+    #imagePreviews {
+        min-height: 100px;
+    }
+
+    .image-preview-item {
+        width: 120px;
+        position: relative;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid var(--gray-300);
+        background: white;
+    }
+
+    .preview-image {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+    }
+
+    .preview-info {
+        padding: 0.5rem;
+        background: white;
+    }
+
+    .preview-info small {
+        display: block;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .remove-preview-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        width: 24px;
+        height: 24px;
+        background: var(--danger);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 0.75rem;
+    }
+
+    /* Upload status */
+    .upload-status {
+        text-align: center;
+    }
+
+    .image-captions {
+        min-height: 60px;
+    }
+
+    .caption-input {
+        margin-bottom: 0.5rem;
+    }
+
+    .caption-input input {
+        font-size: 0.875rem;
+        padding: 0.375rem 0.75rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .plot-image-display {
+            width: 80px;
+            height: 60px;
+        }
+        
+        .images-upload-table {
+            display: block;
+            overflow-x: auto;
+        }
+        
+        .image-preview-item {
+            width: 100px;
+        }
+        
+        .preview-image {
+            height: 80px;
+        }
+    }
+
+    /* ===== BENEFITS ===== */
+    .benefits-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .benefit-cell {
+        width: 33.33%;
+        padding: 1rem;
+        vertical-align: top;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .benefit-cell:nth-child(1),
+    .benefit-cell:nth-child(2),
+    .benefit-cell:nth-child(3) {
+        border-top: none;
+    }
+
+    .benefit-cell:nth-child(3n+1) {
+        border-left: none;
+    }
+
+    .benefit-cell:nth-child(3n) {
+        border-right: none;
+    }
+
+    .benefit-icon {
+        margin-bottom: 1rem;
+        text-align: center;
+    }
+
+    .benefit-content h6 {
+        font-weight: 600;
+        color: var(--gray-800);
+        margin-bottom: 0.5rem;
+    }
+
+    .benefit-content p {
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        line-height: 1.4;
+    }
+
+    /* ===== QUICK STATS ===== */
+    .quick-stats {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        background: white;
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+        overflow: hidden;
+    }
+
+    .stat-cell {
+        width: 20%;
+        padding: 1.5rem;
+        text-align: center;
+        border-right: 1px solid var(--gray-200);
+    }
+
+    .stat-cell:last-child {
+        border-right: none;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-content i {
+        opacity: 0.3;
+    }
+
+    .empty-content h5 {
+        margin-bottom: 0.5rem;
+        color: var(--gray-700);
+    }
+
+    /* ===== RESPONSIVE DESIGN ===== */
+    @media (max-width: 1200px) {
+        .hero-title {
+            font-size: 2rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1.1rem;
+        }
+        
+        .filter-input {
+            width: 21%;
+        }
+        
+        .filter-action {
+            width: 16%;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .hero-banner {
+            padding: 2rem 1rem;
+        }
+        
+        .search-filters {
+            display: block;
+        }
+        
+        .search-filters tbody {
+            display: block;
+        }
+        
+        .search-filters tr {
+            display: block;
+            margin-bottom: 1rem;
+        }
+        
+        .search-filters td {
+            display: block;
+            width: 100% !important;
+            padding: 0.25rem 0 !important;
+        }
+        
+        .cta-grid {
+            display: block;
+        }
+        
+        .cta-grid tbody {
+            display: block;
+        }
+        
+        .cta-grid tr {
+            display: block;
+        }
+        
+        .cta-grid td {
+            display: block;
+            width: 100% !important;
+            padding: 0.5rem 0 !important;
+        }
+        
+        .steps-table,
+        .benefits-table {
+            display: block;
+        }
+        
+        .step-cell,
+        .benefit-cell {
+            display: block;
+            width: 100% !important;
+            padding: 1rem 0;
+        }
+        
+        .quick-stats {
+            display: block;
+        }
+        
+        .quick-stats tbody {
+            display: block;
+        }
+        
+        .quick-stats tr {
+            display: block;
+        }
+        
+        .stat-cell {
+            display: block;
+            width: 100% !important;
+            border-right: none;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        
+        .stat-cell:last-child {
+            border-bottom: none;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .hero-title {
+            font-size: 1.75rem;
+        }
+        
+        .plots-grid-table {
+            display: block;
+            overflow-x: auto;
+        }
+        
+        .plot-info {
+            min-width: 200px;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .hero-title {
+            font-size: 1.5rem;
+        }
+        
+        .hero-subtitle {
+            font-size: 1rem;
+        }
+        
+        .step-content h6 {
+            font-size: 1rem;
+        }
+        
+        .step-content p {
+            font-size: 0.875rem;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize select2 for better dropdowns if needed
+        const soilSelect = document.getElementById('soil_type');
+        const cropSelect = document.getElementById('crop');
+        
+        if (soilSelect) {
+            soilSelect.addEventListener('change', function() {
+                // Could add dynamic filtering here
+            });
+        }
+        
+        if (cropSelect) {
+            cropSelect.addEventListener('change', function() {
+                // Could add dynamic filtering here
+            });
+        }
+        
+        // Location autocomplete
+        const locationInput = document.getElementById('location');
+        if (locationInput) {
+            const kenyaCounties = [
+                'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 'Thika',
+                'Kitale', 'Kericho', 'Kakamega', 'Bungoma', 'Busia', 'Siaya',
+                'Kisii', 'Nyamira', 'Homabay', 'Migori', 'Narok', 'Kajiado',
+                'Machakos', 'Makueni', 'Kitui', 'Meru', 'Embu', 'Kirinyaga',
+                'Muranga', 'Kiambu', 'Nyandarua', 'Nyeri', 'Laikipia'
+            ];
+            
+            // Simple autocomplete
+            locationInput.addEventListener('input', function() {
+                // Could implement autocomplete dropdown here
+            });
+        }
+        
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                if (href !== '#') {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
+        
+        // Add animation to featured plots on scroll
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+        
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+        
+        // Animate featured plots rows
+        document.querySelectorAll('.plots-grid-table tbody tr').forEach((row, index) => {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(20px)';
+            row.style.transition = `opacity 0.5s ease ${index * 0.1}s, transform 0.5s ease ${index * 0.1}s`;
+            observer.observe(row);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,211 @@
+/* ========================
+   RESET & GLOBAL STYLES
+   ======================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    background: #f8f9fa;
+    color: #333;
+}
+
+a {
+    text-decoration: none;
+    color: inherit;
+}
+
+ul {
+    list-style: none;
+}
+
+/* ========================
+   HEADER / NAVIGATION
+   ======================== */
+header {
+    background: #2E7D32;
+    padding: 15px 20px;
+    color: white;
+}
+
+.navbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.nav-brand {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.nav-menu li {
+    display: inline;
+    margin-left: 15px;
+}
+
+.nav-menu li a {
+    color: white;
+    padding: 6px 10px;
+    transition: background 0.3s;
+}
+
+.nav-menu li a:hover {
+    background: rgba(255,255,255,0.2);
+    border-radius: 4px;
+}
+
+/* ========================
+   MAIN CONTENT AREA
+   ======================== */
+.main-content {
+    padding: 30px 20px;
+}
+
+/* ========================
+   SEARCH FORM
+   ======================== */
+.search-form {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.search-form input,
+.search-form button {
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.search-form button {
+    background: #388E3C;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.search-form button:hover {
+    background: #2E7D32;
+}
+
+/* ========================
+   FEATURED / CARD GRID
+   ======================== */
+.grid {
+    display: grid;
+    gap: 20px;
+    padding: 20px 0;
+}
+
+/* Responsive grid columns */
+@media (min-width: 900px) {
+    .grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    }
+}
+
+@media (max-width: 899px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 12px;
+}
+
+.card h3 {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+}
+
+.card p {
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.btn-small {
+    display: inline-block;
+    background: #4CAF50;
+    color: white;
+    padding: 8px 12px;
+    text-align: center;
+    border-radius: 4px;
+}
+
+.btn-small:hover {
+    background: #388E3C;
+}
+
+/* ========================
+   BUTTONS
+   ======================== */
+.btn {
+    background: #4CAF50;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 4px;
+    display: inline-block;
+    transition: background 0.3s;
+    text-align: center;
+}
+
+.btn:hover {
+    background: #388E3C;
+}
+
+/* ========================
+   FORMS
+   ======================== */
+form input, form textarea {
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    width: 100%;
+    margin-bottom: 12px;
+}
+
+form button {
+    background: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+form button:hover {
+    background: #388E3C;
+}
+
+/* ========================
+   FOOTER
+   ======================== */
+footer {
+    background: #2E7D32;
+    color: white;
+    text-align: center;
+    padding: 15px 10px;
+    margin-top: 40px;
+    font-size: 0.9rem;
+}

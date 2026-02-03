@@ -1,0 +1,1038 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Plot - {{ plot.title }} — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-header">
+                <div class="dashboard-header-content">
+                    <div class="dashboard-title">
+                        <h2><i class="fas fa-edit me-2"></i>Edit Plot Listing</h2>
+                        <p class="dashboard-subtitle">Update the details for: {{ plot.title }}</p>
+                    </div>
+                    <div class="dashboard-stats-summary">
+                        <div class="stat-badge">
+                            <span class="stat-badge-value">#{{ plot.id }}</span>
+                            <span class="stat-badge-label">Plot ID</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-badge-value">
+                                {% if plot.verification_status.status == 'verified' %}
+                                <i class="fas fa-check-circle text-success"></i>
+                                {% else %}
+                                <i class="fas fa-clock text-warning"></i>
+                                {% endif %}
+                            </span>
+                            <span class="stat-badge-label">
+                                {{ plot.verification_status.status|title }}
+                            </span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-badge-value">{{ plot.plot_images.count }}</span>
+                            <span class="stat-badge-label">Images</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav class="detail-navigation">
+                <a href="{% url 'listings:plot_detail' plot.id %}" class="nav-link">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Plot
+                </a>
+                <a href="#basic" class="nav-link active">Basic Info</a>
+                <a href="#agricultural" class="nav-link">Agricultural Details</a>
+                <a href="#documents" class="nav-link">Documents</a>
+                <a href="#images" class="nav-link">Images</a>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="messages-table">
+                {% for message in messages %}
+                <div class="alert alert-dismissible fade show 
+                    {% if message.tags == 'error' %}alert-danger
+                    {% elif message.tags == 'success' %}alert-success
+                    {% elif message.tags == 'warning' %}alert-warning
+                    {% else %}alert-info{% endif %}" role="alert">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-{% if message.tags == 'error' %}exclamation-circle{% elif message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                            <span>{{ message }}</span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Edit Form -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-pencil-alt me-2"></i>Edit Plot Information
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" id="editPlotForm">
+                        {% csrf_token %}
+                        
+                        <!-- Section 1: Basic Information -->
+                        <div class="form-section-table mb-5" id="basic">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title">
+                                    <i class="fas fa-info-circle me-2 text-primary"></i>Basic Information
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Update plot title, location, and pricing</p>
+                            </div>
+                            
+                            <div class="form-table">
+                                <table class="form-field-table">
+                                    <!-- Title -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.title.id_for_label }}" class="required">
+                                                <i class="fas fa-heading me-2"></i>Plot Title
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            {{ form.title }}
+                                            <div class="field-feedback">
+                                                {% if form.title.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.title.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> Descriptive title for buyers
+                                            </small>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Location -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.location.id_for_label }}" class="required">
+                                                <i class="fas fa-map-marker-alt me-2"></i>Location
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            {{ form.location }}
+                                            <div class="field-feedback">
+                                                {% if form.location.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.location.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> County, Sub-county, nearest town
+                                            </small>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Area & Price -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label class="required">
+                                                <i class="fas fa-ruler-combined me-2"></i>Area & Price
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <div class="input-group">
+                                                        {{ form.area }}
+                                                        <span class="input-group-text">Acres</span>
+                                                    </div>
+                                                    {% if form.area.errors %}
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                                        {{ form.area.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">KES</span>
+                                                        {{ form.price }}
+                                                    </div>
+                                                    {% if form.price.errors %}
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                                        {{ form.price.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div id="priceSummary" class="mt-2">
+                                                <small class="text-muted" id="pricePerAcre"></small>
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> Price per acre calculated
+                                            </small>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Agricultural Details -->
+                        <div class="form-section-table mb-5" id="agricultural">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title">
+                                    <i class="fas fa-seedling me-2 text-success"></i>Agricultural Details
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Update soil and crop information</p>
+                            </div>
+                            
+                            <div class="form-table">
+                                <table class="form-field-table">
+                                    <!-- Soil Type -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.soil_type.id_for_label }}" class="required">
+                                                <i class="fas fa-seedling me-2"></i>Soil Type
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            {{ form.soil_type }}
+                                            <div class="field-feedback">
+                                                {% if form.soil_type.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.soil_type.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> Affects crop suitability
+                                            </small>
+                                        </td>
+                                    </tr>
+
+                                    <!-- pH Level -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.ph_level.id_for_label }}">
+                                                <i class="fas fa-flask me-2"></i>Soil pH Level
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            <div class="input-group">
+                                                {{ form.ph_level }}
+                                                <span class="input-group-text">pH</span>
+                                            </div>
+                                            <div class="field-feedback">
+                                                {% if form.ph_level.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.ph_level.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                            <!-- pH Scale -->
+                                            <div class="ph-scale mt-3">
+                                                <small class="text-muted d-block mb-1">pH Scale:</small>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="scale-label text-danger me-2">Acidic</span>
+                                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                                        <div class="progress-bar bg-danger" style="width: 20%"></div>
+                                                        <div class="progress-bar bg-success" style="width: 40%"></div>
+                                                        <div class="progress-bar bg-warning" style="width: 40%"></div>
+                                                    </div>
+                                                    <span class="scale-label text-warning ms-2">Alkaline</span>
+                                                </div>
+                                                <div class="d-flex justify-content-between mt-1">
+                                                    <small class="text-muted">0-4</small>
+                                                    <small class="text-muted">5-7 (Neutral)</small>
+                                                    <small class="text-muted">8-14</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <div class="ph-guide">
+                                                <small class="d-block mb-1">Optimal for most crops:</small>
+                                                <div class="text-success">
+                                                    <i class="fas fa-check-circle me-1"></i>pH 5.5 - 7.5
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Crop Suitability -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.crop_suitability.id_for_label }}" class="required">
+                                                <i class="fas fa-leaf me-2"></i>Crop Suitability
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            {{ form.crop_suitability }}
+                                            <div class="field-feedback">
+                                                {% if form.crop_suitability.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.crop_suitability.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <div class="crop-suggestions">
+                                                <small class="d-block mb-1">Common crops in Kenya:</small>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <span class="crop-tag" data-crop="Maize">Maize</span>
+                                                    <span class="crop-tag" data-crop="Wheat">Wheat</span>
+                                                    <span class="crop-tag" data-crop="Coffee">Coffee</span>
+                                                    <span class="crop-tag" data-crop="Tea">Tea</span>
+                                                    <span class="crop-tag" data-crop="Beans">Beans</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Documents -->
+                        <div class="form-section-table mb-5" id="documents">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title">
+                                    <i class="fas fa-file-alt me-2 text-warning"></i>Documents
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Update verification documents</p>
+                            </div>
+                            
+                            <div class="documents-table">
+                                <table class="documents-upload-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Document</th>
+                                            <th>Current File</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Title Deed -->
+                                        <tr>
+                                            <td>
+                                                <div class="document-info">
+                                                    <i class="fas fa-file-contract text-danger me-2"></i>
+                                                    <div>
+                                                        <div class="document-name">Title Deed</div>
+                                                        <small class="text-muted">Required for verification</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if plot.title_deed %}
+                                                <small class="text-success">
+                                                    <i class="fas fa-check-circle me-1"></i>
+                                                    Uploaded
+                                                </small>
+                                                {% else %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    Missing
+                                                </small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="document-upload-btn">
+                                                    {{ form.title_deed }}
+                                                    {% if form.title_deed.errors %}
+                                                    <small class="text-danger d-block">
+                                                        {{ form.title_deed.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Soil Report -->
+                                        <tr>
+                                            <td>
+                                                <div class="document-info">
+                                                    <i class="fas fa-flask text-info me-2"></i>
+                                                    <div>
+                                                        <div class="document-name">Soil Test Report</div>
+                                                        <small class="text-muted">Optional but recommended</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                {% if plot.soil_report %}
+                                                <small class="text-success">
+                                                    <i class="fas fa-check-circle me-1"></i>
+                                                    Uploaded
+                                                </small>
+                                                {% else %}
+                                                <small class="text-info">
+                                                    <i class="fas fa-info-circle me-1"></i>
+                                                    Optional
+                                                </small>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <div class="document-upload-btn">
+                                                    {{ form.soil_report }}
+                                                    {% if form.soil_report.errors %}
+                                                    <small class="text-danger d-block">
+                                                        {{ form.soil_report.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Section 4: Images -->
+                        <div class="form-section-table mb-5" id="images">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title">
+                                    <i class="fas fa-images me-2 text-info"></i>Plot Images
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Add or update plot photos</p>
+                            </div>
+                            
+                            <div class="images-table">
+                                <!-- Current Images -->
+                                {% if plot.plot_images.exists %}
+                                <div class="current-images mb-4">
+                                    <h6 class="mb-3">Current Images ({{ plot.plot_images.count }}):</h6>
+                                    <div class="d-flex flex-wrap gap-3">
+                                        {% for image in plot.plot_images.all %}
+                                        <div class="image-item">
+                                            <img src="{{ image.image.url }}" 
+                                                 alt="Plot image {{ forloop.counter }}"
+                                                 class="current-image">
+                                            <div class="image-actions">
+                                                <small class="text-muted">{{ image.caption|default:"No caption" }}</small>
+                                                <a href="{% url 'listings:delete_image' image.id %}" 
+                                                   class="btn btn-sm btn-outline-danger mt-1"
+                                                   onclick="return confirm('Delete this image?')">
+                                                    <i class="fas fa-trash"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endif %}
+                                
+                                <!-- Add More Images -->
+                                <div class="add-images">
+                                    <h6 class="mb-3">Add More Images:</h6>
+                                    <div class="image-upload-container">
+                                        <div class="image-upload-area">
+                                            <div class="upload-content">
+                                                <i class="fas fa-cloud-upload-alt fa-3x text-info mb-3"></i>
+                                                <p class="mb-2">Click to upload or drag & drop</p>
+                                                <small class="text-muted">JPEG, PNG (Max 5MB each, up to 5 images)</small>
+                                            </div>
+                                            {{ form.images }}
+                                        </div>
+                                        <div class="form-feedback mt-2">
+                                            {% if form.images.help_text %}
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                {{ form.images.help_text }}
+                                            </small>
+                                            {% endif %}
+                                            {% if form.images.errors %}
+                                            <small class="text-danger">
+                                                <i class="fas fa-exclamation-circle me-1"></i>
+                                                {{ form.images.errors }}
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="form-actions-table">
+                            <table class="actions-table">
+                                <tbody>
+                                    <tr>
+                                        <td class="actions-left">
+                                            <a href="{% url 'listings:plot_detail' plot.id %}" class="btn btn-outline-secondary">
+                                                <i class="fas fa-times me-1"></i> Cancel
+                                            </a>
+                                        </td>
+                                        <td class="actions-center">
+                                            <div class="form-warning">
+                                                <small class="text-warning">
+                                                    <i class="fas fa-exclamation-triangle me-1"></i>
+                                                    Changes may require re-verification
+                                                </small>
+                                            </div>
+                                        </td>
+                                        <td class="actions-right">
+                                            <button type="submit" class="btn btn-success px-4" id="submitBtn">
+                                                <i class="fas fa-save me-2"></i>
+                                                <span id="submitText">Save Changes</span>
+                                                <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar: Help & Preview -->
+        <div class="col-lg-4 mb-4">
+            <!-- Help Card -->
+            <div class="dashboard-card mb-4">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-question-circle me-2"></i>Editing Guidelines
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="help-items">
+                        <div class="help-item">
+                            <div class="help-icon text-primary">
+                                <i class="fas fa-exclamation"></i>
+                            </div>
+                            <div class="help-content">
+                                <strong>Verification Impact</strong>
+                                <p class="mb-0">Major changes may reset verification status to "Pending"</p>
+                            </div>
+                        </div>
+                        <div class="help-item">
+                            <div class="help-icon text-success">
+                                <i class="fas fa-images"></i>
+                            </div>
+                            <div class="help-content">
+                                <strong>Image Updates</strong>
+                                <p class="mb-0">New images are added, existing images remain</p>
+                            </div>
+                        </div>
+                        <div class="help-item">
+                            <div class="help-icon text-warning">
+                                <i class="fas fa-file"></i>
+                            </div>
+                            <div class="help-content">
+                                <strong>Document Replacement</strong>
+                                <p class="mb-0">Uploading new documents replaces existing ones</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Preview Card -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-eye me-2"></i>Current Listing
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="preview-info">
+                        <div class="preview-item mb-3">
+                            <strong>Current Status:</strong>
+                            <span class="badge {% if plot.verification_status.status == 'verified' %}bg-success{% else %}bg-warning{% endif %}">
+                                {{ plot.verification_status.status|title }}
+                            </span>
+                        </div>
+                        <div class="preview-item mb-3">
+                            <strong>Images:</strong>
+                            <span>{{ plot.plot_images.count }} uploaded</span>
+                        </div>
+                        <div class="preview-item mb-3">
+                            <strong>Documents:</strong>
+                            <div>
+                                {% if plot.title_deed %}
+                                <span class="text-success">
+                                    <i class="fas fa-check-circle me-1"></i>Title Deed
+                                </span>
+                                {% else %}
+                                <span class="text-danger">
+                                    <i class="fas fa-exclamation-circle me-1"></i>Title Deed
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="preview-item">
+                            <strong>Last Updated:</strong>
+                            <span>{{ plot.updated_at|date:"M d, Y H:i" }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ===== EDIT FORM STYLES ===== */
+    .form-section-table {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 1px solid var(--gray-200);
+        margin-bottom: 1.5rem;
+    }
+
+    .section-header {
+        border-bottom: 2px solid var(--gray-100);
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-weight: 600;
+        color: var(--gray-800);
+        margin-bottom: 0.25rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .section-subtitle {
+        font-size: 0.9rem;
+        color: var(--gray-600);
+    }
+
+    /* Form Table */
+    .form-field-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 1rem;
+    }
+
+    .form-field-table tr {
+        background: var(--gray-50);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .form-field-table tr:hover {
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .form-field-table td {
+        padding: 1rem;
+        vertical-align: top;
+    }
+
+    .field-label {
+        width: 25%;
+        font-weight: 500;
+        color: var(--gray-700);
+        border-right: 1px solid var(--gray-200);
+    }
+
+    .field-label .required::after {
+        content: " *";
+        color: var(--danger);
+    }
+
+    .field-input {
+        width: 50%;
+    }
+
+    .field-help {
+        width: 25%;
+        border-left: 1px solid var(--gray-200);
+    }
+
+    /* Current Images */
+    .current-images h6 {
+        color: var(--gray-700);
+        font-weight: 600;
+    }
+
+    .image-item {
+        width: 120px;
+        position: relative;
+    }
+
+    .current-image {
+        width: 100%;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 2px solid var(--gray-300);
+    }
+
+    .image-actions {
+        margin-top: 0.5rem;
+        text-align: center;
+    }
+
+    /* Image Upload */
+    .image-upload-container {
+        position: relative;
+    }
+
+    .image-upload-area {
+        border: 2px dashed var(--info);
+        border-radius: 10px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: rgba(54, 185, 204, 0.05);
+        min-height: 180px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+    }
+
+    .image-upload-area:hover {
+        background: rgba(54, 185, 204, 0.1);
+        border-color: var(--info-dark);
+    }
+
+    .image-upload-area input[type="file"] {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        opacity: 0;
+        cursor: pointer;
+    }
+
+    .upload-content i {
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+    }
+
+    .image-upload-area:hover .upload-content i {
+        opacity: 1;
+    }
+
+    /* Crop Tags */
+    .crop-tag {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        background: var(--gray-100);
+        border: 1px solid var(--gray-300);
+        border-radius: 4px;
+        font-size: 0.8rem;
+        color: var(--gray-700);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .crop-tag:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* pH Scale */
+    .ph-scale {
+        padding: 0.75rem;
+        background: var(--gray-50);
+        border-radius: 6px;
+        border: 1px solid var(--gray-200);
+    }
+
+    .scale-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    /* Preview Info */
+    .preview-info {
+        padding: 0.5rem;
+    }
+
+    .preview-item {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .preview-item:last-child {
+        border-bottom: none;
+    }
+
+    .preview-item strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--gray-700);
+    }
+
+    /* Form Actions */
+    .form-actions-table {
+        margin-top: 2rem;
+    }
+
+    .actions-table {
+        width: 100%;
+    }
+
+    .actions-table td {
+        padding: 1rem 0;
+    }
+
+    .actions-center {
+        text-align: center;
+        width: 40%;
+    }
+
+    .form-warning {
+        max-width: 300px;
+        margin: 0 auto;
+    }
+
+    .actions-left, .actions-right {
+        width: 30%;
+    }
+
+    .actions-right {
+        text-align: right;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .form-field-table {
+            display: block;
+        }
+        
+        .form-field-table tr {
+            display: block;
+            margin-bottom: 1rem;
+            padding: 1rem;
+        }
+        
+        .form-field-table td {
+            display: block;
+            width: 100% !important;
+            border: none !important;
+            padding: 0.5rem 0;
+        }
+        
+        .field-label {
+            margin-bottom: 0.5rem;
+        }
+        
+        .image-item {
+            width: 100px;
+        }
+        
+        .current-image {
+            height: 80px;
+        }
+        
+        .actions-table {
+            display: block;
+        }
+        
+        .actions-table tr {
+            display: block;
+        }
+        
+        .actions-table td {
+            display: block;
+            width: 100% !important;
+            text-align: center !important;
+            padding: 0.5rem 0;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('editPlotForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        
+        // Price per acre calculation
+        const areaInput = document.querySelector('#{{ form.area.id_for_label }}');
+        const priceInput = document.querySelector('#{{ form.price.id_for_label }}');
+        const pricePerAcre = document.getElementById('pricePerAcre');
+        
+        function calculatePricePerAcre() {
+            const area = parseFloat(areaInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            
+            if (area > 0 && price > 0) {
+                const perAcre = price / area;
+                pricePerAcre.textContent = `KES ${perAcre.toLocaleString('en-KE')} per acre`;
+            } else {
+                pricePerAcre.textContent = '';
+            }
+        }
+        
+        if (areaInput && priceInput && pricePerAcre) {
+            areaInput.addEventListener('input', calculatePricePerAcre);
+            priceInput.addEventListener('input', calculatePricePerAcre);
+            calculatePricePerAcre(); // Initial calculation
+        }
+        
+        // Crop tag suggestions
+        const cropTags = document.querySelectorAll('.crop-tag');
+        const cropInput = document.querySelector('#{{ form.crop_suitability.id_for_label }}');
+        
+        cropTags.forEach(tag => {
+            tag.addEventListener('click', function() {
+                const crop = this.getAttribute('data-crop');
+                const currentValue = cropInput.value;
+                
+                if (currentValue.includes(crop)) {
+                    // Remove if already exists
+                    const newValue = currentValue.replace(crop, '').replace(/\s*,\s*,/g, ',').replace(/^,|,$/g, '');
+                    cropInput.value = newValue;
+                    this.style.background = '';
+                    this.style.color = '';
+                } else {
+                    // Add to input
+                    if (currentValue) {
+                        cropInput.value = currentValue + ', ' + crop;
+                    } else {
+                        cropInput.value = crop;
+                    }
+                    this.style.background = 'var(--primary)';
+                    this.style.color = 'white';
+                }
+            });
+        });
+        
+        // File preview for documents
+        const titleDeedInput = document.querySelector('#{{ form.title_deed.id_for_label }}');
+        const soilReportInput = document.querySelector('#{{ form.soil_report.id_for_label }}');
+        
+        function setupFilePreview(input) {
+            if (input) {
+                input.addEventListener('change', function() {
+                    const fileName = this.files[0]?.name || 'No file selected';
+                    const parent = this.closest('tr');
+                    if (parent) {
+                        const statusCell = parent.querySelector('td:nth-child(2)');
+                        if (statusCell) {
+                            statusCell.innerHTML = `
+                                <small class="text-info">
+                                    <i class="fas fa-upload me-1"></i>
+                                    ${fileName}
+                                </small>
+                            `;
+                        }
+                    }
+                });
+            }
+        }
+        
+        setupFilePreview(titleDeedInput);
+        setupFilePreview(soilReportInput);
+        
+        // Image upload preview
+        const imageInput = document.querySelector('#{{ form.images.id_for_label }}');
+        if (imageInput) {
+            imageInput.addEventListener('change', function() {
+                const fileCount = this.files.length;
+                if (fileCount > 0) {
+                    const uploadArea = document.querySelector('.image-upload-area');
+                    if (uploadArea) {
+                        uploadArea.innerHTML = `
+                            <div class="text-success">
+                                <i class="fas fa-check-circle fa-3x mb-3"></i>
+                                <p class="mb-2">${fileCount} file${fileCount > 1 ? 's' : ''} selected</p>
+                                <small class="text-muted">Ready to upload</small>
+                            </div>
+                            ${uploadArea.innerHTML}
+                        `;
+                    }
+                }
+            });
+        }
+        
+        // Form submission
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // Basic validation
+                const requiredFields = form.querySelectorAll('.required');
+                let isValid = true;
+                
+                requiredFields.forEach(field => {
+                    const input = field.closest('tr')?.querySelector('input, select, textarea');
+                    if (input && !input.value.trim()) {
+                        isValid = false;
+                        input.focus();
+                    }
+                });
+                
+                if (!isValid) {
+                    e.preventDefault();
+                    alert('Please fill all required fields marked with *');
+                    return;
+                }
+                
+                // Show loading state
+                submitBtn.disabled = true;
+                submitText.textContent = 'Saving...';
+                loadingSpinner.classList.remove('d-none');
+            });
+        }
+        
+        // Navigation smooth scroll
+        document.querySelectorAll('.nav-link[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                if (targetId !== '#') {
+                    const targetElement = document.querySelector(targetId);
+                    if (targetElement) {
+                        // Update active nav link
+                        document.querySelectorAll('.nav-link').forEach(link => {
+                            link.classList.remove('active');
+                        });
+                        this.classList.add('active');
+                        
+                        // Scroll to element
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

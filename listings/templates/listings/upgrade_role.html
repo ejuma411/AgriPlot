@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+<h2>Complete Your Account</h2>
+
+<p>Before you can list a plot, tell us what role you want:</p>
+
+<form method="POST">
+  {% csrf_token %}
+    <a href="{% url 'listings:register_seller' %}?next={% url 'listings:add_plot' %}" class="btn">
+        Register as Seller
+    </a>
+    <a href="{% url 'listings:register_broker' %}?next={% url 'listings:add_plot' %}" class="btn">
+        Register as Broker
+    </a>
+</form>
+{% endblock %}

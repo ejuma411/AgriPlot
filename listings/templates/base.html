@@ -1,0 +1,59 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}AgriPlot Connect{% endblock %}</title>
+
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+</head>
+<body>
+
+<header>
+    <nav class="navbar">
+        <a href="{% url 'listings:home' %}" class="nav-brand">AgriPlot Connect</a>
+        <ul class="nav-menu">
+            <li><a href="{% url 'listings:home' %}">Home</a></li>
+
+            {% if user.is_authenticated %}
+                {% if user.profile.is_broker %}
+                    <li><a href="{% url 'listings:add_plot' %}">Add Plot</a></li>
+                    <li><a href="{% url 'listings:staff_dashboard' %}">Dashboard</a></li>
+                {% endif %}
+
+                <li>
+                    <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn logout-btn">Logout</button>
+                    </form>
+                </li>
+            {% else %}
+                <li><a href="{% url 'login' %}">Login</a></li>
+                <li><a href="{% url 'register' %}">Register</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+</header>
+
+<main class="main-content">
+    {% block content %}
+    <!-- page-specific content will go here -->
+    {% endblock %}
+</main>
+
+<footer>
+    <div class="footer-content">
+        <p>&copy; 2026 AgriPlot Connect — All Rights Reserved</p>
+        <p>
+            <a href="#">About</a> |
+            <a href="#">Terms</a> |
+            <a href="#">Privacy</a>
+        </p>
+    </div>
+</footer>
+
+</body>
+</html>

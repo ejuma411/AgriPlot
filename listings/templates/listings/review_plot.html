@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Review Plot — {{ plot.title }}</h2>
+
+<h3>Uploaded Documents</h3>
+<ul>
+  {% for doc in docs %}
+    <li>{{ doc.get_doc_type_display }} - <a href="{{ doc.file.url }}">Download</a></li>
+  {% empty %}
+    <li>No documents uploaded yet.</li>
+  {% endfor %}
+</ul>
+
+<h3>Official Search Info</h3>
+<form method="POST" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ sform.as_p }}
+  <h3>Verification Status</h3>
+  {{ vform.as_p }}
+  <button type="submit" class="btn">Save Review</button>
+</form>
