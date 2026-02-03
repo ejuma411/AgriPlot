@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<h2>Upload Required Documents</h2>
+
+{% if messages %}
+  {% for msg in messages %}
+    <div class="message {{ msg.tags }}">{{ msg }}</div>
+  {% endfor %}
+{% endif %}
+
+<p>To complete your listing for <strong>{{ plot.title }}</strong>, you must upload the following:</p>
+
+<ul>
+  {% for doc in missing %}
+    <li>{{ doc|capfirst|replace:"_" " " }}</li>
+  {% endfor %}
+</ul>
+
+<form method="POST" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ upload_form.as_p }}
+  <input type="hidden" name="plot_id" value="{{ plot.id }}">
+  <button type="submit" class="btn btn-primary">Upload Document</button>
+</form>
+
+{% endblock %}

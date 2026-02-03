@@ -1,0 +1,1776 @@
+{% extends "base.html" %}
+{% load static %}
+{% load plot_extras %}
+
+{% block title %}Add Plot — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-header">
+                <div class="dashboard-header-content">
+                    <div class="dashboard-title">
+                        <h2><i class="fas fa-plus-circle me-2"></i>Add New Plot</h2>
+                        <p class="dashboard-subtitle">Complete all sections to list your agricultural plot</p>
+                    </div>
+                    <div class="dashboard-stats-summary">
+                        <div class="stat-badge">
+                            <span class="stat-badge-value">4</span>
+                            <span class="stat-badge-label">Sections</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-badge-value text-danger">*</span>
+                            <span class="stat-badge-label">Required</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-badge-value"><i class="fas fa-clock"></i></span>
+                            <span class="stat-badge-label">24-48h Review</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="progress-indicator">
+                <div class="progress-step active" data-step="1">
+                    <span class="step-number">1</span>
+                    <span class="step-label">Basic Info</span>
+                </div>
+                <div class="progress-step" data-step="2">
+                    <span class="step-number">2</span>
+                    <span class="step-label">Agri Details</span>
+                </div>
+                <div class="progress-step" data-step="3">
+                    <span class="step-number">3</span>
+                    <span class="step-label">Documents</span>
+                </div>
+                <div class="progress-step" data-step="4">
+                    <span class="step-number">4</span>
+                    <span class="step-label">Agreement</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Messages Display -->
+    {% if messages %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="messages-table">
+                {% for message in messages %}
+                <div class="alert alert-dismissible fade show 
+                    {% if message.tags == 'error' %}alert-danger
+                    {% elif message.tags == 'success' %}alert-success
+                    {% elif message.tags == 'warning' %}alert-warning
+                    {% else %}alert-info{% endif %}" role="alert">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-{% if message.tags == 'error' %}exclamation-circle{% elif message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                            <span>{{ message }}</span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Form Grid Layout -->
+    <div class="row">
+        <!-- Main Form Column -->
+        <div class="col-xl-8 mb-4">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-file-alt me-2"></i>Plot Information Form
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data" id="plotForm">
+                        {% csrf_token %}
+
+                        <!-- Section 1: Basic Information Table -->
+                        <div class="form-section-table mb-5">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title d-flex align-items-center">
+                                    <span class="section-badge bg-primary">1</span>
+                                    <span>Basic Information</span>
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Essential plot details for buyers</p>
+                            </div>
+                            
+                            <div class="form-table">
+                                <table class="form-field-table">
+                                    <!-- Title -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.title.id_for_label }}" class="required">
+                                                <i class="fas fa-heading me-2"></i>Plot Title
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            {{ form.title }}
+                                            <div class="field-feedback">
+                                                {% if form.title.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.title.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> Clear, descriptive title
+                                            </small>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Location -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.location.id_for_label }}" class="required">
+                                                <i class="fas fa-map-marker-alt me-2"></i>Location
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            <div class="input-group">
+                                                {{ form.location }}
+                                                <button class="btn btn-outline-secondary" type="button" id="locationSuggest">
+                                                    <i class="fas fa-map"></i>
+                                                </button>
+                                            </div>
+                                            <div class="field-feedback">
+                                                {% if form.location.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.location.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> County, Sub-county
+                                            </small>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Area & Price Row -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.area.id_for_label }}" class="required">
+                                                <i class="fas fa-ruler-combined me-2"></i>Area & Price
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            <div class="row g-2">
+                                                <div class="col-6">
+                                                    <div class="input-group">
+                                                        {{ form.area }}
+                                                        <span class="input-group-text">Acres</span>
+                                                    </div>
+                                                    {% if form.area.errors %}
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                                        {{ form.area.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-6">
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">KES</span>
+                                                        {{ form.price }}
+                                                    </div>
+                                                    {% if form.price.errors %}
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                                        {{ form.price.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div id="priceSummary" class="mt-2">
+                                                <small class="text-muted" id="pricePerAcre"></small>
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> Price per acre calculated
+                                            </small>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Soil Type -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.soil_type.id_for_label }}" class="required">
+                                                <i class="fas fa-seedling me-2"></i>Soil Type
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            {{ form.soil_type }}
+                                            <div class="field-feedback">
+                                                {% if form.soil_type.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.soil_type.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                <i class="fas fa-info-circle"></i> Affects crop suitability
+                                            </small>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Section 2: Agricultural Details Table -->
+                        <div class="form-section-table mb-5">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title d-flex align-items-center">
+                                    <span class="section-badge bg-success">2</span>
+                                    <span>Agricultural Details</span>
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Technical specifications for farming</p>
+                            </div>
+                            
+                            <div class="form-table">
+                                <table class="form-field-table">
+                                    <!-- pH Level -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.ph_level.id_for_label }}">
+                                                <i class="fas fa-flask me-2"></i>Soil pH Level
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            <div class="input-group">
+                                                {{ form.ph_level }}
+                                                <span class="input-group-text">pH</span>
+                                            </div>
+                                            <div class="field-feedback">
+                                                {% if form.ph_level.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.ph_level.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <div class="ph-guide">
+                                                <div class="d-flex align-items-center mb-1">
+                                                    <span class="ph-indicator acidic me-2"></span>
+                                                    <small>Acidic (0-4)</small>
+                                                </div>
+                                                <div class="d-flex align-items-center mb-1">
+                                                    <span class="ph-indicator neutral me-2"></span>
+                                                    <small>Neutral (5-7)</small>
+                                                </div>
+                                                <div class="d-flex align-items-center">
+                                                    <span class="ph-indicator alkaline me-2"></span>
+                                                    <small>Alkaline (8-14)</small>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+
+                                    <!-- Crop Suitability -->
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.crop_suitability.id_for_label }}" class="required">
+                                                <i class="fas fa-leaf me-2"></i>Crop Suitability
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            {{ form.crop_suitability }}
+                                            <div class="field-feedback">
+                                                {% if form.crop_suitability.errors %}
+                                                <small class="text-danger">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.crop_suitability.errors }}
+                                                </small>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="field-help">
+                                            <div class="crop-tags">
+                                                <small class="d-block mb-1">Common Crops:</small>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <span class="crop-tag">Maize</span>
+                                                    <span class="crop-tag">Wheat</span>
+                                                    <span class="crop-tag">Coffee</span>
+                                                    <span class="crop-tag">Tea</span>
+                                                    <span class="crop-tag">Beans</span>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Section 3: Documents Upload Table -->
+                        <div class="form-section-table mb-5">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title d-flex align-items-center">
+                                    <span class="section-badge bg-warning">3</span>
+                                    <span>Supporting Documents</span>
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Upload required verification documents</p>
+                            </div>
+                            
+                            <div class="documents-table">
+                                <table class="documents-upload-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Document</th>
+                                            <th>Status</th>
+                                            <th>Preview</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Title Deed -->
+                                        <tr>
+                                            <td>
+                                                <div class="document-info">
+                                                    <i class="fas fa-file-contract text-danger me-2"></i>
+                                                    <div>
+                                                        <div class="document-name">Title Deed</div>
+                                                        <small class="text-muted">Required • Max 10MB</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="document-status badge bg-danger">Required</span>
+                                            </td>
+                                            <td>
+                                                <div id="titleDeedPreview" class="document-preview">
+                                                    No file selected
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.title_deed.id_for_label }}" class="btn btn-sm btn-outline-danger">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.title_deed }}
+                                                    {% if form.title_deed.errors %}
+                                                    <small class="text-danger d-block">
+                                                        {{ form.title_deed.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Soil Report -->
+                                        <tr>
+                                            <td>
+                                                <div class="document-info">
+                                                    <i class="fas fa-flask text-info me-2"></i>
+                                                    <div>
+                                                        <div class="document-name">Soil Test Report</div>
+                                                        <small class="text-muted">Optional • Recommended</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="document-status badge bg-info">Optional</span>
+                                            </td>
+                                            <td>
+                                                <div id="soilReportPreview" class="document-preview">
+                                                    No file selected
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.soil_report.id_for_label }}" class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.soil_report }}
+                                                    {% if form.soil_report.errors %}
+                                                    <small class="text-danger d-block">
+                                                        {{ form.soil_report.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- Section 3b: Plot Images -->
+                        <div class="form-section-table mb-5">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title d-flex align-items-center">
+                                    <span class="section-badge bg-info">3b</span>
+                                    <span>Plot Images</span>
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Upload clear photos of the plot (optional but highly recommended)</p>
+                            </div>
+                            
+                            <div class="images-table">
+                                <table class="images-upload-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Upload Area</th>
+                                            <th>Guidelines</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <div class="image-upload-container">
+                                                    <div class="form-group">
+                                                        <div class="image-upload-area">
+                                                            {{ form.images }}
+                                                            <div class="upload-content">
+                                                                <i class="fas fa-cloud-upload-alt fa-3x text-info mb-3"></i>
+                                                                <p class="mb-2">Click to select images</p>
+                                                                <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="form-feedback mt-2">
+                                                            {% if form.images.help_text %}
+                                                            <small class="text-muted">
+                                                                <i class="fas fa-info-circle me-1"></i>
+                                                                {{ form.images.help_text }}
+                                                            </small>
+                                                            {% endif %}
+                                                            {% if form.images.errors %}
+                                                            <div class="text-danger small mt-1">
+                                                                <i class="fas fa-exclamation-circle me-1"></i>
+                                                                {{ form.images.errors }}
+                                                            </div>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="upload-tips">
+                                                    <h6><i class="fas fa-lightbulb me-2 text-warning"></i>Image Guidelines:</h6>
+                                                    <ul class="mb-0">
+                                                        <li><strong>Maximum:</strong> 5 images per plot</li>
+                                                        <li><strong>Size limit:</strong> 5MB per image</li>
+                                                        <li><strong>Formats:</strong> JPEG, PNG, GIF</li>
+                                                        <li><strong>Recommended:</strong> Show boundaries, soil, access</li>
+                                                        <li><strong>Quality:</strong> Clear, well-lit photos</li>
+                                                    </ul>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="upload-status">
+                                                    <div class="status-card">
+                                                        <div class="status-item">
+                                                            <span class="status-label">Images will display:</span>
+                                                            <span class="status-value">On home page</span>
+                                                        </div>
+                                                        <div class="status-item">
+                                                            <span class="status-label">In plot details:</span>
+                                                            <span class="status-value">Gallery view</span>
+                                                        </div>
+                                                        <div class="status-item">
+                                                            <span class="status-label">Benefit:</span>
+                                                            <span class="status-value text-success">Higher engagement</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="mt-3">
+                                                        <small class="text-muted">
+                                                            <i class="fas fa-star me-1 text-warning"></i>
+                                                            Listings with images get 3x more views
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        
+                                        <!-- Preview area for selected files -->
+                                        <tr id="filePreviewRow" class="d-none">
+                                            <td colspan="3">
+                                                <div class="file-previews-section">
+                                                    <h6 class="mb-3">
+                                                        <i class="fas fa-images me-2"></i>
+                                                        Selected Files
+                                                        <span id="fileCount" class="badge bg-primary ms-2">0</span>
+                                                    </h6>
+                                                    <div id="fileList" class="file-list"></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Section 4: Agreement Table -->
+                        <div class="form-section-table mb-5">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title d-flex align-items-center">
+                                    <span class="section-badge bg-dark">4</span>
+                                    <span>Listing Agreement</span>
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Confirm your understanding and agreement</p>
+                            </div>
+                            
+                            <div class="agreement-table">
+                                <table class="terms-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="term-check">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="accuracyCheck" required>
+                                                    <label class="form-check-label" for="accuracyCheck"></label>
+                                                </div>
+                                            </td>
+                                            <td class="term-content">
+                                                <strong>Accuracy Declaration</strong>
+                                                <p class="mb-0">I certify that all information provided is accurate and I am the authorized seller/broker for this plot.</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="term-check">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="documentCheck" required>
+                                                    <label class="form-check-label" for="documentCheck"></label>
+                                                </div>
+                                            </td>
+                                            <td class="term-content">
+                                                <strong>Document Authenticity</strong>
+                                                <p class="mb-0">I confirm that the title deed uploaded is valid and authentic.</p>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="term-check">
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="termsCheck" required>
+                                                    <label class="form-check-label" for="termsCheck"></label>
+                                                </div>
+                                            </td>
+                                            <td class="term-content">
+                                                <strong>Terms Acceptance</strong>
+                                                <p class="mb-0">I agree to the <a href="#" class="terms-link" data-bs-toggle="modal" data-bs-target="#termsModal">Terms of Service</a> and understand that false information may result in listing removal.</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="form-actions-table">
+                            <table class="actions-table">
+                                <tbody>
+                                    <tr>
+                                        <td class="actions-left">
+                                            <a href="{% url 'listings:home' %}" class="btn btn-outline-secondary">
+                                                <i class="fas fa-times me-1"></i> Cancel
+                                            </a>
+                                        </td>
+                                        <td class="actions-center">
+                                            <div class="form-progress">
+                                                <small class="text-muted">Form completion: <span id="completionPercent">0%</span></small>
+                                                <div class="progress" style="height: 6px;">
+                                                    <div class="progress-bar" id="completionBar" style="width: 0%"></div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="actions-right">
+                                            <button type="submit" class="btn btn-success px-4" id="submitBtn">
+                                                <i class="fas fa-plus-circle me-2"></i>
+                                                <span id="submitText">Submit Listing</span>
+                                                <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar: Guidelines & Help -->
+        <div class="col-xl-4 mb-4">
+            <!-- Help Card -->
+            <div class="dashboard-card mb-4">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-question-circle me-2"></i>Quick Help
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="help-items">
+                        <div class="help-item">
+                            <div class="help-icon text-primary">
+                                <i class="fas fa-star"></i>
+                            </div>
+                            <div class="help-content">
+                                <strong>Required Fields</strong>
+                                <p class="mb-0">Fields marked with <span class="text-danger">*</span> are mandatory</p>
+                            </div>
+                        </div>
+                        <div class="help-item">
+                            <div class="help-icon text-success">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div class="help-content">
+                                <strong>Verification</strong>
+                                <p class="mb-0">Listings reviewed within 24-48 hours</p>
+                            </div>
+                        </div>
+                        <div class="help-item">
+                            <div class="help-icon text-warning">
+                                <i class="fas fa-exclamation"></i>
+                            </div>
+                            <div class="help-content">
+                                <strong>Document Size</strong>
+                                <p class="mb-0">Maximum file size: 10MB per document</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contact Card -->
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-headset me-2"></i>Need Help?
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="contact-info">
+                        <div class="contact-item mb-3">
+                            <i class="fas fa-envelope text-primary me-2"></i>
+                            <span>support@agriplot.com</span>
+                        </div>
+                        <div class="contact-item mb-3">
+                            <i class="fas fa-phone text-success me-2"></i>
+                            <span>+254 700 000 000</span>
+                        </div>
+                        <div class="contact-item">
+                            <i class="fas fa-clock text-warning me-2"></i>
+                            <span>Mon-Fri, 8AM-5PM EAT</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Terms Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="termsModalLabel">
+                    <i class="fas fa-file-contract me-2"></i>Terms of Service
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>Plot Listing Agreement</h6>
+                <p>By listing a plot on AgriPlot Connect, you agree to:</p>
+                <ul class="terms-list">
+                    <li>Provide accurate and truthful information about the plot</li>
+                    <li>Upload valid and authentic documents</li>
+                    <li>Respond to buyer inquiries in a timely manner</li>
+                    <li>Update listing status if the plot is sold</li>
+                    <li>Comply with Kenyan land laws and regulations</li>
+                </ul>
+                <p class="mb-0">AgriPlot Connect reserves the right to remove any listing that violates these terms.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* ===== PROGRESS INDICATOR ===== */
+    .progress-indicator {
+        display: flex;
+        justify-content: space-between;
+        background: white;
+        padding: 1.5rem;
+        border-radius: var(--card-radius);
+        box-shadow: var(--card-shadow);
+    }
+
+    .progress-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        flex: 1;
+    }
+
+    .progress-step::before {
+        content: '';
+        position: absolute;
+        top: 16px;
+        left: -50%;
+        right: 50%;
+        height: 2px;
+        background: var(--gray-300);
+        z-index: 1;
+    }
+
+    .progress-step:first-child::before {
+        display: none;
+    }
+
+    .progress-step.active::before {
+        background: var(--primary);
+    }
+
+    .step-number {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-300);
+        color: var(--gray-700);
+        border-radius: 50%;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .progress-step.active .step-number {
+        background: var(--primary);
+        color: white;
+    }
+
+    .step-label {
+        font-size: 0.875rem;
+        color: var(--gray-600);
+        text-align: center;
+    }
+
+    .progress-step.active .step-label {
+        color: var(--primary);
+        font-weight: 500;
+    }
+
+    /* ===== FORM SECTION TABLES ===== */
+    .form-section-table {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 1px solid var(--gray-200);
+        margin-bottom: 1.5rem;
+    }
+
+    .section-header {
+        border-bottom: 2px solid var(--gray-100);
+        padding-bottom: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .section-badge {
+        width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        color: white;
+        font-weight: 600;
+        margin-right: 1rem;
+    }
+
+    .section-title {
+        font-weight: 600;
+        color: var(--gray-800);
+        margin-bottom: 0.25rem;
+    }
+
+    .section-subtitle {
+        font-size: 0.9rem;
+    }
+
+    /* ===== FORM FIELD TABLE ===== */
+    .form-field-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 1rem;
+    }
+
+    .form-field-table tr {
+        background: var(--gray-50);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .form-field-table tr:hover {
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .form-field-table td {
+        padding: 1rem;
+        vertical-align: top;
+    }
+
+    .field-label {
+        width: 25%;
+        font-weight: 500;
+        color: var(--gray-700);
+        border-right: 1px solid var(--gray-200);
+    }
+
+    .field-label .required::after {
+        content: " *";
+        color: var(--danger);
+    }
+
+    .field-input {
+        width: 50%;
+    }
+
+    .field-help {
+        width: 25%;
+        border-left: 1px solid var(--gray-200);
+    }
+
+    .form-control, .form-select {
+        border-radius: 6px;
+        border: 2px solid var(--gray-300);
+        padding: 0.75rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.15);
+    }
+
+    .field-feedback {
+        margin-top: 0.5rem;
+    }
+
+    /* ===== PH INDICATORS ===== */
+    .ph-guide {
+        padding: 0.5rem;
+        background: var(--gray-100);
+        border-radius: 6px;
+    }
+
+    .ph-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .ph-indicator.acidic {
+        background: var(--danger);
+    }
+
+    .ph-indicator.neutral {
+        background: var(--success);
+    }
+
+    .ph-indicator.alkaline {
+        background: var(--warning);
+    }
+
+    /* ===== CROP TAGS ===== */
+    .crop-tag {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        background: var(--gray-100);
+        border: 1px solid var(--gray-300);
+        border-radius: 50px;
+        font-size: 0.8rem;
+        color: var(--gray-700);
+    }
+
+    /* ===== DOCUMENTS TABLE ===== */
+    .documents-upload-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .documents-upload-table thead th {
+        background: var(--gray-100);
+        padding: 1rem;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid var(--gray-300);
+    }
+
+    .documents-upload-table tbody tr {
+        transition: all 0.3s ease;
+    }
+
+    .documents-upload-table tbody tr:hover {
+        background: var(--gray-50);
+    }
+
+    .documents-upload-table tbody td {
+        padding: 1rem;
+        vertical-align: middle;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .document-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .document-info i {
+        font-size: 1.5rem;
+    }
+
+    .document-name {
+        font-weight: 500;
+        color: var(--gray-800);
+    }
+
+    .document-status {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+    }
+
+    .document-preview {
+        font-size: 0.875rem;
+        color: var(--gray-600);
+        min-height: 24px;
+    }
+
+    /* ===== AGREEMENT TABLE ===== */
+    .terms-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 0.75rem;
+    }
+
+    .terms-table tbody tr {
+        background: var(--gray-50);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .terms-table tbody tr:hover {
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .terms-table td {
+        padding: 1rem;
+        vertical-align: middle;
+    }
+
+    .term-check {
+        width: 40px;
+        border-right: 1px solid var(--gray-200);
+    }
+
+    .term-content strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--gray-800);
+    }
+
+    .term-content p {
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        margin-bottom: 0;
+    }
+
+    .terms-link {
+        color: var(--primary);
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .terms-link:hover {
+        text-decoration: underline;
+    }
+
+    /* ===== FORM ACTIONS TABLE ===== */
+    .actions-table {
+        width: 100%;
+    }
+
+    .actions-table td {
+        padding: 1rem 0;
+    }
+
+    .actions-center {
+        text-align: center;
+        width: 40%;
+    }
+
+    .form-progress {
+        max-width: 300px;
+        margin: 0 auto;
+    }
+
+    .actions-left, .actions-right {
+        width: 30%;
+    }
+
+    .actions-right {
+        text-align: right;
+    }
+
+    /* ===== HELP ITEMS ===== */
+    .help-items {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .help-item {
+        display: flex;
+        gap: 1rem;
+        padding: 0.75rem;
+        background: var(--gray-50);
+        border-radius: 8px;
+    }
+
+    .help-icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+
+    .help-content strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--gray-800);
+    }
+
+    .help-content p {
+        font-size: 0.875rem;
+        color: var(--gray-600);
+        margin-bottom: 0;
+    }
+
+    /* ===== CONTACT INFO ===== */
+    .contact-info {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .contact-item {
+        display: flex;
+        align-items: center;
+        padding: 0.75rem;
+        background: var(--gray-50);
+        border-radius: 8px;
+    }
+
+    .contact-item i {
+        font-size: 1.25rem;
+    }
+
+    /* ===== IMAGE UPLOAD STYLES ===== */
+    .image-upload-container {
+        position: relative;
+    }
+
+    .image-upload-area {
+        border: 2px dashed var(--info);
+        border-radius: 10px;
+        padding: 2.5rem 1rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: rgba(54, 185, 204, 0.05);
+        min-height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        position: relative;
+    }
+
+    .image-upload-area:hover {
+        background: rgba(54, 185, 204, 0.1);
+        border-color: var(--info-dark);
+    }
+
+    .image-upload-area input[type="file"] {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        top: 0;
+        left: 0;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 10;
+    }
+
+    .upload-content {
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    .upload-content i {
+        opacity: 0.8;
+        transition: opacity 0.3s ease;
+    }
+
+    .image-upload-area:hover .upload-content i {
+        opacity: 1;
+    }
+
+    .upload-tips {
+        padding: 1.5rem;
+        background: var(--warning-light);
+        border-radius: 10px;
+        border: 1px solid var(--warning-border);
+        height: 100%;
+    }
+
+    .upload-tips h6 {
+        color: var(--warning-dark);
+        margin-bottom: 1rem;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .upload-tips ul {
+        padding-left: 1.25rem;
+        margin-bottom: 0;
+    }
+
+    .upload-tips li {
+        font-size: 0.9rem;
+        color: var(--gray-700);
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }
+
+    .upload-tips li:last-child {
+        margin-bottom: 0;
+    }
+
+    .upload-tips li strong {
+        color: var(--gray-800);
+        font-weight: 600;
+    }
+
+    .upload-status {
+        height: 100%;
+    }
+
+    .status-card {
+        padding: 1.5rem;
+        background: var(--gray-50);
+        border-radius: 10px;
+        border: 1px solid var(--gray-300);
+    }
+
+    .status-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .status-item:last-child {
+        margin-bottom: 0;
+        padding-bottom: 0;
+        border-bottom: none;
+    }
+
+    .status-label {
+        font-size: 0.9rem;
+        color: var(--gray-600);
+        font-weight: 500;
+    }
+
+    .status-value {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: var(--gray-800);
+    }
+
+    .file-previews-section {
+        padding: 1.5rem;
+        background: var(--gray-50);
+        border-radius: 10px;
+        border: 1px solid var(--gray-300);
+    }
+
+    .file-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .file-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem;
+        background: white;
+        border-radius: 6px;
+        border: 1px solid var(--gray-300);
+    }
+
+    .file-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .file-icon {
+        color: var(--info);
+        font-size: 1.25rem;
+    }
+
+    .file-name {
+        font-weight: 500;
+        color: var(--gray-800);
+    }
+
+    .file-size {
+        font-size: 0.875rem;
+        color: var(--gray-600);
+    }
+
+    /* ===== RESPONSIVE DESIGN ===== */
+    @media (max-width: 1200px) {
+        .progress-indicator {
+            padding: 1rem;
+        }
+        
+        .step-label {
+            font-size: 0.8rem;
+        }
+        
+        .field-label, .field-help {
+            width: 30%;
+        }
+        
+        .field-input {
+            width: 40%;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .progress-step::before {
+            display: none;
+        }
+        
+        .form-field-table {
+            display: block;
+        }
+        
+        .form-field-table tr {
+            display: block;
+            margin-bottom: 1rem;
+            padding: 1rem;
+        }
+        
+        .form-field-table td {
+            display: block;
+            width: 100% !important;
+            border: none !important;
+            padding: 0.5rem 0;
+        }
+        
+        .field-label {
+            margin-bottom: 0.5rem;
+        }
+        
+        .actions-table {
+            display: block;
+        }
+        
+        .actions-table tr {
+            display: block;
+        }
+        
+        .actions-table td {
+            display: block;
+            width: 100% !important;
+            text-align: center !important;
+            padding: 0.5rem 0;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .progress-indicator {
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        
+        .progress-step {
+            flex: 0 0 calc(50% - 0.5rem);
+        }
+        
+        .documents-upload-table {
+            display: block;
+            overflow-x: auto;
+        }
+        
+        .help-item {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .help-icon {
+            margin: 0 auto;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Form completion tracking
+        function updateFormCompletion() {
+            const requiredFields = form.querySelectorAll('.required');
+            let completed = 0;
+            
+            requiredFields.forEach(field => {
+                const input = field.closest('tr').querySelector('input, select, textarea');
+                if (input) {
+                    if (input.type === 'checkbox') {
+                        if (input.checked) completed++;
+                    } else if (input.value.trim()) {
+                        completed++;
+                    }
+                }
+            });
+            
+            const percent = Math.round((completed / requiredFields.length) * 100);
+            document.getElementById('completionPercent').textContent = percent + '%';
+            document.getElementById('completionBar').style.width = percent + '%';
+            
+            // Update progress indicator
+            if (percent >= 100) {
+                document.querySelectorAll('.progress-step').forEach(step => {
+                    step.classList.add('active');
+                });
+            } else if (percent >= 75) {
+                document.querySelectorAll('.progress-step[data-step="4"]').forEach(step => {
+                    step.classList.remove('active');
+                });
+            } else if (percent >= 50) {
+                document.querySelectorAll('.progress-step[data-step="3"], .progress-step[data-step="4"]').forEach(step => {
+                    step.classList.remove('active');
+                });
+            } else if (percent >= 25) {
+                document.querySelectorAll('.progress-step[data-step="2"], .progress-step[data-step="3"], .progress-step[data-step="4"]').forEach(step => {
+                    step.classList.remove('active');
+                });
+            }
+        }
+        
+        // Price per acre calculation
+        const areaInput = document.querySelector('#{{ form.area.id_for_label }}');
+        const priceInput = document.querySelector('#{{ form.price.id_for_label }}');
+        const pricePerAcre = document.getElementById('pricePerAcre');
+        
+        function calculatePricePerAcre() {
+            const area = parseFloat(areaInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            
+            if (area > 0 && price > 0) {
+                const perAcre = price / area;
+                pricePerAcre.textContent = `KES ${perAcre.toLocaleString('en-KE')} per acre`;
+            } else {
+                pricePerAcre.textContent = '';
+            }
+        }
+        
+        if (areaInput && priceInput && pricePerAcre) {
+            areaInput.addEventListener('input', calculatePricePerAcre);
+            priceInput.addEventListener('input', calculatePricePerAcre);
+        }
+        
+        // File upload preview
+        function setupFilePreview(inputId, previewId) {
+            const input = document.querySelector(`#${inputId}`);
+            const preview = document.getElementById(previewId);
+            
+            if (input && preview) {
+                input.addEventListener('change', function() {
+                    if (this.files.length > 0) {
+                        const file = this.files[0];
+                        preview.innerHTML = `
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-file me-2 text-success"></i>
+                                <div>
+                                    <div class="text-success">${file.name}</div>
+                                    <small class="text-muted">${(file.size / (1024 * 1024)).toFixed(2)} MB</small>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        preview.textContent = 'No file selected';
+                    }
+                    updateFormCompletion();
+                });
+            }
+        }
+        
+        setupFilePreview('{{ form.title_deed.id_for_label }}', 'titleDeedPreview');
+        setupFilePreview('{{ form.soil_report.id_for_label }}', 'soilReportPreview');
+        
+        // Form validation
+        const form = document.getElementById('plotForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const submitText = document.getElementById('submitText');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        
+        // Track form changes for completion
+        form.addEventListener('input', updateFormCompletion);
+        form.addEventListener('change', updateFormCompletion);
+        
+        // Initial completion check
+        updateFormCompletion();
+        
+        // Form submission
+        form.addEventListener('submit', function(e) {
+            const requiredCheckboxes = ['accuracyCheck', 'documentCheck', 'termsCheck'];
+            let allChecked = true;
+            
+            requiredCheckboxes.forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox && !checkbox.checked) {
+                    allChecked = false;
+                    checkbox.focus();
+                }
+            });
+            
+            if (!allChecked) {
+                e.preventDefault();
+                alert('Please agree to all terms and conditions');
+                return
+            
+            // Required file check
+            const titleDeedInput = document.querySelector('#{{ form.title_deed.id_for_label }}');
+            if (!titleDeedInput.files[0]) {
+                e.preventDefault();
+                alert('Please upload the title deed document');
+                titleDeedInput.focus();
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitText.textContent = 'Submitting...';
+            loadingSpinner.classList.remove('d-none');
+        });
+        
+        // Location suggestion
+        const locationSuggestBtn = document.getElementById('locationSuggest');
+        if (locationSuggestBtn) {
+            locationSuggestBtn.addEventListener('click', function() {
+                // Could implement location autocomplete here
+                alert('Location suggestions feature coming soon!');
+            });
+        }
+    });
+
+    // Image Upload Handling
+    const imageUploadArea = document.getElementById('imageUploadArea');
+    const imageInput = document.getElementById('{{ form.images.id_for_label }}');
+    const imagePreviews = document.getElementById('imagePreviews');
+    const imagePreviewsRow = document.getElementById('imagePreviewsRow');
+    const uploadCount = document.getElementById('uploadCount');
+    const uploadSize = document.getElementById('uploadSize');
+    const clearImagesBtn = document.getElementById('clearImagesBtn');
+    const captionInputs = document.getElementById('captionInputs');
+    const MAX_FILES = 5;
+    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+    // Click to upload
+    imageUploadArea.addEventListener('click', () => imageInput.click());
+
+    // Drag and drop
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        imageUploadArea.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        imageUploadArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        imageUploadArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+        imageUploadArea.style.borderColor = 'var(--info)';
+        imageUploadArea.style.background = 'rgba(54, 185, 204, 0.1)';
+    }
+
+    function unhighlight() {
+        imageUploadArea.style.borderColor = '';
+        imageUploadArea.style.background = '';
+    }
+
+    // Handle file drop
+    imageUploadArea.addEventListener('drop', handleDrop, false);
+    imageInput.addEventListener('change', handleFileSelect, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles(files);
+    }
+
+    function handleFileSelect(e) {
+        const files = e.target.files;
+        handleFiles(files);
+    }
+
+    let uploadedFiles = [];
+
+    function handleFiles(files) {
+        const validFiles = Array.from(files).filter(file => {
+            // Check file type
+            const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+            if (!validTypes.includes(file.type)) {
+                alert(`${file.name} is not a valid image file. Please upload JPEG, PNG, or GIF files.`);
+                return false;
+            }
+            
+            // Check file size
+            if (file.size > MAX_SIZE) {
+                alert(`${file.name} exceeds 5MB size limit.`);
+                return false;
+            }
+            
+            return true;
+        });
+        
+        // Check total file count
+        if (uploadedFiles.length + validFiles.length > MAX_FILES) {
+            alert(`Maximum ${MAX_FILES} images allowed. You already have ${uploadedFiles.length} images.`);
+            return;
+        }
+        
+        // Add to uploaded files
+        uploadedFiles = uploadedFiles.concat(validFiles);
+        
+        // Update UI
+        updateUploadUI();
+        createPreviews(validFiles);
+    }
+
+    function updateUploadUI() {
+        const fileCount = uploadedFiles.length;
+        const totalSize = uploadedFiles.reduce((sum, file) => sum + file.size, 0);
+        
+        uploadCount.textContent = `${fileCount} file${fileCount !== 1 ? 's' : ''}`;
+        uploadCount.className = `badge ${fileCount > 0 ? 'bg-success' : 'bg-secondary'}`;
+        
+        if (fileCount > 0) {
+            uploadSize.textContent = `${(totalSize / (1024 * 1024)).toFixed(2)} MB / ${MAX_FILES} max`;
+        } else {
+            uploadSize.textContent = `Max ${MAX_FILES} files`;
+        }
+        
+        // Show/hide previews row
+        if (fileCount > 0) {
+            imagePreviewsRow.classList.remove('d-none');
+        } else {
+            imagePreviewsRow.classList.add('d-none');
+        }
+        
+        // Create caption inputs
+        updateCaptionInputs();
+    }
+
+    function createPreviews(files) {
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(e) {
+                const previewItem = document.createElement('div');
+                previewItem.className = 'image-preview-item';
+                previewItem.innerHTML = `
+                    <img src="${e.target.result}" class="preview-image" alt="${file.name}">
+                    <div class="preview-info">
+                        <small title="${file.name}">${file.name}</small>
+                        <small class="text-muted">${(file.size / 1024).toFixed(0)} KB</small>
+                    </div>
+                    <button type="button" class="remove-preview-btn" data-filename="${file.name}">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+                imagePreviews.appendChild(previewItem);
+                
+                // Add remove functionality
+                const removeBtn = previewItem.querySelector('.remove-preview-btn');
+                removeBtn.addEventListener('click', function() {
+                    const filename = this.getAttribute('data-filename');
+                    removeImage(filename);
+                    previewItem.remove();
+                });
+            };
+        });
+    }
+
+    function updateCaptionInputs() {
+        captionInputs.innerHTML = '';
+        uploadedFiles.forEach((file, index) => {
+            const inputDiv = document.createElement('div');
+            inputDiv.className = 'caption-input';
+            inputDiv.innerHTML = `
+                <input type="text" 
+                    class="form-control form-control-sm" 
+                    placeholder="Caption for ${file.name}"
+                    name="image_captions[]"
+                    maxlength="200">
+            `;
+            captionInputs.appendChild(inputDiv);
+        });
+    }
+
+    function removeImage(filename) {
+        uploadedFiles = uploadedFiles.filter(file => file.name !== filename);
+        updateUploadUI();
+        
+        // Also remove from file input
+        const dataTransfer = new DataTransfer();
+        uploadedFiles.forEach(file => dataTransfer.items.add(file));
+        imageInput.files = dataTransfer.files;
+    }
+
+    // Clear all images
+    clearImagesBtn.addEventListener('click', function() {
+        if (uploadedFiles.length > 0) {
+            if (confirm('Remove all uploaded images?')) {
+                uploadedFiles = [];
+                imagePreviews.innerHTML = '';
+                imageInput.value = '';
+                updateUploadUI();
+            }
+        }
+    });
+
+    // Add this JavaScript to add_plot.html
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageInput = document.querySelector('#{{ form.images.id_for_label }}');
+        const filePreviewRow = document.getElementById('filePreviewRow');
+        const fileList = document.getElementById('fileList');
+        const fileCount = document.getElementById('fileCount');
+        
+        if (imageInput) {
+            imageInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                fileList.innerHTML = '';
+                
+                if (files.length > 0) {
+                    filePreviewRow.classList.remove('d-none');
+                    fileCount.textContent = files.length;
+                    
+                    files.forEach((file, index) => {
+                        const fileItem = document.createElement('div');
+                        fileItem.className = 'file-item';
+                        fileItem.innerHTML = `
+                            <div class="file-info">
+                                <i class="fas fa-image file-icon"></i>
+                                <div>
+                                    <div class="file-name" title="${file.name}">
+                                        ${file.name.length > 30 ? file.name.substring(0, 27) + '...' : file.name}
+                                    </div>
+                                    <div class="file-size">
+                                        ${(file.size / (1024 * 1024)).toFixed(2)} MB
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="file-status">
+                                ${file.size > 5 * 1024 * 1024 ? 
+                                    '<span class="badge bg-danger">Too large</span>' : 
+                                    '<span class="badge bg-success">OK</span>'}
+                            </div>
+                        `;
+                        fileList.appendChild(fileItem);
+                    });
+                    
+                    // Show warning if too many files
+                    if (files.length > 5) {
+                        const warning = document.createElement('div');
+                        warning.className = 'alert alert-warning mt-2';
+                        warning.innerHTML = `
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            You selected ${files.length} files. Maximum is 5. Only the first 5 will be uploaded.
+                        `;
+                        fileList.parentNode.insertBefore(warning, fileList.nextSibling);
+                    }
+                } else {
+                    filePreviewRow.classList.add('d-none');
+                }
+            });
+        }
+        
+        // Validate form before submission
+        const form = document.getElementById('plotForm');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const imageInput = document.querySelector('#{{ form.images.id_for_label }}');
+                if (imageInput && imageInput.files.length > 5) {
+                    e.preventDefault();
+                    alert('Maximum 5 images allowed. Please select fewer images.');
+                    return false;
+                }
+                
+                // Check individual file sizes
+                if (imageInput) {
+                    const files = Array.from(imageInput.files);
+                    const oversized = files.filter(file => file.size > 5 * 1024 * 1024);
+                    if (oversized.length > 0) {
+                        e.preventDefault();
+                        alert(`Some images exceed 5MB limit. Please resize or select different images.`);
+                        return false;
+                    }
+                }
+            });
+        }
+    });
+
+    // Form submission - ensure file input is updated
+    form.addEventListener('submit', function() {
+        // The files are already in uploadedFiles array, file input should be updated
+    });
+</script>
+{% endblock %}

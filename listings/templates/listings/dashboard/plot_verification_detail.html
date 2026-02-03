@@ -1,0 +1,274 @@
+<!-- templates/dashboard/plot_verification_detail.html -->
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Verification Status - {{ plot.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Back Button -->
+    <div class="mb-4">
+        <a href="{% url 'listings:my_plots' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to My Plots
+        </a>
+    </div>
+
+    <!-- Verification Status Card -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3 d-flex justify-content-between align-items-center">
+            <h4 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-clipboard-check me-2"></i>
+                Verification Status: {{ plot.title }}
+            </h4>
+            {% if verification_status %}
+                {% if verification_status.status == 'verified' %}
+                    <span class="badge bg-success fs-6 px-3 py-2">
+                        <i class="fas fa-check-circle me-1"></i>VERIFIED
+                    </span>
+                {% elif verification_status.status == 'pending' %}
+                    <span class="badge bg-warning fs-6 px-3 py-2">
+                        <i class="fas fa-clock me-1"></i>PENDING REVIEW
+                    </span>
+                {% elif verification_status.status == 'rejected' %}
+                    <span class="badge bg-danger fs-6 px-3 py-2">
+                        <i class="fas fa-times-circle me-1"></i>REJECTED
+                    </span>
+                {% else %}
+                    <span class="badge bg-info fs-6 px-3 py-2">
+                        {{ verification_status.status|upper }}
+                    </span>
+                {% endif %}
+            {% else %}
+                <span class="badge bg-secondary fs-6 px-3 py-2">
+                    NO STATUS
+                </span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <!-- Plot Info -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6 class="text-muted">Plot Information</h6>
+                    <p><strong>Title:</strong> {{ plot.title }}</p>
+                    <p><strong>Location:</strong> {{ plot.location }}</p>
+                    <p><strong>Price:</strong> KES {{ plot.price|floatformat:0 }}</p>
+                    <p><strong>Area:</strong> {{ plot.area }} acres</p>
+                </div>
+                <div class="col-md-6">
+                    <h6 class="text-muted">Agricultural Details</h6>
+                    <p><strong>Soil Type:</strong> {{ plot.soil_type }}</p>
+                    <p><strong>pH Level:</strong> {{ plot.ph_level|default:"Not specified" }}</p>
+                    <p><strong>Crop Suitability:</strong> {{ plot.crop_suitability }}</p>
+                </div>
+            </div>
+
+            <!-- Verification Details -->
+            {% if verification_status %}
+            <div class="card mb-4 border-{% if verification_status.status == 'verified' %}success{% elif verification_status.status == 'rejected' %}danger{% else %}warning{% endif %}">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>Verification Details
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Status:</strong> {{ verification_status.status|upper }}</p>
+                            <p><strong>Reviewed By:</strong> {{ verification_status.reviewed_by|default:"Not reviewed yet" }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Reviewed At:</strong> {{ verification_status.reviewed_at|date:"F d, Y H:i"|default:"Not reviewed yet" }}</p>
+                            <p><strong>Last Updated:</strong> {{ verification_status.updated_at|date:"F d, Y H:i"|default:"Never" }}</p>
+                        </div>
+                    </div>
+                    {% if verification_status.comments %}
+                    <div class="mt-3 p-3 bg-light rounded">
+                        <strong><i class="fas fa-comment me-2"></i>Reviewer Comments:</strong>
+                        <p class="mb-0 mt-2">{{ verification_status.comments }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Documents Status -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-alt me-2"></i>Document Status
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex justify-content-between align-items-center p-3 border rounded {% if has_title_deed %}border-success bg-success bg-opacity-10{% else %}border-danger bg-danger bg-opacity-10{% endif %}">
+                                <div>
+                                    <h6 class="mb-1">Title Deed</h6>
+                                    <p class="mb-0 small text-muted">Required document for verification</p>
+                                </div>
+                                <div>
+                                    {% if has_title_deed %}
+                                        <span class="badge bg-success fs-6">
+                                            <i class="fas fa-check me-1"></i>UPLOADED
+                                        </span>
+                                        <a href="{{ plot.title_deed.url }}" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    {% else %}
+                                        <span class="badge bg-danger fs-6">
+                                            <i class="fas fa-times me-1"></i>MISSING
+                                        </span>
+                                        <a href="#" class="btn btn-sm btn-outline-danger ms-2" data-bs-toggle="modal" data-bs-target="#uploadTitleDeedModal">
+                                            <i class="fas fa-upload"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex justify-content-between align-items-center p-3 border rounded {% if has_soil_report %}border-success bg-success bg-opacity-10{% else %}border-warning bg-warning bg-opacity-10{% endif %}">
+                                <div>
+                                    <h6 class="mb-1">Soil Report</h6>
+                                    <p class="mb-0 small text-muted">Optional but recommended</p>
+                                </div>
+                                <div>
+                                    {% if has_soil_report %}
+                                        <span class="badge bg-success fs-6">
+                                            <i class="fas fa-check me-1"></i>UPLOADED
+                                        </span>
+                                        <a href="{{ plot.soil_report.url }}" target="_blank" class="btn btn-sm btn-outline-primary ms-2">
+                                            <i class="fas fa-download"></i>
+                                        </a>
+                                    {% else %}
+                                        <span class="badge bg-warning fs-6">
+                                            <i class="fas fa-exclamation me-1"></i>NOT UPLOADED
+                                        </span>
+                                        <a href="#" class="btn btn-sm btn-outline-warning ms-2" data-bs-toggle="modal" data-bs-target="#uploadSoilReportModal">
+                                            <i class="fas fa-upload"></i>
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Verification Documents -->
+            {% if verification_docs %}
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-file-upload me-2"></i>Additional Verification Documents
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Document Type</th>
+                                    <th>Uploaded By</th>
+                                    <th>Uploaded At</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc in verification_docs %}
+                                <tr>
+                                    <td>{{ doc.get_doc_type_display }}</td>
+                                    <td>{{ doc.uploaded_by.username }}</td>
+                                    <td>{{ doc.uploaded_at|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        <a href="{{ doc.document.url }}" target="_blank" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-download"></i> Download
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-footer text-muted">
+            <small>
+                <i class="fas fa-info-circle me-1"></i>
+                Plot created on {{ plot.created|date:"F d, Y"|default:"Unknown date" }}.
+                {% if documents_complete %}
+                    All required documents are uploaded. Your plot is ready for verification.
+                {% else %}
+                    Some required documents are missing. Please upload them to complete verification.
+                {% endif %}
+            </small>
+        </div>
+    </div>
+</div>
+
+<!-- Upload Modals -->
+<div class="modal fade" id="uploadTitleDeedModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Title Deed</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" enctype="multipart/form-data" action="{% url 'listings:upload_verification_doc' plot.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="doc_type" value="title_deed">
+                    <div class="mb-3">
+                        <label for="titleDeedFile" class="form-label">Select Title Deed File</label>
+                        <input type="file" class="form-control" id="titleDeedFile" name="document" accept=".pdf,.jpg,.jpeg,.png" required>
+                        <div class="form-text">Accepted formats: PDF, JPG, PNG (Max 10MB)</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Upload</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="uploadSoilReportModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upload Soil Report</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form method="post" enctype="multipart/form-data" action="{% url 'listings:upload_verification_doc' plot.id %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="doc_type" value="soil_report">
+                    <div class="mb-3">
+                        <label for="soilReportFile" class="form-label">Select Soil Report File</label>
+                        <input type="file" class="form-control" id="soilReportFile" name="document" accept=".pdf,.jpg,.jpeg,.png">
+                        <div class="form-text">Accepted formats: PDF, JPG, PNG (Max 10MB)</div>
+                    </div>
+                    <button type="submit" class="btn btn-warning">Upload</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 10px;
+    }
+    
+    .badge {
+        font-size: 0.85em;
+        padding: 0.5em 1em;
+    }
+    
+    .border-success { border-color: #198754 !important; }
+    .border-warning { border-color: #ffc107 !important; }
+    .border-danger { border-color: #dc3545 !important; }
+    
+    .bg-success.bg-opacity-10 { background-color: rgba(25, 135, 84, 0.1) !important; }
+    .bg-danger.bg-opacity-10 { background-color: rgba(220, 53, 69, 0.1) !important; }
+    .bg-warning.bg-opacity-10 { background-color: rgba(255, 193, 7, 0.1) !important; }
+</style>
+{% endblock %}
