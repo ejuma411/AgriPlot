@@ -31,4 +31,6 @@ urlpatterns = [
     path('dashboard/interest/<int:interest_id>/update/', views.update_interest_status, name='update_interest_status'),
     path('dashboard/profile/', views.profile_management, name='profile_management'),
     path('dashboard/analytics/', views.dashboard_analytics, name='dashboard_analytics'),
+    path('dashboard/plot/<int:plot_id>/upload-verification-doc/', views.upload_verification_doc, name='upload_verification_doc'),
+    path('dashboard/plot/<int:plot_id>/upload-checklist/', views.upload_checklist, name='upload_checklist'),
 ]
