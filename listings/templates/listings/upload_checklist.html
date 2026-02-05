@@ -1,28 +1,1097 @@
 {% extends "base.html" %}
 {% load static %}
+
+{% block title %}Upload Required Documents - {{ plot.title }}{% endblock %}
+
 {% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-header">
+                <div class="dashboard-header-content">
+                    <div class="dashboard-title">
+                        <h2><i class="fas fa-file-upload me-2"></i>Required Documents</h2>
+                        <p class="dashboard-subtitle">Upload missing documents for: {{ plot.title }}</p>
+                    </div>
+                    <div class="dashboard-stats-summary">
+                        <div class="stat-badge">
+                            <span class="stat-badge-value">{{ missing_docs|length }}</span>
+                            <span class="stat-badge-label">Missing</span>
+                        </div>
+                        <div class="stat-badge">
+                            <span class="stat-badge-value">{{ required_docs|length|add:"-missing_docs|length" }}</span>
+                            <span class="stat-badge-label">Completed</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<h2>Upload Required Documents</h2>
+    <!-- Checklist -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="dashboard-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-clipboard-check me-2"></i>Document Checklist
+                    </h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="checklist-table">
+                        <table class="checklist-items">
+                            <thead>
+                                <tr>
+                                    <th>Document</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for doc_type in required_docs %}
+                                <tr>
+                                    <td>
+                                        <div class="document-info">
+                                            {% if doc_type == 'title_deed' %}
+                                            <i class="fas fa-file-contract me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Title Deed</strong>
+                                                <small class="text-muted d-block">
+                                                    Required for verification
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'soil_report' %}
+                                            <i class="fas fa-flask me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Soil Test Report</strong>
+                                                <small class="text-muted d-block">
+                                                    Optional but recommended
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'survey_report' %}
+                                            <i class="fas fa-ruler-combined me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Survey Report</strong>
+                                                <small class="text-muted d-block">
+                                                    Professional survey document
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'zoning_certificate' %}
+                                            <i class="fas fa-map-marked-alt me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Zoning Certificate</strong>
+                                                <small class="text-muted d-block">
+                                                    Zoning and land use permit
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'structural_plan' %}
+                                            <i class="fas fa-drafting-compass me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Structural Plan</strong>
+                                                <small class="text-muted d-block">
+                                                    Architectural drawings
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'building_permit' %}
+                                            <i class="fas fa-file-signature me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Building Permit</strong>
+                                                <small class="text-muted d-block">
+                                                    Construction approval
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'nema_certificate' %}
+                                            <i class="fas fa-leaf me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>NEMA Certificate</strong>
+                                                <small class="text-muted d-block">
+                                                    Environmental compliance
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'search_certificate' %}
+                                            <i class="fas fa-search me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Search Certificate</strong>
+                                                <small class="text-muted d-block">
+                                                    Land registry search
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'rates_clearance' %}
+                                            <i class="fas fa-receipt me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Rates Clearance</strong>
+                                                <small class="text-muted d-block">
+                                                    Tax clearance certificate
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'mother_title' %}
+                                            <i class="fas fa-file-certificate me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Mother Title</strong>
+                                                <small class="text-muted d-block">
+                                                    Parent title document
+                                                </small>
+                                            </div>
+                                            {% else %}
+                                            <i class="fas fa-file-alt me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>{{ doc_type|title }}</strong>
+                                                <small class="text-muted d-block">
+                                                    Required document
+                                                </small>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if doc_type in missing_docs %}
+                                        <span class="badge bg-danger badge-status">Missing</span>
+                                        {% else %}
+                                        <span class="badge bg-success badge-status">Uploaded</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if doc_type in missing_docs %}
+                                        <button class="btn btn-sm btn-upload" 
+                                                onclick="showUploadForm('{{ doc_type }}')">
+                                            <i class="fas fa-upload me-1"></i> Upload
+                                        </button>
+                                        {% else %}
+                                        <a href="#" class="btn btn-sm btn-done">
+                                            <i class="fas fa-check me-1"></i> View
+                                        </a>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-{% if messages %}
-  {% for msg in messages %}
-    <div class="message {{ msg.tags }}">{{ msg }}</div>
-  {% endfor %}
-{% endif %}
+    <!-- Upload Form (hidden by default) -->
+    <div class="row mb-4" id="uploadFormContainer" style="display: none;">
+        <div class="col-12">
+            <div class="dashboard-card upload-form-card">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-upload me-2"></i>
+                        <span id="formTitle">Upload Document</span>
+                    </h6>
+                    <button type="button" class="btn-close" onclick="hideUploadForm()" aria-label="Close"></button>
+                </div>
+                <div class="card-body">
+                    <!-- Display form errors if any -->
+                    {% if form.errors %}
+                    <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Please correct the errors below.
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="POST" enctype="multipart/form-data" id="uploadForm" class="upload-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="doc_type" id="docTypeInput">
+                        
+                        <!-- Document Type Display -->
+                        <div class="form-group mb-4">
+                            <label class="form-label">Document Type</label>
+                            <div class="document-type-display">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <span id="selectedDocType">Title Deed</span>
+                            </div>
+                        </div>
+                        
+                        <!-- File Upload Field -->
+                        <div class="form-group mb-4">
+                            <label for="document" class="form-label">
+                                <strong>Select Document File</strong>
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="file-upload-area">
+                                <div class="file-upload-wrapper" id="fileUploadWrapper">
+                                    <div class="file-upload-content">
+                                        <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-3"></i>
+                                        <h5 class="mb-2">Drag & drop your file here</h5>
+                                        <p class="text-muted mb-3">or click to browse</p>
+                                        <div class="file-types">
+                                            <span class="badge bg-light text-dark me-1 mb-1">PDF</span>
+                                            <span class="badge bg-light text-dark me-1 mb-1">JPG</span>
+                                            <span class="badge bg-light text-dark me-1 mb-1">PNG</span>
+                                            <span class="badge bg-light text-dark mb-1">DOC</span>
+                                        </div>
+                                        <small class="text-muted d-block mt-2">Maximum file size: 10MB</small>
+                                    </div>
+                                    <input type="file" 
+                                           class="file-upload-input" 
+                                           id="document" 
+                                           name="document" 
+                                           accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" 
+                                           required>
+                                </div>
+                                <div id="filePreview" class="file-preview mt-3" style="display: none;">
+                                    <div class="file-preview-content">
+                                        <div class="d-flex align-items-center">
+                                            <i class="fas fa-file-pdf text-danger me-3 fa-2x"></i>
+                                            <div class="file-info">
+                                                <div id="fileName" class="fw-bold">document.pdf</div>
+                                                <div id="fileSize" class="text-muted small">(2.4 MB)</div>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFile()">
+                                            <i class="fas fa-times me-1"></i> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Notes (Optional) -->
+                        <div class="form-group mb-4">
+                            <label for="notes" class="form-label">Notes (Optional)</label>
+                            <textarea class="form-control" 
+                                      id="notes" 
+                                      name="notes" 
+                                      rows="3" 
+                                      placeholder="Add any additional information about this document..."></textarea>
+                            <small class="text-muted">You can add document reference numbers, dates, or other details here.</small>
+                        </div>
+                        
+                        <!-- Terms Agreement -->
+                        <div class="form-group mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" 
+                                       type="checkbox" 
+                                       id="terms_agreement" 
+                                       name="terms_agreement" 
+                                       required>
+                                <label class="form-check-label" for="terms_agreement">
+                                    <i class="fas fa-shield-alt me-1"></i>
+                                    I confirm that this document is authentic and accurate
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Form Actions -->
+                        <div class="form-actions">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <button type="button" class="btn btn-outline-secondary btn-cancel" onclick="hideUploadForm()">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </button>
+                                <button type="submit" class="btn btn-success btn-submit" id="submitBtn">
+                                    <i class="fas fa-upload me-1"></i> Upload Document
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<p>To complete your listing for <strong>{{ plot.title }}</strong>, you must upload the following:</p>
+    <!-- Navigation -->
+    <div class="row">
+        <div class="col-12">
+            <div class="navigation-actions">
+                <a href="{% url 'listings:edit_plot' plot.id %}" class="btn btn-outline-secondary btn-back">
+                    <i class="fas fa-arrow-left me-1"></i> Back to Edit Plot
+                </a>
+                <a href="{% url 'listings:plot_detail' plot.id %}" class="btn btn-primary btn-view">
+                    <i class="fas fa-eye me-1"></i> View Plot Details
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
 
-<ul>
-  {% for doc in missing %}
-    <li>{{ doc|capfirst|replace:"_" " " }}</li>
-  {% endfor %}
-</ul>
+<script>
+    function showUploadForm(docType) {
+        const formContainer = document.getElementById('uploadFormContainer');
+        const formTitle = document.getElementById('formTitle');
+        const docTypeInput = document.getElementById('docTypeInput');
+        const selectedDocType = document.getElementById('selectedDocType');
+        
+        // Update form title and document type display
+        let docName = getDocumentDisplayName(docType);
+        
+        formTitle.textContent = 'Upload ' + docName;
+        selectedDocType.textContent = docName;
+        
+        // Set document type in hidden input
+        docTypeInput.value = docType;
+        
+        // Show form
+        formContainer.style.display = 'block';
+        formContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Reset form
+        resetForm();
+    }
+    
+    function getDocumentDisplayName(docType) {
+        switch(docType) {
+            case 'title_deed':
+                return 'Title Deed';
+            case 'soil_report':
+                return 'Soil Test Report';
+            case 'survey_report':
+                return 'Survey Report';
+            case 'zoning_certificate':
+                return 'Zoning Certificate';
+            case 'structural_plan':
+                return 'Structural Plan';
+            case 'building_permit':
+                return 'Building Permit';
+            case 'nema_certificate':
+                return 'NEMA Certificate';
+            case 'search_certificate':
+                return 'Search Certificate';
+            case 'rates_clearance':
+                return 'Rates Clearance';
+            case 'mother_title':
+                return 'Mother Title';
+            default:
+                // Convert snake_case to Title Case with spaces
+                return docType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+    }
+    
+    function hideUploadForm() {
+        document.getElementById('uploadFormContainer').style.display = 'none';
+        resetForm();
+    }
+    
+    function resetForm() {
+        document.getElementById('uploadForm').reset();
+        document.getElementById('filePreview').style.display = 'none';
+        document.getElementById('fileUploadWrapper').style.display = 'block';
+        document.getElementById('terms_agreement').checked = false;
+    }
+    
+    // File upload handling
+    document.addEventListener('DOMContentLoaded', function() {
+        const fileInput = document.getElementById('document');
+        const fileUploadWrapper = document.getElementById('fileUploadWrapper');
+        const filePreview = document.getElementById('filePreview');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const submitBtn = document.getElementById('submitBtn');
+        
+        // Click on wrapper triggers file input
+        fileUploadWrapper.addEventListener('click', function(e) {
+            if (e.target !== fileInput) {
+                fileInput.click();
+            }
+        });
+        
+        // Drag and drop functionality
+        fileUploadWrapper.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            this.classList.add('dragover');
+        });
+        
+        fileUploadWrapper.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+        });
+        
+        fileUploadWrapper.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('dragover');
+            
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+        
+        // File input change
+        fileInput.addEventListener('change', function(e) {
+            if (this.files.length) {
+                handleFileSelect(this.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            // Validate file size (10MB max)
+            if (file.size > 10 * 1024 * 1024) {
+                showAlert('File size exceeds 10MB limit. Please choose a smaller file.', 'danger');
+                return;
+            }
+            
+            // Validate file type
+            const validTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg', 
+                               'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+            if (!validTypes.includes(file.type)) {
+                showAlert('Please select a valid file type (PDF, JPG, PNG, DOC, DOCX).', 'danger');
+                return;
+            }
+            
+            // Show preview
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            
+            // Change icon based on file type
+            const icon = filePreview.querySelector('i');
+            if (file.type === 'application/pdf') {
+                icon.className = 'fas fa-file-pdf text-danger me-3 fa-2x';
+            } else if (file.type.startsWith('image/')) {
+                icon.className = 'fas fa-file-image text-success me-3 fa-2x';
+            } else if (file.type.includes('word') || file.type.includes('document')) {
+                icon.className = 'fas fa-file-word text-primary me-3 fa-2x';
+            } else {
+                icon.className = 'fas fa-file-alt text-secondary me-3 fa-2x';
+            }
+            
+            fileUploadWrapper.style.display = 'none';
+            filePreview.style.display = 'block';
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function showAlert(message, type) {
+            // Remove existing alerts
+            const existingAlert = document.querySelector('.alert-dismissible:not(.alert-danger)');
+            if (existingAlert) {
+                existingAlert.remove();
+            }
+            
+            // Create alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show mb-4`;
+            alertDiv.innerHTML = `
+                <i class="fas fa-${type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            `;
+            
+            const formContainer = document.querySelector('.upload-form');
+            formContainer.parentNode.insertBefore(alertDiv, formContainer);
+            
+            // Auto dismiss after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+    });
+    
+    function removeFile() {
+        document.getElementById('document').value = '';
+        document.getElementById('filePreview').style.display = 'none';
+        document.getElementById('fileUploadWrapper').style.display = 'block';
+    }
+</script>
 
-<form method="POST" enctype="multipart/form-data">
-  {% csrf_token %}
-  {{ upload_form.as_p }}
-  <input type="hidden" name="plot_id" value="{{ plot.id }}">
-  <button type="submit" class="btn btn-primary">Upload Document</button>
-</form>
+<style>
+:root {
+    --primary-color: #4e73df;
+    --success-color: #1cc88a;
+    --danger-color: #e74a3b;
+    --warning-color: #f6c23e;
+    --info-color: #36b9cc;
+    --gray-50: #f8f9fc;
+    --gray-100: #f3f7f9;
+    --gray-200: #eaecf4;
+    --gray-300: #dddfeb;
+    --gray-400: #d1d3e2;
+    --gray-500: #b7b9cc;
+    --gray-600: #858796;
+    --gray-700: #6e707e;
+    --gray-800: #5a5c69;
+    --gray-900: #3a3b45;
+    --border-radius: 0.5rem;
+    --box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+    --transition: all 0.3s ease;
+}
 
+/* Checklist Table Styles */
+.checklist-table {
+    overflow-x: auto;
+    border-radius: var(--border-radius);
+    background: white;
+}
+
+.checklist-items {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0;
+}
+
+.checklist-items thead {
+    background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+}
+
+.checklist-items thead th {
+    padding: 1.25rem 1.5rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--gray-700);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid var(--gray-200);
+    white-space: nowrap;
+}
+
+.checklist-items thead th:first-child {
+    border-top-left-radius: var(--border-radius);
+}
+
+.checklist-items thead th:last-child {
+    border-top-right-radius: var(--border-radius);
+}
+
+.checklist-items tbody tr {
+    transition: var(--transition);
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.checklist-items tbody tr:last-child {
+    border-bottom: none;
+}
+
+.checklist-items tbody tr:hover {
+    background: var(--gray-50);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.checklist-items tbody td {
+    padding: 1.25rem 1.5rem;
+    vertical-align: middle;
+}
+
+.document-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.document-info i {
+    font-size: 1.75rem;
+    width: 2.5rem;
+    text-align: center;
+}
+
+.document-info div {
+    flex: 1;
+}
+
+.document-info strong {
+    display: block;
+    color: var(--gray-900);
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.document-info small {
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.badge-status {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 2rem;
+    min-width: 100px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Button Styles */
+.btn-upload {
+    background: linear-gradient(135deg, var(--primary-color) 0%, #2e59d9 100%);
+    color: white;
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: var(--transition);
+    box-shadow: 0 2px 4px rgba(78, 115, 223, 0.2);
+}
+
+.btn-upload:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(78, 115, 223, 0.3);
+    color: white;
+}
+
+.btn-done {
+    background: linear-gradient(135deg, var(--success-color) 0%, #17a673 100%);
+    color: white;
+    border: none;
+    padding: 0.5rem 1.25rem;
+    border-radius: 2rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    transition: var(--transition);
+    box-shadow: 0 2px 4px rgba(28, 200, 138, 0.2);
+}
+
+.btn-done:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(28, 200, 138, 0.3);
+    color: white;
+}
+
+/* Upload Form Card */
+.upload-form-card {
+    animation: slideIn 0.3s ease-out;
+    box-shadow: var(--box-shadow);
+    border: none;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.upload-form-card .card-header {
+    background: linear-gradient(135deg, var(--gray-50) 0%, var(--gray-100) 100%);
+    border-bottom: 2px solid var(--gray-200);
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.upload-form-card .card-title {
+    color: var(--gray-900);
+    font-weight: 600;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.upload-form-card .card-body {
+    padding: 2rem;
+}
+
+/* Document Type Display */
+.document-type-display {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border: 2px dashed #64b5f6;
+    border-radius: var(--border-radius);
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    font-weight: 600;
+    color: var(--gray-800);
+}
+
+.document-type-display i {
+    color: var(--info-color);
+    font-size: 1.25rem;
+}
+
+/* File Upload Styles */
+.file-upload-area {
+    width: 100%;
+}
+
+.file-upload-wrapper {
+    border: 3px dashed var(--gray-300);
+    border-radius: var(--border-radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition);
+    background: var(--gray-50);
+    position: relative;
+    overflow: hidden;
+}
+
+.file-upload-wrapper:hover {
+    border-color: var(--primary-color);
+    background: rgba(78, 115, 223, 0.03);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.file-upload-wrapper.dragover {
+    border-color: var(--primary-color);
+    background: rgba(78, 115, 223, 0.1);
+    transform: scale(1.02);
+}
+
+.file-upload-content {
+    pointer-events: none;
+}
+
+.file-upload-content i {
+    margin-bottom: 1.5rem;
+    opacity: 0.8;
+}
+
+.file-upload-content h5 {
+    color: var(--gray-900);
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+}
+
+.file-upload-content p {
+    color: var(--gray-600);
+    margin-bottom: 1.5rem;
+}
+
+.file-types {
+    margin: 1.5rem 0;
+}
+
+.file-types .badge {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.file-upload-input {
+    display: none;
+}
+
+.file-preview {
+    border: 2px solid var(--gray-200);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    background: var(--gray-50);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.file-preview-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.file-info {
+    flex: 1;
+}
+
+/* Form Styles */
+.upload-form .form-label {
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.upload-form .form-control {
+    border-radius: var(--border-radius);
+    padding: 0.875rem 1rem;
+    border: 2px solid var(--gray-300);
+    transition: var(--transition);
+    font-size: 0.95rem;
+    background: var(--gray-50);
+}
+
+.upload-form .form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(78, 115, 223, 0.15);
+    background: white;
+}
+
+.upload-form textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.upload-form .form-check {
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: var(--border-radius);
+    border: 1px solid var(--gray-200);
+}
+
+.upload-form .form-check-input {
+    width: 1.2em;
+    height: 1.2em;
+    margin-top: 0.2em;
+    border: 2px solid var(--gray-400);
+}
+
+.upload-form .form-check-input:checked {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+.upload-form .form-check-label {
+    color: var(--gray-800);
+    font-weight: 500;
+    margin-left: 0.5rem;
+}
+
+/* Form Actions */
+.form-actions {
+    padding-top: 1.5rem;
+    border-top: 2px solid var(--gray-200);
+    margin-top: 2rem;
+}
+
+.btn-cancel {
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    border: 2px solid var(--gray-400);
+    transition: var(--transition);
+}
+
+.btn-cancel:hover {
+    background: var(--gray-200);
+    border-color: var(--gray-500);
+    transform: translateY(-2px);
+}
+
+.btn-submit {
+    padding: 0.75rem 2rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--success-color) 0%, #17a673 100%);
+    border: none;
+    transition: var(--transition);
+    box-shadow: 0 2px 4px rgba(28, 200, 138, 0.2);
+}
+
+.btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(28, 200, 138, 0.3);
+}
+
+/* Navigation Actions */
+.navigation-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    background: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border: 1px solid var(--gray-200);
+}
+
+.btn-back {
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    border: 2px solid var(--gray-400);
+    transition: var(--transition);
+}
+
+.btn-back:hover {
+    background: var(--gray-100);
+    transform: translateX(-4px);
+}
+
+.btn-view {
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--border-radius);
+    font-weight: 600;
+    background: linear-gradient(135deg, var(--primary-color) 0%, #2e59d9 100%);
+    border: none;
+    transition: var(--transition);
+    box-shadow: 0 2px 4px rgba(78, 115, 223, 0.2);
+}
+
+.btn-view:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(78, 115, 223, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+    .checklist-items thead th,
+    .checklist-items tbody td {
+        padding: 1rem;
+    }
+    
+    .upload-form-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    .file-upload-wrapper {
+        padding: 2rem 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard-header-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1.5rem;
+    }
+    
+    .dashboard-stats-summary {
+        justify-content: center;
+    }
+    
+    .checklist-items {
+        display: block;
+    }
+    
+    .checklist-items thead {
+        display: none;
+    }
+    
+    .checklist-items tbody tr {
+        display: block;
+        margin-bottom: 1.5rem;
+        padding: 1.5rem;
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--gray-200);
+    }
+    
+    .checklist-items tbody td {
+        display: block;
+        text-align: center;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid var(--gray-200);
+    }
+    
+    .checklist-items tbody td:last-child {
+        border-bottom: none;
+        padding-top: 1rem;
+    }
+    
+    .document-info {
+        justify-content: center;
+        text-align: center;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .document-info i {
+        width: auto;
+    }
+    
+    .badge-status {
+        margin: 0 auto;
+    }
+    
+    .file-preview-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+    }
+    
+    .file-info {
+        text-align: center;
+    }
+    
+    .form-actions .d-flex {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .btn-cancel,
+    .btn-submit {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .navigation-actions {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .btn-back,
+    .btn-view {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 576px) {
+    .container-fluid {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+    }
+    
+    .upload-form-card .card-body {
+        padding: 1.25rem;
+    }
+    
+    .file-upload-wrapper {
+        padding: 1.5rem 1rem;
+    }
+    
+    .file-upload-content h5 {
+        font-size: 1.1rem;
+    }
+    
+    .file-upload-content p {
+        font-size: 0.9rem;
+    }
+}
+
+/* Accessibility */
+.btn:focus,
+.form-control:focus,
+.form-check-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.25);
+}
+
+/* Loading state */
+.btn-submit.loading {
+    position: relative;
+    color: transparent;
+}
+
+.btn-submit.loading::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+</style>
 {% endblock %}

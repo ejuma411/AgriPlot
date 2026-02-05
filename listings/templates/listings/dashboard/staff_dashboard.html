@@ -276,58 +276,55 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                <tr>
-                                    <td>
-                                        <span class="status-indicator bg-success"></span>
-                                        Verified
-                                    </td>
-                                    <td class="fw-bold">{{ verified_plots }}</td>
-                                    <td>{{ verified_percentage|default:0|floatformat:1 }}%</td>
-                                    <td>
-                                        <div class="progress" style="height: 8px;">
-                                            <div class="progress-bar bg-success" 
-                                                 style="width: {{ verified_percentage|default:0 }}%"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <span class="status-indicator bg-warning"></span>
-                                        Pending
-                                    </td>
-                                    <td class="fw-bold">{{ pending_plots }}</td>
-                                    <td>{{ pending_percentage|default:0|floatformat:1 }}%</td>
-                                    <td>
-                                        <div class="progress" style="height: 8px;">
-                                            <div class="progress-bar bg-warning" 
-                                                 style="width: {{ pending_percentage|default:0 }}%"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>
-                                        <span class="status-indicator bg-danger"></span>
-                                        Rejected
-                                    </td>
-                                    <td class="fw-bold">{{ rejected_plots }}</td>
-                                    <td>{{ rejected_percentage|default:0|floatformat:1 }}%</td>
-                                    <td>
-                                        <div class="progress" style="height: 8px;">
-                                            <div class="progress-bar bg-danger" 
-                                                 style="width: {{ rejected_percentage|default:0 }}%"></div>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr class="total-row">
-                                    <td class="fw-bold">Total Plots</td>
-                                    <td class="fw-bold text-primary">{{ total_plots }}</td>
-                                    <td>100%</td>
-                                    <td>
-                                        <div class="progress" style="height: 8px;">
-                                            <div class="progress-bar bg-primary" style="width: 100%"></div>
-                                        </div>
-                                    </td>
-                                </tr>
+    <tr>
+        <td>
+            <span class="status-indicator bg-success"></span>
+            Verified
+        </td>
+        <td class="fw-bold">{{ verified_plots }}</td>
+        <td>{{ verified_percentage|default:0|floatformat:1 }}%</td>
+        <td>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-success verified-bar"></div>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <span class="status-indicator bg-warning"></span>
+            Pending
+        </td>
+        <td class="fw-bold">{{ pending_plots }}</td>
+        <td>{{ pending_percentage|default:0|floatformat:1 }}%</td>
+        <td>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-warning pending-bar"></div>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <span class="status-indicator bg-danger"></span>
+            Rejected
+        </td>
+        <td class="fw-bold">{{ rejected_plots }}</td>
+        <td>{{ rejected_percentage|default:0|floatformat:1 }}%</td>
+        <td>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-danger rejected-bar"></div>
+            </div>
+        </td>
+    </tr>
+    <tr class="total-row">
+        <td class="fw-bold">Total Plots</td>
+        <td class="fw-bold text-primary">{{ total_plots }}</td>
+        <td>100%</td>
+        <td>
+            <div class="progress" style="height: 8px;">
+                <div class="progress-bar bg-primary" style="width: 100%"></div>
+            </div>
+        </td>
+    </tr>
                             </tbody>
                         </table>
                     </div>
@@ -775,11 +772,6 @@
             opacity: 1;
             transform: translateY(0);
         }
-    }
-
-    .dashboard-header,
-    .dashboard-card {
-        animation: fadeIn 0.5s ease-out;
     }
 </style>
 {% endblock %}

@@ -1,3 +1,4 @@
+from django.http import Http404
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import authenticate, login
@@ -116,7 +117,7 @@ def staff_dashboard(request):
         context['profile'] = request.user.broker
         context['profile_type'] = 'Broker'
     
-    return render(request, 'listings//dashboard/staff_dashboard.html', context)
+    return render(request, 'listings/dashboard/staff_dashboard.html', context)
 
 
 @login_required
@@ -165,7 +166,7 @@ def my_plots(request):
         'total_plots': plots.count(),
     }
     
-    return render(request, 'dashboard/my_plots.html', context)
+    return render(request, 'listings/dashboard/my_plots.html', context)
 
 
 @login_required
@@ -197,7 +198,7 @@ def plot_verification_detail(request, plot_id):
         'documents_complete': has_title_deed,  # Title deed is required
     }
     
-    return render(request, 'dashboard/plot_verification_detail.html', context)
+    return render(request, 'listings/dashboard/plot_verification_detail.html', context)
 
 
 @login_required
@@ -246,7 +247,7 @@ def buyer_interests(request):
         'status_counts': status_counts,
     }
     
-    return render(request, 'dashboard/buyer_interests.html', context)
+    return render(request, 'listings/dashboard/buyer_interests.html', context)
 
 
 @login_required
@@ -309,7 +310,7 @@ def profile_management(request):
     elif is_broker:
         context['profile'] = request.user.broker
     
-    return render(request, 'dashboard/profile_management.html', context)
+    return render(request, 'listings/dashboard/profile_management.html', context)
 
 
 @login_required
@@ -500,6 +501,64 @@ def add_plot(request):
         "required_docs": REQUIRED_DOC_TYPES,
         "broker": request.user.broker if hasattr(request.user, 'broker') else None,
     })
+
+@login_required
+def upload_checklist(request, plot_id):
+    # Get the plot
+    try:
+        plot = Plot.objects.get(id=plot_id, broker=request.user.broker)
+    except Plot.DoesNotExist:
+        messages.error(request, "Plot not found or you don't have permission to access it.")
+        return redirect('listings:my_plots')
+    
+    # Get missing docs from session or calculate
+    missing_docs = request.session.get("missing_docs_for_plot", [])
+    
+    # If no missing docs in session, check what's actually missing
+    if not missing_docs:
+        for doc_type in REQUIRED_DOC_TYPES:
+            if not plot.verification_docs.filter(doc_type=doc_type).exists():
+                missing_docs.append(doc_type)
+    
+    if request.method == 'POST':
+        # Handle document uploads
+        form = VerificationDocumentForm(request.POST, request.FILES)
+        if form.is_valid():
+            doc = form.save(commit=False)
+            doc.plot = plot
+            # Get doc_type from hidden input
+            doc_type = request.POST.get('doc_type')
+            if doc_type:
+                doc.doc_type = doc_type
+            doc.save()
+            
+            # Remove from missing list
+            if doc.doc_type in missing_docs:
+                missing_docs.remove(doc.doc_type)
+                request.session["missing_docs_for_plot"] = missing_docs
+            
+            messages.success(request, f"Document uploaded successfully!")
+            
+            # Check if all docs are now uploaded
+            if not missing_docs:
+                messages.success(request, "✅ All required documents uploaded! Your plot is now complete.")
+                # Clear session data
+                if "pending_plot_id" in request.session:
+                    del request.session["pending_plot_id"]
+                if "missing_docs_for_plot" in request.session:
+                    del request.session["missing_docs_for_plot"]
+                return redirect('listings:plot_detail', id=plot.id)
+            
+            return redirect('listings:upload_checklist', plot_id=plot.id)
+    else:
+        form = VerificationDocumentForm()
+    
+    return render(request, 'listings/upload_checklist.html', {
+        'plot': plot,
+        'missing_docs': missing_docs,
+        'form': form,
+        'required_docs': REQUIRED_DOC_TYPES,
+    })
 def register(request):
     if request.method == "POST":
         form = UserCreationForm(request.POST)
@@ -508,7 +567,7 @@ def register(request):
             return redirect('login')
     else:
         form = UserCreationForm()
-    return render(request, 'auth/register.html', {'form': form})
+    return render(request, 'listings/auth/register.html', {'form': form})
 
 # SELLER & BROKER REGISTRATION
 def register_seller(request):
@@ -600,7 +659,7 @@ def register_broker(request):
                     return redirect(next_url)
                 else:
                     messages.error(request, "Authentication failed. Please try logging in.")
-                    return redirect('login')
+                    return redirect('listings:login')
                     
             except Exception as e:
                 messages.error(request, f"Error creating account: {str(e)}")
@@ -726,7 +785,7 @@ def upload_verification_doc(request, plot_id):
     else:
         form = VerificationDocumentForm()
 
-    return render(request, 'listings/upload_verification.html', {'form': form, 'plot': plot})
+    return render(request, 'listings/dashboard/upload_verification.html', {'form': form, 'plot': plot})
 
 @login_required
 def verification_dashboard(request):
