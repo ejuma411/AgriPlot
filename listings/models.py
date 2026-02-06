@@ -118,22 +118,27 @@ class Plot(models.Model):
     title_deed = models.FileField(upload_to="documents/title_deeds/", null=True, blank=True)
     soil_report = models.FileField(upload_to="documents/soil_reports/", null=True, blank=True)
     
-    # REMOVE: images = models.ManyToManyField('PlotImage', blank=True)
-    # Use plot_images reverse relationship instead
-    
+        # Additional metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
     def __str__(self):
         return self.title
 
 
+    @property
+    def images_list(self):
+        """Return all images for this plot"""
+        return self.images.all()
+
 class PlotImage(models.Model):
-    plot = models.ForeignKey(Plot, related_name='plot_images', on_delete=models.CASCADE)
+    plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='images_list')
     image = models.ImageField(upload_to='plot_images/')
-    caption = models.CharField(max_length=200, blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"Image for {self.plot.title}"
-
+    
 # -----------------------------
 # Document Uploads for Verification
 # -----------------------------

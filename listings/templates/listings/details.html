@@ -68,27 +68,13 @@
                     </h6>
                 </div>
                 <div class="card-body">
-                    {% if plot.plot_images.exists %}
+                    {% if plot.images_list.exists %}
                     <div class="image-gallery">
-                        <div class="main-image-container">
-                            {% with plot.plot_images.first as main_image %}
-                            <img src="{{ main_image.image.url }}" 
-                                 alt="{{ plot.title }}" 
-                                 class="main-image"
-                                 id="mainImage">
-                            {% endwith %}
-                        </div>
-                        <div class="thumbnail-grid">
-                            {% for image in plot.plot_images.all %}
-                            <div class="thumbnail-item {% if forloop.first %}active{% endif %}" 
-                                 data-image="{{ image.image.url }}">
-                                <img src="{{ image.image.url }}" 
-                                     alt="Plot image {{ forloop.counter }}"
-                                     class="thumbnail">
-                                {% if image.caption %}
-                                <div class="thumbnail-caption">{{ image.caption }}</div>
-                                {% endif %}
-                            </div>
+                        <div class="gallery-hover">
+                            {% for img in plot.images_list.all %}
+                            <img src="{{ img.image.url }}" 
+                                alt="{{ plot.title }} - image {{ forloop.counter }}"
+                                class="{% if forloop.first %}active{% endif %}">
                             {% endfor %}
                         </div>
                     </div>
@@ -353,324 +339,472 @@
 </div>
 
 <style>
-    /* ===== DETAIL PAGE STYLES ===== */
-    .detail-navigation {
-        display: flex;
-        gap: 1rem;
-        background: white;
-        padding: 1rem;
-        border-radius: var(--card-radius);
-        box-shadow: var(--card-shadow);
-        overflow-x: auto;
+/* =========================
+   GLOBAL STYLES
+========================= */
+body {
+    font-family: 'Inter', sans-serif;
+    background: #f8f9fa;
+    color: #333;
+    line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 0.5rem;
+}
+
+p {
+    margin-bottom: 1rem;
+    color: #4b5563;
+}
+
+a {
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+a:hover {
+    text-decoration: none;
+    color: #1f7a4d;
+}
+
+.container-fluid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+/* =========================
+   DASHBOARD HEADER
+========================= */
+.dashboard-header {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.dashboard-header-content {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.dashboard-title h2 {
+    font-size: 2rem;
+}
+
+.dashboard-subtitle {
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.dashboard-stats-summary {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.stat-badge {
+    text-align: center;
+}
+
+.stat-badge-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: block;
+}
+
+.stat-badge-label {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+/* =========================
+   NAVIGATION
+========================= */
+.detail-navigation {
+    display: flex;
+    gap: 1rem;
+    background: #fff;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    overflow-x: auto;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    color: #4b5563;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover,
+.nav-link.active {
+    background-color: #1f7a4d;
+    color: #fff;
+}
+
+/* =========================
+   DASHBOARD CARDS
+========================= */
+.dashboard-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.card-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f3f4f6;
+}
+
+.card-title {
+    font-weight: 600;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.card-body {
+    padding: 1rem 1.5rem;
+}
+
+/* =========================
+   IMAGE GALLERY
+========================= */
+.image-gallery {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.gallery-hover {
+    width: 100%;
+    height: 400px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 2px solid #e5e7eb;
+    position: relative;
+}
+
+.gallery-hover img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.5s ease, transform 0.4s ease;
+    border-radius: 14px;
+}
+
+.gallery-hover img.active {
+    opacity: 1;
+}
+
+.gallery-hover img:hover {
+    transform: scale(1.05);
+}
+
+.thumbnail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.thumbnail-item {
+    border-radius: 10px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid #e5e7eb;
+    height: 70px;
+    transition: all 0.3s ease;
+}
+
+.thumbnail-item.active,
+.thumbnail-item:hover {
+    border-color: #1f7a4d;
+    transform: translateY(-2px);
+}
+
+.thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Empty gallery placeholder */
+.empty-gallery {
+    text-align: center;
+    padding: 3rem;
+    background: #f9fafb;
+    border-radius: 12px;
+    border: 2px dashed #d1d5db;
+}
+
+/* =========================
+   PLOT DETAILS TABLE
+========================= */
+.plot-details-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.plot-details-table tr {
+    border-bottom: 1px solid #e5e7eb;
+    transition: background 0.3s ease;
+}
+
+.plot-details-table tr:hover {
+    background-color: #f9fafb;
+}
+
+.plot-details-table td {
+    padding: 1rem;
+    vertical-align: top;
+}
+
+.detail-label {
+    width: 35%;
+    font-weight: 600;
+    color: #374151;
+    border-right: 1px solid #e5e7eb;
+}
+
+.detail-value {
+    width: 65%;
+    color: #1f2937;
+}
+
+.ph-indicator {
+    margin-left: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* =========================
+   DOCUMENTS
+========================= */
+.documents-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.document-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 2px solid;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.document-item.available {
+    border-color: #10b981;
+    background: #d1fae5;
+}
+
+.document-item.missing {
+    border-color: #d1d5db;
+    background: #f3f4f6;
+}
+
+.document-icon {
+    flex-shrink: 0;
+    font-size: 1.75rem;
+}
+
+.document-info h6 {
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+/* =========================
+   BROKER PROFILE
+========================= */
+.broker-profile {
+    text-align: center;
+}
+
+.broker-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.broker-avatar {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f3f4f6;
+    border-radius: 50%;
+}
+
+.broker-name h5 {
+    margin-bottom: 0.25rem;
+    color: #1f2937;
+}
+
+.broker-badge {
+    display: inline-block;
+    padding: 0.25em 0.75em;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.broker-badge.verified {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.broker-badge.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.broker-contact h6 {
+    margin-bottom: 0.75rem;
+}
+
+/* =========================
+   BUTTONS
+========================= */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-primary {
+    background-color: #1f7a4d;
+    color: #fff;
+    border: none;
+}
+
+.btn-primary:hover {
+    background-color: #16603a;
+}
+
+.btn-outline-primary {
+    background: transparent;
+    color: #1f7a4d;
+    border: 2px solid #1f7a4d;
+}
+
+.btn-outline-primary:hover {
+    background-color: #1f7a4d;
+    color: #fff;
+}
+
+.btn-success {
+    background-color: #10b981;
+    color: #fff;
+    border: none;
+}
+
+.btn-success:hover {
+    background-color: #059669;
+}
+
+.btn-outline-warning {
+    background: transparent;
+    color: #f59e0b;
+    border: 2px solid #f59e0b;
+}
+
+.btn-outline-warning:hover {
+    background-color: #f59e0b;
+    color: #fff;
+}
+
+/* =========================
+   RESPONSIVE
+========================= */
+@media (max-width: 992px) {
+    .main-image-container,
+    .gallery-hover {
+        height: 300px;
     }
-    
-    .nav-link {
-        padding: 0.5rem 1rem;
-        text-decoration: none;
-        color: var(--gray-600);
-        border-radius: 6px;
-        white-space: nowrap;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-    }
-    
-    .nav-link:hover,
-    .nav-link.active {
-        background: var(--primary);
-        color: white;
-    }
-    
-    /* ===== IMAGE GALLERY ===== */
-    .image-gallery {
-        display: flex;
+}
+
+@media (max-width: 768px) {
+    .dashboard-header-content {
         flex-direction: column;
         gap: 1rem;
     }
-    
-    .main-image-container {
-        width: 100%;
-        height: 400px;
-        border-radius: 10px;
-        overflow: hidden;
-        border: 2px solid var(--gray-200);
-    }
-    
-    .main-image {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transition: transform 0.5s ease;
-    }
-    
-    .main-image:hover {
-        transform: scale(1.02);
-    }
-    
-    .thumbnail-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-        gap: 0.75rem;
-    }
-    
-    .thumbnail-item {
-        position: relative;
-        border-radius: 6px;
-        overflow: hidden;
-        border: 2px solid var(--gray-300);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        height: 80px;
-    }
-    
-    .thumbnail-item:hover,
-    .thumbnail-item.active {
-        border-color: var(--primary);
-        transform: translateY(-2px);
-    }
-    
-    .thumbnail {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-    
-    .thumbnail-caption {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        font-size: 0.7rem;
-        padding: 0.25rem;
-        text-align: center;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    
-    .empty-gallery {
-        padding: 3rem;
-        background: var(--gray-50);
-        border-radius: 10px;
-        border: 2px dashed var(--gray-300);
-    }
-    
-    /* ===== PLOT DETAILS TABLE ===== */
     .plot-details-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
+        display: block;
     }
-    
     .plot-details-table tr {
-        border-bottom: 1px solid var(--gray-200);
-        transition: background-color 0.3s ease;
+        display: block;
+        margin-bottom: 1rem;
+        padding: 0.75rem;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
     }
-    
-    .plot-details-table tr:hover {
-        background-color: var(--gray-50);
-    }
-    
     .plot-details-table td {
-        padding: 1rem;
-        vertical-align: top;
+        display: block;
+        width: 100%;
+        border: none;
+        padding: 0.25rem 0;
     }
-    
     .detail-label {
-        width: 35%;
-        font-weight: 600;
-        color: var(--gray-700);
-        border-right: 1px solid var(--gray-200);
+        margin-bottom: 0.25rem;
+        font-size: 0.9rem;
     }
-    
-    .detail-value {
-        width: 65%;
-        color: var(--gray-800);
+}
+
+@media (max-width: 576px) {
+    .dashboard-title h2 {
+        font-size: 1.5rem;
     }
-    
-    .ph-indicator {
-        font-size: 0.875rem;
-        font-weight: 500;
-        margin-left: 0.5rem;
+    .main-image-container,
+    .gallery-hover {
+        height: 200px;
     }
-    
-    /* ===== DOCUMENTS LIST ===== */
-    .documents-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
+    .thumbnail-grid {
+        grid-template-columns: repeat(3, 1fr);
     }
-    
     .document-item {
-        display: flex;
-        gap: 1rem;
-        padding: 1rem;
-        border-radius: 8px;
-        border: 2px solid;
-        transition: all 0.3s ease;
-    }
-    
-    .document-item.available {
-        border-color: var(--success);
-        background: var(--success-light);
-    }
-    
-    .document-item.missing {
-        border-color: var(--gray-300);
-        background: var(--gray-50);
-    }
-    
-    .document-icon {
-        flex-shrink: 0;
-    }
-    
-    .document-item.available .document-icon {
-        color: var(--success);
-    }
-    
-    .document-item.missing .document-icon {
-        color: var(--gray-500);
-    }
-    
-    .document-info h6 {
-        margin-bottom: 0.5rem;
-        color: var(--gray-800);
-    }
-    
-    /* ===== BROKER PROFILE ===== */
-    .broker-profile {
+        flex-direction: column;
         text-align: center;
     }
-    
     .broker-header {
-        display: flex;
         flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--gray-200);
+        text-align: center;
     }
-    
-    .broker-avatar {
-        width: 80px;
-        height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--gray-100);
-        border-radius: 50%;
-    }
-    
-    .broker-name h5 {
-        margin-bottom: 0.5rem;
-        color: var(--gray-800);
-    }
-    
-    .broker-badge {
-        display: inline-block;
-        padding: 0.35em 0.75em;
-        border-radius: 50px;
-        font-size: 0.85rem;
-        font-weight: 500;
-    }
-    
-    .broker-badge.verified {
-        background: var(--success-light);
-        color: var(--success-dark);
-    }
-    
-    .broker-badge.pending {
-        background: var(--warning-light);
-        color: var(--warning-dark);
-    }
-    
-    .broker-contact h6 {
-        margin-bottom: 1rem;
-        color: var(--gray-700);
-    }
-    
-    /* ===== RESPONSIVE DESIGN ===== */
-    @media (max-width: 992px) {
-        .main-image-container {
-            height: 300px;
-        }
-        
-        .thumbnail-grid {
-            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-        }
-        
-        .thumbnail-item {
-            height: 70px;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .detail-navigation {
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            padding: 0.75rem;
-        }
-        
-        .nav-link {
-            font-size: 0.9rem;
-            padding: 0.4rem 0.75rem;
-        }
-        
-        .main-image-container {
-            height: 250px;
-        }
-        
-        .plot-details-table {
-            display: block;
-        }
-        
-        .plot-details-table tr {
-            display: block;
-            margin-bottom: 1rem;
-            padding: 1rem;
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-        }
-        
-        .plot-details-table td {
-            display: block;
-            width: 100% !important;
-            border: none !important;
-            padding: 0.5rem 0;
-        }
-        
-        .detail-label {
-            font-size: 0.9rem;
-            margin-bottom: 0.25rem;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        .dashboard-title h2 {
-            font-size: 1.5rem;
-        }
-        
-        .main-image-container {
-            height: 200px;
-        }
-        
-        .thumbnail-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
-        
-        .broker-header {
-            flex-direction: column;
-            text-align: center;
-        }
-        
-        .document-item {
-            flex-direction: column;
-            text-align: center;
-        }
-    }
+}
 </style>
+
+
+
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -763,5 +897,63 @@
         window.addEventListener('scroll', updateActiveNavLink);
         updateActiveNavLink(); // Initial call
     });
+
+document.addEventListener('DOMContentLoaded', function() {
+    const galleries = document.querySelectorAll('.gallery-hover');
+
+    galleries.forEach(gallery => {
+        const images = gallery.querySelectorAll('img');
+        let index = 0;
+        let interval;
+
+        // Hover cycling for desktop
+        gallery.addEventListener('mouseenter', () => {
+            if (images.length <= 1) return;
+            interval = setInterval(() => {
+                images[index].classList.remove('active');
+                index = (index + 1) % images.length;
+                images[index].classList.add('active');
+            }, 1000);
+        });
+
+        gallery.addEventListener('mouseleave', () => {
+            clearInterval(interval);
+            images.forEach(img => img.classList.remove('active'));
+            images[0].classList.add('active');
+            index = 0;
+        });
+
+        // Swipe for mobile
+        let startX = 0;
+        let endX = 0;
+
+        gallery.addEventListener('touchstart', e => { startX = e.touches[0].clientX; clearInterval(interval); });
+        gallery.addEventListener('touchmove', e => { endX = e.touches[0].clientX; });
+        gallery.addEventListener('touchend', () => {
+            const diff = startX - endX;
+            if (Math.abs(diff) > 30) {
+                images[index].classList.remove('active');
+                if (diff > 0) index = (index + 1) % images.length;
+                else index = (index - 1 + images.length) % images.length;
+                images[index].classList.add('active');
+            }
+        });
+
+        // Thumbnail click
+        const thumbnails = gallery.parentElement.querySelectorAll('.thumbnail-item');
+        thumbnails.forEach(thumb => {
+            thumb.addEventListener('click', function() {
+                images.forEach(img => img.classList.remove('active'));
+                thumbnails.forEach(t => t.classList.remove('active'));
+                const imgUrl = this.getAttribute('data-image');
+                images.forEach(img => {
+                    if (img.src.includes(imgUrl)) img.classList.add('active');
+                });
+                this.classList.add('active');
+            });
+        });
+    });
+});
+
 </script>
 {% endblock %}
