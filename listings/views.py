@@ -16,11 +16,7 @@ def home(request):
     verified_plots = Plot.objects.filter(
         verification_status__status="verified"
     ).prefetch_related(
-        Prefetch(
-            'plot_images',
-            queryset=PlotImage.objects.all(),
-            to_attr='images_list'
-        )
+        'images_list'  # Simple prefetch without Prefetch object
     ).select_related('broker', 'verification_status')
 
     soil_type = request.GET.get('soil_type')
@@ -57,7 +53,6 @@ def home(request):
         'filter_soil_type': soil_type,
         'filter_crop': crop,
     })
-
 @login_required
 def staff_dashboard(request):
     """Main dashboard for sellers and brokers."""
@@ -365,7 +360,7 @@ def plot_detail(request, id):
             'broker', 
             'verification_status'
         ).prefetch_related(
-            'plot_images'
+            'images_list'
         ).get(id=id)
         
         return render(request, 'listings/details.html', {
@@ -385,38 +380,35 @@ def edit_plot(request, id):
     if request.method == 'POST':
         form = PlotForm(request.POST, request.FILES, instance=plot)
         if form.is_valid():
-            form.save()
+            # Save the plot first
+            plot = form.save(commit=False)
+            plot.save()
+            
+            # Handle multiple image uploads - add new images
+            images = request.FILES.getlist('images')
+            for image in images[:5]:  # Limit to 5 new images
+                if image:
+                    PlotImage.objects.create(plot=plot, image=image)
+            
+            # Handle image deletions if needed (you'd need a form field for this)
+            # Example: delete_images = request.POST.getlist('delete_images')
+            # for image_id in delete_images:
+            #     PlotImage.objects.filter(id=image_id, plot=plot).delete()
+            
             messages.success(request, "Plot updated successfully!")
             return redirect('listings:plot_detail', id=plot.id)
     else:
         form = PlotForm(instance=plot)
     
+    # Get existing images to display in template
+    existing_images = plot.images_list.all()
+    
     return render(request, 'listings/edit_plot.html', {
         'form': form,
         'plot': plot,
+        'existing_images': existing_images,
     })
 
-
-@login_required
-def delete_image(request, id):
-    try:
-        image = PlotImage.objects.get(id=id, plot__broker=request.user.broker)
-        plot_id = image.plot.id
-        image.delete()
-        messages.success(request, "Image deleted successfully.")
-    except PlotImage.DoesNotExist:
-        messages.error(request, "Image not found or you don't have permission to delete it.")
-        return redirect('listings:home')
-    
-    return redirect('listings:edit_plot', id=plot_id)
-
-
-REQUIRED_DOC_TYPES = [
-    'title_deed',
-    'official_search',
-    'seller_id',
-    'kra_pin',
-]
 
 @login_required
 def add_plot(request):
@@ -435,14 +427,16 @@ def add_plot(request):
         
         if plot_form.is_valid():
             try:
-                # Save plot with images (handled in form's save method)
+                # Save plot
                 plot = plot_form.save(commit=False)
                 plot.broker = broker_profile
                 plot.save()
                 
-                # Call save again to handle images
-                plot_form.save_m2m = lambda: None  # Disable M2M save since we don't have M2M
-                # Images are already saved by the form's save method
+                # Handle multiple image uploads
+                images = request.FILES.getlist('images')
+                for image in images[:5]:  # Limit to 5 images
+                    if image:  # Check if file was uploaded
+                        PlotImage.objects.create(plot=plot, image=image)
                 
                 # After saving plot, check if required docs are uploaded
                 missing = []
@@ -501,6 +495,28 @@ def add_plot(request):
         "required_docs": REQUIRED_DOC_TYPES,
         "broker": request.user.broker if hasattr(request.user, 'broker') else None,
     })
+
+@login_required
+def delete_image(request, id):
+    try:
+        image = PlotImage.objects.get(id=id, plot__broker=request.user.broker)
+        plot_id = image.plot.id
+        image.delete()
+        messages.success(request, "Image deleted successfully.")
+    except PlotImage.DoesNotExist:
+        messages.error(request, "Image not found or you don't have permission to delete it.")
+        return redirect('listings:home')
+    
+    return redirect('listings:edit_plot', id=plot_id)
+
+
+REQUIRED_DOC_TYPES = [
+    'title_deed',
+    'official_search',
+    'seller_id',
+    'kra_pin',
+]
+
 
 @login_required
 def upload_checklist(request, plot_id):

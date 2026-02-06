@@ -1,5 +1,7 @@
 from django.contrib import admin
 from .models import *
+from django.utils.html import format_html
+from django.utils import timezone
 
 # ----------------------------------------
 # Inline Models for Related Data
@@ -32,19 +34,6 @@ class TitleSearchResultInline(admin.StackedInline):
 # ----------------------------------------
 # Plot Admin
 # ----------------------------------------
-from django.contrib import admin
-from django.utils.html import format_html
-from .models import Plot, PlotVerificationStatus
-
-from django.contrib import admin
-from django.utils.html import format_html
-from .models import Plot, PlotImage, PlotVerificationStatus
-
-from django.contrib import admin
-from django.utils.html import format_html
-from django.utils import timezone
-from .models import Plot, PlotImage, PlotVerificationStatus
-
 @admin.register(Plot)
 class PlotAdmin(admin.ModelAdmin):
     list_display = (
@@ -71,7 +60,7 @@ class PlotAdmin(admin.ModelAdmin):
         "broker__user__username",
     )
     
-    readonly_fields = ("broker", "verification_info", "image_preview")  # Removed created, updated
+    readonly_fields = ("broker", "verification_info", "image_preview")
     
     fieldsets = (
         ("Basic Information", {
@@ -92,14 +81,13 @@ class PlotAdmin(admin.ModelAdmin):
             "fields": ("verification_info",),
             "classes": ("collapse",),
         }),
-        # Removed Timestamps section
     )
     
     # Inline for images
     class PlotImageInline(admin.TabularInline):
         model = PlotImage
         extra = 1
-        fields = ('image', 'caption', 'preview', 'uploaded_at')
+        fields = ('image', 'preview', 'uploaded_at')  # Removed 'caption'
         readonly_fields = ('preview', 'uploaded_at')
         
         def preview(self, obj):
@@ -153,7 +141,7 @@ class PlotAdmin(admin.ModelAdmin):
     has_title_deed.short_description = "Title Deed"
     
     def image_count(self, obj):
-        count = obj.plot_images.count()
+        count = obj.images_list.count()
         if count > 0:
             return format_html(
                 '<span style="color: green; font-weight: bold;">{}</span>',
@@ -166,17 +154,15 @@ class PlotAdmin(admin.ModelAdmin):
     image_count.short_description = "Images"
     
     def image_preview(self, obj):
-        images = obj.plot_images.all()[:5]  # Show first 5 images
+        images = obj.images_list.all()[:5]
         if images.exists():
             html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">'
             for image in images:
                 html += format_html(
                     '<div style="flex: 0 0 150px; margin-bottom: 10px;">'
                     '<img src="{}" style="width: 150px; height: 100px; object-fit: cover; border-radius: 5px;" />'
-                    '<div style="font-size: 11px; color: #666; margin-top: 5px;">{}</div>'
                     '</div>',
-                    image.image.url if image.image else '',
-                    image.caption or "No caption"
+                    image.image.url if image.image else ''
                 )
             html += '</div>'
             return format_html(html)
@@ -225,11 +211,8 @@ class PlotAdmin(admin.ModelAdmin):
             from PIL import ImageDraw, ImageFont
             
             for plot in queryset:
-                if plot.plot_images.count() == 0:
-                    # Create a simple placeholder image
+                if plot.images_list.count() == 0:
                     img = Image.new('RGB', (800, 600), color=(73, 109, 137))
-                    
-                    # Add text to image
                     draw = ImageDraw.Draw(img)
                     
                     try:
@@ -246,16 +229,11 @@ class PlotAdmin(admin.ModelAdmin):
                     
                     draw.text((x, y), text, fill=(255, 255, 255), font=font)
                     
-                    # Save image to bytes
                     img_io = io.BytesIO()
                     img.save(img_io, 'JPEG', quality=85)
                     img_io.seek(0)
                     
-                    # Create PlotImage
-                    plot_image = PlotImage(
-                        plot=plot,
-                        caption="Sample plot image"
-                    )
+                    plot_image = PlotImage(plot=plot)
                     plot_image.image.save(f"plot_{plot.id}_sample.jpg", File(img_io), save=True)
                     plot_image.save()
             
@@ -275,20 +253,19 @@ class PlotAdmin(admin.ModelAdmin):
     
     def get_queryset(self, request):
         queryset = super().get_queryset(request)
-        queryset = queryset.prefetch_related('plot_images', 'verification_status')
+        queryset = queryset.prefetch_related('images_list', 'verification_status')  # Changed from 'plot_images'
         return queryset
-
 
 @admin.register(PlotImage)
 class PlotImageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'plot_title', 'preview', 'caption', 'uploaded_at')
+    list_display = ('id', 'plot_title', 'preview', 'uploaded_at')  # Removed 'caption'
     list_filter = ('plot', 'uploaded_at')
-    search_fields = ('plot__title', 'caption')
+    search_fields = ('plot__title',)  # Removed 'caption' from search
     readonly_fields = ('preview', 'uploaded_at')
     
     fieldsets = (
         (None, {
-            'fields': ('plot', 'image', 'caption')
+            'fields': ('plot', 'image')  # Removed 'caption'
         }),
         ('Preview', {
             'fields': ('preview',),
@@ -315,6 +292,7 @@ class PlotImageAdmin(admin.ModelAdmin):
     preview.short_description = "Preview"
     
     ordering = ('-uploaded_at',)
+
 # ----------------------------------------
 # Profile Admin
 # ----------------------------------------

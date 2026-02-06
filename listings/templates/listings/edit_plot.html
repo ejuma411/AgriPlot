@@ -604,6 +604,58 @@
 </div>
 
 <style>
+        :root {
+        --primary: #006400; /* Dark Green */
+        --primary-light: #228B22;
+        --secondary: #000000; /* Black */
+        --success: #28a745;
+        --info: #17a2b8;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --gray-50: #f8f9fa;
+        --gray-100: #e9ecef;
+        --gray-200: #dee2e6;
+        --gray-600: #495057;
+        --gray-700: #343a40;
+        --gray-800: #212529;
+    }
+
+    .form-section-table {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid var(--gray-200);
+    }
+
+    .section-title i {
+        color: var(--primary);
+    }
+
+    .crop-tag:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .image-upload-area {
+        border: 2px dashed var(--primary);
+        background: rgba(0, 100, 0, 0.05);
+    }
+
+    .image-upload-area:hover {
+        background: rgba(0, 100, 0, 0.1);
+        border-color: var(--primary-light);
+    }
+
+    .btn-success {
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    .btn-success:hover {
+        background-color: var(--primary-light);
+        border-color: var(--primary-light);
+    }
+
     /* ===== EDIT FORM STYLES ===== */
     .form-section-table {
         background: white;

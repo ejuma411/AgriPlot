@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from .models import *
+from django.core.exceptions import ValidationError
 
 # forms.py - Update PlotForm with custom widget
 from django import forms
@@ -9,7 +10,7 @@ from .models import Plot, PlotImage
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True
 
-class MultipleImageField(forms.ImageField):
+class MultipleFileField(forms.FileField):
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("widget", MultipleFileInput())
         super().__init__(*args, **kwargs)
@@ -23,11 +24,12 @@ class MultipleImageField(forms.ImageField):
         return result
 
 class PlotForm(forms.ModelForm):
-    images = MultipleImageField(
+    images = MultipleFileField(
         required=False,
-        help_text="Upload images of the plot (JPEG, PNG, max 5MB each). You can select multiple images."
+        widget=MultipleFileInput(attrs={'class': 'form-control'}),
+        help_text="JPEG, PNG, WEBP (Max 5MB each, up to 5 images)"
     )
-    
+
     class Meta:
         model = Plot
         fields = [
@@ -74,14 +76,14 @@ class PlotForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'e.g., Maize, Wheat, Beans'
             }),
-            'title_deed': forms.FileInput(attrs={'class': 'form-control'}),
-            'soil_report': forms.FileInput(attrs={'class': 'form-control'}),
+            'title_deed': forms.ClearableFileInput(attrs={'class': 'form-control'}),
+            'soil_report': forms.ClearableFileInput(attrs={'class': 'form-control'}),
         }
-    
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        
-        # Add help text
+
+        # Help texts
         self.fields['title'].help_text = "Give your plot a descriptive title"
         self.fields['location'].help_text = "County, Sub-county, Ward, and nearest town"
         self.fields['price'].help_text = "Price in Kenyan Shillings (KES)"
@@ -89,10 +91,10 @@ class PlotForm(forms.ModelForm):
         self.fields['soil_type'].help_text = "Type of soil on the plot"
         self.fields['ph_level'].help_text = "Soil pH level (0-14), optional"
         self.fields['crop_suitability'].help_text = "Crops suitable for this soil type"
-        self.fields['title_deed'].help_text = "Upload title deed document (PDF, JPG, PNG)"
+        self.fields['title_deed'].help_text = "Upload title deed document (PDF, JPG, PNG, WEBP)"
         self.fields['soil_report'].help_text = "Upload soil test report (optional)"
-        
-        # Add choices for soil_type
+
+        # Soil type choices
         SOIL_TYPE_CHOICES = [
             ('', 'Select Soil Type'),
             ('Loam', 'Loam'),
@@ -111,37 +113,52 @@ class PlotForm(forms.ModelForm):
             choices=SOIL_TYPE_CHOICES,
             attrs={'class': 'form-control'}
         )
-        
-        # Make certain fields required
+
+        # Make title deed required
         self.fields['title_deed'].required = True
-        
+
     def clean_images(self):
-        images = self.files.getlist('images')
+        # This field is handled by MultipleFileField, but we add extra validation
+        images = self.cleaned_data.get('images', [])
+        if not isinstance(images, list):
+            images = [images] if images else []
+        
+        errors = []
+        
         if images:
             if len(images) > 5:
-                raise forms.ValidationError("You can upload a maximum of 5 images.")
+                errors.append("You can upload a maximum of 5 images.")
             
             for image in images:
                 if image.size > 5 * 1024 * 1024:  # 5MB
-                    raise forms.ValidationError(f"Image {image.name} exceeds 5MB size limit.")
+                    errors.append(f"Image {image.name} exceeds 5MB size limit.")
                 
-                valid_types = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif']
-                if image.content_type not in valid_types:
-                    raise forms.ValidationError(f"Image {image.name} is not a valid image type (JPEG, PNG, GIF only).")
+                # Check file type
+                valid_types = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp']
+                if hasattr(image, 'content_type') and image.content_type not in valid_types:
+                    errors.append(f"Image {image.name} is not a valid type (JPEG, PNG, WEBP).")
+        
+        if errors:
+            raise forms.ValidationError(errors)
         
         return images
-    
+
     def save(self, commit=True):
         plot = super().save(commit=False)
         if commit:
             plot.save()
-            # Save images after plot is saved
-            images = self.cleaned_data.get('images')
-            if images:
-                for image in images:
+            
+            # Handle multiple image uploads
+            images = self.cleaned_data.get('images', [])
+            if not isinstance(images, list):
+                images = [images] if images else []
+                
+            for image in images:
+                if image:  # Check if file was uploaded
                     PlotImage.objects.create(plot=plot, image=image)
+        
         return plot
-    
+
 class VerificationDocumentForm(forms.ModelForm):
     class Meta:
         model = VerificationDocument

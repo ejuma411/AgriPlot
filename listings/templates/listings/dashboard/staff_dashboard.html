@@ -73,7 +73,7 @@
                                 <tr class="stat-percentages">
                                     <td class="stat-percentage">
                                         {% if total_plots > 0 %}
-                                            <span class="percentage-badge">100%</span>
+                                            <span class="percentage-badge bg-primary-light">100%</span>
                                         {% else %}
                                             <span class="percentage-badge text-muted">0%</span>
                                         {% endif %}
@@ -167,8 +167,8 @@
                                 <tr>
                                     <td colspan="2">
                                         <a href="#" class="action-link">
-                                            <div class="action-icon bg-danger-light">
-                                                <i class="fas fa-chart-line text-danger"></i>
+                                            <div class="action-icon bg-primary-light">
+                                                <i class="fas fa-chart-line text-primary"></i>
                                             </div>
                                             <span>View Analytics</span>
                                         </a>
@@ -224,12 +224,12 @@
                                                 <span class="status-badge bg-info">{{ plot.verification_status.status|title }}</span>
                                             {% endif %}
                                         {% else %}
-                                            <span class="status-badge bg-secondary">No Status</span>
+                                            <span class="status-badge bg-gray-200">No Status</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         <a href="{% url 'listings:plot_verification_detail' plot.id %}" 
-                                           class="btn btn-sm btn-outline-info">
+                                           class="btn btn-sm btn-outline-primary">
                                             <i class="fas fa-eye"></i> View
                                         </a>
                                     </td>
@@ -276,55 +276,52 @@
                                 </tr>
                             </thead>
                             <tbody>
-    <tr>
-        <td>
-            <span class="status-indicator bg-success"></span>
-            Verified
-        </td>
-        <td class="fw-bold">{{ verified_plots }}</td>
-        <td>{{ verified_percentage|default:0|floatformat:1 }}%</td>
-        <td>
-            <div class="progress" style="height: 8px;">
-                <div class="progress-bar bg-success verified-bar"></div>
-            </div>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <span class="status-indicator bg-warning"></span>
-            Pending
-        </td>
-        <td class="fw-bold">{{ pending_plots }}</td>
-        <td>{{ pending_percentage|default:0|floatformat:1 }}%</td>
-        <td>
-            <div class="progress" style="height: 8px;">
-                <div class="progress-bar bg-warning pending-bar"></div>
-            </div>
-        </td>
-    </tr>
-    <tr>
-        <td>
-            <span class="status-indicator bg-danger"></span>
-            Rejected
-        </td>
-        <td class="fw-bold">{{ rejected_plots }}</td>
-        <td>{{ rejected_percentage|default:0|floatformat:1 }}%</td>
-        <td>
-            <div class="progress" style="height: 8px;">
-                <div class="progress-bar bg-danger rejected-bar"></div>
-            </div>
-        </td>
-    </tr>
-    <tr class="total-row">
-        <td class="fw-bold">Total Plots</td>
-        <td class="fw-bold text-primary">{{ total_plots }}</td>
-        <td>100%</td>
-        <td>
-            <div class="progress" style="height: 8px;">
-                <div class="progress-bar bg-primary" style="width: 100%"></div>
-            </div>
-        </td>
-    </tr>
+                                <tr>
+                                    <td>
+                                        <span class="status-indicator bg-success"></span> Verified
+                                    </td>
+                                    <td class="fw-bold">{{ verified_plots }}</td>
+                                    <td>{{ verified_percentage|default:0|floatformat:1 }}%</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-success" style="width: {{ verified_percentage }}%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span class="status-indicator bg-warning"></span> Pending
+                                    </td>
+                                    <td class="fw-bold">{{ pending_plots }}</td>
+                                    <td>{{ pending_percentage|default:0|floatformat:1 }}%</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-warning" style="width: {{ pending_percentage }}%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <span class="status-indicator bg-danger"></span> Rejected
+                                    </td>
+                                    <td class="fw-bold">{{ rejected_plots }}</td>
+                                    <td>{{ rejected_percentage|default:0|floatformat:1 }}%</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-danger" style="width: {{ rejected_percentage }}%;"></div>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr class="total-row">
+                                    <td class="fw-bold">Total Plots</td>
+                                    <td class="fw-bold text-primary">{{ total_plots }}</td>
+                                    <td>100%</td>
+                                    <td>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" style="width: 100%"></div>
+                                        </div>
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -334,10 +331,11 @@
     </div>
 </div>
 
+
 <style>
     /* ===== CSS Variables ===== */
     :root {
-        --primary: #4e73df;
+        --primary: #069132;
         --primary-light: #e3ebf7;
         --success: #1cc88a;
         --success-light: #d4edda;
@@ -351,7 +349,8 @@
         --gray-200: #e9ecef;
         --gray-300: #dee2e6;
         --gray-600: #6c757d;
-        --gray-800: #343a40;
+        --gray-700: #5a5c69;
+        --gray-800: #0e7833;
         --card-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
         --card-radius: 0.75rem;
         --transition: all 0.2s ease;
@@ -359,7 +358,7 @@
 
     /* ===== Dashboard Header ===== */
     .dashboard-header {
-        background: linear-gradient(135deg, var(--primary) 0%, #3a5bd9 100%);
+        background: linear-gradient(135deg, var(--primary) 0%, #0b9810 100%);
         border-radius: var(--card-radius);
         padding: 2rem;
         color: white;
@@ -378,10 +377,7 @@
         background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
     }
 
-    .dashboard-header-content {
-        position: relative;
-        z-index: 1;
-    }
+    .dashboard-header-content { position: relative; z-index: 1; }
 
     .dashboard-title h2 {
         font-size: 1.75rem;
@@ -427,6 +423,7 @@
         box-shadow: var(--card-shadow);
         transition: var(--transition);
         height: 100%;
+        background: white;
     }
 
     .dashboard-card:hover {
@@ -452,15 +449,14 @@
         padding: 1.5rem;
     }
 
-    /* ===== Stats Overview Table ===== */
-    .stats-table {
+    /* ===== Tables ===== */
+    table {
         width: 100%;
         border-collapse: separate;
         border-spacing: 0;
-        text-align: center;
     }
 
-    .stats-table th {
+    th {
         background: var(--gray-100);
         padding: 1rem;
         font-weight: 600;
@@ -469,22 +465,20 @@
         text-transform: uppercase;
         letter-spacing: 0.5px;
         border-bottom: 2px solid var(--gray-300);
+        text-align: left;
     }
 
-    .stats-table td {
+    td {
         padding: 1rem;
         border-bottom: 1px solid var(--gray-200);
+        color: var(--gray-700);
+        vertical-align: middle;
     }
 
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--gray-800);
-    }
+    /* ===== Stats Badges ===== */
+    .stat-value { font-size: 2rem; font-weight: 700; color: var(--gray-800); }
 
-    .stat-percentages tr {
-        background: var(--gray-100);
-    }
+    .stat-percentages tr { background: var(--gray-100); }
 
     .percentage-badge {
         display: inline-block;
@@ -494,22 +488,13 @@
         font-weight: 500;
     }
 
-    .bg-success-light { background-color: var(--success-light); color: #155724; }
+    .bg-success-light { background-color: var(--success-light); color: var(--success); }
     .bg-warning-light { background-color: var(--warning-light); color: #856404; }
-    .bg-info-light { background-color: var(--info-light); color: #0c5460; }
+    .bg-info-light { background-color: var(--info-light); color: var(--info); }
+    .bg-primary-light { background-color: var(--primary-light); color: var(--primary); }
 
-    /* ===== Quick Actions Table ===== */
-    .actions-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0 0.75rem;
-    }
-
-    .actions-table td {
-        padding: 0.5rem;
-        text-align: center;
-    }
-
+    /* ===== Action Links ===== */
+    .actions-table td { padding: 0.5rem; text-align: center; }
     .action-link {
         display: flex;
         flex-direction: column;
@@ -527,7 +512,6 @@
         background: var(--gray-100);
         border-color: var(--primary);
         color: var(--primary);
-        text-decoration: none;
         transform: translateY(-2px);
     }
 
@@ -542,95 +526,28 @@
         transition: var(--transition);
     }
 
-    .action-link:hover .action-icon {
-        transform: scale(1.1);
-    }
+    .action-link:hover .action-icon { transform: scale(1.1); }
 
-    /* ===== Recent Plots Table ===== */
-    .plots-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-
-    .plots-table thead th {
-        background: var(--gray-100);
-        padding: 1rem;
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: var(--gray-600);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 2px solid var(--gray-300);
-        text-align: left;
-    }
-
-    .plots-table tbody tr {
-        transition: var(--transition);
-    }
-
-    .plots-table tbody tr:hover {
-        background: var(--gray-100);
-    }
-
-    .plots-table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-        border-bottom: 1px solid var(--gray-200);
-        color: var(--gray-700);
-    }
-
-    .plot-title {
-        font-weight: 600;
-        color: var(--gray-800);
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
+    /* ===== Status Badges ===== */
     .status-badge {
         padding: 0.35em 0.65em;
         font-weight: 500;
         border-radius: 50px;
         font-size: 0.75em;
         letter-spacing: 0.5px;
+        color: white;
     }
+    .bg-success { background-color: var(--success); }
+    .bg-warning { background-color: var(--warning); color: var(--gray-800); }
+    .bg-danger { background-color: var(--danger); }
+    .bg-info { background-color: var(--info); }
+    .bg-secondary { background-color: var(--gray-200); color: var(--gray-700); }
 
-    /* ===== Status Distribution Table ===== */
-    .status-distribution-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
+    /* ===== Progress Bars ===== */
+    .progress { height: 8px; background: var(--gray-200); border-radius: 0.25rem; overflow: hidden; }
+    .progress-bar { height: 100%; transition: var(--transition); }
 
-    .status-distribution-table thead th {
-        background: var(--gray-100);
-        padding: 1rem;
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: var(--gray-600);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        border-bottom: 2px solid var(--gray-300);
-        text-align: left;
-    }
-
-    .status-distribution-table tbody tr {
-        transition: var(--transition);
-    }
-
-    .status-distribution-table tbody tr:hover {
-        background: var(--gray-100);
-    }
-
-    .status-distribution-table tbody td {
-        padding: 1rem;
-        vertical-align: middle;
-        border-bottom: 1px solid var(--gray-200);
-        color: var(--gray-700);
-    }
-
+    /* ===== Status Distribution ===== */
     .status-indicator {
         display: inline-block;
         width: 12px;
@@ -640,138 +557,44 @@
         vertical-align: middle;
     }
 
-    .total-row {
-        background: var(--gray-100);
-        font-weight: 600;
-    }
-
-    .total-row td {
-        border-top: 2px solid var(--gray-300);
-        border-bottom: none !important;
-    }
+    .total-row { background: var(--gray-100); font-weight: 600; }
+    .total-row td { border-top: 2px solid var(--gray-300); border-bottom: none !important; }
 
     /* ===== Empty State ===== */
-    .empty-state {
-        text-align: center;
-        padding: 2rem;
-    }
-
-    .empty-state i {
-        font-size: 3rem;
-        margin-bottom: 1rem;
-        opacity: 0.3;
-    }
-
-    .empty-state p {
-        font-size: 1.1rem;
-        margin-bottom: 1.5rem;
-        color: var(--gray-600);
-    }
+    .empty-state { text-align: center; padding: 2rem; }
+    .empty-state i { font-size: 3rem; margin-bottom: 1rem; opacity: 0.3; }
+    .empty-state p { font-size: 1.1rem; margin-bottom: 1.5rem; color: var(--gray-600); }
 
     /* ===== Responsive Design ===== */
     @media (max-width: 1200px) {
-        .dashboard-header {
-            padding: 1.5rem;
-        }
-        
-        .dashboard-title h2 {
-            font-size: 1.5rem;
-        }
-        
-        .dashboard-stats-summary {
-            gap: 1.5rem;
-        }
-        
-        .stat-value {
-            font-size: 1.75rem;
-        }
+        .dashboard-header { padding: 1.5rem; }
+        .dashboard-title h2 { font-size: 1.5rem; }
+        .dashboard-stats-summary { gap: 1.5rem; }
+        .stat-value { font-size: 1.75rem; }
     }
-
     @media (max-width: 992px) {
-        .stats-table th,
-        .stats-table td {
-            padding: 0.75rem;
-        }
-        
-        .stat-value {
-            font-size: 1.5rem;
-        }
-        
-        .action-link {
-            padding: 0.75rem;
-        }
-        
-        .action-icon {
-            width: 40px;
-            height: 40px;
-        }
+        .stats-table th, .stats-table td { padding: 0.75rem; }
+        .stat-value { font-size: 1.5rem; }
+        .action-link { padding: 0.75rem; }
+        .action-icon { width: 40px; height: 40px; }
     }
-
     @media (max-width: 768px) {
-        .dashboard-header {
-            text-align: center;
-            padding: 1.25rem;
-        }
-        
-        .dashboard-stats-summary {
-            justify-content: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-        
-        .stat-badge {
-            min-width: 80px;
-        }
-        
-        .stats-table {
-            display: block;
-            overflow-x: auto;
-        }
-        
-        .actions-table {
-            display: block;
-            overflow-x: auto;
-        }
-        
-        .plots-table {
-            display: block;
-            overflow-x: auto;
-        }
-        
-        .status-distribution-table {
-            display: block;
-            overflow-x: auto;
-        }
+        .dashboard-header { text-align: center; padding: 1.25rem; }
+        .dashboard-stats-summary { justify-content: center; flex-wrap: wrap; gap: 1rem; }
+        .stat-badge { min-width: 80px; }
+        table { display: block; overflow-x: auto; }
     }
-
     @media (max-width: 576px) {
-        .dashboard-card .card-body {
-            padding: 1rem;
-        }
-        
-        .plots-table tbody td,
-        .plots-table thead th,
-        .status-distribution-table tbody td,
-        .status-distribution-table thead th {
-            padding: 0.75rem;
-            font-size: 0.9rem;
-        }
-        
-        .action-link span {
-            font-size: 0.875rem;
-        }
+        .dashboard-card .card-body { padding: 1rem; }
+        th, td { padding: 0.75rem; font-size: 0.9rem; }
+        .action-link span { font-size: 0.875rem; }
     }
 
     /* ===== Animations ===== */
     @keyframes fadeIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 </style>
+
 {% endblock %}
