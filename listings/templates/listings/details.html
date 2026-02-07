@@ -243,7 +243,7 @@
                 </div>
             </div>
 
-            <!-- Broker Information -->
+            <!-- Broker Information & Contact -->
             <div class="dashboard-card mb-4" id="broker">
                 <div class="card-header">
                     <h6 class="card-title">
@@ -254,7 +254,15 @@
                     <div class="broker-profile">
                         <div class="broker-header">
                             <div class="broker-avatar">
-                                <i class="fas fa-user-circle fa-3x text-primary"></i>
+                                {% if plot.broker.profile_picture %}
+                                <img src="{{ plot.broker.profile_picture.url }}" 
+                                    alt="{{ plot.broker.user.get_full_name }}" 
+                                    class="avatar-img">
+                                {% else %}
+                                <div class="avatar-placeholder">
+                                    {{ plot.broker.user.get_full_name|default:plot.broker.user.username|first|upper }}
+                                </div>
+                                {% endif %}
                             </div>
                             <div class="broker-name">
                                 <h5>{{ plot.broker.user.get_full_name|default:plot.broker.user.username }}</h5>
@@ -265,20 +273,211 @@
                                     <i class="fas fa-clock me-1"></i>Pending Verification
                                     {% endif %}
                                 </span>
+                                {% if plot.broker.rating %}
+                                <div class="broker-rating">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= plot.broker.rating %}
+                                        <i class="fas fa-star text-warning"></i>
+                                        {% else %}
+                                        <i class="far fa-star text-warning"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <small class="text-muted ms-1">({{ plot.broker.review_count }})</small>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                         
+                        <!-- Broker Stats -->
+                        <div class="broker-stats mt-3">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <i class="fas fa-layer-group text-primary"></i>
+                                    <div>
+                                        <strong>{{ plot.broker.total_listings|default:"0" }}</strong>
+                                        <small>Listings</small>
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-check-circle text-success"></i>
+                                    <div>
+                                        <strong>{{ plot.broker.verified_listings|default:"0" }}</strong>
+                                        <small>Verified</small>
+                                    </div>
+                                </div>
+                                <div class="stat-item">
+                                    <i class="fas fa-clock text-warning"></i>
+                                    <div>
+                                        <strong>{{ plot.broker.response_rate|default:"100" }}%</strong>
+                                        <small>Response Rate</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Direct Contact Section -->
                         <div class="broker-contact mt-4">
                             <h6>Contact Broker</h6>
-                            <div class="contact-actions">
-                                <a href="mailto:{{ plot.broker.user.email }}?subject=Inquiry about {{ plot.title }}&body=Hello, I'm interested in the plot titled '{{ plot.title }}' (ID: #{{ plot.id }})"
-                                   class="btn btn-success w-100 mb-2">
+                            
+                            {% if user.is_authenticated %}
+                            <div class="contact-methods">
+                                <!-- Email -->
+                                <a href="mailto:{{ plot.broker.user.email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.broker.user.get_full_name|default:plot.broker.user.username }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user.get_full_name|default:user.username }}"
+                                class="btn btn-outline-primary w-100 mb-2">
                                     <i class="fas fa-envelope me-2"></i>Send Email
+                                    <small class="d-block text-muted mt-1">{{ plot.broker.user.email }}</small>
                                 </a>
-                                <button class="btn btn-outline-primary w-100" id="showContactBtn">
+                                
+                                <!-- Phone (if available) -->
+                                {% if plot.broker.phone_number %}
+                                <div class="phone-contact mb-2">
+                                    <button class="btn btn-success w-100" id="showPhoneNumber">
+                                        <i class="fas fa-phone me-2"></i>Show Phone Number
+                                    </button>
+                                    <div id="phoneNumber" class="text-center mt-2 d-none">
+                                        <strong>{{ plot.broker.phone_number }}</strong>
+                                        <div class="btn-group mt-2 w-100">
+                                            <a href="tel:{{ plot.broker.phone_number }}" 
+                                            class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-phone me-1"></i>Call
+                                            </a>
+                                            <a href="https://wa.me/{{ plot.broker.phone_number|cut:'+' }}?text=Hello {{ plot.broker.user.get_full_name|default:plot.broker.user.username }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                            class="btn btn-sm btn-outline-success" 
+                                            target="_blank">
+                                                <i class="fab fa-whatsapp me-1"></i>WhatsApp
+                                            </a>
+                                            <a href="sms:{{ plot.broker.phone_number }}?body=Hello, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                            class="btn btn-sm btn-outline-info">
+                                                <i class="fas fa-sms me-1"></i>SMS
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <button class="btn btn-outline-secondary w-100 mb-2" 
+                                        onclick="requestContactDetails()">
                                     <i class="fas fa-phone me-2"></i>Request Phone Number
                                 </button>
+                                {% endif %}
+                                
+                                <!-- Contact Form Modal -->
+                                <div class="modal fade" id="contactFormModal" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form id="contactForm" method="POST" action="{% url 'listings:contact_broker' plot.id %}">
+                                                {% csrf_token %}
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">
+                                                        <i class="fas fa-paper-plane me-2"></i>Message Broker
+                                                    </h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label for="messageSubject" class="form-label">Subject</label>
+                                                        <input type="text" class="form-control" id="messageSubject" 
+                                                            value="Inquiry about {{ plot.title }}" readonly>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="messageBody" class="form-label">Your Message</label>
+                                                        <textarea class="form-control" id="messageBody" rows="6" required
+                                                                placeholder="Write your message here..."></textarea>
+                                                        <div class="form-text">
+                                                            Include specific questions about price, location, soil quality, etc.
+                                                        </div>
+                                                    </div>
+                                                    <div class="alert alert-info">
+                                                        <i class="fas fa-info-circle me-2"></i>
+                                                        Your contact information (email: {{ user.email }}) will be shared with the broker.
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-primary">
+                                                        <i class="fas fa-paper-plane me-2"></i>Send Message
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Schedule Visit Modal -->
+                                <div class="modal fade" id="scheduleVisitModal" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <form id="visitForm">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">
+                                                        <i class="fas fa-calendar-check me-2"></i>Schedule Site Visit
+                                                    </h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label for="visitDate" class="form-label">Preferred Date</label>
+                                                        <input type="date" class="form-control" id="visitDate" required 
+                                                            min="{{ today|date:'Y-m-d' }}">
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="visitTime" class="form-label">Preferred Time</label>
+                                                        <select class="form-select" id="visitTime" required>
+                                                            <option value="">Select time</option>
+                                                            <option value="08:00">8:00 AM</option>
+                                                            <option value="09:00">9:00 AM</option>
+                                                            <option value="10:00">10:00 AM</option>
+                                                            <option value="11:00">11:00 AM</option>
+                                                            <option value="12:00">12:00 PM</option>
+                                                            <option value="13:00">1:00 PM</option>
+                                                            <option value="14:00">2:00 PM</option>
+                                                            <option value="15:00">3:00 PM</option>
+                                                            <option value="16:00">4:00 PM</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="visitNotes" class="form-label">Additional Notes</label>
+                                                        <textarea class="form-control" id="visitNotes" rows="3" 
+                                                                placeholder="Any special requirements or questions..."></textarea>
+                                                    </div>
+                                                    <div class="alert alert-warning">
+                                                        <i class="fas fa-exclamation-triangle me-2"></i>
+                                                        The broker will confirm the visit via email/phone.
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                    <button type="submit" class="btn btn-success">
+                                                        <i class="fas fa-calendar-plus me-2"></i>Request Visit
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Schedule Visit -->
+                                <button class="btn btn-outline-success w-100" 
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#scheduleVisitModal">
+                                    <i class="fas fa-calendar-check me-2"></i>Schedule Site Visit
+                                </button>
                             </div>
+                            {% else %}
+                            <div class="guest-contact">
+                                <p class="text-muted mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    You need to be logged in to contact the broker
+                                </p>
+                                <a href="{% url 'login' %}?next={{ request.path }}" 
+                                class="btn btn-primary w-100 mb-2">
+                                    <i class="fas fa-sign-in-alt me-2"></i>Login to Contact
+                                </a>
+                                <a href="{% url 'register' %}?next={{ request.path }}" 
+                                class="btn btn-outline-primary w-100">
+                                    <i class="fas fa-user-plus me-2"></i>Create Account
+                                </a>
+                            </div>
+                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -801,10 +1000,140 @@ a:hover {
         text-align: center;
     }
 }
+
+/* =========================
+   BROKER CONTACT ENHANCEMENTS
+========================= */
+.broker-avatar .avatar-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #1f7a4d;
+}
+
+.broker-avatar .avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #1f7a4d, #10b981);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+    border: 3px solid #1f7a4d;
+}
+
+.broker-rating {
+    margin-top: 0.5rem;
+}
+
+.broker-stats {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 1rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.stat-item i {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.stat-item strong {
+    display: block;
+    font-size: 1.25rem;
+    color: #1f2937;
+}
+
+.stat-item small {
+    font-size: 0.8rem;
+    color: #6b7280;
+}
+
+.contact-methods .btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    text-align: center;
+}
+
+.btn-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-group .btn {
+    flex: 1;
+}
+
+.guest-contact {
+    text-align: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+/* =========================
+   CONTACT MODALS
+========================= */
+.modal-content {
+    border-radius: 12px;
+    border: none;
+}
+
+.modal-header {
+    background: #1f7a4d;
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header .btn-close {
+    filter: invert(1);
+}
+
+.form-text {
+    font-size: 0.85rem;
+    color: #6b7280;
+}
+
+/* =========================
+   RESPONSIVE IMPROVEMENTS
+========================= */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .broker-stats {
+        padding: 0.75rem;
+    }
+    
+    .contact-methods .btn {
+        padding: 0.75rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+    }
+}
 </style>
-
-
-
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -955,5 +1284,74 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Simplified contact functionality - less prone to errors
+document.addEventListener('DOMContentLoaded', function() {
+    // Phone number toggle
+    const showPhoneBtn = document.getElementById('showPhoneNumber');
+    if (showPhoneBtn) {
+        showPhoneBtn.addEventListener('click', function() {
+            const phoneNumberDiv = document.getElementById('phoneNumber');
+            if (phoneNumberDiv) {
+                phoneNumberDiv.classList.toggle('d-none');
+            }
+        });
+    }
+    
+    // Contact form handling
+    const contactForm = document.getElementById('contactForm');
+    if (contactForm) {
+        contactForm.addEventListener('submit', function(e) {
+            const messageBody = document.getElementById('messageBody');
+            if (messageBody && messageBody.value.trim().length < 10) {
+                e.preventDefault();
+                alert('Please write a more detailed message (at least 10 characters).');
+                messageBody.focus();
+            }
+        });
+    }
+    
+    // Visit form handling
+    const visitForm = document.getElementById('visitForm');
+    if (visitForm) {
+        // Set min date to today
+        const today = new Date().toISOString().split('T')[0];
+        const dateInput = document.getElementById('visitDate');
+        if (dateInput) {
+            dateInput.min = today;
+        }
+        
+        visitForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const date = document.getElementById('visitDate').value;
+            const time = document.getElementById('visitTime').value;
+            
+            if (date && time) {
+                alert('Visit request sent for ' + date + ' at ' + time);
+                visitForm.reset();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('scheduleVisitModal'));
+                if (modal) modal.hide();
+            } else {
+                alert('Please select both date and time.');
+            }
+        });
+    }
+    
+    // Global function for contact requests
+    window.requestContactDetails = function() {
+        alert('Contact request sent. The broker will contact you shortly.');
+    };
+    
+    // Get CSRF token function
+    function getCookie(name) {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                return decodeURIComponent(cookie.substring(name.length + 1));
+            }
+        }
+        return null;
+    }
+});
 </script>
 {% endblock %}

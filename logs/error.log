@@ -1,0 +1,183 @@
+INFO | 2026-02-07 11:28:17,794 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:28:18,372 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:28:27,604 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:28:28,122 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:28:39,345 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:28:39,976 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:29:36,686 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:29:37,143 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:29:39,242 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:29:39,666 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:29:41,757 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:29:42,241 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:30:50,717 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:30:51,156 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:30:56,377 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:30:56,859 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:31:00,050 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:31:00,466 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:31:17,920 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:31:18,344 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:32:27,855 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:32:28,327 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:32:40,738 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:32:41,203 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:32:52,547 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-07 11:32:53,065 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:33:03,456 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-07 11:33:03,894 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:33:05,038 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-07 11:33:05,498 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:33:06,640 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-07 11:33:07,042 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:33:12,217 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-07 11:33:14,248 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:33:32,224 | basehttp | "GET /admin/listings/contactrequest/ HTTP/1.1" 200 14979
+INFO | 2026-02-07 11:33:32,282 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:01,122 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-07 11:34:01,532 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:34:03,683 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-07 11:34:04,225 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:34:06,444 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-07 11:34:06,773 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:34:08,947 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-07 11:34:09,342 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:34:10,761 | basehttp | "GET /admin/listings/contactrequest/ HTTP/1.1" 200 19417
+INFO | 2026-02-07 11:34:10,832 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:13,178 | basehttp | "GET /admin/listings/plotimage/ HTTP/1.1" 200 95375
+INFO | 2026-02-07 11:34:13,200 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:13,250 | basehttp | "GET /media/plot_images/Stream_Bg.png HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,271 | basehttp | "GET /media/plot_images/plot_4_image_3_Feo4iRs.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,273 | basehttp | "GET /media/plot_images/CreaTech_logo.png HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,278 | basehttp | "GET /media/plot_images/plot_3_image_3_UHbSm9j.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,278 | basehttp | "GET /media/plot_images/plot_4_image_2_8uZom9x.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,281 | basehttp | "GET /media/plot_images/plot_4_image_1_zNjqgje.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,293 | basehttp | "GET /media/plot_images/plot_3_image_1_SDnjbmO.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,294 | basehttp | "GET /media/plot_images/plot_3_image_2_O6QfPGZ.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,295 | basehttp | "GET /media/plot_images/plot_2_image_3_6nkGCAd.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,296 | basehttp | "GET /media/plot_images/plot_2_image_2_dF084U9.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,301 | basehttp | "GET /media/plot_images/plot_2_image_1_ReQEICo.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,303 | basehttp | "GET /media/plot_images/plot_1_image_3_CRxMV05.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,324 | basehttp | "GET /media/plot_images/plot_1_image_2_AAsXDdx.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,364 | basehttp | "GET /media/plot_images/plot_0_image_2_DYBPCvH.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,365 | basehttp | "GET /media/plot_images/plot_0_image_3_B9Wsogn.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,365 | basehttp | "GET /media/plot_images/plot_1_image_1_tA4ONDn.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:13,367 | basehttp | "GET /media/plot_images/plot_0_image_1_P7LSyze.jpg HTTP/1.1" 304 0
+INFO | 2026-02-07 11:34:15,223 | basehttp | "GET /admin/listings/plotverificationstatus/ HTTP/1.1" 200 44716
+INFO | 2026-02-07 11:34:15,251 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:17,925 | basehttp | "GET /admin/listings/plot/ HTTP/1.1" 200 64615
+INFO | 2026-02-07 11:34:17,951 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:20,337 | basehttp | "GET /admin/listings/profile/ HTTP/1.1" 200 23343
+INFO | 2026-02-07 11:34:20,367 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:24,106 | basehttp | "GET /admin/listings/sellerprofile/ HTTP/1.1" 200 17224
+INFO | 2026-02-07 11:34:24,135 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:26,081 | basehttp | "GET /admin/listings/titlesearchresult/ HTTP/1.1" 200 17560
+INFO | 2026-02-07 11:34:26,116 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:27,894 | basehttp | "GET /admin/listings/userinterest/ HTTP/1.1" 200 18741
+INFO | 2026-02-07 11:34:27,922 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:29,628 | basehttp | "GET /admin/listings/verificationdocument/ HTTP/1.1" 200 18190
+INFO | 2026-02-07 11:34:29,712 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:33,596 | basehttp | "GET /admin/listings/plotimage/ HTTP/1.1" 200 95375
+INFO | 2026-02-07 11:34:33,620 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:36,408 | basehttp | "GET /admin/listings/sellerprofile/ HTTP/1.1" 200 17224
+INFO | 2026-02-07 11:34:36,435 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:34:38,707 | basehttp | "GET /admin/listings/sellerprofile/add/ HTTP/1.1" 200 24184
+INFO | 2026-02-07 11:34:38,735 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:35:11,893 | basehttp | "POST /admin/listings/sellerprofile/add/ HTTP/1.1" 302 0
+INFO | 2026-02-07 11:35:11,913 | basehttp | "GET /admin/listings/sellerprofile/ HTTP/1.1" 200 22361
+INFO | 2026-02-07 11:35:11,985 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+ERROR | 2026-02-07 11:35:26,473 | log | Internal Server Error: /
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 297, in home
+    return render(request, 'listings/home.html', {
+        'featured_plots': featured_plots,
+    ...<6 lines>...
+        'filter_crop': crop,
+    })
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 327, in render
+    return nodelist.render(context)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'logout' not found. 'logout' is not a valid view function or pattern name.
+ERROR | 2026-02-07 11:35:26,478 | basehttp | "GET / HTTP/1.1" 500 168285
+INFO | 2026-02-07 11:35:41,227 | autoreload | /home/createch/Documents/PROJECT/agriplot/agriplot/urls.py changed, reloading.
+INFO | 2026-02-07 11:35:41,714 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-07 11:35:43,250 | basehttp | "GET / HTTP/1.1" 200 50351
+INFO | 2026-02-07 11:35:45,952 | basehttp | "POST /logout/ HTTP/1.1" 302 0
+INFO | 2026-02-07 11:35:45,995 | basehttp | "GET / HTTP/1.1" 200 50059
+INFO | 2026-02-07 11:35:48,043 | basehttp | "GET /login/ HTTP/1.1" 200 1325
+INFO | 2026-02-07 11:35:53,625 | basehttp | "POST /login/ HTTP/1.1" 302 0
+INFO | 2026-02-07 11:35:53,659 | basehttp | "GET / HTTP/1.1" 200 50351
+INFO | 2026-02-07 11:36:03,030 | basehttp | "GET / HTTP/1.1" 200 50351
+INFO | 2026-02-07 11:36:08,392 | basehttp | "GET /plot/40/ HTTP/1.1" 200 46447
+INFO | 2026-02-07 11:36:22,670 | basehttp | "GET /admin/listings/sellerprofile/ HTTP/1.1" 302 0
+INFO | 2026-02-07 11:36:22,689 | basehttp | "GET /admin/login/?next=/admin/listings/sellerprofile/ HTTP/1.1" 200 3420
+INFO | 2026-02-07 11:36:27,658 | basehttp | "POST /admin/login/?next=/admin/listings/sellerprofile/ HTTP/1.1" 302 0
+INFO | 2026-02-07 11:36:27,691 | basehttp | "GET /admin/listings/sellerprofile/ HTTP/1.1" 200 21771
+INFO | 2026-02-07 11:36:27,761 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:36:33,637 | basehttp | "GET /admin/listings/contactrequest/ HTTP/1.1" 200 19417
+INFO | 2026-02-07 11:36:33,667 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:36:38,124 | basehttp | "GET /admin/listings/contactrequest/add/ HTTP/1.1" 200 28795
+INFO | 2026-02-07 11:36:38,154 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:36:54,938 | basehttp | "GET /admin/listings/contactrequest/ HTTP/1.1" 200 19417
+INFO | 2026-02-07 11:36:54,969 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:36:56,586 | basehttp | "GET /admin/listings/ HTTP/1.1" 200 30834
+INFO | 2026-02-07 11:37:03,164 | basehttp | "GET /admin/listings/userinterest/ HTTP/1.1" 200 18741
+INFO | 2026-02-07 11:37:03,199 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:37:05,895 | basehttp | "GET /admin/listings/userinterest/add/ HTTP/1.1" 200 27452
+INFO | 2026-02-07 11:37:05,920 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:37:24,134 | basehttp | "GET /admin/listings/userinterest/ HTTP/1.1" 200 18741
+INFO | 2026-02-07 11:37:24,165 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-07 11:37:44,434 | basehttp | "GET /plot/40/ HTTP/1.1" 200 46442
+INFO | 2026-02-07 11:37:49,443 | basehttp | "POST /logout/ HTTP/1.1" 302 0
+INFO | 2026-02-07 11:37:49,475 | basehttp | "GET / HTTP/1.1" 200 50059
+INFO | 2026-02-07 11:37:55,198 | basehttp | "POST /admin/logout/ HTTP/1.1" 302 0
+INFO | 2026-02-07 11:37:55,203 | basehttp | "GET /admin/ HTTP/1.1" 302 0
+INFO | 2026-02-07 11:37:55,249 | basehttp | "GET /admin/login/?next=/admin/ HTTP/1.1" 200 3065

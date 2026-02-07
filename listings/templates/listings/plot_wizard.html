@@ -1,0 +1,14 @@
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    {{ wizard.management_form }}
+    {{ wizard.form.as_p }}
+
+    <button type="submit">
+        {% if wizard.steps.last %}
+            Submit Plot
+        {% else %}
+            Next Step
+        {% endif %}
+    </button>
+</form>

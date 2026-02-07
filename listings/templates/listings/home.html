@@ -158,6 +158,27 @@
 
     </div>
 
+    <!-- PAGINATION CONTROLS -->
+    {% if featured_plots.has_other_pages %}
+    <div class="pagination">
+        {% if featured_plots.has_previous %}
+            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.previous_page_number }}">&laquo; Previous</a>
+        {% else %}
+            <span class="disabled">&laquo; Previous</span>
+        {% endif %}
+
+        <span class="current">
+            Page {{ featured_plots.number }} of {{ featured_plots.paginator.num_pages }}
+        </span>
+
+        {% if featured_plots.has_next %}
+            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.next_page_number }}">Next &raquo;</a>
+        {% else %}
+            <span class="disabled">Next &raquo;</span>
+        {% endif %}
+    </div>
+    {% endif %}
+
 </section>
 
 
@@ -200,11 +221,16 @@
 
 /* HERO SECTION */
 .hero-market{
-    position:relative;
-    padding:800px 0 60px; /* bottom padding for breathing space */
-    border-radius:18px;
-    margin-bottom:40px;
+    position: relative;
+    min-height: 80vh; /* takes 80% of screen height */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    margin-bottom: 40px;
+    overflow: hidden;
 }
+
 
 .hero-overlay{
     position:absolute;
@@ -214,17 +240,19 @@
 }
 
 .hero-inner{
-    position:relative;
-    color:white;
-    text-align:center;
-    padding: 60px 20px;
+    position: relative;
+    color: white;
+    text-align: center;
+    padding: 40px 20px;
     z-index: 2;
+    max-width: 900px;
 }
 
 .hero-inner h1{
     font-size:2.8rem;
     font-weight:700;
     margin-bottom: 20px;
+    line-height: 1.2;
 }
 
 /* HERO SLIDER */
@@ -549,12 +577,12 @@
 /* Responsive */
 @media (max-width: 768px) {
     .hero-market {
-        padding: 60px 20px 120px; /* extra bottom padding to avoid overlap */
-        height: auto; /* let it expand */
+        min-height: 70vh;
+        padding: 40px 15px;
     }
     
     .hero-inner h1 {
-        padding: 20px 10px 0; /* reduce top padding */
+        font-size: 2rem;
     }
     
     .market-search {

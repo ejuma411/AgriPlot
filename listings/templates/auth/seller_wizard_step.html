@@ -1,0 +1,55 @@
+{% extends "auth/auth_split.html" %}
+
+{% block info_panel %}
+<h1>Sell Agricultural Land on AgriPlot</h1>
+<p>Step {{ wizard.steps.step1 }} of {{ wizard.steps.count }} - {{ wizard.steps.current|capfirst }}</p>
+<p>Verification takes 24–48 hrs. Your documents are encrypted and secure.</p>
+
+<ul class="info-list">
+    <li>✔ Upload verified land documents</li>
+    <li>✔ Add soil & crop suitability data</li>
+    <li>✔ Connect directly with buyers</li>
+    <li>✔ Increase land visibility nationwide</li>
+</ul>
+{% endblock %}
+
+{% block form_panel %}
+<h2>Seller Registration - Step {{ wizard.steps.step1 }}</h2>
+
+<div class="progress-bar">
+    <div class="progress" style="width: {{ progress_percent }}%;"></div>
+</div>
+
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+
+    {% for field in wizard.form %}
+        <div class="form-group">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            <small style="color:red">{{ field.errors }}</small>
+        </div>
+    {% endfor %}
+
+    <button class="btn-auth" type="submit">
+        {% if wizard.steps.last %}Finish{% else %}Next{% endif %}
+    </button>
+</form>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const steps = document.querySelectorAll('.fade-step');
+    steps.forEach(step => {
+        step.style.opacity = 0;
+        step.style.transition = 'opacity 0.5s ease-in-out';
+        setTimeout(() => step.style.opacity = 1, 100);
+    });
+});
+</script>
+{% endblock %}
