@@ -1,0 +1,92 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+<title>Join AgriPlot</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="{% static 'css/auth-modern.css' %}">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body class="auth-body">
+
+<section class="role-onboarding">
+
+    <div class="role-header">
+        <h1>Join AgriPlot</h1>
+        <p>Select how you want to use the platform</p>
+    </div>
+
+    <div class="role-grid">
+
+        <!-- SELLER -->
+        <div class="role-card seller">
+            <div class="role-icon">
+                <i class="fas fa-tractor"></i>
+            </div>
+            <h3>Sell Your Land</h3>
+            <p class="role-desc">
+                List and sell agricultural land directly to verified buyers.
+            </p>
+            <ul class="role-features">
+                <li>✔ Upload land ownership documents</li>
+                <li>✔ Add soil & crop suitability data</li>
+                <li>✔ Receive buyer inquiries directly</li>
+            </ul>
+            <div class="role-footer">
+                <a href="{% url 'listings:register_seller' %}" class="role-btn">
+                    Continue as Seller
+                </a>
+            </div>
+        </div>
+
+        <!-- BROKER -->
+        <div class="role-card broker">
+            <div class="role-icon">
+                <i class="fas fa-user-tie"></i>
+            </div>
+            <h3>Register as Broker</h3>
+            <p class="role-desc">
+                Manage listings for multiple clients and earn commission.
+            </p>
+            <ul class="role-features">
+                <li>✔ Verified broker badge</li>
+                <li>✔ Manage multiple listings</li>
+                <li>✔ Build professional credibility</li>
+            </ul>
+            <div class="role-footer">
+                <a href="{% url 'listings:register_broker' %}" class="role-btn">
+                    Continue as Broker
+                </a>
+            </div>
+        </div>
+
+        <!-- BUYER -->
+        <div class="role-card buyer">
+            <div class="role-icon">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <h3>Register as Buyer</h3>
+            <p class="role-desc">
+                Browse and buy verified agricultural land with ease.
+            </p>
+            <ul class="role-features">
+                <li>✔ Access verified land listings</li>
+                <li>✔ Get notifications for new plots</li>
+                <li>✔ Save favorites and contact sellers</li>
+            </ul>
+            <div class="role-footer">
+                <a href="{% url 'listings:register_buyer' %}" class="role-btn">
+                    Continue as Buyer
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+</section>
+
+</body>
+</html>

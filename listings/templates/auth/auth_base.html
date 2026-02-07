@@ -1,0 +1,26 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AgriPlot</title>
+<link rel="stylesheet" href="{% static 'css/auth.css' %}">
+</head>
+
+<body class="auth-body">
+
+<div class="auth-container">
+
+    <div class="auth-left">
+        <h1>AgriPlot</h1>
+        <p>Trusted Agricultural Land Marketplace</p>
+    </div>
+
+    <div class="auth-right">
+        {% block content %}{% endblock %}
+    </div>
+
+</div>
+
+</body>
+</html>

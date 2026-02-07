@@ -1,0 +1,68 @@
+body.auth-body {
+    font-family: Arial, sans-serif;
+    background: #f4f7f5;
+    margin: 0;
+}
+
+.auth-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+.auth-left {
+    flex: 1;
+    background: #1e5631;
+    color: white;
+    padding: 60px;
+}
+
+.auth-right {
+    flex: 1;
+    background: white;
+    padding: 60px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+
+.btn-auth {
+    width: 100%;
+    padding: 12px;
+    background: #1e5631;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.role-container {
+    text-align: center;
+    padding: 80px;
+}
+
+.role-grid {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.role-card {
+    background: white;
+    padding: 40px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: black;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.role-card:hover {
+    transform: translateY(-5px);
+}

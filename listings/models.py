@@ -54,6 +54,42 @@ class Broker(models.Model):
 
     def __str__(self):
         return self.user.username
+    
+    # Contact and rating fields
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    response_rate = models.FloatField(default=100.0, help_text="Percentage of inquiries responded to")
+    average_response_time = models.FloatField(default=24, help_text="Average response time in hours")
+    rating = models.FloatField(default=5.0)
+    review_count = models.IntegerField(default=0)
+    
+    # Stats
+    total_listings = models.IntegerField(default=0)
+    verified_listings = models.IntegerField(default=0)
+    
+    # Contact preferences
+    contact_preference = models.CharField(
+        max_length=20,
+        choices=[
+            ('email', 'Email'),
+            ('phone', 'Phone'),
+            ('whatsapp', 'WhatsApp'),
+            ('any', 'Any'),
+        ],
+        default='any'
+    )
+    
+    # Availability
+    available_from = models.TimeField(default='09:00')
+    available_to = models.TimeField(default='17:00')
+    
+    # Methods
+    def update_stats(self):
+        """Update broker statistics"""
+        self.total_listings = self.plot_set.count()
+        self.verified_listings = self.plot_set.filter(
+            verification_status__status='verified'
+        ).count()
+        self.save()
 
 
 class SellerProfile(models.Model):
@@ -114,23 +150,61 @@ class Plot(models.Model):
     ph_level = models.FloatField(null=True, blank=True)
     crop_suitability = models.CharField(max_length=200)
 
-    # Primary uploaded documents
-    title_deed = models.FileField(upload_to="documents/title_deeds/", null=True, blank=True)
-    soil_report = models.FileField(upload_to="documents/soil_reports/", null=True, blank=True)
+    # PRIMARY DOCUMENTS - on Plot model
+    title_deed = models.FileField(
+        upload_to="documents/title_deeds/", 
+        null=True, 
+        blank=True,
+        help_text="Official title deed document"
+    )
+    soil_report = models.FileField(
+        upload_to="documents/soil_reports/", 
+        null=True, 
+        blank=True,
+        help_text="Soil test report (optional)"
+    )
     
-        # Additional metadata
+    # VERIFICATION DOCUMENTS - Added to Plot model
+    official_search = models.FileField(
+        upload_to="documents/official_searches/",
+        null=True,
+        blank=True,
+        help_text="Official land search certificate"
+    )
+    seller_id = models.FileField(
+        upload_to="documents/seller_ids/",
+        null=True,
+        blank=True,
+        help_text="Seller's national ID"
+    )
+    kra_pin = models.FileField(
+        upload_to="documents/kra_pins/",
+        null=True,
+        blank=True,
+        help_text="KRA PIN certificate"
+    )
+    
+    # Additional metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.title
 
-
     @property
     def images_list(self):
         """Return all images for this plot"""
         return self.images.all()
-
+    
+    @property
+    def has_all_documents(self):
+        """Check if plot has all required documents"""
+        required_docs = ['title_deed', 'official_search', 'seller_id', 'kra_pin']
+        for doc_field in required_docs:
+            if not getattr(self, doc_field):
+                return False
+        return True
+    
 class PlotImage(models.Model):
     plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='images_list')
     image = models.ImageField(upload_to='plot_images/')
@@ -231,3 +305,32 @@ class UserInterest(models.Model):
     
     def __str__(self):
         return f"{self.user.username} → {self.plot.title}"
+    
+# MESSAGING MODEL
+class ContactRequest(models.Model):
+    REQUEST_TYPES = [
+        ('email', 'Email Inquiry'),
+        ('phone_request', 'Phone Number Request'),
+        ('phone_view', 'Phone Number Viewed'),
+        ('visit_request', 'Site Visit Request'),
+        ('message', 'Direct Message'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contact_requests')
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='contact_requests')
+    broker = models.ForeignKey(Broker, on_delete=models.CASCADE, related_name='contact_requests')
+    request_type = models.CharField(max_length=20, choices=REQUEST_TYPES)
+    message = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded = models.BooleanField(default=False)
+    responded_at = models.DateTimeField(null=True, blank=True)
+    admin_notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Internal notes for admin use only"
+    )
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.username} → {self.broker.user.username} ({self.request_type})"

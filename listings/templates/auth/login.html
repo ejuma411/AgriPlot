@@ -1,15 +1,61 @@
+{% load static %}
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>Login — AgriPlot Connect</title>
+<meta charset="UTF-8">
+<title>Login - AgriPlot</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="{% static 'css/auth.css' %}">
 </head>
-<body>
-    <h2>Login</h2>
-    <form method="POST">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit">Login</button>
-    </form>
+
+<body class="auth-body">
+
+<div class="auth-container">
+
+    <!-- LEFT SIDE (Branding) -->
+    <div class="auth-left">
+        <h1>AgriPlot</h1>
+        <p>Find verified agricultural land across Kenya.</p>
+    </div>
+
+    <!-- RIGHT SIDE (Form) -->
+    <div class="auth-right">
+
+        <h2>Welcome Back 👋</h2>
+        <p>Login to continue</p>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST">
+            {% csrf_token %}
+
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" required>
+            </div>
+
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+
+            <button type="submit" class="btn-auth">Login</button>
+
+        </form>
+
+        <p class="auth-footer">
+            Don’t have an account?
+            <a href="{% url 'listings:register_choice' %}">Sign up</a>
+        </p>
+
+    </div>
+
+</div>
+
 </body>
 </html>

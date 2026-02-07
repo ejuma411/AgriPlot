@@ -17,7 +17,7 @@
                     </div>
                     <div class="dashboard-stats-summary">
                         <div class="stat-badge">
-                            <span class="stat-badge-value">4</span>
+                            <span class="stat-badge-value">5</span>  <!-- Updated from 4 to 5 -->
                             <span class="stat-badge-label">Sections</span>
                         </div>
                         <div class="stat-badge">
@@ -48,10 +48,14 @@
                 </div>
                 <div class="progress-step" data-step="3">
                     <span class="step-number">3</span>
-                    <span class="step-label">Documents</span>
+                    <span class="step-label">Plot Docs</span>
                 </div>
                 <div class="progress-step" data-step="4">
                     <span class="step-number">4</span>
+                    <span class="step-label">Verification Docs</span>  <!-- New step -->
+                </div>
+                <div class="progress-step" data-step="5">
+                    <span class="step-number">5</span>
                     <span class="step-label">Agreement</span>
                 </div>
             </div>
@@ -85,6 +89,10 @@
 
     <!-- Form Grid Layout -->
     <div class="row">
+        <div class="debug-section d-none">  <!-- Add d-none to hide in production -->
+            <h6>Debug Information</h6>
+            <pre id="debug-info"></pre>
+        </div>
         <!-- Main Form Column -->
         <div class="col-xl-8 mb-4">
             <div class="dashboard-card">
@@ -96,7 +104,7 @@
                 <div class="card-body">
                     <form method="POST" enctype="multipart/form-data" id="plotForm">
                         {% csrf_token %}
-
+                        
                         <!-- Section 1: Basic Information Table -->
                         <div class="form-section-table mb-5">
                             <div class="section-header mb-4">
@@ -129,7 +137,7 @@
                                         </td>
                                         <td class="field-help">
                                             <small class="text-muted">
-                                                <i class="fas fa-info-circle"></i> Clear, descriptive title
+                                                <i class="fas fa-info-circle"></i> {{ form.title.help_text }}
                                             </small>
                                         </td>
                                     </tr>
@@ -142,12 +150,7 @@
                                             </label>
                                         </td>
                                         <td class="field-input">
-                                            <div class="input-group">
-                                                {{ form.location }}
-                                                <button class="btn btn-outline-secondary" type="button" id="locationSuggest">
-                                                    <i class="fas fa-map"></i>
-                                                </button>
-                                            </div>
+                                            {{ form.location }}
                                             <div class="field-feedback">
                                                 {% if form.location.errors %}
                                                 <small class="text-danger">
@@ -159,7 +162,7 @@
                                         </td>
                                         <td class="field-help">
                                             <small class="text-muted">
-                                                <i class="fas fa-info-circle"></i> County, Sub-county
+                                                <i class="fas fa-info-circle"></i> {{ form.location.help_text }}
                                             </small>
                                         </td>
                                     </tr>
@@ -204,7 +207,7 @@
                                         </td>
                                         <td class="field-help">
                                             <small class="text-muted">
-                                                <i class="fas fa-info-circle"></i> Price per acre calculated
+                                                <i class="fas fa-info-circle"></i> {{ form.area.help_text }} / {{ form.price.help_text }}
                                             </small>
                                         </td>
                                     </tr>
@@ -229,7 +232,7 @@
                                         </td>
                                         <td class="field-help">
                                             <small class="text-muted">
-                                                <i class="fas fa-info-circle"></i> Affects crop suitability
+                                                <i class="fas fa-info-circle"></i> {{ form.soil_type.help_text }}
                                             </small>
                                         </td>
                                     </tr>
@@ -323,14 +326,14 @@
                             </div>
                         </div>
 
-                        <!-- Section 3: Documents Upload Table -->
+                        <!-- Section 3: Plot Documents -->
                         <div class="form-section-table mb-5">
                             <div class="section-header mb-4">
                                 <h5 class="section-title d-flex align-items-center">
                                     <span class="section-badge bg-warning">3</span>
-                                    <span>Supporting Documents</span>
+                                    <span>Plot Documents</span>
                                 </h5>
-                                <p class="section-subtitle text-muted mb-0">Upload required verification documents</p>
+                                <p class="section-subtitle text-muted mb-0">Upload plot-specific documents</p>
                             </div>
                             
                             <div class="documents-table">
@@ -351,7 +354,7 @@
                                                     <i class="fas fa-file-contract text-danger me-2"></i>
                                                     <div>
                                                         <div class="document-name">Title Deed</div>
-                                                        <small class="text-muted">Required • Max 10MB</small>
+                                                        <small class="text-muted">{{ form.title_deed.help_text }}</small>
                                                     </div>
                                                 </div>
                                             </td>
@@ -385,7 +388,7 @@
                                                     <i class="fas fa-flask text-info me-2"></i>
                                                     <div>
                                                         <div class="document-name">Soil Test Report</div>
-                                                        <small class="text-muted">Optional • Recommended</small>
+                                                        <small class="text-muted">{{ form.soil_report.help_text }}</small>
                                                     </div>
                                                 </div>
                                             </td>
@@ -415,14 +418,142 @@
                                 </table>
                             </div>
                         </div>
-                        <!-- Section 3b: Plot Images -->
+
+                        <!-- Section 4: Verification Documents (NEW) -->
                         <div class="form-section-table mb-5">
                             <div class="section-header mb-4">
                                 <h5 class="section-title d-flex align-items-center">
-                                    <span class="section-badge bg-info">3b</span>
+                                    <span class="section-badge bg-purple">4</span>
+                                    <span>Verification Documents</span>
+                                </h5>
+                                <p class="section-subtitle text-muted mb-0">Required documents for plot verification</p>
+                            </div>
+                            
+                            <div class="documents-table">
+                                <table class="documents-upload-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Document</th>
+                                            <th>Status</th>
+                                            <th>Preview</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Official Search Certificate -->
+                                        <tr>
+                                            <td>
+                                                <div class="document-info">
+                                                    <i class="fas fa-search text-primary me-2"></i>
+                                                    <div>
+                                                        <div class="document-name">Official Search Certificate</div>
+                                                        <small class="text-muted">{{ form.official_search.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="document-status badge bg-danger">Required</span>
+                                            </td>
+                                            <td>
+                                                <div id="officialSearchPreview" class="document-preview">
+                                                    No file selected
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.official_search.id_for_label }}" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.official_search }}
+                                                    {% if form.official_search.errors %}
+                                                    <small class="text-danger d-block">
+                                                        {{ form.official_search.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        <!-- Seller ID -->
+                                        <tr>
+                                            <td>
+                                                <div class="document-info">
+                                                    <i class="fas fa-id-card text-warning me-2"></i>
+                                                    <div>
+                                                        <div class="document-name">Seller's ID</div>
+                                                        <small class="text-muted">{{ form.seller_id.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="document-status badge bg-danger">Required</span>
+                                            </td>
+                                            <td>
+                                                <div id="sellerIdPreview" class="document-preview">
+                                                    No file selected
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.seller_id.id_for_label }}" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.seller_id }}
+                                                    {% if form.seller_id.errors %}
+                                                    <small class="text-danger d-block">
+                                                        {{ form.seller_id.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        <!-- KRA PIN Certificate -->
+                                        <tr>
+                                            <td>
+                                                <div class="document-info">
+                                                    <i class="fas fa-file-invoice-dollar text-success me-2"></i>
+                                                    <div>
+                                                        <div class="document-name">KRA PIN Certificate</div>
+                                                        <small class="text-muted">{{ form.kra_pin.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <span class="document-status badge bg-danger">Required</span>
+                                            </td>
+                                            <td>
+                                                <div id="kraPinPreview" class="document-preview">
+                                                    No file selected
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.kra_pin.id_for_label }}" class="btn btn-sm btn-outline-success">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.kra_pin }}
+                                                    {% if form.kra_pin.errors %}
+                                                    <small class="text-danger d-block">
+                                                        {{ form.kra_pin.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Section 5: Plot Images -->
+                        <div class="form-section-table mb-5">
+                            <div class="section-header mb-4">
+                                <h5 class="section-title d-flex align-items-center">
+                                    <span class="section-badge bg-info">5</span>
                                     <span>Plot Images</span>
                                 </h5>
-                                <p class="section-subtitle text-muted mb-0">Upload clear photos of the plot (optional but highly recommended)</p>
+                                <p class="section-subtitle text-muted mb-0">Upload clear photos of the plot</p>
                             </div>
                             
                             <div class="images-table">
@@ -439,7 +570,7 @@
                                             <td>
                                                 <div class="image-upload-container">
                                                     <div class="form-group">
-                                                        <div class="image-upload-area">
+                                                        <div class="image-upload-area" id="imageUploadArea">
                                                             {{ form.images }}
                                                             <div class="upload-content">
                                                                 <i class="fas fa-cloud-upload-alt fa-3x text-info mb-3"></i>
@@ -470,7 +601,7 @@
                                                     <ul class="mb-0">
                                                         <li><strong>Maximum:</strong> 5 images per plot</li>
                                                         <li><strong>Size limit:</strong> 5MB per image</li>
-                                                        <li><strong>Formats:</strong> JPEG, PNG, GIF</li>
+                                                        <li><strong>Formats:</strong> JPEG, PNG, WEBP</li>
                                                         <li><strong>Recommended:</strong> Show boundaries, soil, access</li>
                                                         <li><strong>Quality:</strong> Clear, well-lit photos</li>
                                                     </ul>
@@ -480,12 +611,12 @@
                                                 <div class="upload-status">
                                                     <div class="status-card">
                                                         <div class="status-item">
-                                                            <span class="status-label">Images will display:</span>
-                                                            <span class="status-value">On home page</span>
+                                                            <span class="status-label">Images required:</span>
+                                                            <span class="status-value text-success">Yes (1-5)</span>
                                                         </div>
                                                         <div class="status-item">
-                                                            <span class="status-label">In plot details:</span>
-                                                            <span class="status-value">Gallery view</span>
+                                                            <span class="status-label">Will display:</span>
+                                                            <span class="status-value">On home page</span>
                                                         </div>
                                                         <div class="status-item">
                                                             <span class="status-label">Benefit:</span>
@@ -510,6 +641,7 @@
                                                         <i class="fas fa-images me-2"></i>
                                                         Selected Files
                                                         <span id="fileCount" class="badge bg-primary ms-2">0</span>
+                                                        <span id="uploadSize" class="badge bg-secondary ms-1">Max 5 files</span>
                                                     </h6>
                                                     <div id="fileList" class="file-list"></div>
                                                 </div>
@@ -520,11 +652,11 @@
                             </div>
                         </div>
 
-                        <!-- Section 4: Agreement Table -->
+                        <!-- Section 6: Agreement Table -->
                         <div class="form-section-table mb-5">
                             <div class="section-header mb-4">
                                 <h5 class="section-title d-flex align-items-center">
-                                    <span class="section-badge bg-dark">4</span>
+                                    <span class="section-badge bg-dark">6</span>
                                     <span>Listing Agreement</span>
                                 </h5>
                                 <p class="section-subtitle text-muted mb-0">Confirm your understanding and agreement</p>
@@ -554,7 +686,7 @@
                                             </td>
                                             <td class="term-content">
                                                 <strong>Document Authenticity</strong>
-                                                <p class="mb-0">I confirm that the title deed uploaded is valid and authentic.</p>
+                                                <p class="mb-0">I confirm that all uploaded documents are valid and authentic.</p>
                                             </td>
                                         </tr>
                                         <tr>
@@ -610,6 +742,89 @@
 
         <!-- Sidebar: Guidelines & Help -->
         <div class="col-xl-4 mb-4">
+            <!-- Document Requirements Card -->
+            <div class="dashboard-card mb-4">
+                <div class="card-header bg-warning">
+                    <h6 class="card-title text-white">
+                        <i class="fas fa-file-alt me-2"></i>Document Requirements
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="document-requirements">
+                        <div class="req-item mb-3">
+                            <div class="req-icon text-danger">
+                                <i class="fas fa-file-contract"></i>
+                            </div>
+                            <div class="req-content">
+                                <strong>Title Deed</strong>
+                                <p class="mb-0">Official land ownership document. Must be valid and clear.</p>
+                            </div>
+                        </div>
+                        <div class="req-item mb-3">
+                            <div class="req-icon text-primary">
+                                <i class="fas fa-search"></i>
+                            </div>
+                            <div class="req-content">
+                                <strong>Official Search</strong>
+                                <p class="mb-0">Land registry search certificate from government.</p>
+                            </div>
+                        </div>
+                        <div class="req-item mb-3">
+                            <div class="req-icon text-warning">
+                                <i class="fas fa-id-card"></i>
+                            </div>
+                            <div class="req-content">
+                                <strong>Seller ID</strong>
+                                <p class="mb-0">National ID or passport of the plot owner.</p>
+                            </div>
+                        </div>
+                        <div class="req-item">
+                            <div class="req-icon text-success">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                            </div>
+                            <div class="req-content">
+                                <strong>KRA PIN</strong>
+                                <p class="mb-0">KRA PIN certificate for tax purposes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Verification Timeline Card -->
+            <div class="dashboard-card mb-4">
+                <div class="card-header bg-info">
+                    <h6 class="card-title text-white">
+                        <i class="fas fa-clock me-2"></i>Verification Timeline
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="timeline-steps">
+                        <div class="timeline-step completed">
+                            <div class="step-dot"></div>
+                            <div class="step-content">
+                                <strong>Submission</strong>
+                                <small>Plot submitted for review</small>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-dot"></div>
+                            <div class="step-content">
+                                <strong>Document Review</strong>
+                                <small>24 hours (average)</small>
+                            </div>
+                        </div>
+                        <div class="timeline-step">
+                            <div class="step-dot"></div>
+                            <div class="step-content">
+                                <strong>Approval</strong>
+                                <small>Listed on marketplace</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Help Card -->
             <div class="dashboard-card mb-4">
                 <div class="card-header">
@@ -625,7 +840,7 @@
                             </div>
                             <div class="help-content">
                                 <strong>Required Fields</strong>
-                                <p class="mb-0">Fields marked with <span class="text-danger">*</span> are mandatory</p>
+                                <p class="mb-0">All sections must be completed for submission</p>
                             </div>
                         </div>
                         <div class="help-item">
@@ -645,31 +860,6 @@
                                 <strong>Document Size</strong>
                                 <p class="mb-0">Maximum file size: 10MB per document</p>
                             </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Contact Card -->
-            <div class="dashboard-card">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-headset me-2"></i>Need Help?
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="contact-info">
-                        <div class="contact-item mb-3">
-                            <i class="fas fa-envelope text-primary me-2"></i>
-                            <span>support@agriplot.com</span>
-                        </div>
-                        <div class="contact-item mb-3">
-                            <i class="fas fa-phone text-success me-2"></i>
-                            <span>+254 700 000 000</span>
-                        </div>
-                        <div class="contact-item">
-                            <i class="fas fa-clock text-warning me-2"></i>
-                            <span>Mon-Fri, 8AM-5PM EAT</span>
                         </div>
                     </div>
                 </div>
@@ -800,6 +990,10 @@
         margin-right: 1rem;
     }
 
+    .section-badge.bg-purple {
+        background-color: #6f42c1;
+    }
+
     .section-title {
         font-weight: 600;
         color: var(--gray-800);
@@ -870,40 +1064,102 @@
         margin-top: 0.5rem;
     }
 
-    /* ===== PH INDICATORS ===== */
-    .ph-guide {
-        padding: 0.5rem;
-        background: var(--gray-100);
-        border-radius: 6px;
+    /* ===== DOCUMENT REQUIREMENTS ===== */
+    .document-requirements {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
     }
 
-    .ph-indicator {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
+    .req-item {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
     }
 
-    .ph-indicator.acidic {
-        background: var(--danger);
+    .req-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(108, 117, 125, 0.1);
+        border-radius: 8px;
+        flex-shrink: 0;
+        font-size: 1.25rem;
     }
 
-    .ph-indicator.neutral {
+    .req-content strong {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--gray-800);
+        font-size: 0.95rem;
+    }
+
+    .req-content p {
+        font-size: 0.85rem;
+        color: var(--gray-600);
+        margin-bottom: 0;
+    }
+
+    /* ===== TIMELINE STEPS ===== */
+    .timeline-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        position: relative;
+    }
+
+    .timeline-steps::before {
+        content: '';
+        position: absolute;
+        left: 16px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--gray-300);
+    }
+
+    .timeline-step {
+        display: flex;
+        gap: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .timeline-step.completed .step-dot {
         background: var(--success);
+        border-color: var(--success);
     }
 
-    .ph-indicator.alkaline {
-        background: var(--warning);
+    .timeline-step.completed .step-content {
+        opacity: 1;
     }
 
-    /* ===== CROP TAGS ===== */
-    .crop-tag {
-        display: inline-block;
-        padding: 0.25rem 0.75rem;
-        background: var(--gray-100);
-        border: 1px solid var(--gray-300);
-        border-radius: 50px;
+    .step-dot {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: white;
+        border: 3px solid var(--gray-300);
+        flex-shrink: 0;
+        position: relative;
+    }
+
+    .step-content {
+        flex: 1;
+        opacity: 0.7;
+    }
+
+    .step-content strong {
+        display: block;
+        color: var(--gray-800);
+        font-size: 0.95rem;
+    }
+
+    .step-content small {
         font-size: 0.8rem;
-        color: var(--gray-700);
+        color: var(--gray-600);
     }
 
     /* ===== DOCUMENTS TABLE ===== */
@@ -963,140 +1219,6 @@
         min-height: 24px;
     }
 
-    /* ===== AGREEMENT TABLE ===== */
-    .terms-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0 0.75rem;
-    }
-
-    .terms-table tbody tr {
-        background: var(--gray-50);
-        border-radius: 8px;
-        transition: all 0.3s ease;
-    }
-
-    .terms-table tbody tr:hover {
-        background: white;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-
-    .terms-table td {
-        padding: 1rem;
-        vertical-align: middle;
-    }
-
-    .term-check {
-        width: 40px;
-        border-right: 1px solid var(--gray-200);
-    }
-
-    .term-content strong {
-        display: block;
-        margin-bottom: 0.25rem;
-        color: var(--gray-800);
-    }
-
-    .term-content p {
-        font-size: 0.9rem;
-        color: var(--gray-600);
-        margin-bottom: 0;
-    }
-
-    .terms-link {
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 500;
-    }
-
-    .terms-link:hover {
-        text-decoration: underline;
-    }
-
-    /* ===== FORM ACTIONS TABLE ===== */
-    .actions-table {
-        width: 100%;
-    }
-
-    .actions-table td {
-        padding: 1rem 0;
-    }
-
-    .actions-center {
-        text-align: center;
-        width: 40%;
-    }
-
-    .form-progress {
-        max-width: 300px;
-        margin: 0 auto;
-    }
-
-    .actions-left, .actions-right {
-        width: 30%;
-    }
-
-    .actions-right {
-        text-align: right;
-    }
-
-    /* ===== HELP ITEMS ===== */
-    .help-items {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .help-item {
-        display: flex;
-        gap: 1rem;
-        padding: 0.75rem;
-        background: var(--gray-50);
-        border-radius: 8px;
-    }
-
-    .help-icon {
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: white;
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-
-    .help-content strong {
-        display: block;
-        margin-bottom: 0.25rem;
-        color: var(--gray-800);
-    }
-
-    .help-content p {
-        font-size: 0.875rem;
-        color: var(--gray-600);
-        margin-bottom: 0;
-    }
-
-    /* ===== CONTACT INFO ===== */
-    .contact-info {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .contact-item {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem;
-        background: var(--gray-50);
-        border-radius: 8px;
-    }
-
-    .contact-item i {
-        font-size: 1.25rem;
-    }
-
     /* ===== IMAGE UPLOAD STYLES ===== */
     .image-upload-container {
         position: relative;
@@ -1139,15 +1261,6 @@
         z-index: 1;
     }
 
-    .upload-content i {
-        opacity: 0.8;
-        transition: opacity 0.3s ease;
-    }
-
-    .image-upload-area:hover .upload-content i {
-        opacity: 1;
-    }
-
     .upload-tips {
         padding: 1.5rem;
         background: var(--warning-light);
@@ -1180,11 +1293,6 @@
         margin-bottom: 0;
     }
 
-    .upload-tips li strong {
-        color: var(--gray-800);
-        font-weight: 600;
-    }
-
     .upload-status {
         height: 100%;
     }
@@ -1209,18 +1317,6 @@
         margin-bottom: 0;
         padding-bottom: 0;
         border-bottom: none;
-    }
-
-    .status-label {
-        font-size: 0.9rem;
-        color: var(--gray-600);
-        font-weight: 500;
-    }
-
-    .status-value {
-        font-weight: 600;
-        font-size: 0.9rem;
-        color: var(--gray-800);
     }
 
     .file-previews-section {
@@ -1260,11 +1356,21 @@
     .file-name {
         font-weight: 500;
         color: var(--gray-800);
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     .file-size {
         font-size: 0.875rem;
         color: var(--gray-600);
+    }
+
+    /* ===== FORM ACTIONS ===== */
+    .form-progress {
+        max-width: 300px;
+        margin: 0 auto;
     }
 
     /* ===== RESPONSIVE DESIGN ===== */
@@ -1275,14 +1381,6 @@
         
         .step-label {
             font-size: 0.8rem;
-        }
-        
-        .field-label, .field-help {
-            width: 30%;
-        }
-        
-        .field-input {
-            width: 40%;
         }
     }
 
@@ -1308,23 +1406,9 @@
             padding: 0.5rem 0;
         }
         
-        .field-label {
-            margin-bottom: 0.5rem;
-        }
-        
-        .actions-table {
+        .documents-upload-table {
             display: block;
-        }
-        
-        .actions-table tr {
-            display: block;
-        }
-        
-        .actions-table td {
-            display: block;
-            width: 100% !important;
-            text-align: center !important;
-            padding: 0.5rem 0;
+            overflow-x: auto;
         }
     }
 
@@ -1337,20 +1421,25 @@
         .progress-step {
             flex: 0 0 calc(50% - 0.5rem);
         }
-        
-        .documents-upload-table {
-            display: block;
-            overflow-x: auto;
-        }
-        
-        .help-item {
-            flex-direction: column;
-            text-align: center;
-        }
-        
-        .help-icon {
-            margin: 0 auto;
-        }
+    }
+
+    .file-item.invalid {
+        border-left: 3px solid var(--danger);
+        background: rgba(220, 53, 69, 0.05);
+    }
+
+    .file-item.valid {
+        border-left: 3px solid var(--success);
+        background: rgba(25, 135, 84, 0.05);
+    }
+
+    .image-warning {
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 </style>
 
@@ -1358,341 +1447,148 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Form completion tracking
         function updateFormCompletion() {
-            const requiredFields = form.querySelectorAll('.required');
+            const requiredFields = document.querySelectorAll('.required');
             let completed = 0;
             
-            requiredFields.forEach(field => {
-                const input = field.closest('tr').querySelector('input, select, textarea');
-                if (input) {
-                    if (input.type === 'checkbox') {
-                        if (input.checked) completed++;
-                    } else if (input.value.trim()) {
-                        completed++;
+            requiredFields.forEach(label => {
+                const inputId = label.getAttribute('for');
+                if (inputId) {
+                    const input = document.getElementById(inputId);
+                    if (input) {
+                        if (input.type === 'checkbox') {
+                            if (input.checked) completed++;
+                        } else if (input.type === 'file') {
+                            // Check if file is selected
+                            if (input.files.length > 0) {
+                                completed++;
+                            }
+                        } else if (input.value.trim()) {
+                            completed++;
+                        }
                     }
                 }
             });
             
-            const percent = Math.round((completed / requiredFields.length) * 100);
+            // Also check agreement checkboxes
+            ['accuracyCheck', 'documentCheck', 'termsCheck'].forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox && checkbox.checked) {
+                    completed++;
+                }
+            });
+            
+            const totalRequired = requiredFields.length + 3; // +3 for agreement checkboxes
+            const percent = Math.round((completed / totalRequired) * 100);
+            
             document.getElementById('completionPercent').textContent = percent + '%';
             document.getElementById('completionBar').style.width = percent + '%';
+            document.getElementById('completionBar').className = 'progress-bar ' + 
+                (percent < 50 ? 'bg-danger' : percent < 100 ? 'bg-warning' : 'bg-success');
             
-            // Update progress indicator
+            // Update progress steps
+            const steps = document.querySelectorAll('.progress-step');
             if (percent >= 100) {
-                document.querySelectorAll('.progress-step').forEach(step => {
-                    step.classList.add('active');
-                });
+                steps.forEach(step => step.classList.add('active'));
             } else if (percent >= 75) {
-                document.querySelectorAll('.progress-step[data-step="4"]').forEach(step => {
-                    step.classList.remove('active');
+                steps.forEach((step, index) => {
+                    if (index < 5) step.classList.add('active');
+                    else step.classList.remove('active');
                 });
             } else if (percent >= 50) {
-                document.querySelectorAll('.progress-step[data-step="3"], .progress-step[data-step="4"]').forEach(step => {
-                    step.classList.remove('active');
+                steps.forEach((step, index) => {
+                    if (index < 4) step.classList.add('active');
+                    else step.classList.remove('active');
                 });
             } else if (percent >= 25) {
-                document.querySelectorAll('.progress-step[data-step="2"], .progress-step[data-step="3"], .progress-step[data-step="4"]').forEach(step => {
-                    step.classList.remove('active');
+                steps.forEach((step, index) => {
+                    if (index < 3) step.classList.add('active');
+                    else step.classList.remove('active');
+                });
+            } else {
+                steps.forEach((step, index) => {
+                    if (index < 2) step.classList.add('active');
+                    else step.classList.remove('active');
                 });
             }
         }
         
         // Price per acre calculation
-        const areaInput = document.querySelector('#{{ form.area.id_for_label }}');
-        const priceInput = document.querySelector('#{{ form.price.id_for_label }}');
+        const areaInput = document.getElementById('{{ form.area.id_for_label }}');
+        const priceInput = document.getElementById('{{ form.price.id_for_label }}');
         const pricePerAcre = document.getElementById('pricePerAcre');
         
         function calculatePricePerAcre() {
-            const area = parseFloat(areaInput.value) || 0;
-            const price = parseFloat(priceInput.value) || 0;
+            const area = parseFloat(areaInput?.value) || 0;
+            const price = parseFloat(priceInput?.value) || 0;
             
             if (area > 0 && price > 0) {
                 const perAcre = price / area;
                 pricePerAcre.textContent = `KES ${perAcre.toLocaleString('en-KE')} per acre`;
+                pricePerAcre.className = 'text-success';
             } else {
-                pricePerAcre.textContent = '';
+                pricePerAcre.textContent = 'Enter area and price to calculate';
+                pricePerAcre.className = 'text-muted';
             }
         }
         
         if (areaInput && priceInput && pricePerAcre) {
             areaInput.addEventListener('input', calculatePricePerAcre);
             priceInput.addEventListener('input', calculatePricePerAcre);
+            calculatePricePerAcre(); // Initial calculation
         }
         
-        // File upload preview
-        function setupFilePreview(inputId, previewId) {
-            const input = document.querySelector(`#${inputId}`);
-            const preview = document.getElementById(previewId);
+        // File upload preview for all document fields
+        const documentFields = [
+            { id: '{{ form.title_deed.id_for_label }}', previewId: 'titleDeedPreview' },
+            { id: '{{ form.soil_report.id_for_label }}', previewId: 'soilReportPreview' },
+            { id: '{{ form.official_search.id_for_label }}', previewId: 'officialSearchPreview' },
+            { id: '{{ form.seller_id.id_for_label }}', previewId: 'sellerIdPreview' },
+            { id: '{{ form.kra_pin.id_for_label }}', previewId: 'kraPinPreview' }
+        ];
+        
+        documentFields.forEach(field => {
+            const input = document.getElementById(field.id);
+            const preview = document.getElementById(field.previewId);
             
             if (input && preview) {
                 input.addEventListener('change', function() {
                     if (this.files.length > 0) {
                         const file = this.files[0];
+                        const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+                        
                         preview.innerHTML = `
                             <div class="d-flex align-items-center">
-                                <i class="fas fa-file me-2 text-success"></i>
+                                <i class="fas fa-file ${fileSize > 10 ? 'text-danger' : 'text-success'} me-2"></i>
                                 <div>
-                                    <div class="text-success">${file.name}</div>
-                                    <small class="text-muted">${(file.size / (1024 * 1024)).toFixed(2)} MB</small>
+                                    <div class="${fileSize > 10 ? 'text-danger' : 'text-success'}">
+                                        ${file.name}
+                                    </div>
+                                    <small class="text-muted">${fileSize} MB</small>
                                 </div>
                             </div>
                         `;
+                        
+                        // Show warning if file is too large
+                        if (file.size > 10 * 1024 * 1024) {
+                            const warning = document.createElement('small');
+                            warning.className = 'text-danger d-block mt-1';
+                            warning.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>File exceeds 10MB limit';
+                            preview.appendChild(warning);
+                        }
                     } else {
                         preview.textContent = 'No file selected';
                     }
                     updateFormCompletion();
                 });
             }
-        }
-        
-        setupFilePreview('{{ form.title_deed.id_for_label }}', 'titleDeedPreview');
-        setupFilePreview('{{ form.soil_report.id_for_label }}', 'soilReportPreview');
-        
-        // Form validation
-        const form = document.getElementById('plotForm');
-        const submitBtn = document.getElementById('submitBtn');
-        const submitText = document.getElementById('submitText');
-        const loadingSpinner = document.getElementById('loadingSpinner');
-        
-        // Track form changes for completion
-        form.addEventListener('input', updateFormCompletion);
-        form.addEventListener('change', updateFormCompletion);
-        
-        // Initial completion check
-        updateFormCompletion();
-        
-        // Form submission
-        form.addEventListener('submit', function(e) {
-            const requiredCheckboxes = ['accuracyCheck', 'documentCheck', 'termsCheck'];
-            let allChecked = true;
-            
-            requiredCheckboxes.forEach(id => {
-                const checkbox = document.getElementById(id);
-                if (checkbox && !checkbox.checked) {
-                    allChecked = false;
-                    checkbox.focus();
-                }
-            });
-            
-            if (!allChecked) {
-                e.preventDefault();
-                alert('Please agree to all terms and conditions');
-                return
-            
-            // Required file check
-            const titleDeedInput = document.querySelector('#{{ form.title_deed.id_for_label }}');
-            if (!titleDeedInput.files[0]) {
-                e.preventDefault();
-                alert('Please upload the title deed document');
-                titleDeedInput.focus();
-                return;
-            }
-            
-            // Show loading state
-            submitBtn.disabled = true;
-            submitText.textContent = 'Submitting...';
-            loadingSpinner.classList.remove('d-none');
         });
         
-        // Location suggestion
-        const locationSuggestBtn = document.getElementById('locationSuggest');
-        if (locationSuggestBtn) {
-            locationSuggestBtn.addEventListener('click', function() {
-                // Could implement location autocomplete here
-                alert('Location suggestions feature coming soon!');
-            });
-        }
-    });
-
-    // Image Upload Handling
-    const imageUploadArea = document.getElementById('imageUploadArea');
-    const imageInput = document.getElementById('{{ form.images.id_for_label }}');
-    const imagePreviews = document.getElementById('imagePreviews');
-    const imagePreviewsRow = document.getElementById('imagePreviewsRow');
-    const uploadCount = document.getElementById('uploadCount');
-    const uploadSize = document.getElementById('uploadSize');
-    const clearImagesBtn = document.getElementById('clearImagesBtn');
-    const captionInputs = document.getElementById('captionInputs');
-    const MAX_FILES = 5;
-    const MAX_SIZE = 5 * 1024 * 1024; // 5MB
-
-    // Click to upload
-    imageUploadArea.addEventListener('click', () => imageInput.click());
-
-    // Drag and drop
-    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-        imageUploadArea.addEventListener(eventName, preventDefaults, false);
-    });
-
-    function preventDefaults(e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-
-    ['dragenter', 'dragover'].forEach(eventName => {
-        imageUploadArea.addEventListener(eventName, highlight, false);
-    });
-
-    ['dragleave', 'drop'].forEach(eventName => {
-        imageUploadArea.addEventListener(eventName, unhighlight, false);
-    });
-
-    function highlight() {
-        imageUploadArea.style.borderColor = 'var(--info)';
-        imageUploadArea.style.background = 'rgba(54, 185, 204, 0.1)';
-    }
-
-    function unhighlight() {
-        imageUploadArea.style.borderColor = '';
-        imageUploadArea.style.background = '';
-    }
-
-    // Handle file drop
-    imageUploadArea.addEventListener('drop', handleDrop, false);
-    imageInput.addEventListener('change', handleFileSelect, false);
-
-    function handleDrop(e) {
-        const dt = e.dataTransfer;
-        const files = dt.files;
-        handleFiles(files);
-    }
-
-    function handleFileSelect(e) {
-        const files = e.target.files;
-        handleFiles(files);
-    }
-
-    let uploadedFiles = [];
-
-    function handleFiles(files) {
-        const validFiles = Array.from(files).filter(file => {
-            // Check file type
-            const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
-            if (!validTypes.includes(file.type)) {
-                alert(`${file.name} is not a valid image file. Please upload JPEG, PNG, or GIF files.`);
-                return false;
-            }
-            
-            // Check file size
-            if (file.size > MAX_SIZE) {
-                alert(`${file.name} exceeds 5MB size limit.`);
-                return false;
-            }
-            
-            return true;
-        });
-        
-        // Check total file count
-        if (uploadedFiles.length + validFiles.length > MAX_FILES) {
-            alert(`Maximum ${MAX_FILES} images allowed. You already have ${uploadedFiles.length} images.`);
-            return;
-        }
-        
-        // Add to uploaded files
-        uploadedFiles = uploadedFiles.concat(validFiles);
-        
-        // Update UI
-        updateUploadUI();
-        createPreviews(validFiles);
-    }
-
-    function updateUploadUI() {
-        const fileCount = uploadedFiles.length;
-        const totalSize = uploadedFiles.reduce((sum, file) => sum + file.size, 0);
-        
-        uploadCount.textContent = `${fileCount} file${fileCount !== 1 ? 's' : ''}`;
-        uploadCount.className = `badge ${fileCount > 0 ? 'bg-success' : 'bg-secondary'}`;
-        
-        if (fileCount > 0) {
-            uploadSize.textContent = `${(totalSize / (1024 * 1024)).toFixed(2)} MB / ${MAX_FILES} max`;
-        } else {
-            uploadSize.textContent = `Max ${MAX_FILES} files`;
-        }
-        
-        // Show/hide previews row
-        if (fileCount > 0) {
-            imagePreviewsRow.classList.remove('d-none');
-        } else {
-            imagePreviewsRow.classList.add('d-none');
-        }
-        
-        // Create caption inputs
-        updateCaptionInputs();
-    }
-
-    function createPreviews(files) {
-        files.forEach(file => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = function(e) {
-                const previewItem = document.createElement('div');
-                previewItem.className = 'image-preview-item';
-                previewItem.innerHTML = `
-                    <img src="${e.target.result}" class="preview-image" alt="${file.name}">
-                    <div class="preview-info">
-                        <small title="${file.name}">${file.name}</small>
-                        <small class="text-muted">${(file.size / 1024).toFixed(0)} KB</small>
-                    </div>
-                    <button type="button" class="remove-preview-btn" data-filename="${file.name}">
-                        <i class="fas fa-times"></i>
-                    </button>
-                `;
-                imagePreviews.appendChild(previewItem);
-                
-                // Add remove functionality
-                const removeBtn = previewItem.querySelector('.remove-preview-btn');
-                removeBtn.addEventListener('click', function() {
-                    const filename = this.getAttribute('data-filename');
-                    removeImage(filename);
-                    previewItem.remove();
-                });
-            };
-        });
-    }
-
-    function updateCaptionInputs() {
-        captionInputs.innerHTML = '';
-        uploadedFiles.forEach((file, index) => {
-            const inputDiv = document.createElement('div');
-            inputDiv.className = 'caption-input';
-            inputDiv.innerHTML = `
-                <input type="text" 
-                    class="form-control form-control-sm" 
-                    placeholder="Caption for ${file.name}"
-                    name="image_captions[]"
-                    maxlength="200">
-            `;
-            captionInputs.appendChild(inputDiv);
-        });
-    }
-
-    function removeImage(filename) {
-        uploadedFiles = uploadedFiles.filter(file => file.name !== filename);
-        updateUploadUI();
-        
-        // Also remove from file input
-        const dataTransfer = new DataTransfer();
-        uploadedFiles.forEach(file => dataTransfer.items.add(file));
-        imageInput.files = dataTransfer.files;
-    }
-
-    // Clear all images
-    clearImagesBtn.addEventListener('click', function() {
-        if (uploadedFiles.length > 0) {
-            if (confirm('Remove all uploaded images?')) {
-                uploadedFiles = [];
-                imagePreviews.innerHTML = '';
-                imageInput.value = '';
-                updateUploadUI();
-            }
-        }
-    });
-
-    // Add this JavaScript to add_plot.html
-    document.addEventListener('DOMContentLoaded', function() {
-        const imageInput = document.querySelector('#{{ form.images.id_for_label }}');
+        // Image upload handling
+        const imageInput = document.getElementById('{{ form.images.id_for_label }}');
         const filePreviewRow = document.getElementById('filePreviewRow');
         const fileList = document.getElementById('fileList');
         const fileCount = document.getElementById('fileCount');
+        const uploadSize = document.getElementById('uploadSize');
         
         if (imageInput) {
             imageInput.addEventListener('change', function(e) {
@@ -1703,7 +1599,15 @@
                     filePreviewRow.classList.remove('d-none');
                     fileCount.textContent = files.length;
                     
+                    let totalSize = 0;
+                    let hasOversized = false;
+                    
                     files.forEach((file, index) => {
+                        totalSize += file.size;
+                        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                        const isOversized = file.size > 5 * 1024 * 1024;
+                        if (isOversized) hasOversized = true;
+                        
                         const fileItem = document.createElement('div');
                         fileItem.className = 'file-item';
                         fileItem.innerHTML = `
@@ -1714,18 +1618,23 @@
                                         ${file.name.length > 30 ? file.name.substring(0, 27) + '...' : file.name}
                                     </div>
                                     <div class="file-size">
-                                        ${(file.size / (1024 * 1024)).toFixed(2)} MB
+                                        ${fileSizeMB} MB
                                     </div>
                                 </div>
                             </div>
                             <div class="file-status">
-                                ${file.size > 5 * 1024 * 1024 ? 
+                                ${isOversized ? 
                                     '<span class="badge bg-danger">Too large</span>' : 
                                     '<span class="badge bg-success">OK</span>'}
                             </div>
                         `;
                         fileList.appendChild(fileItem);
                     });
+                    
+                    // Update size display
+                    const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+                    uploadSize.textContent = `${totalSizeMB} MB / 5 max`;
+                    uploadSize.className = `badge ${hasOversized ? 'bg-danger' : 'bg-primary'} ms-1`;
                     
                     // Show warning if too many files
                     if (files.length > 5) {
@@ -1737,40 +1646,175 @@
                         `;
                         fileList.parentNode.insertBefore(warning, fileList.nextSibling);
                     }
+                    
+                    // Show warning for oversized files
+                    if (hasOversized) {
+                        const warning = document.createElement('div');
+                        warning.className = 'alert alert-danger mt-2';
+                        warning.innerHTML = `
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Some images exceed 5MB limit. Please resize or select different images.
+                        `;
+                        fileList.parentNode.insertBefore(warning, fileList.nextSibling);
+                    }
                 } else {
                     filePreviewRow.classList.add('d-none');
+                    uploadSize.textContent = 'Max 5 files';
+                    uploadSize.className = 'badge bg-secondary ms-1';
                 }
+                updateFormCompletion();
             });
         }
         
-        // Validate form before submission
+        // Track all form changes for completion
         const form = document.getElementById('plotForm');
         if (form) {
+            form.addEventListener('input', updateFormCompletion);
+            form.addEventListener('change', updateFormCompletion);
+            
+            // Form submission validation - SIMPLIFIED VERSION
             form.addEventListener('submit', function(e) {
-                const imageInput = document.querySelector('#{{ form.images.id_for_label }}');
-                if (imageInput && imageInput.files.length > 5) {
+                // Only do basic validation, let Django handle the rest
+                
+                // Check agreement checkboxes
+                const requiredCheckboxes = ['accuracyCheck', 'documentCheck', 'termsCheck'];
+                let allChecked = true;
+                
+                requiredCheckboxes.forEach(id => {
+                    const checkbox = document.getElementById(id);
+                    if (checkbox && !checkbox.checked) {
+                        allChecked = false;
+                        checkbox.focus();
+                    }
+                });
+                
+                if (!allChecked) {
                     e.preventDefault();
-                    alert('Maximum 5 images allowed. Please select fewer images.');
+                    alert('Please agree to all terms and conditions');
                     return false;
                 }
                 
-                // Check individual file sizes
-                if (imageInput) {
-                    const files = Array.from(imageInput.files);
-                    const oversized = files.filter(file => file.size > 5 * 1024 * 1024);
-                    if (oversized.length > 0) {
-                        e.preventDefault();
-                        alert(`Some images exceed 5MB limit. Please resize or select different images.`);
-                        return false;
+                // Show loading state
+                const submitBtn = document.getElementById('submitBtn');
+                const submitText = document.getElementById('submitText');
+                const loadingSpinner = document.getElementById('loadingSpinner');
+                
+                submitBtn.disabled = true;
+                submitText.textContent = 'Submitting...';
+                loadingSpinner.classList.remove('d-none');
+                
+                // Let the form submit normally
+                return true;
+            });
+        }
+        
+        // Initial completion check
+        updateFormCompletion();
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('plotForm');
+        
+        // Debug form data before submission
+        form.addEventListener('submit', function(e) {
+            const formData = new FormData(form);
+            const debugInfo = document.getElementById('debug-info');
+            
+            if (debugInfo) {
+                debugInfo.innerHTML = '';
+                for (let [key, value] of formData.entries()) {
+                    if (value instanceof File) {
+                        debugInfo.innerHTML += `${key}: ${value.name} (${value.size} bytes, ${value.type})\n`;
+                    } else {
+                        debugInfo.innerHTML += `${key}: ${value}\n`;
                     }
+                }
+                
+                // Uncomment the next line to see debug info before submission
+                // e.preventDefault();
+            }
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const imageInput = document.getElementById('{{ form.images.id_for_label }}');
+        
+        if (imageInput) {
+            imageInput.addEventListener('change', function(e) {
+                const files = Array.from(e.target.files);
+                const fileList = document.getElementById('fileList');
+                fileList.innerHTML = '';
+                
+                let hasInvalidFiles = false;
+                let fileCount = 0;
+                
+                files.forEach((file, index) => {
+                    if (index >= 5) return; // Skip files beyond limit
+                    
+                    fileCount++;
+                    const fileExtension = file.name.split('.').pop().toLowerCase();
+                    const validExtensions = ['jpg', 'jpeg', 'png', 'webp'];
+                    const isValidImage = validExtensions.includes(fileExtension);
+                    const isOversized = file.size > 5 * 1024 * 1024;
+                    
+                    if (!isValidImage || isOversized) {
+                        hasInvalidFiles = true;
+                    }
+                    
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'file-item';
+                    fileItem.innerHTML = `
+                        <div class="file-info">
+                            <i class="fas ${isValidImage ? 'fa-image' : 'fa-file'} 
+                            ${isValidImage ? 'text-success' : 'text-danger'} me-2"></i>
+                            <div>
+                                <div class="file-name" title="${file.name}">
+                                    ${file.name}
+                                </div>
+                                <div class="file-size">
+                                    ${(file.size / (1024 * 1024)).toFixed(2)} MB
+                                    ${!isValidImage ? ' - <span class="text-danger">Invalid type</span>' : ''}
+                                    ${isOversized ? ' - <span class="text-danger">Too large</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="file-status">
+                            ${isValidImage && !isOversized ? 
+                                '<span class="badge bg-success">OK</span>' : 
+                                '<span class="badge bg-danger">Invalid</span>'}
+                        </div>
+                    `;
+                    fileList.appendChild(fileItem);
+                });
+                
+                // Update counters
+                document.getElementById('fileCount').textContent = fileCount;
+                
+                if (hasInvalidFiles) {
+                    document.getElementById('uploadSize').className = 'badge bg-danger ms-1';
+                    document.getElementById('uploadSize').textContent = 'Contains invalid files';
+                    
+                    // Show warning message
+                    let warning = document.querySelector('.image-warning');
+                    if (!warning) {
+                        warning = document.createElement('div');
+                        warning.className = 'alert alert-danger mt-2 image-warning';
+                        warning.innerHTML = `
+                            <i class="fas fa-exclamation-triangle me-1"></i>
+                            Some files are invalid. Only JPEG, PNG, and WEBP images under 5MB are allowed.
+                        `;
+                        fileList.parentNode.insertBefore(warning, fileList.nextSibling);
+                    }
+                } else {
+                    document.getElementById('uploadSize').className = 'badge bg-success ms-1';
+                    document.getElementById('uploadSize').textContent = `${fileCount} files ready`;
+                    
+                    // Remove warning if it exists
+                    const warning = document.querySelector('.image-warning');
+                    if (warning) warning.remove();
                 }
             });
         }
-    });
-
-    // Form submission - ensure file input is updated
-    form.addEventListener('submit', function() {
-        // The files are already in uploadedFiles array, file input should be updated
     });
 </script>
 {% endblock %}

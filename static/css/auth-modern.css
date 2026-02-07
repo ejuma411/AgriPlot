@@ -1,0 +1,206 @@
+body{
+    margin:0;
+    font-family: 'Segoe UI', sans-serif;
+    background:#f5f7f6;
+}
+
+/* SPLIT LAYOUT */
+.auth-wrapper{
+    display:flex;
+    min-height:100vh;
+}
+
+/* LEFT SIDE */
+.auth-info{
+    flex:1;
+    background:linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.7)),
+               url("/static/images/farm-hero.jpg");
+    background-size:cover;
+    background-position:center;
+    color:white;
+    padding:70px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+}
+
+/* RIGHT SIDE */
+.auth-form{
+    flex:1;
+    background:white;
+    padding:60px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+}
+
+/* FORM */
+.auth-form form{
+    max-width:420px;
+}
+
+.form-group{
+    margin-bottom:18px;
+}
+
+.form-group label{
+    font-weight:600;
+    display:block;
+    margin-bottom:6px;
+}
+
+.form-group input{
+    width:100%;
+    height:45px;
+    padding:0 12px;
+    border-radius:8px;
+    border:1px solid #ddd;
+}
+
+/* BUTTON */
+.btn-auth{
+    width:100%;
+    height:48px;
+    background:#1f7a4d;
+    border:none;
+    border-radius:8px;
+    color:white;
+    font-weight:600;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+.btn-auth:hover{
+    background:#155c3a;
+}
+
+/* INFO LIST */
+.info-list{
+    margin-top:20px;
+}
+
+.info-list li{
+    margin-bottom:12px;
+}
+
+/* MOBILE */
+@media(max-width:900px){
+    .auth-wrapper{
+        flex-direction:column;
+    }
+}
+
+.auth-body{
+    background:#f5f7f6;
+    font-family:'Segoe UI', sans-serif;
+}
+
+/* PAGE */
+.role-onboarding{
+    max-width:1100px;
+    margin:auto;
+    padding:80px 20px;
+    text-align:center;
+}
+
+.role-header h1{
+    font-size:2.8rem;
+    margin-bottom:10px;
+}
+
+.role-header p{
+    color:#666;
+    margin-bottom:40px;
+}
+
+/* GRID */
+.role-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+    gap:30px;
+}
+
+/* CARD */
+.role-card{
+    background:white;
+    padding:40px 30px;
+    border-radius:18px;
+    box-shadow:0 6px 30px rgba(0,0,0,0.08);
+    transition:0.3s;
+    text-align:left;
+}
+
+.role-card:hover{
+    transform:translateY(-6px);
+    box-shadow:0 14px 40px rgba(0,0,0,0.12);
+}
+
+/* ICON */
+.role-icon{
+    font-size:40px;
+    margin-bottom:15px;
+    color:#1f7a4d;
+}
+
+/* DESCRIPTION */
+.role-desc{
+    color:#555;
+    margin-bottom:15px;
+}
+
+/* FEATURES */
+.role-features{
+    list-style:none;
+    padding:0;
+    margin-bottom:25px;
+}
+
+.role-features li{
+    margin-bottom:8px;
+    font-size:14px;
+}
+
+/* BUTTON */
+.role-btn{
+    display:block;
+    background:#1f7a4d;
+    color:white;
+    padding:14px;
+    border-radius:8px;
+    text-align:center;
+    text-decoration:none;
+    font-weight:600;
+    transition:0.3s;
+}
+
+.role-btn:hover{
+    background:#155c3a;
+    color:white;
+}
+
+/* Progress Bar */
+.progress-bar {
+    width: 100%;
+    background: #e0e0e0;
+    height: 6px;
+    border-radius: 3px;
+    margin-bottom: 20px;
+}
+.progress-bar .progress {
+    height: 100%;
+    background: #4CAF50;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+/* Fade animation for form groups */
+.fade-step {
+    opacity: 0;
+}
+
+/* Card zoom hover for role selection */
+.role-card:hover {
+    transform: scale(1.05);
+    transition: transform 0.3s ease-in-out;
+    cursor: pointer;
+}

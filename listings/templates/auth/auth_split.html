@@ -1,0 +1,29 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>AgriPlot</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="{% static 'css/auth-modern.css' %}">
+</head>
+
+<body>
+
+<div class="auth-wrapper">
+
+    <!-- LEFT PANEL -->
+    <div class="auth-info">
+        {% block info_panel %}{% endblock %}
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="auth-form">
+        {% block form_panel %}{% endblock %}
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!-- listings/templates/listings/seller_success.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seller Registration Successful</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Confetti animation */
+        @keyframes confetti {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(400px) rotate(360deg); opacity: 0; }
+        }
+        .confetti-piece {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #34d399; /* Tailwind green-400 */
+            animation: confetti 2s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-green-100 via-green-50 to-white min-h-screen flex items-center justify-center relative overflow-hidden">
+
+    <!-- Confetti effect -->
+    <div class="confetti-piece" style="left: 10%; animation-delay: 0s;"></div>
+    <div class="confetti-piece" style="left: 25%; animation-delay: 0.5s;"></div>
+    <div class="confetti-piece" style="left: 40%; animation-delay: 1s;"></div>
+    <div class="confetti-piece" style="left: 55%; animation-delay: 1.5s;"></div>
+    <div class="confetti-piece" style="left: 70%; animation-delay: 2s;"></div>
+    <div class="confetti-piece" style="left: 85%; animation-delay: 2.5s;"></div>
+
+    <!-- Success card -->
+    <div class="bg-white shadow-2xl rounded-2xl p-10 max-w-lg text-center animate-fadeIn">
+        <!-- Success icon -->
+        <div class="mx-auto w-20 h-20 flex items-center justify-center bg-green-100 rounded-full">
+            <svg class="w-12 h-12 text-green-500" fill="none" stroke="currentColor" stroke-width="2"
+                viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M5 13l4 4L19 7"></path>
+            </svg>
+        </div>
+
+        <!-- Heading -->
+        <h1 class="mt-6 text-3xl font-bold text-gray-800">Registration Successful!</h1>
+
+        <!-- Message -->
+        <p class="mt-4 text-gray-600">
+            Congratulations! You are now registered as a seller. You can start listing your products and manage your account.
+        </p>
+
+        <!-- Buttons -->
+        <div class="mt-6 flex justify-center gap-4">
+            <a href="{% url 'listings:home' %}" 
+               class="px-6 py-3 bg-green-500 text-white font-semibold rounded-lg shadow hover:bg-green-600 transition">
+                Go to Homepage
+            </a>
+            <a href="{% url 'listings:staff_dashboard' %}" 
+               class="px-6 py-3 bg-white border border-green-500 text-green-500 font-semibold rounded-lg shadow hover:bg-green-50 transition">
+                Go to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Fade-in animation -->
+    <script>
+        document.querySelector('.animate-fadeIn').classList.add('opacity-0');
+        window.addEventListener('load', () => {
+            document.querySelector('.animate-fadeIn').classList.remove('opacity-0');
+            document.querySelector('.animate-fadeIn').classList.add('transition-opacity', 'duration-700', 'opacity-100');
+        });
+    </script>
+</body>
+</html>
