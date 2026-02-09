@@ -1,0 +1,1308 @@
+{% extends "base.html" %}
+{% load static %}
+{% load plot_extras %}
+
+{% block title %}Messages — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+    <!-- Sidebar Navigation -->
+    <aside class="dashboard-sidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-leaf"></i>
+            <span>AgriPlot</span>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{% url 'listings:staff_dashboard' %}" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{% url 'listings:my_plots' %}" class="nav-item">
+                <i class="fas fa-list"></i>
+                <span>My Plots</span>
+            </a>
+            <a href="{% url 'listings:add_plot' %}" class="nav-item">
+                <i class="fas fa-plus-circle"></i>
+                <span>Add New Plot</span>
+            </a>
+            <a href="{% url 'listings:buyer_interests' %}" class="nav-item active">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+            </a>
+            <a href="{% url 'listings:profile_management' %}" class="nav-item">
+                <i class="fas fa-user-circle"></i>
+                <span>Profile</span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ request.user.get_full_name|first|upper }}</div>
+                <div class="user-details">
+                    <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="user-role">{{ profile_type }}</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="dashboard-main">
+        <!-- Top Header Bar -->
+        <div class="dashboard-topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">Messages</h1>
+                <p class="page-subtitle">Manage buyer inquiries and conversations</p>
+            </div>
+            <div class="topbar-right">
+                <div class="messages-stats">
+                    <span class="stat-badge unread">
+                        <i class="fas fa-envelope me-1"></i>
+                        <strong>{{ unread_count|default:0 }}</strong> Unread
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="dashboard-content">
+            <div class="content-left">
+                <!-- Filter and Search Card -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-filter me-2"></i>Filters & Search
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="filter-row">
+                            <div class="filter-group">
+                                <label class="filter-label">Status</label>
+                                <select class="form-select" id="filterStatus">
+                                    <option value="">All Messages</option>
+                                    <option value="unread">Unread</option>
+                                    <option value="read">Read</option>
+                                    <option value="replied">Replied</option>
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group">
+                                <label class="filter-label">Plot</label>
+                                <select class="form-select" id="filterPlot">
+                                    <option value="">All Plots</option>
+                                    {% for plot in available_plots %}
+                                    <option value="{{ plot.id }}">{{ plot.title }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="filter-group search-group">
+                                <label class="filter-label">Search</label>
+                                <input type="text" class="form-control" id="searchInput" placeholder="Search by name or message...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Messages List -->
+                <div class="messages-container">
+                    {% if buyer_interests %}
+                        {% for interest in buyer_interests %}
+                        <div class="message-card {% if not interest.is_read %}unread{% endif %}" data-interest-id="{{ interest.id }}" data-phone="{{ interest.buyer_phone }}">
+                            <div class="message-header">
+                                <div class="message-sender">
+                                    <div class="sender-avatar">
+                                        {{ interest.buyer_name|first|upper }}
+                                    </div>
+                                    <div class="sender-info">
+                                        <h6 class="sender-name">{{ interest.buyer_name }}</h6>
+                                        <p class="sender-email text-muted">{{ interest.buyer_email }}</p>
+                                    </div>
+                                </div>
+                                <div class="message-meta">
+                                    <span class="message-date" title="{{ interest.created_at }}">
+                                        {{ interest.created_at|date:"M d, Y" }}
+                                    </span>
+                                    {% if not interest.is_read %}
+                                    <span class="badge bg-primary ms-2">New</span>
+                                    {% endif %}
+                                    {% if interest.is_replied %}
+                                    <span class="badge bg-success ms-1">Replied</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="message-content">
+                                <div class="message-plot">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    <strong>Plot:</strong> {{ interest.plot.title }}
+                                </div>
+                                <div class="message-text">
+                                    {{ interest.message|truncatewords:50 }}
+                                </div>
+                            </div>
+
+                            <div class="message-footer">
+                                <div class="message-actions">
+                                    <button class="btn-action" onclick="viewMessage({{ interest.id }})">
+                                        <i class="fas fa-eye me-1"></i>View
+                                    </button>
+                                    <button class="btn-action" onclick="replyMessage({{ interest.id }})">
+                                        <i class="fas fa-reply me-1"></i>Reply
+                                    </button>
+                                    <button class="btn-action delete" onclick="deleteMessage({{ interest.id }})">
+                                        <i class="fas fa-trash me-1"></i>Delete
+                                    </button>
+                                </div>
+                                <div class="message-contact">
+                                    <a href="tel:{{ interest.buyer_phone }}" class="btn-contact">
+                                        <i class="fas fa-phone"></i>
+                                    </a>
+                                    <a href="mailto:{{ interest.buyer_email }}" class="btn-contact">
+                                        <i class="fas fa-envelope"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Pagination -->
+                        {% if is_paginated %}
+                        <nav class="pagination-nav">
+                            <ul class="pagination">
+                                {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                                </li>
+                                {% endif %}
+
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                    {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                    </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                                </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-inbox"></i>
+                            </div>
+                            <h5 class="empty-title">No Messages</h5>
+                            <p class="empty-text">You don't have any buyer inquiries yet. When buyers are interested in your plots, their messages will appear here.</p>
+                            <a href="{% url 'listings:add_plot' %}" class="btn btn-primary mt-3">
+                                <i class="fas fa-plus me-2"></i>Add a Plot
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Right Sidebar - Statistics -->
+            <div class="content-right">
+                <!-- Messages Statistics -->
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-chart-pie me-2"></i>Statistics
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="stat-card">
+                            <div class="stat-icon bg-primary">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="stat-content">
+                                <p class="stat-label">Total Messages</p>
+                                <p class="stat-value">{{ total_messages|default:0 }}</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon bg-danger">
+                                <i class="fas fa-exclamation-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <p class="stat-label">Unread</p>
+                                <p class="stat-value">{{ unread_count|default:0 }}</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon bg-success">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-content">
+                                <p class="stat-label">Replied</p>
+                                <p class="stat-value">{{ replied_count|default:0 }}</p>
+                            </div>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon bg-info">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-content">
+                                <p class="stat-label">Avg Response Time</p>
+                                <p class="stat-value">{{ avg_response_time|default:"2h" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Popular Plots -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-star me-2"></i>Most Inquired Plots
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        {% if popular_plots %}
+                            {% for plot in popular_plots %}
+                            <div class="popular-plot-item">
+                                <div class="plot-rank">{{ forloop.counter }}</div>
+                                <div class="plot-details">
+                                    <h6 class="plot-title">{{ plot.title|truncatewords:5 }}</h6>
+                                    <p class="plot-inquiries text-muted">
+                                        <i class="fas fa-envelope me-1"></i>
+                                        {{ plot.inquiry_count|default:0 }} inquiries
+                                    </p>
+                                </div>
+                                <a href="{% url 'listings:my_plots' %}" class="btn btn-sm btn-outline-primary">View</a>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center py-3">No plots with inquiries yet</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card mt-4">
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-bolt me-2"></i>Quick Actions
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <a href="{% url 'listings:add_plot' %}" class="quick-action-btn">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Add New Plot</span>
+                        </a>
+                        <a href="{% url 'listings:my_plots' %}" class="quick-action-btn">
+                            <i class="fas fa-list"></i>
+                            <span>View All Plots</span>
+                        </a>
+                        <a href="{% url 'listings:profile_management' %}" class="quick-action-btn">
+                            <i class="fas fa-user-cog"></i>
+                            <span>Update Profile</span>
+                        </a>
+                        <a href="{% url 'listings:staff_dashboard' %}" class="quick-action-btn">
+                            <i class="fas fa-chart-line"></i>
+                            <span>View Analytics</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Message Detail Modal -->
+<div class="modal fade" id="messageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-envelope me-2"></i>Message Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="messageModalBody">
+                <!-- Message content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="replyFromModal()">
+                    <i class="fas fa-reply me-2"></i>Reply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reply Modal -->
+<div class="modal fade" id="replyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-reply me-2"></i>Send Reply
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Contact Information</label>
+                    <div id="replyContactInfo" class="bg-light p-3 rounded mb-3"></div>
+                    <label class="form-label">Your Reply</label>
+                    <textarea id="replyMessage" class="form-control" rows="6" placeholder="Type your reply here..."></textarea>
+                    <small class="text-muted">Be professional and helpful in your response</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="copyReplyToClipboard()">
+                    <i class="fas fa-copy me-2"></i>Copy Message
+                </button>
+                <a href="#" id="sendViaEmail" class="btn btn-info" target="_blank">
+                    <i class="fas fa-envelope me-2"></i>Send via Email
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Root Variables */
+    :root {
+        --primary: #069132;
+        --primary-light: #e3ebf7;
+        --success: #1cc88a;
+        --success-light: #d4edda;
+        --warning: #f6c23e;
+        --warning-light: #fff3cd;
+        --danger: #e74a3b;
+        --danger-light: #f8d7da;
+        --info: #36b9cc;
+        --info-light: #d1ecf1;
+        --gray-50: #f9fafb;
+        --gray-100: #f8f9fa;
+        --gray-200: #e9ecef;
+        --gray-300: #dee2e6;
+        --gray-600: #6c757d;
+        --gray-700: #5a5c69;
+        --gray-800: #0e7833;
+        --shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        --shadow-lg: 0 0.35rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --radius: 0.75rem;
+        --transition: all 0.2s ease;
+    }
+
+    /* Dashboard Layout */
+    .dashboard-wrapper {
+        display: flex;
+        height: 100vh;
+        background: var(--gray-100);
+    }
+
+    /* Sidebar */
+    .dashboard-sidebar {
+        width: 260px;
+        background: white;
+        border-right: 1px solid var(--gray-300);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        position: fixed;
+        height: 100vh;
+        left: 0;
+        top: 0;
+        z-index: 1000;
+    }
+
+    .sidebar-brand {
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 700;
+        font-size: 1.3rem;
+        color: var(--primary);
+        border-bottom: 2px solid var(--gray-200);
+    }
+
+    .sidebar-brand i {
+        font-size: 1.5rem;
+    }
+
+    .sidebar-nav {
+        flex: 1;
+        padding: 1rem 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .nav-item {
+        padding: 0.875rem 1.5rem;
+        color: var(--gray-700);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: var(--transition);
+        border-left: 3px solid transparent;
+    }
+
+    .nav-item:hover {
+        background: var(--gray-100);
+        color: var(--primary);
+    }
+
+    .nav-item.active {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-left-color: var(--primary);
+        font-weight: 600;
+    }
+
+    .nav-item i {
+        width: 20px;
+        text-align: center;
+    }
+
+    .sidebar-footer {
+        padding: 1.5rem;
+        border-top: 1px solid var(--gray-300);
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .user-details p {
+        margin: 0;
+        font-size: 0.85rem;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+
+    .user-role {
+        color: var(--gray-600);
+    }
+
+    /* Main Content */
+    .dashboard-main {
+        flex: 1;
+        margin-left: 260px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dashboard-topbar {
+        background: white;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--gray-300);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--gray-800);
+    }
+
+    .page-subtitle {
+        margin: 0.25rem 0 0 0;
+        color: var(--gray-600);
+        font-size: 0.95rem;
+    }
+
+    .messages-stats {
+        display: flex;
+        gap: 1rem;
+    }
+
+    .stat-badge {
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-badge.unread {
+        background: var(--danger-light);
+        color: var(--danger);
+    }
+
+    /* Dashboard Content */
+    .dashboard-content {
+        padding: 2rem;
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 2rem;
+        flex: 1;
+        width: 100%;
+    }
+
+    .content-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .content-right {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    /* Card */
+    .card {
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 2px solid var(--gray-200);
+    }
+
+    .card-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Filters */
+    .filter-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .filter-label {
+        font-weight: 500;
+        color: var(--gray-700);
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-select, .form-control {
+        border-radius: 6px;
+        border: 2px solid var(--gray-300);
+        padding: 0.75rem;
+        transition: var(--transition);
+    }
+
+    .form-select:focus, .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.25rem rgba(6, 145, 50, 0.15);
+    }
+
+    .search-group {
+        grid-column: 1 / -1;
+    }
+
+    /* Messages Container */
+    .messages-container {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    /* Message Card */
+    .message-card {
+        background: white;
+        border-radius: 10px;
+        border: 2px solid var(--gray-200);
+        padding: 1.5rem;
+        transition: var(--transition);
+        cursor: pointer;
+    }
+
+    .message-card:hover {
+        border-color: var(--primary);
+        box-shadow: var(--shadow);
+    }
+
+    .message-card.unread {
+        background: var(--primary-light);
+        border-color: var(--primary);
+    }
+
+    .message-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .message-sender {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+        flex: 1;
+    }
+
+    .sender-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+    }
+
+    .sender-info {
+        flex: 1;
+    }
+
+    .sender-name {
+        margin: 0 0 0.25rem 0;
+        color: var(--gray-800);
+        font-weight: 600;
+    }
+
+    .sender-email {
+        margin: 0;
+        font-size: 0.85rem;
+    }
+
+    .message-meta {
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .message-date {
+        font-size: 0.85rem;
+        color: var(--gray-600);
+    }
+
+    /* Message Content */
+    .message-content {
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .message-plot {
+        font-size: 0.9rem;
+        color: var(--primary);
+        font-weight: 500;
+        margin-bottom: 0.75rem;
+    }
+
+    .message-text {
+        color: var(--gray-700);
+        line-height: 1.6;
+        font-size: 0.95rem;
+    }
+
+    /* Message Footer */
+    .message-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .message-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .btn-action {
+        background: none;
+        border: 1px solid var(--gray-300);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        color: var(--gray-700);
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: var(--transition);
+    }
+
+    .btn-action:hover {
+        background: var(--gray-100);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .btn-action.delete:hover {
+        border-color: var(--danger);
+        color: var(--danger);
+        background: var(--danger-light);
+    }
+
+    .message-contact {
+        display: flex;
+        gap: 0.75rem;
+    }
+
+    .btn-contact {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--info);
+        color: white;
+        text-decoration: none;
+        transition: var(--transition);
+    }
+
+    .btn-contact:hover {
+        background: var(--info);
+        transform: scale(1.1);
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem 2rem;
+        background: white;
+        border-radius: var(--radius);
+        border: 2px dashed var(--gray-300);
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+        color: var(--gray-300);
+        margin-bottom: 1rem;
+    }
+
+    .empty-title {
+        color: var(--gray-800);
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-text {
+        color: var(--gray-600);
+        margin-bottom: 1rem;
+    }
+
+    /* Pagination */
+    .pagination-nav {
+        margin-top: 2rem;
+    }
+
+    .pagination {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .page-item {
+        margin: 0;
+    }
+
+    .page-link {
+        padding: 0.5rem 0.75rem;
+        border: 1px solid var(--gray-300);
+        border-radius: 6px;
+        color: var(--gray-700);
+        text-decoration: none;
+        transition: var(--transition);
+    }
+
+    .page-link:hover {
+        background: var(--gray-100);
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .page-item.active .page-link {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* Right Sidebar */
+    .stat-card {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--gray-50);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        align-items: center;
+    }
+
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+
+    .stat-icon.bg-primary {
+        background: var(--primary);
+    }
+
+    .stat-icon.bg-success {
+        background: var(--success);
+    }
+
+    .stat-icon.bg-danger {
+        background: var(--danger);
+    }
+
+    .stat-icon.bg-info {
+        background: var(--info);
+    }
+
+    .stat-label {
+        margin: 0;
+        color: var(--gray-600);
+        font-size: 0.85rem;
+    }
+
+    .stat-value {
+        margin: 0.25rem 0 0 0;
+        color: var(--gray-800);
+        font-weight: 700;
+        font-size: 1.5rem;
+    }
+
+    /* Popular Plots */
+    .popular-plot-item {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 1rem;
+        background: var(--gray-50);
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+    }
+
+    .plot-rank {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    .plot-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .plot-title {
+        margin: 0 0 0.25rem 0;
+        color: var(--gray-800);
+        font-size: 0.9rem;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .plot-inquiries {
+        margin: 0;
+        font-size: 0.8rem;
+    }
+
+    /* Quick Actions */
+    .quick-action-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        background: var(--gray-50);
+        border: 1px solid var(--gray-300);
+        border-radius: 6px;
+        color: var(--gray-700);
+        text-decoration: none;
+        transition: var(--transition);
+        margin-bottom: 0.5rem;
+    }
+
+    .quick-action-btn:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .quick-action-btn i {
+        width: 20px;
+        text-align: center;
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: var(--transition);
+        border: 1px solid transparent;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #0b9810;
+    }
+
+    .btn-secondary {
+        background: var(--gray-600);
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: var(--gray-700);
+    }
+
+    .btn-outline-primary {
+        border-color: var(--primary);
+        color: var(--primary);
+    }
+
+    .btn-outline-primary:hover {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-sm {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    /* Modal */
+    .modal-header {
+        border-bottom: 2px solid var(--gray-200);
+    }
+
+    .modal-title {
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+
+    .modal-body {
+        padding: 1.5rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: var(--gray-700);
+        margin-bottom: 0.5rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .dashboard-content {
+            grid-template-columns: 1fr;
+        }
+
+        .content-right {
+            order: -1;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-wrapper {
+            flex-direction: column;
+        }
+
+        .dashboard-sidebar {
+            width: 100%;
+            height: auto;
+            position: static;
+        }
+
+        .dashboard-main {
+            margin-left: 0;
+        }
+
+        .sidebar-nav {
+            flex-direction: row;
+            overflow-x: auto;
+        }
+
+        .nav-item {
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .sidebar-footer {
+            display: none;
+        }
+
+        .dashboard-topbar {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+        }
+
+        .messages-stats {
+            width: 100%;
+        }
+
+        .filter-row {
+            grid-template-columns: 1fr;
+        }
+
+        .search-group {
+            grid-column: 1;
+        }
+
+        .message-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .message-meta {
+            text-align: left;
+            width: 100%;
+        }
+
+        .message-footer {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .message-actions {
+            flex-wrap: wrap;
+        }
+
+        .message-contact {
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .dashboard-content {
+            padding: 1rem;
+        }
+
+        .page-title {
+            font-size: 1.3rem;
+        }
+
+        .filter-row {
+            grid-template-columns: 1fr;
+        }
+
+        .message-card {
+            padding: 1rem;
+        }
+
+        .message-sender {
+            gap: 0.75rem;
+        }
+
+        .sender-avatar {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
+        }
+
+        .btn-action {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.75rem;
+        }
+    }
+</style>
+
+<script>
+    // Filter functionality
+    document.getElementById('filterStatus').addEventListener('change', function() {
+        filterMessages();
+    });
+
+    document.getElementById('filterPlot').addEventListener('change', function() {
+        filterMessages();
+    });
+
+    document.getElementById('searchInput').addEventListener('input', function() {
+        filterMessages();
+    });
+
+    function filterMessages() {
+        const status = document.getElementById('filterStatus').value;
+        const plot = document.getElementById('filterPlot').value;
+        const search = document.getElementById('searchInput').value.toLowerCase();
+
+        const messages = document.querySelectorAll('.message-card');
+        messages.forEach(msg => {
+            let show = true;
+
+            if (status) {
+                const badges = msg.querySelectorAll('.badge');
+                let hasStatus = false;
+                badges.forEach(badge => {
+                    if (status === 'unread' && badge.textContent === 'New') hasStatus = true;
+                    if (status === 'replied' && badge.textContent === 'Replied') hasStatus = true;
+                });
+                if (status === 'read' && !msg.classList.contains('unread')) hasStatus = true;
+                show = show && hasStatus;
+            }
+
+            if (plot) {
+                const plotText = msg.querySelector('.message-plot').textContent;
+                show = show && plotText.includes(plot);
+            }
+
+            if (search) {
+                const msgText = msg.textContent.toLowerCase();
+                show = show && msgText.includes(search);
+            }
+
+            msg.style.display = show ? '' : 'none';
+        });
+    }
+
+    function viewMessage(id) {
+        // Load message details
+        const messageModal = new bootstrap.Modal(document.getElementById('messageModal'));
+        messageModal.show();
+    }
+
+    function replyMessage(id) {
+        // Get message card data
+        const messageCard = document.querySelector(`[data-interest-id="${id}"]`);
+        if (messageCard) {
+            const senderName = messageCard.querySelector('.sender-name').textContent;
+            const senderEmail = messageCard.querySelector('.sender-email').textContent;
+            const senderPhone = messageCard.dataset.phone || 'N/A';
+            const plotTitle = messageCard.querySelector('.message-plot').textContent.replace('Plot: ', '');
+            
+            // Populate reply modal
+            document.getElementById('replyContactInfo').innerHTML = `
+                <p><strong>${senderName}</strong></p>
+                <p>Email: <a href="mailto:${senderEmail}">${senderEmail}</a></p>
+                <p>Phone: <a href="tel:${senderPhone}">${senderPhone}</a></p>
+                <p>Plot: ${plotTitle}</p>
+            `;
+            
+            // Setup email link
+            const emailLink = document.getElementById('sendViaEmail');
+            emailLink.href = `mailto:${senderEmail}?subject=Re: Your inquiry about ${plotTitle}`;
+            
+            const replyModal = new bootstrap.Modal(document.getElementById('replyModal'));
+            replyModal.show();
+        }
+    }
+
+    function deleteMessage(id) {
+        if (confirm('Are you sure you want to delete this message?')) {
+            // Find and remove the message card
+            const messageCard = document.querySelector(`[data-interest-id="${id}"]`);
+            if (messageCard) {
+                messageCard.style.opacity = '0.5';
+                messageCard.style.pointerEvents = 'none';
+                
+                // Show confirmation
+                alert('Message marked for deletion. This feature requires backend implementation.');
+                messageCard.style.opacity = '1';
+                messageCard.style.pointerEvents = 'auto';
+            }
+        }
+    }
+
+    function copyReplyToClipboard() {
+        const replyText = document.getElementById('replyMessage').value;
+        if (replyText.trim() === '') {
+            alert('Please type a message first');
+            return;
+        }
+        
+        navigator.clipboard.writeText(replyText).then(() => {
+            alert('Message copied to clipboard. You can paste it in your email client.');
+        }).catch(() => {
+            alert('Failed to copy. Please try again.');
+        });
+    }
+
+    function replyFromModal() {
+        const replyText = document.getElementById('replyMessage').value;
+        if (replyText.trim() === '') {
+            alert('Please type a message');
+            return;
+        }
+        copyReplyToClipboard();
+    }
+</script>
+{% endblock %}

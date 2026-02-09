@@ -1,0 +1,118 @@
+{% load static %}
+<div class="market-grid">
+
+    {% for plot in featured_plots %}
+    <div class="market-card">
+
+        <!-- IMAGE -->
+        <div class="market-image plot-gallery">
+            {% if plot.images_list %}
+                {% for img in plot.images_list.all %}
+                    <img src="{{ img.image.url }}" class="{% if forloop.first %}active{% endif %}" 
+                         alt="{{ plot.title }} image {{ forloop.counter }}">
+                {% endfor %}
+            {% else %}
+                <img src="{% static 'images/placeholder-plot.jpg' %}" alt="No image available">
+            {% endif %}
+
+            <!-- PRICE -->
+            <span class="price-tag">
+                KSh {{ plot.price|floatformat:0 }}
+            </span>
+
+            <!-- VERIFIED BADGE -->
+            {% if plot.verification_status.status == "verified" %}
+            <span class="verified-badge">✔ Verified</span>
+            {% endif %}
+        </div>
+
+
+        <!-- CONTENT -->
+        <div class="market-body">
+
+            <h3 class="plot-title">{{ plot.title }}</h3>
+
+            <p class="market-location">
+                <i class="fas fa-map-marker-alt"></i>
+                {{ plot.location.county }}
+            </p>
+
+            <!-- QUICK SPECS -->
+            <div class="plot-specs">
+
+                {% if plot.soil_type %}
+                <span class="spec-chip">{{ plot.soil_type }}</span>
+                {% endif %}
+
+                {% if plot.crop_suitability %}
+                <span class="spec-chip">{{ plot.crop_suitability }}</span>
+                {% endif %}
+
+                {% if plot.size %}
+                <span class="spec-chip">{{ plot.size }} Acres</span>
+                {% endif %}
+
+            </div>
+
+            <!-- SELLER -->
+            <div class="seller-mini">
+
+                <div class="seller-avatar">
+                    {{ plot.broker.user.username|first|upper }}
+                </div>
+
+                <div>
+                    <strong>{{ plot.broker.user.username }}</strong>
+                    <small>Licensed Broker</small>
+                </div>
+
+            </div>
+
+            <!-- ACTIONS -->
+            <div class="card-actions">
+
+                <a href="{% url 'listings:plot_detail' plot.id %}" class="btn-view">
+                    View Plot
+                </a>
+
+                {% if plot.broker.phone_number %}
+                <a href="https://wa.me/{{ plot.broker.phone_number|cut:'+' }}"
+                class="btn-contact"
+                target="_blank">
+                WhatsApp
+                </a>
+                {% endif %}
+
+            </div>
+
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <h4>No Verified Plots Found</h4>
+        <p>Try adjusting your filters or check again later.</p>
+    </div>
+    {% endfor %}
+
+</div>
+
+<!-- PAGINATION CONTROLS -->
+{% if featured_plots.has_other_pages %}
+<div class="pagination">
+    {% if featured_plots.has_previous %}
+        <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.previous_page_number }}" class="ajax-page">&laquo; Previous</a>
+    {% else %}
+        <span class="disabled">&laquo; Previous</span>
+    {% endif %}
+
+    <span class="current">
+        Page {{ featured_plots.number }} of {{ featured_plots.paginator.num_pages }}
+    </span>
+
+    {% if featured_plots.has_next %}
+        <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.next_page_number }}" class="ajax-page">Next &raquo;</a>
+    {% else %}
+        <span class="disabled">Next &raquo;</span>
+    {% endif %}
+</div>
+{% endif %}

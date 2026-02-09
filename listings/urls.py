@@ -50,4 +50,7 @@ urlpatterns = [
     # API endpoints
     path('api/request-contact/<int:plot_id>/', views.request_contact_details, name='request_contact'),
     path('api/log-phone-view/<int:plot_id>/', views.log_phone_view, name='log_phone_view'),
+    path('api/plot-reactions/<int:plot_id>/toggle/', views.toggle_plot_reaction, name='toggle_reaction'),
+    path('api/plot-reactions/<int:plot_id>/get/', views.get_plot_reactions, name='get_reactions'),
+    path('ajax/search/', views.ajax_search, name='ajax_search'),
 ]

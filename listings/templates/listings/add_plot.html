@@ -5,97 +5,112 @@
 {% block title %}Add Plot — AgriPlot Connect{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Page Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="dashboard-header">
-                <div class="dashboard-header-content">
-                    <div class="dashboard-title">
-                        <h2><i class="fas fa-plus-circle me-2"></i>Add New Plot</h2>
-                        <p class="dashboard-subtitle">Complete all sections to list your agricultural plot</p>
-                    </div>
-                    <div class="dashboard-stats-summary">
-                        <div class="stat-badge">
-                            <span class="stat-badge-value">5</span>  <!-- Updated from 4 to 5 -->
-                            <span class="stat-badge-label">Sections</span>
-                        </div>
-                        <div class="stat-badge">
-                            <span class="stat-badge-value text-danger">*</span>
-                            <span class="stat-badge-label">Required</span>
-                        </div>
-                        <div class="stat-badge">
-                            <span class="stat-badge-value"><i class="fas fa-clock"></i></span>
-                            <span class="stat-badge-label">24-48h Review</span>
-                        </div>
-                    </div>
+<div class="dashboard-wrapper">
+    <!-- Sidebar Navigation -->
+    <aside class="dashboard-sidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-leaf"></i>
+            <span>AgriPlot</span>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{% url 'listings:staff_dashboard' %}" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{% url 'listings:my_plots' %}" class="nav-item">
+                <i class="fas fa-list"></i>
+                <span>My Plots</span>
+            </a>
+            <a href="{% url 'listings:add_plot' %}" class="nav-item active">
+                <i class="fas fa-plus-circle"></i>
+                <span>Add New Plot</span>
+            </a>
+            <a href="{% url 'listings:buyer_interests' %}" class="nav-item">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+            </a>
+            <a href="{% url 'listings:profile_management' %}" class="nav-item">
+                <i class="fas fa-user-circle"></i>
+                <span>Profile</span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ request.user.get_full_name|first|upper }}</div>
+                <div class="user-details">
+                    <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="user-role">{{ profile_type }}</p>
                 </div>
             </div>
         </div>
-    </div>
+    </aside>
 
-    <!-- Progress Indicator -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="progress-indicator">
-                <div class="progress-step active" data-step="1">
-                    <span class="step-number">1</span>
-                    <span class="step-label">Basic Info</span>
-                </div>
-                <div class="progress-step" data-step="2">
-                    <span class="step-number">2</span>
-                    <span class="step-label">Agri Details</span>
-                </div>
-                <div class="progress-step" data-step="3">
-                    <span class="step-number">3</span>
-                    <span class="step-label">Plot Docs</span>
-                </div>
-                <div class="progress-step" data-step="4">
-                    <span class="step-number">4</span>
-                    <span class="step-label">Verification Docs</span>  <!-- New step -->
-                </div>
-                <div class="progress-step" data-step="5">
-                    <span class="step-number">5</span>
-                    <span class="step-label">Agreement</span>
-                </div>
+    <!-- Main Content Area -->
+    <main class="dashboard-main">
+        <!-- Top Header Bar -->
+        <div class="dashboard-topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">Add New Plot</h1>
+                <p class="page-subtitle">Complete all sections to list your agricultural plot</p>
             </div>
         </div>
-    </div>
 
-    <!-- Messages Display -->
-    {% if messages %}
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="messages-table">
-                {% for message in messages %}
-                <div class="alert alert-dismissible fade show 
-                    {% if message.tags == 'error' %}alert-danger
-                    {% elif message.tags == 'success' %}alert-success
-                    {% elif message.tags == 'warning' %}alert-warning
-                    {% else %}alert-info{% endif %}" role="alert">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-{% if message.tags == 'error' %}exclamation-circle{% elif message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-                            <span>{{ message }}</span>
+        <!-- Main Content Grid -->
+        <div class="dashboard-content">
+            <div class="content-left">
+                <!-- Progress Indicator -->
+                <div class="card mb-4">
+                    <div class="card-body p-0">
+                        <div class="progress-indicator">
+                            <div class="progress-step active" data-step="1">
+                                <span class="step-number">1</span>
+                                <span class="step-label">Basic Info</span>
+                            </div>
+                            <div class="progress-step" data-step="2">
+                                <span class="step-number">2</span>
+                                <span class="step-label">Agri Details</span>
+                            </div>
+                            <div class="progress-step" data-step="3">
+                                <span class="step-number">3</span>
+                                <span class="step-label">Plot Docs</span>
+                            </div>
+                            <div class="progress-step" data-step="4">
+                                <span class="step-number">4</span>
+                                <span class="step-label">Verification Docs</span>
+                            </div>
+                            <div class="progress-step" data-step="5">
+                                <span class="step-number">5</span>
+                                <span class="step-label">Agreement</span>
+                            </div>
                         </div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 </div>
-                {% endfor %}
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
-    <!-- Form Grid Layout -->
-    <div class="row">
-        <div class="debug-section d-none">  <!-- Add d-none to hide in production -->
-            <h6>Debug Information</h6>
-            <pre id="debug-info"></pre>
-        </div>
-        <!-- Main Form Column -->
-        <div class="col-xl-8 mb-4">
-            <div class="dashboard-card">
+                <!-- Messages Display -->
+                {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                    <div class="alert alert-dismissible fade show 
+                        {% if message.tags == 'error' %}alert-danger
+                        {% elif message.tags == 'success' %}alert-success
+                        {% elif message.tags == 'warning' %}alert-warning
+                        {% else %}alert-info{% endif %}" role="alert">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-{% if message.tags == 'error' %}exclamation-circle{% elif message.tags == 'success' %}check-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                                <span>{{ message }}</span>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Form Card -->
+                <div class="card">
                 <div class="card-header">
                     <h6 class="card-title">
                         <i class="fas fa-file-alt me-2"></i>Plot Information Form
@@ -738,13 +753,494 @@
                     </form>
                 </div>
             </div>
+            </div>
         </div>
+    </main>
+</div>
 
-        <!-- Sidebar: Guidelines & Help -->
-        <div class="col-xl-4 mb-4">
-            <!-- Document Requirements Card -->
-            <div class="dashboard-card mb-4">
-                <div class="card-header bg-warning">
+<style>
+    /* Root Variables */
+    :root {
+        --primary: #069132;
+        --primary-light: #e3ebf7;
+        --success: #1cc88a;
+        --success-light: #d4edda;
+        --warning: #f6c23e;
+        --warning-light: #fff3cd;
+        --danger: #e74a3b;
+        --danger-light: #f8d7da;
+        --info: #36b9cc;
+        --info-light: #d1ecf1;
+        --gray-100: #f8f9fa;
+        --gray-200: #e9ecef;
+        --gray-300: #dee2e6;
+        --gray-600: #6c757d;
+        --gray-700: #5a5c69;
+        --gray-800: #0e7833;
+        --shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        --shadow-lg: 0 0.35rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --radius: 0.75rem;
+        --transition: all 0.2s ease;
+    }
+
+    /* Dashboard Layout */
+    .dashboard-wrapper {
+        display: flex;
+        height: 100vh;
+        background: var(--gray-100);
+    }
+
+    /* Sidebar */
+    .dashboard-sidebar {
+        width: 260px;
+        background: white;
+        border-right: 1px solid var(--gray-300);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        position: fixed;
+        height: 100vh;
+        left: 0;
+        top: 0;
+        z-index: 1000;
+    }
+
+    .sidebar-brand {
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 700;
+        font-size: 1.3rem;
+        color: var(--primary);
+        border-bottom: 2px solid var(--gray-200);
+    }
+
+    .sidebar-brand i {
+        font-size: 1.5rem;
+    }
+
+    .sidebar-nav {
+        flex: 1;
+        padding: 1rem 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .nav-item {
+        padding: 0.875rem 1.5rem;
+        color: var(--gray-700);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: var(--transition);
+        border-left: 3px solid transparent;
+    }
+
+    .nav-item:hover {
+        background: var(--gray-100);
+        color: var(--primary);
+    }
+
+    .nav-item.active {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-left-color: var(--primary);
+        font-weight: 600;
+    }
+
+    .nav-item i {
+        width: 20px;
+        text-align: center;
+    }
+
+    .sidebar-footer {
+        padding: 1.5rem;
+        border-top: 1px solid var(--gray-300);
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .user-details p {
+        margin: 0;
+        font-size: 0.85rem;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+
+    .user-role {
+        color: var(--gray-600);
+    }
+
+    /* Main Content */
+    .dashboard-main {
+        flex: 1;
+        margin-left: 260px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dashboard-topbar {
+        background: white;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--gray-300);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--gray-800);
+    }
+
+    .page-subtitle {
+        margin: 0.25rem 0 0 0;
+        color: var(--gray-600);
+        font-size: 0.95rem;
+    }
+
+    /* Dashboard Content */
+    .dashboard-content {
+        padding: 2rem;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        flex: 1;
+        max-width: 1600px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .content-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    /* Card */
+    .card {
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 2px solid var(--gray-200);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Progress Indicator */
+    .progress-indicator {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        padding: 1rem 0;
+    }
+
+    .progress-indicator::before {
+        content: '';
+        position: absolute;
+        top: 1.25rem;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: var(--gray-300);
+        z-index: 0;
+    }
+
+    .progress-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        position: relative;
+        z-index: 1;
+        flex: 1;
+    }
+
+    .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--gray-200);
+        color: var(--gray-600);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        transition: var(--transition);
+    }
+
+    .progress-step.active .step-number {
+        background: var(--primary);
+        color: white;
+        transform: scale(1.15);
+    }
+
+    .progress-step.active .step-label {
+        color: var(--primary);
+        font-weight: 600;
+    }
+
+    .step-label {
+        font-size: 0.85rem;
+        color: var(--gray-600);
+        text-align: center;
+        transition: var(--transition);
+    }
+
+    /* Form Styles */
+    .form-section-table {
+        margin-bottom: 2rem;
+    }
+
+    .section-header {
+        margin-bottom: 1.5rem;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--gray-800);
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .section-badge {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 0.9rem;
+        background: var(--primary);
+    }
+
+    .section-subtitle {
+        color: var(--gray-600);
+        font-size: 0.95rem;
+    }
+
+    .form-field-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .form-field-table tr {
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .form-field-table tr:last-child {
+        border-bottom: none;
+    }
+
+    .field-label {
+        width: 25%;
+        padding: 1rem;
+        background: var(--gray-100);
+        font-weight: 500;
+        color: var(--gray-700);
+        border-right: 1px solid var(--gray-200);
+    }
+
+    .field-label .required::after {
+        content: " *";
+        color: var(--danger);
+    }
+
+    .field-input {
+        width: 50%;
+        padding: 1rem;
+    }
+
+    .field-help {
+        width: 25%;
+        padding: 1rem;
+        border-left: 1px solid var(--gray-200);
+        background: var(--gray-50);
+        font-size: 0.85rem;
+    }
+
+    .form-control, .form-select {
+        border-radius: 6px;
+        border: 2px solid var(--gray-300);
+        padding: 0.75rem;
+        transition: var(--transition);
+        width: 100%;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.25rem rgba(6, 145, 50, 0.15);
+    }
+
+    .field-feedback {
+        margin-top: 0.5rem;
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 6px;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: var(--transition);
+        border: 1px solid transparent;
+        cursor: pointer;
+    }
+
+    .btn-primary {
+        background: var(--primary);
+        color: white;
+    }
+
+    .btn-primary:hover {
+        background: #0b9810;
+    }
+
+    .btn-secondary {
+        background: var(--gray-600);
+        color: white;
+    }
+
+    .btn-secondary:hover {
+        background: var(--gray-700);
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px) {
+        .field-label,
+        .field-input,
+        .field-help {
+            width: auto;
+            display: block;
+            padding: 0.75rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .dashboard-wrapper {
+            flex-direction: column;
+        }
+
+        .dashboard-sidebar {
+            width: 100%;
+            height: auto;
+            position: static;
+        }
+
+        .dashboard-main {
+            margin-left: 0;
+        }
+
+        .sidebar-nav {
+            flex-direction: row;
+            overflow-x: auto;
+        }
+
+        .nav-item {
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .sidebar-footer {
+            display: none;
+        }
+
+        .dashboard-topbar {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+        }
+
+        .progress-indicator {
+            flex-wrap: wrap;
+        }
+
+        .progress-step {
+            width: 50%;
+            margin-bottom: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .page-title {
+            font-size: 1.3rem;
+        }
+
+        .dashboard-content {
+            padding: 1rem;
+        }
+
+        .progress-step {
+            width: 100%;
+        }
+
+        .form-field-table {
+            font-size: 0.9rem;
+        }
+
+        .field-label,
+        .field-input,
+        .field-help {
+            padding: 0.5rem;
+        }
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function()
                     <h6 class="card-title text-white">
                         <i class="fas fa-file-alt me-2"></i>Document Requirements
                     </h6>

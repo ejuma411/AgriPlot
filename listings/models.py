@@ -205,6 +205,24 @@ class Plot(models.Model):
                 return False
         return True
     
+    def get_reaction_counts(self):
+        """Get all reaction counts for this plot"""
+        return {
+            'love': self.reactions.filter(reaction_type='love').count(),
+            'like': self.reactions.filter(reaction_type='like').count(),
+            'potential': self.reactions.filter(reaction_type='potential').count(),
+        }
+    
+    def get_user_reactions(self, user):
+        """Get reactions for a specific user on this plot"""
+        if not user.is_authenticated:
+            return []
+        return list(self.reactions.filter(user=user).values_list('reaction_type', flat=True))
+    
+    def total_reaction_count(self):
+        """Get total number of all reactions"""
+        return self.reactions.count()
+    
 class PlotImage(models.Model):
     plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='images_list')
     image = models.ImageField(upload_to='plot_images/')
@@ -280,6 +298,47 @@ class PlotVerificationStatus(models.Model):
         return f"{self.plot.title} — {self.status}"
 
 
+# -----------------------------
+# Soil Report Model
+# -----------------------------
+class SoilReport(models.Model):
+    VERIFICATION_CHOICES = [
+        ('draft', 'Draft'),
+        ('unverified', 'Unverified'),
+        ('lab_verified', 'Lab Verified'),
+        ('rejected', 'Rejected'),
+    ]
+
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='soil_reports')
+    pH = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True)
+    organic_matter_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    nitrogen_mgkg = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    phosphorus_mgkg = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    potassium_mgkg = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    sand_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    silt_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    clay_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    ec_salinity = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True, help_text='Electrical conductivity (dS/m)')
+    lab_id = models.CharField(max_length=100, blank=True, default="")
+    sample_date = models.DateField(null=True, blank=True)
+    geo_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    geo_lng = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    report_file = models.FileField(upload_to='documents/soil_reports/', null=True, blank=True)
+    verification_status = models.CharField(max_length=20, choices=VERIFICATION_CHOICES, default='draft')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('-created_at',)
+        indexes = [
+            models.Index(fields=['pH']),
+            models.Index(fields=['organic_matter_pct']),
+        ]
+
+    def __str__(self):
+        return f"SoilReport {self.id} — {self.plot.title} ({self.verification_status})"
+
+
 # UserInterest model
 class UserInterest(models.Model):
     """Tracks buyer interest in plots."""
@@ -334,3 +393,30 @@ class ContactRequest(models.Model):
     
     def __str__(self):
         return f"{self.user.username} → {self.broker.user.username} ({self.request_type})"
+
+
+# =============================
+# Plot Reactions Model
+# =============================
+class PlotReaction(models.Model):
+    """Track user reactions (love, like, potential) on plots."""
+    REACTION_CHOICES = [
+        ('love', '❤️ Love'),
+        ('like', '👍 Like'),
+        ('potential', '🌱 Growth Potential'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='plot_reactions')
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='reactions')
+    reaction_type = models.CharField(max_length=20, choices=REACTION_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['user', 'plot', 'reaction_type']  # One reaction type per user per plot
+        indexes = [
+            models.Index(fields=['plot', 'reaction_type']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} {self.get_reaction_type_display()} {self.plot.title}"

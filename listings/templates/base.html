@@ -7,53 +7,465 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AgriPlot Connect{% endblock %}</title>
 
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <!-- Global CSS -->
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+
+    <style>
+        /* Base template styles for header and footer visibility */
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background: #f8f9fa;
+        }
+
+        /* Header/Navbar Styles */
+        .navbar {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f7f0 100%) !important;
+            border-bottom: 3px solid #069132;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+            padding: 0.75rem 0;
+        }
+
+        .navbar-brand {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: #069132 !important;
+            letter-spacing: -0.5px;
+        }
+
+        .navbar-brand i {
+            font-size: 1.6rem !important;
+        }
+
+        /* Enhanced navbar nav links */
+        .navbar-nav .nav-link {
+            color: #333 !important;
+            font-weight: 500;
+            padding: 0.5rem 0.75rem !important;
+            margin: 0 0.25rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .navbar-nav .nav-link:hover {
+            background: rgba(6, 145, 50, 0.1);
+            color: #069132 !important;
+            transform: translateY(-2px);
+        }
+
+        .navbar-nav .nav-link.active {
+            background: rgba(6, 145, 50, 0.15);
+            color: #069132 !important;
+            border-bottom: 2px solid #069132;
+        }
+
+        /* Dropdown menu styling */
+        .dropdown-menu {
+            border: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+            border-radius: 8px;
+            padding: 0.5rem 0;
+            animation: slideDown 0.2s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-item {
+            padding: 0.75rem 1.25rem;
+            color: #333;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(6, 145, 50, 0.1);
+            color: #069132;
+            padding-left: 1.5rem;
+        }
+
+        .dropdown-item.text-danger:hover {
+            background: rgba(220, 53, 69, 0.1);
+        }
+
+        /* Main content with proper spacing */
+        .main-content {
+            flex: 1;
+            padding-top: 1rem;
+            padding-bottom: 2rem;
+        }
+
+        /* Footer Styles */
+        footer {
+            background: linear-gradient(135deg, #1a1a1a 0%, #0d3d1e 100%) !important;
+            border-top: 3px solid #069132;
+            margin-top: 3rem;
+            padding-top: 2rem !important;
+            padding-bottom: 1rem !important;
+        }
+
+        footer h6 {
+            color: #ffffff !important;
+            font-size: 1.05rem;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem !important;
+        }
+
+        footer .text-muted {
+            color: #b0b0b0 !important;
+            line-height: 1.6;
+        }
+
+        footer a.text-muted {
+            color: #b0b0b0 !important;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        footer a.text-muted:hover {
+            color: #069132 !important;
+            transform: translateX(3px);
+            display: inline-block;
+        }
+
+        footer .social-links a {
+            font-size: 1.2rem;
+            padding: 0.5rem;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+        }
+
+        footer .social-links a:hover {
+            background: rgba(6, 145, 50, 0.2);
+            color: #1cc88a !important;
+            transform: translateY(-3px);
+        }
+
+        footer ul li a {
+            font-size: 0.95rem;
+        }
+
+        footer .bg-secondary {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        footer .col-md-4 {
+            padding-bottom: 1.5rem;
+        }
+
+        footer .row.align-items-center {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        footer p {
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 0.5rem 0;
+            }
+
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+
+            .navbar-brand i {
+                font-size: 1.4rem !important;
+            }
+
+            .navbar-nav .nav-link {
+                padding: 0.5rem 0 !important;
+                margin: 0.25rem 0;
+                font-size: 0.9rem;
+            }
+
+            .main-content {
+                padding-top: 0.5rem;
+            }
+
+            footer {
+                margin-top: 2rem;
+                padding-top: 1.5rem !important;
+            }
+
+            footer h6 {
+                font-size: 1rem;
+                margin-bottom: 0.75rem !important;
+            }
+
+            footer .col-md-4 {
+                text-align: center;
+                padding-bottom: 1rem;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            footer .col-md-4:last-child {
+                border-bottom: none;
+            }
+
+            footer .row.align-items-center {
+                flex-direction: column;
+                text-align: center;
+                margin-top: 1rem;
+                padding-top: 1rem;
+            }
+
+            footer .col-md-6 {
+                margin-bottom: 0.5rem;
+            }
+
+            footer .col-md-6.text-md-end {
+                text-align: center !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar-brand span.d-none.d-sm-inline {
+                display: none !important;
+            }
+
+            .navbar-nav {
+                gap: 0 !important;
+            }
+
+            .navbar-nav .nav-link {
+                font-size: 0.85rem;
+                padding: 0.4rem 0.5rem !important;
+            }
+
+            .navbar-toggler {
+                padding: 0.25rem 0.5rem;
+            }
+
+            footer h6 {
+                font-size: 0.95rem;
+            }
+
+            footer .text-muted,
+            footer a.text-muted {
+                font-size: 0.85rem;
+            }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-<header>
-    <nav class="navbar">
-        <a href="{% url 'listings:home' %}" class="nav-brand">AgriPlot Connect</a>
-        <ul class="nav-menu">
-            <li><a href="{% url 'listings:home' %}">Home</a></li>
+<!-- Navigation Bar -->
+<nav class="navbar navbar-expand-lg sticky-top">
+    <div class="container-fluid px-3 px-md-4">
+        <!-- Brand Logo -->
+        <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{% url 'listings:home' %}">
+            <i class="fas fa-leaf" style="color: #069132; font-size: 1.5rem;"></i>
+            <span class="d-none d-sm-inline">AgriPlot Connect</span>
+            <span class="d-sm-none">AgriPlot</span>
+        </a>
 
-            {% if user.is_authenticated %}
-                {% if user.profile.is_broker %}
-                    <li><a href="{% url 'listings:add_plot' %}">Add Plot</a></li>
-                    <li><a href="{% url 'listings:staff_dashboard' %}">Dashboard</a></li>
-                {% endif %}
+        <!-- Mobile Toggle Button -->
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
 
-                <li>
-                    <form method="post" action="{% url 'logout' %}" style="display: inline;">
-                        {% csrf_token %}
-                        <button type="submit" class="btn logout-btn">Logout</button>
-                    </form>
+        <!-- Navigation Menu -->
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto gap-0 gap-lg-2">
+                <!-- Home Link -->
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'listings:home' %}">
+                        <i class="fas fa-home me-1"></i> Home
+                    </a>
                 </li>
-            {% else %}
-                <li><a href="{% url 'login' %}">Login</a></li>
-                <li><a href="{% url 'register' %}">Register</a></li>
-            {% endif %}
-        </ul>
-    </nav>
-</header>
 
+                <!-- Authenticated User Menu -->
+                {% if user.is_authenticated %}
+                    <!-- Broker/Seller Menu -->
+                    {% if user.profile.is_broker or user.profile.is_seller %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-chart-line me-1"></i> Dashboard
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                                <li><a class="dropdown-item" href="{% url 'listings:staff_dashboard' %}"><i class="fas fa-home me-2"></i>Overview</a></li>
+                                <li><a class="dropdown-item" href="{% url 'listings:my_plots' %}"><i class="fas fa-list me-2"></i>My Plots</a></li>
+                                <li><a class="dropdown-item" href="{% url 'listings:add_plot' %}"><i class="fas fa-plus-circle me-2"></i>Add Plot</a></li>
+                                <li><a class="dropdown-item" href="{% url 'listings:buyer_interests' %}"><i class="fas fa-envelope me-2"></i>Messages</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'listings:profile_management' %}"><i class="fas fa-user-circle me-2"></i>Profile</a></li>
+                            </ul>
+                        </li>
+                    {% endif %}
+
+                    <!-- Buyer Menu -->
+                    {% if user.profile.is_buyer %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'listings:home' %}">
+                                <i class="fas fa-search me-1"></i> Browse Plots
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <!-- User Profile Dropdown -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-user-circle me-1"></i>
+                            <span class="d-none d-md-inline">{{ user.get_full_name|default:user.username }}</span>
+                            <span class="d-md-none">Account</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" href="{% url 'listings:profile_management' %}"><i class="fas fa-user me-2"></i>Profile</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
+                            <li><a class="dropdown-item" href="#"><i class="fas fa-life-ring me-2"></i>Help & Support</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <form method="post" action="{% url 'listings:logout' %}" class="d-inline w-100">
+                                    {% csrf_token %}
+                                    <button type="submit" class="dropdown-item text-danger">
+                                        <i class="fas fa-sign-out-alt me-2"></i>Logout
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                    </li>
+
+                {% else %}
+                    <!-- Unauthenticated User Menu -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'login' %}">
+                            <i class="fas fa-sign-in-alt me-1"></i> Login
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link btn btn-primary text-white px-3" href="{% url 'listings:register_choice' %}">
+                            <i class="fas fa-user-plus me-1"></i> Register
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
 <main class="main-content">
     {% block content %}
     <!-- page-specific content will go here -->
     {% endblock %}
 </main>
 
-<footer>
-    <div class="footer-content">
-        <p>&copy; 2026 AgriPlot Connect — All Rights Reserved</p>
-        <p>
-            <a href="#">About</a> |
-            <a href="#">Terms</a> |
-            <a href="#">Privacy</a>
-        </p>
+<!-- Footer -->
+<footer class="bg-dark text-light mt-5 pt-5 pb-3">
+    <div class="container">
+        <div class="row mb-4">
+            <!-- About Section -->
+            <div class="col-md-4 mb-4 mb-md-0">
+                <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="fas fa-leaf" style="color: #069132;"></i> AgriPlot Connect
+                </h6>
+                <p class="text-muted small">Connecting agricultural land sellers and buyers across Kenya for sustainable farming growth.</p>
+                <div class="social-links">
+                    <a href="#" class="text-muted me-2"><i class="fab fa-facebook"></i></a>
+                    <a href="#" class="text-muted me-2"><i class="fab fa-twitter"></i></a>
+                    <a href="#" class="text-muted me-2"><i class="fab fa-linkedin"></i></a>
+                    <a href="#" class="text-muted"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="col-md-4 mb-4 mb-md-0">
+                <h6 class="fw-bold mb-3">Quick Links</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="{% url 'listings:home' %}" class="text-muted text-decoration-none small">Home</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">Browse Plots</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">How It Works</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">Contact Us</a></li>
+                </ul>
+            </div>
+
+            <!-- Information -->
+            <div class="col-md-4">
+                <h6 class="fw-bold mb-3">Information</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">About Us</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">Terms of Service</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">Privacy Policy</a></li>
+                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">FAQ</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Divider -->
+        <hr class="bg-secondary">
+
+        <!-- Copyright -->
+        <div class="row align-items-center">
+            <div class="col-md-6">
+                <p class="text-muted small mb-0">&copy; 2026 AgriPlot Connect — All Rights Reserved</p>
+            </div>
+            <div class="col-md-6 text-md-end text-start mt-2 mt-md-0">
+                <p class="text-muted small mb-0">Designed with <i class="fas fa-heart" style="color: #e74a3b;"></i> for sustainable agriculture</p>
+            </div>
+        </div>
     </div>
 </footer>
+
+<!-- Bootstrap JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Custom JS -->
+<script>
+    // Active nav link highlighting
+    document.addEventListener('DOMContentLoaded', function() {
+        const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
+        const currentPath = window.location.pathname;
+
+        navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (currentPath === href || currentPath.startsWith(href + '/')) {
+                link.classList.add('active');
+            }
+        });
+    });
+
+    // Close navbar on link click (mobile)
+    document.addEventListener('DOMContentLoaded', function() {
+        const navbarCollapse = document.querySelector('.navbar-collapse');
+        const navLinks = document.querySelectorAll('.navbar-nav a:not(.dropdown-toggle)');
+
+        navLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                if (window.innerWidth < 992) {
+                    const instance = bootstrap.Collapse.getInstance(navbarCollapse);
+                    if (instance) instance.hide();
+                }
+            });
+        });
+    });
+</script>
+
+{% block extra_js %}{% endblock %}
 
 </body>
 </html>

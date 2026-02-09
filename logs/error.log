@@ -181,3 +181,908 @@ INFO | 2026-02-07 11:37:49,475 | basehttp | "GET / HTTP/1.1" 200 50059
 INFO | 2026-02-07 11:37:55,198 | basehttp | "POST /admin/logout/ HTTP/1.1" 302 0
 INFO | 2026-02-07 11:37:55,203 | basehttp | "GET /admin/ HTTP/1.1" 302 0
 INFO | 2026-02-07 11:37:55,249 | basehttp | "GET /admin/login/?next=/admin/ HTTP/1.1" 200 3065
+INFO | 2026-02-09 07:12:43,583 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:13:01,091 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/migrations/0014_soilreport.py changed, reloading.
+INFO | 2026-02-09 07:13:01,689 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:13:37,577 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:14:16,746 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/migrations/0014_soilreport.py changed, reloading.
+INFO | 2026-02-09 07:14:17,349 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:14:36,659 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:14:43,187 | basehttp | "GET / HTTP/1.1" 200 50874
+INFO | 2026-02-09 07:14:43,418 | basehttp | "GET /static/images/farm-hero2.jpeg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,418 | basehttp | "GET /static/images/farm-hero.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,424 | basehttp | "GET /static/css/styles.css HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,538 | basehttp | "GET /static/images/farm-hero3.jpeg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,544 | basehttp | "GET /media/plot_images/BirthdayWamalwa_ZCwjqeW.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,559 | basehttp | "GET /media/plot_images/CreaTech_logo_FDEqCFe.png HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,561 | basehttp | "GET /media/plot_images/Animate_Y1QeLps.jpeg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,567 | basehttp | "GET /media/plot_images/Apostle_Selman_Say1_KM2VABx.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,582 | basehttp | "GET /media/plot_images/Musa_TbQmMhg.jpeg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,599 | basehttp | "GET /media/plot_images/Animate_tRGusXh.jpeg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,607 | basehttp | "GET /media/plot_images/Apostle_Selman_Say1_mthvgcb.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,616 | basehttp | "GET /media/plot_images/BirthdayWamalwa_cMkXZf9.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,698 | basehttp | "GET /media/plot_images/Musa.jpeg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,700 | basehttp | "GET /media/plot_images/CreaTech_logo_FNsY6JP.png HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,734 | basehttp | "GET /media/plot_images/CreaTech_logo.png HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,765 | basehttp | "GET /media/plot_images/Stream_Bg.png HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,768 | basehttp | "GET /media/plot_images/plot_4_image_1_zNjqgje.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,775 | basehttp | "GET /media/plot_images/plot_4_image_2_8uZom9x.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,777 | basehttp | "GET /media/plot_images/plot_4_image_3_Feo4iRs.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,787 | basehttp | "GET /media/plot_images/plot_3_image_2_O6QfPGZ.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,794 | basehttp | "GET /media/plot_images/plot_2_image_1_ReQEICo.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,795 | basehttp | "GET /media/plot_images/plot_3_image_1_SDnjbmO.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,799 | basehttp | "GET /media/plot_images/plot_2_image_2_dF084U9.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,799 | basehttp | "GET /media/plot_images/plot_3_image_3_UHbSm9j.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,803 | basehttp | "GET /media/plot_images/plot_2_image_3_6nkGCAd.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,865 | basehttp | "GET /media/plot_images/plot_1_image_1_tA4ONDn.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,877 | basehttp | "GET /media/plot_images/plot_0_image_1_P7LSyze.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,884 | basehttp | "GET /media/plot_images/plot_1_image_2_AAsXDdx.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,883 | basehttp | "GET /media/plot_images/plot_0_image_2_DYBPCvH.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,879 | basehttp | "GET /media/plot_images/plot_1_image_3_CRxMV05.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,885 | basehttp | "GET /media/plot_images/plot_0_image_3_B9Wsogn.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,901 | basehttp | "GET /media/plot_images/plot_4_image_1_3iTx4ov.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,904 | basehttp | "GET /media/plot_images/plot_4_image_2_fdaynXI.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,919 | basehttp | "GET /media/plot_images/plot_4_image_3_3jxS0kU.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,944 | basehttp | "GET /media/plot_images/plot_3_image_1_PtlmX3E.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,950 | basehttp | "GET /media/plot_images/plot_3_image_3_W19RoGd.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,951 | basehttp | "GET /media/plot_images/plot_3_image_2_mF3gQH5.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,954 | basehttp | "GET /media/plot_images/plot_2_image_1_71YjT1n.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,956 | basehttp | "GET /media/plot_images/plot_2_image_2_ampvTFJ.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,967 | basehttp | "GET /media/plot_images/plot_2_image_3_uQpkXTM.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:43,992 | basehttp | "GET /media/plot_images/plot_1_image_1_IVobbSF.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,002 | basehttp | "GET /media/plot_images/plot_1_image_2_EJa0keE.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,006 | basehttp | "GET /media/plot_images/plot_1_image_3_ri3IfQf.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,008 | basehttp | "GET /media/plot_images/plot_0_image_1_3pzkSsI.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,016 | basehttp | "GET /media/plot_images/plot_0_image_2_xilbSrL.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,026 | basehttp | "GET /media/plot_images/plot_0_image_3_hIvD1kf.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,053 | basehttp | "GET /media/plot_images/plot_4_image_1_uXoQeFB.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,055 | basehttp | "GET /media/plot_images/plot_4_image_2_40xbwrv.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,074 | basehttp | "GET /media/plot_images/plot_4_image_3_8aZVBFB.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,083 | basehttp | "GET /media/plot_images/plot_3_image_1_5CamPHZ.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,087 | basehttp | "GET /media/plot_images/plot_3_image_2_k8sHqMb.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:14:44,088 | basehttp | "GET /media/plot_images/plot_3_image_3_uru4iWW.jpg HTTP/1.1" 304 0
+WARNING | 2026-02-09 07:14:47,289 | log | Not Found: /favicon.ico
+WARNING | 2026-02-09 07:14:47,289 | basehttp | "GET /favicon.ico HTTP/1.1" 404 11563
+INFO | 2026-02-09 07:18:45,959 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-09 07:18:46,424 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:18:50,689 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-09 07:18:51,200 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:19:11,675 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-09 07:19:12,328 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:19:13,555 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-09 07:19:14,129 | autoreload | Watching for file changes with StatReloader
+ERROR | 2026-02-09 07:21:16,160 | log | Internal Server Error: /
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 511, in parse
+    compile_func = self.tags[command]
+                   ~~~~~~~~~^^^^^^^^^
+KeyError: 'static'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 361, in home
+    return render(request, 'listings/home.html', {
+        'featured_plots': featured_plots,
+    ...<11 lines>...
+        },
+    })
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 199, in render
+    template = context.template.engine.select_template(template_name)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/engine.py", line 208, in select_template
+    return self.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loaders/cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loaders/base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 155, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 197, in compile_nodelist
+    nodelist = parser.parse()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 519, in parse
+    raise self.error(token, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 517, in parse
+    compiled_result = compile_func(self, token)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 862, in do_for
+    nodelist_loop = parser.parse(
+        (
+    ...<2 lines>...
+        )
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 519, in parse
+    raise self.error(token, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 517, in parse
+    compiled_result = compile_func(self, token)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 976, in do_if
+    nodelist = parser.parse(("endif",))
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 513, in parse
+    self.invalid_block_tag(token, command, parse_until)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 568, in invalid_block_tag
+    raise self.error(
+    ...<8 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Invalid block tag on line 14: 'static', expected 'endif'. Did you forget to register or load this tag?
+ERROR | 2026-02-09 07:21:16,167 | basehttp | "GET / HTTP/1.1" 500 317983
+INFO | 2026-02-09 07:23:38,711 | basehttp | "GET / HTTP/1.1" 200 49805
+INFO | 2026-02-09 07:24:13,499 | basehttp | "GET / HTTP/1.1" 200 49805
+INFO | 2026-02-09 07:25:27,389 | basehttp | "GET /ajax/search/?soil_type=&crop=&crop_preset=&ph_min=&ph_max=&om_min=&location=Nakuru%2C+Njoro&max_price= HTTP/1.1" 200 33350
+INFO | 2026-02-09 07:26:35,351 | basehttp | "GET / HTTP/1.1" 200 49805
+INFO | 2026-02-09 07:28:04,187 | basehttp | "GET / HTTP/1.1" 200 49909
+INFO | 2026-02-09 07:29:03,694 | basehttp | "GET / HTTP/1.1" 200 50203
+INFO | 2026-02-09 07:29:03,760 | basehttp | "GET /static/images/farm-hero2.jpeg HTTP/1.1" 200 7213
+INFO | 2026-02-09 07:29:03,760 | basehttp | "GET /static/images/farm-hero3.jpeg HTTP/1.1" 200 6289
+INFO | 2026-02-09 07:29:03,761 | basehttp | "GET /static/css/styles.css HTTP/1.1" 200 3422
+INFO | 2026-02-09 07:29:03,778 | basehttp | "GET /static/images/farm-hero.jpg HTTP/1.1" 200 44020
+INFO | 2026-02-09 07:29:03,786 | basehttp | "GET /media/plot_images/Animate_Y1QeLps.jpeg HTTP/1.1" 200 124602
+INFO | 2026-02-09 07:29:03,799 | basehttp | "GET /media/plot_images/Musa_TbQmMhg.jpeg HTTP/1.1" 200 103627
+INFO | 2026-02-09 07:29:03,809 | basehttp | "GET /media/plot_images/CreaTech_logo_FDEqCFe.png HTTP/1.1" 200 346871
+INFO | 2026-02-09 07:29:03,818 | basehttp | "GET /media/plot_images/Apostle_Selman_Say1_KM2VABx.jpg HTTP/1.1" 200 1043964
+INFO | 2026-02-09 07:29:03,837 | basehttp | "GET /media/plot_images/BirthdayWamalwa_ZCwjqeW.jpg HTTP/1.1" 200 1013813
+INFO | 2026-02-09 07:29:03,842 | basehttp | "GET /media/plot_images/Animate_tRGusXh.jpeg HTTP/1.1" 200 124602
+INFO | 2026-02-09 07:29:03,852 | basehttp | "GET /media/plot_images/Apostle_Selman_Say1_mthvgcb.jpg HTTP/1.1" 200 1043964
+INFO | 2026-02-09 07:29:03,866 | basehttp | "GET /media/plot_images/Musa.jpeg HTTP/1.1" 200 103627
+INFO | 2026-02-09 07:29:03,868 | basehttp | "GET /media/plot_images/CreaTech_logo_FNsY6JP.png HTTP/1.1" 200 346871
+INFO | 2026-02-09 07:29:03,872 | basehttp | "GET /media/plot_images/BirthdayWamalwa_cMkXZf9.jpg HTTP/1.1" 200 1013813
+INFO | 2026-02-09 07:29:03,934 | basehttp | "GET /media/plot_images/CreaTech_logo.png HTTP/1.1" 200 346871
+INFO | 2026-02-09 07:29:03,944 | basehttp | "GET /media/plot_images/plot_3_image_1_SDnjbmO.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:03,945 | basehttp | "GET /media/plot_images/plot_4_image_2_8uZom9x.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:03,946 | basehttp | "GET /media/plot_images/plot_4_image_1_zNjqgje.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:03,945 | basehttp | "GET /media/plot_images/plot_3_image_2_O6QfPGZ.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:03,949 | basehttp | "GET /media/plot_images/plot_4_image_3_Feo4iRs.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:03,957 | basehttp | "GET /media/plot_images/Stream_Bg.png HTTP/1.1" 200 504989
+INFO | 2026-02-09 07:29:03,961 | basehttp | "GET /media/plot_images/plot_3_image_3_UHbSm9j.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:03,965 | basehttp | "GET /media/plot_images/plot_2_image_1_ReQEICo.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,009 | basehttp | "GET /media/plot_images/plot_2_image_3_6nkGCAd.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,009 | basehttp | "GET /media/plot_images/plot_1_image_2_AAsXDdx.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,010 | basehttp | "GET /media/plot_images/plot_2_image_2_dF084U9.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,011 | basehttp | "GET /media/plot_images/plot_1_image_1_tA4ONDn.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,016 | basehttp | "GET /media/plot_images/plot_1_image_3_CRxMV05.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,022 | basehttp | "GET /media/plot_images/plot_0_image_1_P7LSyze.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,066 | basehttp | "GET /media/plot_images/plot_0_image_2_DYBPCvH.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,071 | basehttp | "GET /media/plot_images/plot_4_image_1_3iTx4ov.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,072 | basehttp | "GET /media/plot_images/plot_4_image_3_3jxS0kU.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,072 | basehttp | "GET /media/plot_images/plot_0_image_3_B9Wsogn.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,072 | basehttp | "GET /media/plot_images/plot_4_image_2_fdaynXI.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,081 | basehttp | "GET /media/plot_images/plot_3_image_1_PtlmX3E.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,145 | basehttp | "GET /media/plot_images/plot_2_image_3_uQpkXTM.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,147 | basehttp | "GET /media/plot_images/plot_3_image_2_mF3gQH5.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,149 | basehttp | "GET /media/plot_images/plot_2_image_1_71YjT1n.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,150 | basehttp | "GET /media/plot_images/plot_2_image_2_ampvTFJ.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,150 | basehttp | "GET /media/plot_images/plot_1_image_1_IVobbSF.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,150 | basehttp | "GET /media/plot_images/plot_3_image_3_W19RoGd.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,220 | basehttp | "GET /media/plot_images/plot_0_image_2_xilbSrL.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,220 | basehttp | "GET /media/plot_images/plot_0_image_3_hIvD1kf.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,221 | basehttp | "GET /media/plot_images/plot_0_image_1_3pzkSsI.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,221 | basehttp | "GET /media/plot_images/plot_1_image_2_EJa0keE.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,221 | basehttp | "GET /media/plot_images/plot_4_image_1_uXoQeFB.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,222 | basehttp | "GET /media/plot_images/plot_1_image_3_ri3IfQf.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,286 | basehttp | "GET /media/plot_images/plot_3_image_2_k8sHqMb.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,286 | basehttp | "GET /media/plot_images/plot_4_image_2_40xbwrv.jpg HTTP/1.1" 200 1305
+INFO | 2026-02-09 07:29:04,288 | basehttp | "GET /media/plot_images/plot_4_image_3_8aZVBFB.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,289 | basehttp | "GET /media/plot_images/plot_3_image_1_5CamPHZ.jpg HTTP/1.1" 200 1304
+INFO | 2026-02-09 07:29:04,290 | basehttp | "GET /media/plot_images/plot_3_image_3_uru4iWW.jpg HTTP/1.1" 200 1304
+WARNING | 2026-02-09 07:29:04,596 | log | Not Found: /favicon.ico
+WARNING | 2026-02-09 07:29:04,597 | basehttp | "GET /favicon.ico HTTP/1.1" 404 11828
+INFO | 2026-02-09 07:29:19,487 | basehttp | "GET /ajax/search/?soil_type=Sandy+Loam&crop=Coffee&crop_preset=Wheat&ph_min=&ph_max=&om_min=&location=&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:29:20,710 | basehttp | "GET /ajax/search/?soil_type=Sandy+Loam&crop=Coffee&crop_preset=Wheat&ph_min=&ph_max=&om_min=&location=&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:30:47,220 | basehttp | "GET / HTTP/1.1" 200 48507
+INFO | 2026-02-09 07:31:21,193 | basehttp | "GET /plot/52/ HTTP/1.1" 200 37614
+INFO | 2026-02-09 07:31:43,063 | basehttp | "GET /ajax/search/?soil_type=Clay+Loam&crop_preset=Maize&location=Bungoma&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:31:48,167 | basehttp | "GET /ajax/search/?soil_type=Clay+Loam&crop_preset=Wheat&location=Bungoma&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:31:52,679 | basehttp | "GET /ajax/search/?soil_type=Clay+Loam&crop_preset=Wheat&location=Bungoma%2C+Webuye+West&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:31:59,893 | basehttp | "GET /ajax/search/?soil_type=Clay+Loam&crop_preset=Wheat&location=&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:32:08,029 | basehttp | "GET /ajax/search/?soil_type=Clay+Loam&crop_preset=&location=&max_price= HTTP/1.1" 200 2238
+INFO | 2026-02-09 07:32:08,041 | basehttp | "GET /media/plot_images/Thumnbnail.jpeg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:32:08,043 | basehttp | "GET /media/plot_images/Animate.jpeg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:32:08,045 | basehttp | "GET /media/plot_images/Apostle_Selman_Say1.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 07:32:19,931 | basehttp | "GET /ajax/search/?soil_type=&crop_preset=Maize&location=&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:32:30,475 | basehttp | "GET /ajax/search/?soil_type=&crop_preset=Maize&location=Nakuru%2C+Njoro&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:32:34,736 | basehttp | "GET /ajax/search/?soil_type=&crop_preset=Wheat&location=Nakuru%2C+Njoro&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:32:39,116 | basehttp | "GET /ajax/search/?soil_type=&crop_preset=Rice&location=Nakuru%2C+Njoro&max_price= HTTP/1.1" 200 253
+INFO | 2026-02-09 07:32:59,733 | basehttp | "GET /ajax/search/?soil_type=&crop_preset=&location=Nakuru%2C+Njoro&max_price=200000 HTTP/1.1" 200 33310
+INFO | 2026-02-09 07:33:17,290 | basehttp | "GET /ajax/search/?soil_type=&crop_preset=&location=Nakuru%2C+Njoro&max_price=2000000 HTTP/1.1" 200 33311
+INFO | 2026-02-09 07:33:32,587 | basehttp | "GET /ajax/search/?soil_type=&crop_preset=&location=Nakuru%2C+Njoro&max_price= HTTP/1.1" 200 33304
+INFO | 2026-02-09 07:37:31,115 | basehttp | "GET /plot/48/ HTTP/1.1" 200 37369
+INFO | 2026-02-09 07:39:38,274 | basehttp | "GET /login/ HTTP/1.1" 200 1325
+INFO | 2026-02-09 07:39:38,304 | basehttp | "GET /static/css/auth.css HTTP/1.1" 304 0
+INFO | 2026-02-09 07:39:45,709 | basehttp | "POST /login/ HTTP/1.1" 302 0
+INFO | 2026-02-09 07:39:45,749 | basehttp | "GET / HTTP/1.1" 200 48944
+INFO | 2026-02-09 07:39:48,588 | basehttp | "GET /dashboard/ HTTP/1.1" 200 27949
+INFO | 2026-02-09 07:40:13,575 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 20637
+INFO | 2026-02-09 07:40:43,108 | basehttp | "GET /dashboard/plots/?page=2&status=all&search= HTTP/1.1" 200 20796
+INFO | 2026-02-09 07:40:46,860 | basehttp | "GET /dashboard/plots/?page=3&status=all&search= HTTP/1.1" 200 20796
+INFO | 2026-02-09 07:40:48,515 | basehttp | "GET /dashboard/plots/?page=4&status=all&search= HTTP/1.1" 200 20708
+INFO | 2026-02-09 07:40:51,461 | basehttp | "GET /dashboard/plots/?page=3&status=all&search= HTTP/1.1" 200 20796
+INFO | 2026-02-09 07:40:57,005 | basehttp | "GET /dashboard/plots/?status=verified&search= HTTP/1.1" 200 20642
+INFO | 2026-02-09 07:41:10,049 | basehttp | "GET /add_plot/ HTTP/1.1" 200 81883
+INFO | 2026-02-09 07:42:57,497 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-09 07:42:57,956 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:43:03,966 | basehttp | "GET /dashboard/ HTTP/1.1" 200 27966
+INFO | 2026-02-09 07:43:40,827 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-09 07:43:41,267 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:43:45,116 | basehttp | "GET /dashboard/ HTTP/1.1" 200 27966
+INFO | 2026-02-09 07:44:05,549 | basehttp | "GET /admin/ HTTP/1.1" 200 39062
+INFO | 2026-02-09 07:44:05,579 | basehttp | "GET /static/vendor/fontawesome-free/css/all.min.css HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:05,583 | basehttp | "GET /static/vendor/adminlte/css/adminlte.min.css HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:05,584 | basehttp | "GET /static/jazzmin/css/main.css HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:05,613 | basehttp | "GET /static/vendor/adminlte/img/AdminLTELogo.png HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:05,619 | basehttp | "GET /static/admin/js/vendor/jquery/jquery.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:05,682 | basehttp | "GET /static/vendor/adminlte/js/adminlte.min.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:05,682 | basehttp | "GET /static/vendor/bootstrap/js/bootstrap.min.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:05,690 | basehttp | "GET /static/jazzmin/js/main.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:05,919 | basehttp | "GET /static/vendor/fontawesome-free/webfonts/fa-regular-400.woff2 HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:05,919 | basehttp | "GET /static/vendor/fontawesome-free/webfonts/fa-solid-900.woff2 HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,749 | basehttp | "GET /admin/listings/plotverificationstatus/ HTTP/1.1" 200 45187
+INFO | 2026-02-09 07:44:12,783 | basehttp | "GET /static/vendor/select2/css/select2.min.css HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,787 | basehttp | "GET /static/admin/js/core.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,787 | basehttp | "GET /static/admin/js/admin/RelatedObjectLookups.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,787 | basehttp | "GET /static/admin/js/jquery.init.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,789 | basehttp | "GET /static/admin/js/urlify.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,791 | basehttp | "GET /static/admin/js/actions.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,796 | basehttp | "GET /static/admin/js/prepopulate.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,800 | basehttp | "GET /static/admin/js/vendor/xregexp/xregexp.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,806 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:44:12,820 | basehttp | "GET /static/jazzmin/js/change_list.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:12,821 | basehttp | "GET /static/vendor/select2/js/select2.min.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:44:42,259 | basehttp | "GET /admin/listings/plot/ HTTP/1.1" 200 65086
+INFO | 2026-02-09 07:44:42,303 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:45:07,223 | basehttp | "POST /admin/listings/plot/ HTTP/1.1" 302 0
+INFO | 2026-02-09 07:45:07,319 | basehttp | "GET /admin/listings/plot/ HTTP/1.1" 200 65570
+INFO | 2026-02-09 07:45:07,348 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:45:11,725 | basehttp | "GET /dashboard/ HTTP/1.1" 200 27961
+INFO | 2026-02-09 07:48:57,195 | basehttp | "GET /dashboard/ HTTP/1.1" 200 28120
+INFO | 2026-02-09 07:48:59,753 | basehttp | "GET /dashboard/ HTTP/1.1" 200 28120
+INFO | 2026-02-09 07:49:29,340 | basehttp | "GET /admin/listings/plot/?verification_status__status__exact=rejected&q= HTTP/1.1" 200 62447
+INFO | 2026-02-09 07:49:29,382 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:49:36,251 | basehttp | "GET /admin/listings/plot/?verification_status__status__exact=verified&q= HTTP/1.1" 200 33035
+INFO | 2026-02-09 07:49:36,293 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:49:50,236 | basehttp | "GET /admin/listings/plot/?verification_status__status__exact=rejected&q= HTTP/1.1" 200 62447
+INFO | 2026-02-09 07:49:50,264 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+ERROR | 2026-02-09 07:50:15,125 | log | Internal Server Error: /admin/listings/plot/52/change/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 840, in get_form
+    return modelform_factory(self.model, **defaults)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/forms/models.py", line 654, in modelform_factory
+    return type(form)(class_name, (form,), form_class_attrs)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/forms/models.py", line 334, in __new__
+    raise FieldError(message)
+django.core.exceptions.FieldError: Unknown field(s) (contact_requests_summary) specified for Plot
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 719, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/views/decorators/cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/sites.py", line 246, in inner
+    return view(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 1987, in change_view
+    return self.changeform_view(request, object_id, form_url, extra_context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 1840, in changeform_view
+    return self._changeform_view(request, object_id, form_url, extra_context)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 1878, in _changeform_view
+    ModelForm = self.get_form(
+        request, obj, change=not add, fields=flatten_fieldsets(fieldsets)
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 842, in get_form
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Unknown field(s) (contact_requests_summary) specified for Plot. Check fields/fieldsets/exclude attributes of class PlotAdmin.
+ERROR | 2026-02-09 07:50:15,129 | basehttp | "GET /admin/listings/plot/52/change/?_changelist_filters=verification_status__status__exact%3Drejected%26q%3D HTTP/1.1" 500 160373
+INFO | 2026-02-09 07:50:19,495 | basehttp | "GET /admin/listings/plot/?verification_status__status__exact=rejected&q= HTTP/1.1" 200 62447
+ERROR | 2026-02-09 07:50:23,651 | log | Internal Server Error: /admin/listings/plot/52/change/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 840, in get_form
+    return modelform_factory(self.model, **defaults)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/forms/models.py", line 654, in modelform_factory
+    return type(form)(class_name, (form,), form_class_attrs)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/forms/models.py", line 334, in __new__
+    raise FieldError(message)
+django.core.exceptions.FieldError: Unknown field(s) (contact_requests_summary) specified for Plot
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 719, in wrapper
+    return self.admin_site.admin_view(view)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/views/decorators/cache.py", line 80, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/sites.py", line 246, in inner
+    return view(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 1987, in change_view
+    return self.changeform_view(request, object_id, form_url, extra_context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 1840, in changeform_view
+    return self._changeform_view(request, object_id, form_url, extra_context)
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 1878, in _changeform_view
+    ModelForm = self.get_form(
+        request, obj, change=not add, fields=flatten_fieldsets(fieldsets)
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/admin/options.py", line 842, in get_form
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Unknown field(s) (contact_requests_summary) specified for Plot. Check fields/fieldsets/exclude attributes of class PlotAdmin.
+ERROR | 2026-02-09 07:50:23,653 | basehttp | "GET /admin/listings/plot/52/change/?_changelist_filters=verification_status__status__exact%3Drejected%26q%3D HTTP/1.1" 500 160373
+INFO | 2026-02-09 07:50:54,746 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/admin.py changed, reloading.
+INFO | 2026-02-09 07:50:55,216 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:51:00,444 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/admin.py changed, reloading.
+INFO | 2026-02-09 07:51:00,915 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:51:04,675 | basehttp | "GET /admin/listings/plot/52/change/?_changelist_filters=verification_status__status__exact%3Drejected%26q%3D HTTP/1.1" 200 61878
+INFO | 2026-02-09 07:51:04,713 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:51:04,714 | basehttp | "GET /static/admin/js/inlines.js HTTP/1.1" 200 15628
+INFO | 2026-02-09 07:51:04,741 | basehttp | "GET /static/admin/js/change_form.js HTTP/1.1" 200 606
+INFO | 2026-02-09 07:51:04,758 | basehttp | "GET /static/admin/js/prepopulate_init.js HTTP/1.1" 200 586
+INFO | 2026-02-09 07:51:04,767 | basehttp | "GET /static/jazzmin/js/change_form.js HTTP/1.1" 304 0
+INFO | 2026-02-09 07:51:36,111 | basehttp | "GET /admin/listings/plot/ HTTP/1.1" 200 65086
+INFO | 2026-02-09 07:51:36,145 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:51:38,442 | basehttp | "GET /admin/listings/plotverificationstatus/ HTTP/1.1" 200 45187
+INFO | 2026-02-09 07:51:38,474 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:51:44,292 | basehttp | "GET /admin/listings/plotverificationstatus/?status__exact=rejected&q= HTTP/1.1" 200 43879
+INFO | 2026-02-09 07:51:44,332 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:51:48,395 | basehttp | "GET /admin/listings/plotverificationstatus/52/change/?_changelist_filters=status__exact%3Drejected%26q%3D HTTP/1.1" 200 27307
+INFO | 2026-02-09 07:51:48,427 | basehttp | "GET /static/admin/img/icon-changelink.svg HTTP/1.1" 200 380
+INFO | 2026-02-09 07:51:48,434 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:51:48,461 | basehttp | "GET /static/admin/img/icon-addlink.svg HTTP/1.1" 200 331
+INFO | 2026-02-09 07:51:48,488 | basehttp | "GET /static/admin/img/icon-viewlink.svg HTTP/1.1" 200 581
+INFO | 2026-02-09 07:51:48,496 | basehttp | "GET /static/admin/img/icon-deletelink.svg HTTP/1.1" 200 392
+INFO | 2026-02-09 07:51:54,319 | basehttp | "POST /admin/listings/plotverificationstatus/52/change/?_changelist_filters=status__exact%3Drejected%26q%3D HTTP/1.1" 302 0
+INFO | 2026-02-09 07:51:54,397 | basehttp | "GET /admin/listings/plotverificationstatus/?status__exact=rejected HTTP/1.1" 200 43585
+INFO | 2026-02-09 07:51:54,471 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:51:58,695 | basehttp | "GET /admin/listings/plotverificationstatus/50/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 200 27210
+INFO | 2026-02-09 07:51:58,737 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:52:04,900 | basehttp | "POST /admin/listings/plotverificationstatus/50/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 302 0
+INFO | 2026-02-09 07:52:04,979 | basehttp | "GET /admin/listings/plotverificationstatus/?status__exact=rejected HTTP/1.1" 200 42981
+INFO | 2026-02-09 07:52:05,053 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:52:07,217 | basehttp | "GET /admin/listings/plotverificationstatus/47/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 200 27227
+INFO | 2026-02-09 07:52:07,250 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:52:10,934 | basehttp | "POST /admin/listings/plotverificationstatus/47/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 302 0
+INFO | 2026-02-09 07:52:10,996 | basehttp | "GET /admin/listings/plotverificationstatus/?status__exact=rejected HTTP/1.1" 200 42351
+INFO | 2026-02-09 07:52:11,072 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:52:13,297 | basehttp | "GET /admin/listings/plotverificationstatus/43/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 200 27227
+INFO | 2026-02-09 07:52:13,342 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:52:17,269 | basehttp | "POST /admin/listings/plotverificationstatus/43/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 302 0
+INFO | 2026-02-09 07:52:17,326 | basehttp | "GET /admin/listings/plotverificationstatus/?status__exact=rejected HTTP/1.1" 200 41705
+INFO | 2026-02-09 07:52:17,399 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:52:19,744 | basehttp | "GET /dashboard/ HTTP/1.1" 200 28110
+INFO | 2026-02-09 07:53:00,369 | basehttp | "GET /admin/listings/plotverificationstatus/44/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 200 27226
+INFO | 2026-02-09 07:53:00,407 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:53:04,509 | basehttp | "POST /admin/listings/plotverificationstatus/44/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 302 0
+INFO | 2026-02-09 07:53:04,610 | basehttp | "GET /admin/listings/plotverificationstatus/?status__exact=rejected HTTP/1.1" 200 41063
+INFO | 2026-02-09 07:53:04,715 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:53:06,946 | basehttp | "GET /admin/listings/plotverificationstatus/48/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 200 27227
+INFO | 2026-02-09 07:53:06,978 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 07:55:00,092 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-09 07:55:00,552 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:55:14,920 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-09 07:55:15,416 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:55:19,721 | basehttp | "GET /dashboard/ HTTP/1.1" 200 28858
+INFO | 2026-02-09 07:55:53,107 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 20660
+INFO | 2026-02-09 07:56:06,051 | basehttp | "GET /dashboard/plots/?status=verified&search= HTTP/1.1" 200 13985
+INFO | 2026-02-09 07:56:12,716 | basehttp | "GET /dashboard/plots/?status=pending&search= HTTP/1.1" 200 7341
+INFO | 2026-02-09 07:56:46,823 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-09 07:56:47,566 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:56:57,971 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-09 07:56:58,658 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 07:57:05,632 | basehttp | "GET /dashboard/plots/?status=pending&search= HTTP/1.1" 200 7411
+INFO | 2026-02-09 07:57:09,054 | basehttp | "GET /add_plot/ HTTP/1.1" 200 81883
+INFO | 2026-02-09 07:57:15,809 | basehttp | "GET /dashboard/ HTTP/1.1" 200 28858
+INFO | 2026-02-09 07:57:19,795 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 20730
+INFO | 2026-02-09 07:57:34,155 | basehttp | "GET /dashboard/plots/?status=in_review&search= HTTP/1.1" 200 9028
+INFO | 2026-02-09 07:58:57,983 | basehttp | "GET /dashboard/plots/?status=in_review&search= HTTP/1.1" 200 22510
+ERROR | 2026-02-09 08:07:48,230 | log | Internal Server Error: /dashboard/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 511, in parse
+    compile_func = self.tags[command]
+                   ~~~~~~~~~^^^^^^^^^
+KeyError: 'endblock'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 822, in staff_dashboard
+    return render(request, 'listings/dashboard/staff_dashboard.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 15, in get_template
+    return engine.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 79, in get_template
+    return Template(self.engine.get_template(template_name), self)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loaders/cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loaders/base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 155, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 197, in compile_nodelist
+    nodelist = parser.parse()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 519, in parse
+    raise self.error(token, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 517, in parse
+    compiled_result = compile_func(self, token)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 299, in do_extends
+    nodelist = parser.parse()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 513, in parse
+    self.invalid_block_tag(token, command, parse_until)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 578, in invalid_block_tag
+    raise self.error(
+    ...<3 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Invalid block tag on line 1637: 'endblock'. Did you forget to register or load this tag?
+ERROR | 2026-02-09 08:07:48,234 | basehttp | "GET /dashboard/ HTTP/1.1" 500 198431
+ERROR | 2026-02-09 08:09:00,891 | log | Internal Server Error: /dashboard/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 511, in parse
+    compile_func = self.tags[command]
+                   ~~~~~~~~~^^^^^^^^^
+KeyError: 'endblock'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 822, in staff_dashboard
+    return render(request, 'listings/dashboard/staff_dashboard.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 15, in get_template
+    return engine.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 79, in get_template
+    return Template(self.engine.get_template(template_name), self)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loaders/cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loaders/base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 155, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 197, in compile_nodelist
+    nodelist = parser.parse()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 519, in parse
+    raise self.error(token, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 517, in parse
+    compiled_result = compile_func(self, token)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 299, in do_extends
+    nodelist = parser.parse()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 513, in parse
+    self.invalid_block_tag(token, command, parse_until)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 578, in invalid_block_tag
+    raise self.error(
+    ...<3 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Invalid block tag on line 1637: 'endblock'. Did you forget to register or load this tag?
+ERROR | 2026-02-09 08:09:00,894 | basehttp | "GET /dashboard/ HTTP/1.1" 500 198568
+INFO | 2026-02-09 08:11:49,934 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:12:02,916 | basehttp | "GET /dashboard/ HTTP/1.1" 200 37816
+INFO | 2026-02-09 08:13:43,416 | basehttp | "GET /dashboard/profile/ HTTP/1.1" 200 0
+INFO | 2026-02-09 08:15:45,314 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 54152
+INFO | 2026-02-09 08:18:44,965 | basehttp | "GET /dashboard/interests/ HTTP/1.1" 200 0
+INFO | 2026-02-09 08:18:50,739 | basehttp | "GET /add_plot/ HTTP/1.1" 200 81883
+INFO | 2026-02-09 08:23:01,043 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 66074
+INFO | 2026-02-09 08:23:34,777 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 66074
+INFO | 2026-02-09 08:24:37,947 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 66074
+INFO | 2026-02-09 08:24:37,986 | basehttp | "GET /static/css/styles.css HTTP/1.1" 200 3422
+WARNING | 2026-02-09 08:24:38,672 | log | Not Found: /favicon.ico
+WARNING | 2026-02-09 08:24:38,673 | basehttp | "GET /favicon.ico HTTP/1.1" 404 11828
+INFO | 2026-02-09 08:27:35,536 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 66074
+INFO | 2026-02-09 08:32:27,238 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 51973
+INFO | 2026-02-09 08:32:57,840 | basehttp | "GET /add_plot/ HTTP/1.1" 200 81883
+INFO | 2026-02-09 08:36:32,467 | basehttp | "GET /add_plot/ HTTP/1.1" 200 92289
+INFO | 2026-02-09 08:36:45,882 | basehttp | "GET /dashboard/profile/ HTTP/1.1" 200 0
+INFO | 2026-02-09 08:36:52,027 | basehttp | "GET /dashboard/interests/ HTTP/1.1" 200 0
+WARNING | 2026-02-09 08:38:16,413 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:38:16,415 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+INFO | 2026-02-09 08:38:24,647 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 51973
+WARNING | 2026-02-09 08:38:24,768 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:38:24,770 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+INFO | 2026-02-09 08:38:29,715 | basehttp | "GET /dashboard/interests/ HTTP/1.1" 200 0
+WARNING | 2026-02-09 08:38:29,901 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:38:29,905 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+WARNING | 2026-02-09 08:38:34,337 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:38:34,341 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+WARNING | 2026-02-09 08:38:34,375 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:38:34,375 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+INFO | 2026-02-09 08:38:52,254 | basehttp | "GET /dashboard/plots/?page=2&status=all&search= HTTP/1.1" 200 52377
+WARNING | 2026-02-09 08:38:52,386 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:38:52,389 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+INFO | 2026-02-09 08:38:57,221 | basehttp | "GET /dashboard/plots/?page=1&status=all&search= HTTP/1.1" 200 51973
+WARNING | 2026-02-09 08:38:57,387 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:38:57,398 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+INFO | 2026-02-09 08:38:59,813 | basehttp | "GET /add_plot/ HTTP/1.1" 200 92289
+WARNING | 2026-02-09 08:39:00,325 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:39:00,327 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+INFO | 2026-02-09 08:40:44,983 | basehttp | "GET /dashboard/profile/ HTTP/1.1" 200 50136
+WARNING | 2026-02-09 08:40:45,098 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:40:45,100 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+ERROR | 2026-02-09 08:42:06,482 | log | Internal Server Error: /dashboard/interests/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 949, in buyer_interests
+    return render(request, 'listings/dashboard/buyer_interests.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'send_reply' not found. 'send_reply' is not a valid view function or pattern name.
+ERROR | 2026-02-09 08:42:06,490 | basehttp | "GET /dashboard/interests/ HTTP/1.1" 500 178957
+INFO | 2026-02-09 08:43:13,483 | basehttp | "GET /dashboard/interests/ HTTP/1.1" 200 33942
+INFO | 2026-02-09 08:43:43,421 | basehttp | "GET /add_plot/ HTTP/1.1" 200 92289
+INFO | 2026-02-09 08:43:44,846 | basehttp | "GET /dashboard/plots/ HTTP/1.1" 200 51973
+INFO | 2026-02-09 08:43:46,587 | basehttp | "GET /dashboard/ HTTP/1.1" 200 37820
+INFO | 2026-02-09 08:43:48,613 | basehttp | "GET /dashboard/interests/ HTTP/1.1" 200 33942
+INFO | 2026-02-09 08:43:50,403 | basehttp | "GET /dashboard/profile/ HTTP/1.1" 200 50136
+INFO | 2026-02-09 08:46:34,990 | basehttp | "GET /dashboard/profile/ HTTP/1.1" 200 57962
+INFO | 2026-02-09 08:46:43,221 | basehttp | "GET / HTTP/1.1" 200 37956
+INFO | 2026-02-09 08:46:43,287 | basehttp | "GET /media/plot_images/plot_1_image_1_VsZYXow.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 08:46:43,290 | basehttp | "GET /media/plot_images/plot_1_image_2_CLQl4DX.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 08:46:43,291 | basehttp | "GET /media/plot_images/plot_4_image_1_CUO7UIJ.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 08:46:43,289 | basehttp | "GET /media/plot_images/plot_1_image_3_u5mopCf.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 08:46:43,294 | basehttp | "GET /media/plot_images/plot_4_image_2_1bb2nWe.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 08:46:43,297 | basehttp | "GET /media/plot_images/plot_4_image_3_KvDl56U.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 08:46:43,310 | basehttp | "GET /media/plot_images/plot_1_image_1.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 08:46:43,313 | basehttp | "GET /media/plot_images/plot_1_image_3.jpg HTTP/1.1" 304 0
+INFO | 2026-02-09 08:46:43,314 | basehttp | "GET /media/plot_images/plot_1_image_2.jpg HTTP/1.1" 304 0
+WARNING | 2026-02-09 08:47:54,422 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:47:54,423 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+INFO | 2026-02-09 08:48:08,901 | basehttp | "POST /logout/ HTTP/1.1" 302 0
+ERROR | 2026-02-09 08:48:08,964 | log | Internal Server Error: /
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 361, in home
+    return render(request, 'listings/home.html', {
+        'featured_plots': featured_plots,
+    ...<11 lines>...
+        },
+    })
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 327, in render
+    return nodelist.render(context)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'register_choice' not found. 'register_choice' is not a valid view function or pattern name.
+ERROR | 2026-02-09 08:48:08,968 | basehttp | "GET / HTTP/1.1" 500 181476
+WARNING | 2026-02-09 08:48:09,022 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 08:48:09,025 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 11939
+ERROR | 2026-02-09 08:49:57,723 | log | Internal Server Error: /
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 361, in home
+    return render(request, 'listings/home.html', {
+        'featured_plots': featured_plots,
+    ...<11 lines>...
+        },
+    })
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 327, in render
+    return nodelist.render(context)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'register_choice' not found. 'register_choice' is not a valid view function or pattern name.
+ERROR | 2026-02-09 08:49:57,729 | basehttp | "GET / HTTP/1.1" 500 181502
+INFO | 2026-02-09 08:50:44,715 | basehttp | "GET / HTTP/1.1" 200 41920
+INFO | 2026-02-09 08:54:09,809 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-09 08:54:10,436 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:54:13,732 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-09 08:54:14,517 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:54:47,218 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-09 08:54:47,762 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:55:33,597 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-09 08:55:34,162 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:55:37,506 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-09 08:55:37,988 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:55:59,411 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-09 08:56:00,059 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:57:52,764 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/admin.py changed, reloading.
+INFO | 2026-02-09 08:57:53,259 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:58:03,551 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/admin.py changed, reloading.
+INFO | 2026-02-09 08:58:04,182 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:58:17,471 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/admin.py changed, reloading.
+INFO | 2026-02-09 08:58:17,917 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:59:06,730 | autoreload | /home/createch/Documents/PROJECT/agriplot/listings/admin.py changed, reloading.
+INFO | 2026-02-09 08:59:07,178 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 08:59:21,944 | basehttp | "GET / HTTP/1.1" 200 41920
+INFO | 2026-02-09 08:59:25,523 | basehttp | "GET /plot/49/ HTTP/1.1" 200 57904
+INFO | 2026-02-09 08:59:51,624 | basehttp | "GET /login/ HTTP/1.1" 200 1325
+INFO | 2026-02-09 08:59:59,408 | basehttp | "POST /login/ HTTP/1.1" 302 0
+INFO | 2026-02-09 08:59:59,427 | basehttp | "GET / HTTP/1.1" 200 44433
+INFO | 2026-02-09 09:00:03,551 | basehttp | "GET /plot/45/ HTTP/1.1" 200 70034
+WARNING | 2026-02-09 09:00:35,779 | log | Not Found: /.well-known/appspecific/com.chrome.devtools.json
+WARNING | 2026-02-09 09:00:35,781 | basehttp | "GET /.well-known/appspecific/com.chrome.devtools.json HTTP/1.1" 404 12540
+INFO | 2026-02-09 12:18:21,088 | autoreload | Watching for file changes with StatReloader
+INFO | 2026-02-09 12:18:32,337 | basehttp | "GET / HTTP/1.1" 200 44433
+WARNING | 2026-02-09 12:18:36,179 | log | Not Found: /favicon.ico
+WARNING | 2026-02-09 12:18:36,182 | basehttp | "GET /favicon.ico HTTP/1.1" 404 12429
+WARNING | 2026-02-09 12:18:36,202 | log | Not Found: /favicon.ico
+WARNING | 2026-02-09 12:18:36,206 | basehttp | "GET /favicon.ico HTTP/1.1" 404 12429
+INFO | 2026-02-09 12:18:37,640 | basehttp | "GET /admin/listings/plotverificationstatus/48/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 302 0
+INFO | 2026-02-09 12:18:37,678 | basehttp | "GET /admin/login/?next=/admin/listings/plotverificationstatus/48/change/%3F_changelist_filters%3Dstatus__exact%253Drejected HTTP/1.1" 200 3490
+INFO | 2026-02-09 12:18:42,399 | basehttp | "GET / HTTP/1.1" 200 44433
+INFO | 2026-02-09 12:18:51,281 | basehttp | "POST /admin/login/?next=/admin/listings/plotverificationstatus/48/change/%3F_changelist_filters%3Dstatus__exact%253Drejected HTTP/1.1" 302 0
+INFO | 2026-02-09 12:18:51,337 | basehttp | "GET /admin/listings/plotverificationstatus/48/change/?_changelist_filters=status__exact%3Drejected HTTP/1.1" 200 27734
+INFO | 2026-02-09 12:18:51,430 | basehttp | "GET /admin/jsi18n/ HTTP/1.1" 200 3342
+INFO | 2026-02-09 12:18:54,957 | basehttp | "GET /admin/ HTTP/1.1" 200 36837
+WARNING | 2026-02-09 12:23:41,975 | log | Forbidden (CSRF token from POST incorrect.): /logout/
+WARNING | 2026-02-09 12:23:41,975 | basehttp | "POST /logout/ HTTP/1.1" 403 2503
+INFO | 2026-02-09 12:23:49,665 | basehttp | "POST /admin/logout/ HTTP/1.1" 302 0
+INFO | 2026-02-09 12:23:49,684 | basehttp | "GET / HTTP/1.1" 200 41920
+INFO | 2026-02-09 12:24:23,811 | basehttp | "GET /login/ HTTP/1.1" 200 1325
+INFO | 2026-02-09 12:24:37,634 | basehttp | "POST /login/ HTTP/1.1" 302 0
+INFO | 2026-02-09 12:24:37,668 | basehttp | "GET / HTTP/1.1" 200 44432
+INFO | 2026-02-09 12:24:50,029 | basehttp | "GET /add_plot/ HTTP/1.1" 200 106591
+INFO | 2026-02-09 12:34:22,513 | basehttp | "GET /dashboard/ HTTP/1.1" 200 52122
+INFO | 2026-02-09 12:35:51,074 | basehttp | "GET / HTTP/1.1" 200 44432
+INFO | 2026-02-09 12:38:40,199 | basehttp | "GET /plot/49/ HTTP/1.1" 200 70292
+INFO | 2026-02-09 12:38:45,340 | basehttp | "GET /plot/49/ HTTP/1.1" 200 70292
+INFO | 2026-02-09 12:39:01,006 | basehttp | "GET / HTTP/1.1" 200 44432
+INFO | 2026-02-09 12:39:18,233 | basehttp | "POST /logout/ HTTP/1.1" 302 0
+INFO | 2026-02-09 12:39:18,278 | basehttp | "GET / HTTP/1.1" 200 41920

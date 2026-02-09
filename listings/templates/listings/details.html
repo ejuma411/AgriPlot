@@ -199,6 +199,71 @@
 
         <!-- Right Column: Documents & Broker Info -->
         <div class="col-lg-4 mb-4">
+            <!-- Plot Reactions -->
+            <div class="dashboard-card mb-4" id="reactions">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-heart me-2"></i>Community Reactions
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="reactions-container">
+                        {% if user.is_authenticated %}
+                        <div class="reactions-buttons">
+                            <button class="reaction-btn" data-reaction="love" title="Love this plot">
+                                <span class="reaction-icon">❤️</span>
+                                <span class="reaction-label">Love</span>
+                                <span class="reaction-count" data-reaction="love">0</span>
+                            </button>
+                            <button class="reaction-btn" data-reaction="like" title="Like this plot">
+                                <span class="reaction-icon">👍</span>
+                                <span class="reaction-label">Like</span>
+                                <span class="reaction-count" data-reaction="like">0</span>
+                            </button>
+                            <button class="reaction-btn" data-reaction="potential" title="Growth potential">
+                                <span class="reaction-icon">🌱</span>
+                                <span class="reaction-label">Potential</span>
+                                <span class="reaction-count" data-reaction="potential">0</span>
+                            </button>
+                        </div>
+                        {% else %}
+                        <div class="reactions-info text-center py-3">
+                            <p class="text-muted mb-2">Sign in to react to this plot</p>
+                            <a href="{% url 'login' %}" class="btn btn-sm btn-primary">
+                                <i class="fas fa-sign-in-alt me-1"></i>Login to React
+                            </a>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Reactions Summary -->
+                        <div class="reactions-summary mt-3">
+                            <small class="text-muted d-block mb-2">Community Interest</small>
+                            <div class="reactions-bar">
+                                <div class="reaction-bar-item">
+                                    <span class="reaction-emoji">❤️</span>
+                                    <span class="reaction-bar-text">Love:</span>
+                                    <span class="reaction-bar-count" data-reaction="love">0</span>
+                                </div>
+                                <div class="reaction-bar-item">
+                                    <span class="reaction-emoji">👍</span>
+                                    <span class="reaction-bar-text">Like:</span>
+                                    <span class="reaction-bar-count" data-reaction="like">0</span>
+                                </div>
+                                <div class="reaction-bar-item">
+                                    <span class="reaction-emoji">🌱</span>
+                                    <span class="reaction-bar-text">Potential:</span>
+                                    <span class="reaction-bar-count" data-reaction="potential">0</span>
+                                </div>
+                                <div class="reaction-bar-item total">
+                                    <span class="reaction-total-label">Total Interest:</span>
+                                    <span class="reaction-total-count" id="totalReactions">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Documents -->
             <div class="dashboard-card mb-4" id="documents">
                 <div class="card-header">
@@ -1133,7 +1198,233 @@ a:hover {
         flex-direction: column;
     }
 }
+
+/* =========================
+   REACTIONS STYLES
+========================= */
+.reactions-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.reactions-buttons {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.reaction-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.75rem;
+    border: 2px solid #e5e7eb;
+    background: #f9fafb;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #6b7280;
+    position: relative;
+    overflow: hidden;
+}
+
+.reaction-btn:hover {
+    border-color: #069132;
+    background: rgba(6, 145, 50, 0.05);
+    transform: translateY(-2px);
+}
+
+.reaction-btn.active {
+    border-color: #069132;
+    background: rgba(6, 145, 50, 0.1);
+    color: #069132;
+    box-shadow: 0 4px 12px rgba(6, 145, 50, 0.15);
+}
+
+.reaction-icon {
+    font-size: 1.5rem;
+    line-height: 1;
+}
+
+.reaction-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.reaction-count {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #069132;
+    min-width: 20px;
+}
+
+.reaction-btn:not(.active) .reaction-count {
+    color: #9ca3af;
+}
+
+.reactions-info {
+    border: 1px dashed #d1d5db;
+    border-radius: 8px;
+    background: #f9fafb;
+}
+
+.reactions-summary {
+    background: #f3f4f6;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.reactions-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.reaction-bar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.9rem;
+}
+
+.reaction-emoji {
+    font-size: 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+}
+
+.reaction-bar-text {
+    color: #6b7280;
+    min-width: 60px;
+    font-size: 0.85rem;
+}
+
+.reaction-bar-count {
+    font-weight: 600;
+    color: #1f2937;
+    ml-auto: auto;
+    display: inline-block;
+    min-width: 30px;
+}
+
+.reaction-bar-item.total {
+    border-top: 1px solid #d1d5db;
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+    font-weight: 600;
+}
+
+.reaction-total-label {
+    color: #4b5563;
+    font-size: 0.9rem;
+}
+
+.reaction-total-count {
+    font-size: 1.2rem;
+    color: #069132;
+    font-weight: 700;
+    float: right;
+}
+
+@media (max-width: 768px) {
+    .reactions-buttons {
+        grid-template-columns: 1fr 1fr 1fr;
+    }
+
+    .reaction-btn {
+        padding: 0.6rem 0.4rem;
+    }
+
+    .reaction-icon {
+        font-size: 1.2rem;
+    }
+
+    .reaction-label {
+        font-size: 0.7rem;
+    }
+}
 </style>
+
+<script>
+    // Reactions functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const plotId = {{ plot.id }};
+        const reactionBtns = document.querySelectorAll('.reaction-btn');
+        
+        // Load initial reaction data
+        loadReactionData();
+        
+        function loadReactionData() {
+            fetch(`/api/plot-reactions/${plotId}/get/`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update counts
+                    updateReactionDisplay(data.counts, data.user_reactions);
+                })
+                .catch(error => console.log('Reactions load failed:', error));
+        }
+        
+        function updateReactionDisplay(counts, userReactions) {
+            // Update button counts and active state
+            reactionBtns.forEach(btn => {
+                const reactionType = btn.dataset.reaction;
+                const countSpan = btn.querySelector('.reaction-count');
+                countSpan.textContent = counts[reactionType] || 0;
+                
+                // Update active state
+                if (userReactions.includes(reactionType)) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            
+            // Update summary bars
+            document.querySelectorAll('.reaction-bar-count').forEach(span => {
+                const reactionType = span.getAttribute('data-reaction');
+                span.textContent = counts[reactionType] || 0;
+            });
+            
+            // Update total
+            const totalReactions = Object.values(counts).reduce((a, b) => a + b, 0);
+            document.getElementById('totalReactions').textContent = totalReactions;
+        }
+        
+        // Handle reaction clicks
+        reactionBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const reactionType = this.dataset.reaction;
+                
+                const formData = new FormData();
+                formData.append('reaction_type', reactionType);
+                
+                fetch(`/api/plot-reactions/${plotId}/toggle/`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || ''
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateReactionDisplay(data.counts, 
+                            Array.from(reactionBtns)
+                                .filter(b => b.classList.contains('active'))
+                                .map(b => b.dataset.reaction));
+                    }
+                })
+                .catch(error => console.log('Reaction toggle failed:', error));
+            });
+        });
+    });
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {

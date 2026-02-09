@@ -397,6 +397,7 @@ class PlotAdmin(admin.ModelAdmin):
         "verification_status",
         "has_title_deed",
         "has_verification_docs",
+        "reaction_count_display",
         "contact_requests_count",
     )
     
@@ -412,7 +413,7 @@ class PlotAdmin(admin.ModelAdmin):
         "broker__user__username",
     )
     
-    readonly_fields = ("broker", "verification_info", "image_preview", "created_at", "updated_at")
+    readonly_fields = ("broker", "verification_info", "image_preview", "contact_requests_summary", "created_at", "updated_at")
     
     fieldsets = (
         ("Basic Information", {
@@ -567,6 +568,24 @@ class PlotAdmin(admin.ModelAdmin):
             if getattr(obj, doc):
                 uploaded += 1
         return f"{uploaded}/3"
+    has_verification_docs.short_description = "Verification Docs"
+    
+    def reaction_count_display(self, obj):
+        """Display reaction counts for the plot"""
+        counts = obj.get_reaction_counts()
+        total = obj.total_reaction_count()
+        
+        if total == 0:
+            return format_html('<span style="color: #ccc;">No reactions</span>')
+        
+        return format_html(
+            '❤️ {} | 👍 {} | 🌱 {} | <strong>Total: {}</strong>',
+            counts.get('love', 0),
+            counts.get('like', 0),
+            counts.get('potential', 0),
+            total
+        )
+    reaction_count_display.short_description = "Reactions"
     has_verification_docs.short_description = "Verification Docs"
     
     def image_count(self, obj):
@@ -728,6 +747,20 @@ class PlotImageAdmin(admin.ModelAdmin):
     preview.short_description = "Preview"
     
     ordering = ('-uploaded_at',)
+
+
+@admin.register(SoilReport)
+class SoilReportAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'plot_link', 'pH', 'organic_matter_pct', 'lab_id', 'verification_status', 'sample_date', 'created_at'
+    )
+    list_filter = ('verification_status', 'sample_date', 'lab_id')
+    search_fields = ('plot__title', 'lab_id')
+    readonly_fields = ('created_at', 'updated_at')
+
+    def plot_link(self, obj):
+        return format_html('<a href="/admin/listings/plot/{}/change/">{}</a>', obj.plot.id, obj.plot.title)
+    plot_link.short_description = 'Plot'
 
 # ----------------------------------------
 # Profile Admin
@@ -983,3 +1016,24 @@ class UserInterestAdmin(admin.ModelAdmin):
     list_filter = ("status", "created_at")
     search_fields = ("user__username", "plot__title", "message")
     readonly_fields = ("created_at", "updated_at")
+
+
+# ----------------------------------------
+# PlotReaction Admin
+# ----------------------------------------
+@admin.register(PlotReaction)
+class PlotReactionAdmin(admin.ModelAdmin):
+    list_display = ("user", "plot", "reaction_emoji", "created_at")
+    list_filter = ("reaction_type", "created_at")
+    search_fields = ("user__username", "plot__title")
+    readonly_fields = ("created_at",)
+    
+    def reaction_emoji(self, obj):
+        """Display emoji for reaction type"""
+        emoji_map = {
+            'love': '❤️ Love',
+            'like': '👍 Like',
+            'potential': '🌱 Potential'
+        }
+        return emoji_map.get(obj.reaction_type, obj.reaction_type)
+    reaction_emoji.short_description = "Reaction"
