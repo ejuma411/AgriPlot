@@ -5,13 +5,66 @@
 {% block title %}Verification Status - {{ plot.title }}{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <!-- Back Button -->
-    <div class="mb-4">
-        <a href="{% url 'listings:my_plots' %}" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left me-2"></i>Back to My Plots
-        </a>
-    </div>
+<div class="dashboard-wrapper">
+    <!-- Sidebar Navigation -->
+    <aside class="dashboard-sidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-leaf"></i>
+            <span>AgriPlot</span>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a href="{% url 'listings:staff_dashboard' %}" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{% url 'listings:my_plots' %}" class="nav-item active">
+                <i class="fas fa-list"></i>
+                <span>My Plots</span>
+            </a>
+            <a href="{% url 'listings:add_plot' %}" class="nav-item">
+                <i class="fas fa-plus-circle"></i>
+                <span>Add New Plot</span>
+            </a>
+            <a href="{% url 'listings:buyer_interests' %}" class="nav-item">
+                <i class="fas fa-envelope"></i>
+                <span>Messages</span>
+            </a>
+            <a href="{% url 'listings:profile_management' %}" class="nav-item">
+                <i class="fas fa-user-circle"></i>
+                <span>Profile</span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ request.user.get_full_name|first|upper }}</div>
+                <div class="user-details">
+                    <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="user-role">{{ profile_type }}</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="dashboard-main">
+        <!-- Top Header Bar -->
+        <div class="dashboard-topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">Verification Status</h1>
+                <p class="page-subtitle">{{ plot.title }}</p>
+            </div>
+            <div class="topbar-right">
+                <a href="{% url 'listings:my_plots' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="dashboard-content">
+            <div class="content-left">
 
     <!-- Verification Status Card -->
     <div class="card shadow mb-4">
@@ -191,19 +244,9 @@
                 </div>
             </div>
             {% endif %}
+            </div>
         </div>
-        <div class="card-footer text-muted">
-            <small>
-                <i class="fas fa-info-circle me-1"></i>
-                Plot created on {{ plot.created|date:"F d, Y"|default:"Unknown date" }}.
-                {% if documents_complete %}
-                    All required documents are uploaded. Your plot is ready for verification.
-                {% else %}
-                    Some required documents are missing. Please upload them to complete verification.
-                {% endif %}
-            </small>
-        </div>
-    </div>
+    </main>
 </div>
 
 <!-- Upload Modals -->
@@ -251,13 +294,286 @@
             </div>
         </div>
     </div>
+
 </div>
 
 <style>
-    .card {
-        border-radius: 10px;
+    /* Root Variables */
+    :root {
+        --primary: #069132;
+        --primary-light: #e3ebf7;
+        --success: #1cc88a;
+        --success-light: #d4edda;
+        --warning: #f6c23e;
+        --warning-light: #fff3cd;
+        --danger: #e74a3b;
+        --danger-light: #f8d7da;
+        --info: #36b9cc;
+        --info-light: #d1ecf1;
+        --gray-100: #f8f9fa;
+        --gray-200: #e9ecef;
+        --gray-300: #dee2e6;
+        --gray-600: #6c757d;
+        --gray-700: #5a5c69;
+        --gray-800: #0e7833;
+        --shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+        --shadow-lg: 0 0.35rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+        --radius: 0.75rem;
+        --transition: all 0.2s ease;
     }
-    
+
+    /* Dashboard Layout */
+    .dashboard-wrapper {
+        display: flex;
+        height: 100vh;
+        background: var(--gray-100);
+    }
+
+    /* Sidebar */
+    .dashboard-sidebar {
+        width: 260px;
+        background: white;
+        border-right: 1px solid var(--gray-300);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        position: fixed;
+        height: 100vh;
+        left: 0;
+        top: 0;
+        z-index: 1000;
+    }
+
+    .sidebar-brand {
+        padding: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        font-weight: 700;
+        font-size: 1.3rem;
+        color: var(--primary);
+        border-bottom: 2px solid var(--gray-200);
+    }
+
+    .sidebar-brand i {
+        font-size: 1.5rem;
+    }
+
+    .sidebar-nav {
+        flex: 1;
+        padding: 1rem 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .nav-item {
+        padding: 0.875rem 1.5rem;
+        color: var(--gray-700);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: var(--transition);
+        border-left: 3px solid transparent;
+    }
+
+    .nav-item:hover {
+        background: var(--gray-100);
+        color: var(--primary);
+    }
+
+    .nav-item.active {
+        background: var(--primary-light);
+        color: var(--primary);
+        border-left-color: var(--primary);
+        font-weight: 600;
+    }
+
+    .nav-item i {
+        width: 20px;
+        text-align: center;
+    }
+
+    .sidebar-footer {
+        padding: 1.5rem;
+        border-top: 1px solid var(--gray-300);
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+
+    .user-details p {
+        margin: 0;
+        font-size: 0.85rem;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+
+    .user-role {
+        color: var(--gray-600);
+    }
+
+    /* Main Content */
+    .dashboard-main {
+        flex: 1;
+        margin-left: 260px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .dashboard-topbar {
+        background: white;
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid var(--gray-300);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .page-title {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 700;
+        color: var(--gray-800);
+    }
+
+    .page-subtitle {
+        margin: 0.25rem 0 0 0;
+        color: var(--gray-600);
+        font-size: 0.95rem;
+    }
+
+    /* Dashboard Content */
+    .dashboard-content {
+        padding: 2rem;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        flex: 1;
+        max-width: 1600px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .content-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    /* Card */
+    .card {
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 1.5rem;
+        border-bottom: 2px solid var(--gray-200);
+    }
+
+    .card-title {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: var(--transition);
+        border: 1px solid transparent;
+    }
+
+    .btn-outline-secondary {
+        color: var(--gray-700);
+        border-color: var(--gray-300);
+    }
+
+    .btn-outline-secondary:hover {
+        background: var(--gray-100);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .dashboard-wrapper {
+            flex-direction: column;
+        }
+
+        .dashboard-sidebar {
+            width: 100%;
+            height: auto;
+            position: static;
+        }
+
+        .dashboard-main {
+            margin-left: 0;
+        }
+
+        .sidebar-nav {
+            flex-direction: row;
+            overflow-x: auto;
+        }
+
+        .nav-item {
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .sidebar-footer {
+            display: none;
+        }
+
+        .dashboard-topbar {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .page-title {
+            font-size: 1.5rem;
+        }
+
+        .dashboard-content {
+            padding: 1rem;
+        }
+    }
+
+    /* Custom */
     .badge {
         font-size: 0.85em;
         padding: 0.5em 1em;

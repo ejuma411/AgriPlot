@@ -24,18 +24,15 @@
                 {% endfor %}
             </select>
 
-            <select name="crop">
+            <!-- Simplified search: soil type, crop preset, location, max price -->
+            <select name="crop_preset">
                 <option value="">Crop</option>
-                {% for crop in common_crops %}
-                    <option value="{{ crop }}"
-                    {% if crop == filter_crop %}selected{% endif %}>
-                        {{ crop }}
-                    </option>
+                {% for key, preset in crop_presets.items %}
+                    <option value="{{ key }}" {% if key == filter_crop %}selected{% endif %}>{{ key }}</option>
                 {% endfor %}
             </select>
-
-            <input type="text" name="location" placeholder="County or Town">
-            <input type="number" name="max_price" placeholder="Max Price">
+            <input type="text" name="location" placeholder="County or Town" value="{{ request.GET.location|default:'' }}">
+            <input type="number" name="max_price" placeholder="Max Price" value="{{ request.GET.max_price|default:'' }}">
 
             <button type="submit">
                 <i class="fas fa-search"></i> Search
@@ -45,13 +42,12 @@
 
     <!-- HERO IMAGES SLIDER -->
     <div class="hero-slider">
-        <img src="/static/images/farm-hero.jpg" class="active" alt="Farm Hero 1">
-        <img src="/static/images/farm-hero2.jpeg" alt="Farm Hero 2">
-        <img src="/static/images/farm-hero3.jpeg" alt="Farm Hero 3">
+        <img src="{% static 'images/farm-hero.jpg' %}" class="active" alt="Farm Hero 1">
+        <img src="{% static 'images/farm-hero2.jpeg' %}" alt="Farm Hero 2">
+        <img src="{% static 'images/farm-hero3.jpeg' %}" alt="Farm Hero 3">
     </div>
 
 </section>
-
 
 
 <!-- FEATURED LISTINGS -->
@@ -61,123 +57,7 @@
         <h2>Featured Plots</h2>
     </div>
 
-    <div class="market-grid">
-
-        {% for plot in featured_plots %}
-        <div class="market-card">
-
-            <!-- IMAGE -->
-            <div class="market-image plot-gallery">
-                {% if plot.images_list %}
-                    {% for img in plot.images_list.all %}
-                        <img src="{{ img.image.url }}" class="{% if forloop.first %}active{% endif %}" 
-                             alt="{{ plot.title }} image {{ forloop.counter }}">
-                    {% endfor %}
-                {% else %}
-                    <img src="{% static 'images/placeholder-plot.jpg' %}" alt="No image available">
-                {% endif %}
-
-                <!-- PRICE -->
-                <span class="price-tag">
-                    KSh {{ plot.price|floatformat:0 }}
-                </span>
-
-                <!-- VERIFIED BADGE -->
-                {% if plot.verification_status.status == "verified" %}
-                <span class="verified-badge">✔ Verified</span>
-                {% endif %}
-            </div>
-
-
-            <!-- CONTENT -->
-            <div class="market-body">
-
-                <h3 class="plot-title">{{ plot.title }}</h3>
-
-                <p class="market-location">
-                    <i class="fas fa-map-marker-alt"></i>
-                    {{ plot.location.county }}
-                </p>
-
-                <!-- QUICK SPECS -->
-                <div class="plot-specs">
-
-                    {% if plot.soil_type %}
-                    <span class="spec-chip">{{ plot.soil_type }}</span>
-                    {% endif %}
-
-                    {% if plot.crop_suitability %}
-                    <span class="spec-chip">{{ plot.crop_suitability }}</span>
-                    {% endif %}
-
-                    {% if plot.size %}
-                    <span class="spec-chip">{{ plot.size }} Acres</span>
-                    {% endif %}
-
-                </div>
-
-                <!-- SELLER -->
-                <div class="seller-mini">
-
-                    <div class="seller-avatar">
-                        {{ plot.broker.user.username|first|upper }}
-                    </div>
-
-                    <div>
-                        <strong>{{ plot.broker.user.username }}</strong>
-                        <small>Licensed Broker</small>
-                    </div>
-
-                </div>
-
-                <!-- ACTIONS -->
-                <div class="card-actions">
-
-                    <a href="{% url 'listings:plot_detail' plot.id %}" class="btn-view">
-                        View Plot
-                    </a>
-
-                    {% if plot.broker.phone_number %}
-                    <a href="https://wa.me/{{ plot.broker.phone_number|cut:'+' }}"
-                    class="btn-contact"
-                    target="_blank">
-                    WhatsApp
-                    </a>
-                    {% endif %}
-
-                </div>
-
-            </div>
-        </div>
-        {% empty %}
-        <div class="empty-state">
-            <h4>No Verified Plots Found</h4>
-            <p>Try adjusting your filters or check again later.</p>
-        </div>
-        {% endfor %}
-
-    </div>
-
-    <!-- PAGINATION CONTROLS -->
-    {% if featured_plots.has_other_pages %}
-    <div class="pagination">
-        {% if featured_plots.has_previous %}
-            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.previous_page_number }}">&laquo; Previous</a>
-        {% else %}
-            <span class="disabled">&laquo; Previous</span>
-        {% endif %}
-
-        <span class="current">
-            Page {{ featured_plots.number }} of {{ featured_plots.paginator.num_pages }}
-        </span>
-
-        {% if featured_plots.has_next %}
-            <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.next_page_number }}">Next &raquo;</a>
-        {% else %}
-            <span class="disabled">Next &raquo;</span>
-        {% endif %}
-    </div>
-    {% endif %}
+    {% include 'listings/_market_grid.html' %}
 
 </section>
 
@@ -595,6 +475,13 @@
     .market-search input,
     .market-search select,
     .market-search button {
+        height:48px;
+        padding:0 12px;
+        border-radius:8px;
+        border:none;
+        min-width: 180px;
+    }
+    .market-search button {
         width: 100%;
         max-width: 350px;
         min-width: 0;
@@ -712,5 +599,74 @@ document.addEventListener("DOMContentLoaded", function() {
 
 });
 
+</script>
+<script>
+// AJAX search handlers (submit form and pagination)
+document.addEventListener('DOMContentLoaded', function(){
+    const form = document.querySelector('.market-search');
+    if(!form) return;
+
+    form.addEventListener('submit', function(e){
+        e.preventDefault();
+        const params = new URLSearchParams(new FormData(form));
+        fetch(`/ajax/search/?${params.toString()}`)
+            .then(r => r.json())
+            .then(data => {
+                if(!data.html) return;
+                const container = document.createElement('div');
+                container.innerHTML = data.html;
+
+                const newGrid = container.querySelector('.market-grid');
+                const newPagination = container.querySelector('.pagination');
+
+                const oldGrid = document.querySelector('.market-grid');
+                const oldPagination = document.querySelector('.pagination');
+
+                if(oldGrid && newGrid){
+                    oldGrid.replaceWith(newGrid);
+                }
+                if(oldPagination){
+                    if(newPagination) oldPagination.replaceWith(newPagination);
+                    else oldPagination.remove();
+                } else if(newPagination && oldGrid && oldGrid.parentElement){
+                    oldGrid.parentElement.appendChild(newPagination);
+                }
+            })
+            .catch(err => console.error('Search error', err));
+    });
+
+    // Delegate AJAX pagination clicks
+    document.body.addEventListener('click', function(e){
+        if(e.target.matches('.ajax-page')){
+            e.preventDefault();
+            const href = e.target.getAttribute('href') || '';
+            const url = href.startsWith('?') ? `/ajax/search/${href}` : href;
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if(!data.html) return;
+                    const container = document.createElement('div');
+                    container.innerHTML = data.html;
+
+                    const newGrid = container.querySelector('.market-grid');
+                    const newPagination = container.querySelector('.pagination');
+
+                    const oldGrid = document.querySelector('.market-grid');
+                    const oldPagination = document.querySelector('.pagination');
+
+                    if(oldGrid && newGrid){
+                        oldGrid.replaceWith(newGrid);
+                    }
+                    if(oldPagination){
+                        if(newPagination) oldPagination.replaceWith(newPagination);
+                        else oldPagination.remove();
+                    } else if(newPagination && oldGrid && oldGrid.parentElement){
+                        oldGrid.parentElement.appendChild(newPagination);
+                    }
+                })
+            .catch(err => console.error('Pagination error', err));
+        }
+    });
+});
 </script>
 {% endblock %}

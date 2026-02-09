@@ -15,6 +15,7 @@ from django.db.models import Q, Count, Avg
 from django.db.models.functions import TruncMonth
 from django.http import Http404, JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404
+from django.template.loader import render_to_string
 
 # Import formtools if you're using it
 try:
@@ -277,10 +278,73 @@ def home(request):
     # Filters
     soil_type = request.GET.get('soil_type')
     crop = request.GET.get('crop')
+    crop_preset_param = request.GET.get('crop_preset')
+    if crop_preset_param:
+        crop = crop_preset_param
+    ph_min = request.GET.get('ph_min')
+    ph_max = request.GET.get('ph_max')
+    om_min = request.GET.get('om_min')
+    n_min = request.GET.get('n_min')
+    p_min = request.GET.get('p_min')
+    k_min = request.GET.get('k_min')
+    ec_max = request.GET.get('ec_max')
+    texture = request.GET.get('texture')
+
     if soil_type:
         verified_plots = verified_plots.filter(soil_type__icontains=soil_type)
     if crop:
+        # If crop matches a preset, apply preset thresholds (overridden by explicit params)
         verified_plots = verified_plots.filter(crop_suitability__icontains=crop)
+
+    # Crop-presets: basic example thresholds (extend in docs/SOIL_RULES.md)
+    crop_presets = {
+        'Maize': {'ph_min': 5.8, 'ph_max': 7.0, 'om_min': 2.0},
+        'Wheat': {'ph_min': 6.0, 'ph_max': 7.5, 'om_min': 1.5},
+        'Rice': {'ph_min': 5.5, 'ph_max': 6.5, 'om_min': 1.0},
+        'Coffee': {'ph_min': 5.0, 'ph_max': 6.5, 'om_min': 3.0},
+    }
+
+    # Apply soil metric filters via SoilReport related model when parameters provided
+    soil_filters = {}
+    try:
+        if ph_min:
+            soil_filters['soil_reports__pH__gte'] = float(ph_min)
+        if ph_max:
+            soil_filters['soil_reports__pH__lte'] = float(ph_max)
+        if om_min:
+            soil_filters['soil_reports__organic_matter_pct__gte'] = float(om_min)
+        if n_min:
+            soil_filters['soil_reports__nitrogen_mgkg__gte'] = float(n_min)
+        if p_min:
+            soil_filters['soil_reports__phosphorus_mgkg__gte'] = float(p_min)
+        if k_min:
+            soil_filters['soil_reports__potassium_mgkg__gte'] = float(k_min)
+        if ec_max:
+            soil_filters['soil_reports__ec_salinity__lte'] = float(ec_max)
+        if texture:
+            # texture expected as "sand,silt,clay" or a class name
+            if ',' in texture:
+                parts = [float(x) for x in texture.split(',') if x.strip()]
+                if len(parts) == 3:
+                    soil_filters['soil_reports__sand_pct__gte'] = parts[0]
+                    soil_filters['soil_reports__silt_pct__gte'] = parts[1]
+                    soil_filters['soil_reports__clay_pct__gte'] = parts[2]
+            else:
+                soil_filters['soil_reports__report_file__icontains'] = texture
+    except ValueError:
+        # Ignore invalid numeric filters
+        soil_filters = {}
+
+    # If a crop preset is selected and explicit numeric filters are not provided, apply preset
+    if crop and crop in crop_presets and not any([ph_min, ph_max, om_min, n_min, p_min, k_min, ec_max, texture]):
+        preset = crop_presets[crop]
+        soil_filters['soil_reports__pH__gte'] = preset.get('ph_min')
+        soil_filters['soil_reports__pH__lte'] = preset.get('ph_max')
+        if preset.get('om_min'):
+            soil_filters['soil_reports__organic_matter_pct__gte'] = preset.get('om_min')
+
+    if soil_filters:
+        verified_plots = verified_plots.filter(**soil_filters).distinct()
     
     # Stats
     total_plots = Plot.objects.count()
@@ -303,7 +367,94 @@ def home(request):
         'common_crops': common_crops,
         'filter_soil_type': soil_type,
         'filter_crop': crop,
+        'crop_presets': crop_presets,
+        'active_soil_filters': {
+            'ph_min': ph_min, 'ph_max': ph_max, 'om_min': om_min,
+            'n_min': n_min, 'p_min': p_min, 'k_min': k_min, 'ec_max': ec_max, 'texture': texture
+        },
     })
+
+
+def ajax_search(request):
+    """Return rendered market grid fragment for AJAX search requests."""
+    verified_plots = Plot.objects.filter(
+        verification_status__status="verified"
+    ).prefetch_related('images_list').select_related('broker', 'verification_status')
+    verified_plots = verified_plots.order_by('-created_at')
+
+    # Filters (same as home)
+    soil_type = request.GET.get('soil_type')
+    crop = request.GET.get('crop') or request.GET.get('crop_preset')
+    ph_min = request.GET.get('ph_min')
+    ph_max = request.GET.get('ph_max')
+    om_min = request.GET.get('om_min')
+    n_min = request.GET.get('n_min')
+    p_min = request.GET.get('p_min')
+    k_min = request.GET.get('k_min')
+    ec_max = request.GET.get('ec_max')
+    texture = request.GET.get('texture')
+
+    if soil_type:
+        verified_plots = verified_plots.filter(soil_type__icontains=soil_type)
+    if crop:
+        verified_plots = verified_plots.filter(crop_suitability__icontains=crop)
+
+    crop_presets = {
+        'Maize': {'ph_min': 5.8, 'ph_max': 7.0, 'om_min': 2.0},
+        'Wheat': {'ph_min': 6.0, 'ph_max': 7.5, 'om_min': 1.5},
+        'Rice': {'ph_min': 5.5, 'ph_max': 6.5, 'om_min': 1.0},
+        'Coffee': {'ph_min': 5.0, 'ph_max': 6.5, 'om_min': 3.0},
+    }
+
+    soil_filters = {}
+    try:
+        if ph_min:
+            soil_filters['soil_reports__pH__gte'] = float(ph_min)
+        if ph_max:
+            soil_filters['soil_reports__pH__lte'] = float(ph_max)
+        if om_min:
+            soil_filters['soil_reports__organic_matter_pct__gte'] = float(om_min)
+        if n_min:
+            soil_filters['soil_reports__nitrogen_mgkg__gte'] = float(n_min)
+        if p_min:
+            soil_filters['soil_reports__phosphorus_mgkg__gte'] = float(p_min)
+        if k_min:
+            soil_filters['soil_reports__potassium_mgkg__gte'] = float(k_min)
+        if ec_max:
+            soil_filters['soil_reports__ec_salinity__lte'] = float(ec_max)
+        if texture:
+            if ',' in texture:
+                parts = [float(x) for x in texture.split(',') if x.strip()]
+                if len(parts) == 3:
+                    soil_filters['soil_reports__sand_pct__gte'] = parts[0]
+                    soil_filters['soil_reports__silt_pct__gte'] = parts[1]
+                    soil_filters['soil_reports__clay_pct__gte'] = parts[2]
+            else:
+                soil_filters['soil_reports__report_file__icontains'] = texture
+    except ValueError:
+        soil_filters = {}
+
+    if crop and crop in crop_presets and not any([ph_min, ph_max, om_min, n_min, p_min, k_min, ec_max, texture]):
+        preset = crop_presets[crop]
+        soil_filters['soil_reports__pH__gte'] = preset.get('ph_min')
+        soil_filters['soil_reports__pH__lte'] = preset.get('ph_max')
+        if preset.get('om_min'):
+            soil_filters['soil_reports__organic_matter_pct__gte'] = preset.get('om_min')
+
+    if soil_filters:
+        verified_plots = verified_plots.filter(**soil_filters).distinct()
+
+    # Pagination
+    paginator = Paginator(verified_plots, 15)
+    page_number = request.GET.get('page')
+    featured_plots = paginator.get_page(page_number)
+
+    html = render_to_string('listings/_market_grid.html', {
+        'featured_plots': featured_plots,
+        'request': request,
+    })
+
+    return JsonResponse({'html': html})
 
 from decimal import Decimal
 
@@ -606,21 +757,40 @@ def staff_dashboard(request):
     elif is_seller:
         plots = Plot.objects.filter(broker__user=request.user)
     
-    # Plot statistics
+    # Plot statistics - all status options
     total_plots = plots.count()
     verified_plots = plots.filter(verification_status__status='verified').count()
+    in_review_plots = plots.filter(verification_status__status='in_review').count()
     pending_plots = plots.filter(verification_status__status='pending').count()
     rejected_plots = plots.filter(verification_status__status='rejected').count()
+    
+    # Calculate percentages
+    if total_plots > 0:
+        verified_percentage = (verified_plots / total_plots) * 100
+        in_review_percentage = (in_review_plots / total_plots) * 100
+        pending_percentage = (pending_plots / total_plots) * 100
+        rejected_percentage = (rejected_plots / total_plots) * 100
+    else:
+        verified_percentage = 0
+        in_review_percentage = 0
+        pending_percentage = 0
+        rejected_percentage = 0
     
     # Recent activities
     recent_interests = UserInterest.objects.filter(plot__in=plots).order_by('-created_at')[:5]
     
+    # Calculate buyer interest percentage
+    if total_plots > 0:
+        buyer_interest_percentage = (recent_interests.count() / total_plots) * 100
+    else:
+        buyer_interest_percentage = 0
+    
     # Plot status breakdown
     plot_status_data = {
         'Verified': verified_plots,
+        'In Review': in_review_plots,
         'Pending': pending_plots,
         'Rejected': rejected_plots,
-        'Other': total_plots - (verified_plots + pending_plots + rejected_plots)
     }
     
     context.update({
@@ -628,8 +798,14 @@ def staff_dashboard(request):
         'is_broker': is_broker,
         'total_plots': total_plots,
         'verified_plots': verified_plots,
+        'in_review_plots': in_review_plots,
         'pending_plots': pending_plots,
         'rejected_plots': rejected_plots,
+        'verified_percentage': verified_percentage,
+        'in_review_percentage': in_review_percentage,
+        'pending_percentage': pending_percentage,
+        'rejected_percentage': rejected_percentage,
+        'buyer_interest_percentage': buyer_interest_percentage,
         'recent_interests': recent_interests,
         'plot_status_data': plot_status_data,
         'plots': plots.order_by('-id')[:5],
@@ -678,9 +854,9 @@ def my_plots(request):
     status_counts = {
         'all': plots.count(),
         'verified': plots.filter(verification_status__status='verified').count(),
+        'in_review': plots.filter(verification_status__status='in_review').count(),
         'pending': plots.filter(verification_status__status='pending').count(),
         'rejected': plots.filter(verification_status__status='rejected').count(),
-        'needs_review': plots.filter(verification_status__status='needs_review').count(),
     }
     
     context = {
@@ -1097,5 +1273,62 @@ def log_phone_view(request, plot_id):
         broker=plot.broker,
         request_type='phone_view'
     )
+
+
+# ============ PLOT REACTIONS ============
+@login_required
+def toggle_plot_reaction(request, plot_id):
+    """Toggle a reaction on a plot (love, like, or potential)"""
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid request method'}, status=400)
     
+    plot = get_object_or_404(Plot, id=plot_id)
+    reaction_type = request.POST.get('reaction_type', '').lower()
+    
+    # Validate reaction type
+    valid_reactions = ['love', 'like', 'potential']
+    if reaction_type not in valid_reactions:
+        return JsonResponse({'error': 'Invalid reaction type'}, status=400)
+    
+    # Toggle reaction: if exists, delete; if not exists, create
+    reaction, created = PlotReaction.objects.get_or_create(
+        user=request.user,
+        plot=plot,
+        reaction_type=reaction_type
+    )
+    
+    if not created:
+        # Reaction already exists, so delete it (toggle off)
+        reaction.delete()
+        user_has_reaction = False
+    else:
+        # Reaction was created
+        user_has_reaction = True
+    
+    # Get updated counts
+    reaction_counts = plot.get_reaction_counts()
+    
+    return JsonResponse({
+        'success': True,
+        'user_has_reaction': user_has_reaction,
+        'reaction_type': reaction_type,
+        'counts': reaction_counts,
+        'total_reactions': plot.total_reaction_count()
+    })
+
+
+@login_required
+def get_plot_reactions(request, plot_id):
+    """Get all reaction data for a plot"""
+    plot = get_object_or_404(Plot, id=plot_id)
+    
+    user_reactions = plot.get_user_reactions(request.user)
+    reaction_counts = plot.get_reaction_counts()
+    
+    return JsonResponse({
+        'plot_id': plot_id,
+        'user_reactions': user_reactions,
+        'counts': reaction_counts,
+        'total_reactions': plot.total_reaction_count()
+    })
     return JsonResponse({'success': True})
