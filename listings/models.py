@@ -1,5 +1,10 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.models import ContentType  # ✅ Add this import
+from django.utils import timezone  # ✅ Add this for timestamps
+from django.contrib.contenttypes.fields import GenericForeignKey
+from django.contrib.contenttypes.fields import GenericRelation
 
 # -----------------------------
 # User & Role Models
@@ -10,22 +15,46 @@ class Profile(models.Model):
     phone = models.CharField(max_length=20, blank=True, default="")
     address = models.TextField(blank=True, default="")
     
-    # Track user roles
-    is_verified_seller = models.BooleanField(default=False)
-    is_verified_broker = models.BooleanField(default=False)
+    ROLE_CHOICES = [
+        ('buyer', 'Buyer'),
+        ('landowner', 'Landowner'),
+        ('agent', 'Agent'),
+        ('admin', 'Administrator'),
+    ]
+    
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='buyer')
 
     def __str__(self):
         return self.user.username
     
     @property
+    def is_verified_seller(self):
+        """Backward compatibility - checks if user is verified landowner"""
+        return hasattr(self.user, 'landownerprofile') and self.user.landownerprofile.verified
+    
+    @property
+    def is_verified_broker(self):
+        """Backward compatibility - checks if user is verified agent"""
+        return hasattr(self.user, 'agent') and self.user.agent.verified
+    
+    @property
+    def is_landowner(self):
+        return hasattr(self.user, 'landownerprofile')
+    
+    @property
+    def is_agent(self):
+        return hasattr(self.user, 'agent')
+    
+    @property
     def is_seller(self):
-        return hasattr(self.user, 'sellerprofile')
+        return self.is_landowner
     
     @property
     def is_broker(self):
-        return hasattr(self.user, 'broker')
+        return self.is_agent
 
-class Broker(models.Model):
+
+class Agent(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     phone = models.CharField(
@@ -42,31 +71,32 @@ class Broker(models.Model):
         help_text="Professional license number"
     )
 
-    # Optional upload — not required for listing, can be added later
     license_doc = models.FileField(
-        upload_to="docs/broker_licenses/",
+        upload_to="docs/agent_licenses/",
         null=True,
         blank=True
     )
 
-    # Whether an admin has verified this broker’s identity/license
     verified = models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.username
     
-    # Contact and rating fields
-    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    # Professional & Contact fields
+    id_number = models.CharField(max_length=20, help_text="National ID")
+    kra_pin = models.FileField(upload_to="docs/agent_kra/", null=True, blank=True)
+    practicing_certificate = models.FileField(upload_to="docs/practicing_certs/", null=True, blank=True)
+    good_conduct = models.FileField(upload_to="docs/good_conduct/", null=True, blank=True)
+    professional_indemnity = models.FileField(upload_to="docs/indemnity/", null=True, blank=True)
+    
     response_rate = models.FloatField(default=100.0, help_text="Percentage of inquiries responded to")
     average_response_time = models.FloatField(default=24, help_text="Average response time in hours")
     rating = models.FloatField(default=5.0)
     review_count = models.IntegerField(default=0)
     
-    # Stats
     total_listings = models.IntegerField(default=0)
     verified_listings = models.IntegerField(default=0)
     
-    # Contact preferences
     contact_preference = models.CharField(
         max_length=20,
         choices=[
@@ -78,13 +108,11 @@ class Broker(models.Model):
         default='any'
     )
     
-    # Availability
     available_from = models.TimeField(default='09:00')
     available_to = models.TimeField(default='17:00')
     
-    # Methods
     def update_stats(self):
-        """Update broker statistics"""
+        """Update agent statistics"""
         self.total_listings = self.plot_set.count()
         self.verified_listings = self.plot_set.filter(
             verification_status__status='verified'
@@ -92,40 +120,37 @@ class Broker(models.Model):
         self.save()
 
 
-class SellerProfile(models.Model):
+# Backward compatibility: Broker is now Agent
+Broker = Agent
+
+
+class LandownerProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     
     national_id = models.FileField(
         upload_to="docs/national_ids/",
-        blank=True,  # Was: blank=True (correct)
-        null=True,
-        help_text="Upload a copy of the seller's national ID"
+        blank=False,
+        null=False,
+        help_text="Upload a copy of your national ID"
     )
     
     kra_pin = models.FileField(
         upload_to="docs/kra_pins/",
-        blank=True,  # Was: blank=True (correct)
-        null=True,
-        help_text="Upload a copy of the seller's KRA PIN"
-    )
-    
-    title_deed = models.FileField(
-        upload_to="docs/title_deeds/",
-        blank=True,  # CHANGE: from blank=False to blank=True
-        null=True,   # Should also be null=True for optional fields
-        help_text="Upload a copy of the title deed"
+        blank=False,
+        null=False,
+        help_text="Upload a copy of your KRA PIN"
     )
     
     land_search = models.FileField(
         upload_to="docs/land_searches/",
-        blank=True,  # CHANGE: from blank=False to blank=True
-        null=True,   # Should also be null=True for optional fields
-        help_text="Upload the official land search certificate"
+        blank=True,
+        null=True,
+        help_text="Upload the official land search certificate (optional)"
     )
     
     lcb_consent = models.FileField(
         upload_to="docs/lcb_consents/",
-        blank=True,  # Already correct
+        blank=True,
         null=True,
         help_text="Optional: Upload LCB consent if applicable"
     )
@@ -133,30 +158,120 @@ class SellerProfile(models.Model):
     verified = models.BooleanField(default=False)
     
     def __str__(self):
-        return f"SellerProfile: {self.user.username}"
+        return f"LandownerProfile: {self.user.username}"
+
 
 # -----------------------------
 # Plot / Listing Model
 # -----------------------------
 class Plot(models.Model):
-    broker = models.ForeignKey(Broker, on_delete=models.CASCADE)
+    LISTING_TYPE_CHOICES = [
+        ('sale', 'For Sale'),
+        ('lease', 'For Lease'),
+        ('both', 'For Sale & Lease'),
+    ]
+    
+    LEASE_DURATION_CHOICES = [
+        ('monthly', 'Month-to-Month'),
+        ('seasonal', 'Seasonal (3-6 months)'),
+        ('1year', '1 Year'),
+        ('3years', '3 Years'),
+        ('5years', '5 Years'),
+        ('10years', '10 Years'),
+    ]
+    
+    LAND_TYPE_CHOICES = [
+        ('agricultural', 'Agricultural Land'),
+        ('residential', 'Residential Plot'),
+        ('commercial', 'Commercial Land'),
+        ('mixed_use', 'Mixed Use'),
+        ('industrial', 'Industrial Land'),
+    ]
+    
+    WATER_SOURCE_CHOICES = [
+        ('borehole', 'Borehole'),
+        ('river', 'River/Stream'),
+        ('rain', 'Rain-fed'),
+        ('irrigation', 'Irrigation System'),
+        ('none', 'No Water Source'),
+    ]
+    
+    ROAD_TYPE_CHOICES = [
+        ('tarmac', 'Tarmac'),
+        ('murram', 'Murram/Gravel'),
+        ('earth', 'Earth Road'),
+        ('footpath', 'Footpath Only'),
+        ('none', 'No Access'),
+    ]
+    
+    FENCING_CHOICES = [
+        ('full', 'Full Perimeter'),
+        ('partial', 'Partial'),
+        ('none', 'No Fencing'),
+        ('live', 'Live Fence'),
+    ]
+    
+    # Ownership
+    landowner = models.ForeignKey(LandownerProfile, on_delete=models.CASCADE, null=True, blank=True)
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, null=True, blank=True)
+
+    # Basic Info
     title = models.CharField(max_length=200)
     location = models.CharField(max_length=300)
-    price = models.DecimalField(max_digits=12, decimal_places=2)
     area = models.FloatField(help_text="In acres or hectares")
+    
+    # Listing Type
+    listing_type = models.CharField(max_length=10, choices=LISTING_TYPE_CHOICES, default='sale')
+    land_type = models.CharField(max_length=20, choices=LAND_TYPE_CHOICES, default='agricultural')
+    land_use_description = models.TextField(blank=True)
+    
+    # Sale-specific
+    sale_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    price_per_acre = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    
+    # Lease-specific
+    lease_price_monthly = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    lease_price_yearly = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    lease_duration = models.CharField(max_length=20, choices=LEASE_DURATION_CHOICES, null=True, blank=True)
+    lease_terms = models.TextField(blank=True)
+    
+    # Legacy price field (keep for backward compatibility)
+    price = models.DecimalField(max_digits=12, decimal_places=2)
 
     # Agricultural Fields
     soil_type = models.CharField(max_length=100)
     ph_level = models.FloatField(null=True, blank=True)
     crop_suitability = models.CharField(max_length=200)
 
-    # PRIMARY DOCUMENTS - on Plot model
+    # Infrastructure
+    has_water = models.BooleanField(default=False)
+    water_source = models.CharField(max_length=20, choices=WATER_SOURCE_CHOICES, null=True, blank=True)
+    
+    has_electricity = models.BooleanField(default=False)
+    electricity_meter = models.BooleanField(default=False, help_text="Has meter installed")
+    
+    has_road_access = models.BooleanField(default=False)
+    road_type = models.CharField(max_length=20, choices=ROAD_TYPE_CHOICES, null=True, blank=True)
+    road_distance_km = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    
+    has_buildings = models.BooleanField(default=False)
+    building_description = models.TextField(blank=True)
+    
+    fencing = models.CharField(max_length=50, choices=FENCING_CHOICES, null=True, blank=True)
+
+    verification = GenericRelation('VerificationStatus', 
+                                   content_type_field='content_type',
+                                   object_id_field='object_id',
+                                   related_query_name='plot')
+
+    # PRIMARY DOCUMENTS
     title_deed = models.FileField(
         upload_to="documents/title_deeds/", 
         null=True, 
         blank=True,
         help_text="Official title deed document"
     )
+    
     soil_report = models.FileField(
         upload_to="documents/soil_reports/", 
         null=True, 
@@ -164,19 +279,21 @@ class Plot(models.Model):
         help_text="Soil test report (optional)"
     )
     
-    # VERIFICATION DOCUMENTS - Added to Plot model
+    # VERIFICATION DOCUMENTS
     official_search = models.FileField(
         upload_to="documents/official_searches/",
         null=True,
         blank=True,
         help_text="Official land search certificate"
     )
-    seller_id = models.FileField(
-        upload_to="documents/seller_ids/",
+    
+    landowner_id_doc = models.FileField(  # ✅ Changed from landowner_id
+        upload_to="documents/landowner_ids/",
         null=True,
         blank=True,
-        help_text="Seller's national ID"
+        help_text="Landowner's national ID"
     )
+    
     kra_pin = models.FileField(
         upload_to="documents/kra_pins/",
         null=True,
@@ -188,8 +305,31 @@ class Plot(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['listing_type']),
+            models.Index(fields=['land_type']),
+            models.Index(fields=['soil_type']),
+        ]
+
     def __str__(self):
         return self.title
+    
+    def clean(self):
+        """Validate plot data"""
+        if not self.landowner and not self.agent:
+            raise ValidationError("Either landowner or agent must be associated with this plot")
+        
+        if self.listing_type in ['sale', 'both'] and not self.sale_price:
+            raise ValidationError("Sale price is required for listings marked 'For Sale'")
+        
+        if self.listing_type in ['lease', 'both'] and not (self.lease_price_monthly or self.lease_price_yearly):
+            raise ValidationError("Lease price is required for listings marked 'For Lease'")
+        
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     @property
     def images_list(self):
@@ -199,7 +339,7 @@ class Plot(models.Model):
     @property
     def has_all_documents(self):
         """Check if plot has all required documents"""
-        required_docs = ['title_deed', 'official_search', 'seller_id', 'kra_pin']
+        required_docs = ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin']
         for doc_field in required_docs:
             if not getattr(self, doc_field):
                 return False
@@ -222,28 +362,32 @@ class Plot(models.Model):
     def total_reaction_count(self):
         """Get total number of all reactions"""
         return self.reactions.count()
-    
+
+
 class PlotImage(models.Model):
-    plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='images_list')
+    plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='images')
     image = models.ImageField(upload_to='plot_images/')
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"Image for {self.plot.title}"
     
+    class Meta:
+        ordering = ['uploaded_at']
+
+
 # -----------------------------
 # Document Uploads for Verification
 # -----------------------------
-
 class VerificationDocument(models.Model):
     DOC_TYPE_CHOICES = [
         ('title_deed', "Title Deed"),
         ('official_search', "Official Search Certificate"),
-        ('seller_id', "Seller ID"),
+        ('landowner_id', "Landowner National ID"),
         ('kra_pin', "KRA PIN Certificate"),
         ('survey_plan', "Survey Plan"),
         ('rates_clearance', "Land Rates Clearance"),
-        ('lcb_consent', "LCB Consent (if required)"),
+        ('lcb_consent', "LCB Consent"),
     ]
 
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="verification_docs")
@@ -259,17 +403,16 @@ class VerificationDocument(models.Model):
 # -----------------------------
 # Official Title Search Results
 # -----------------------------
-
 class TitleSearchResult(models.Model):
     plot = models.OneToOneField(Plot, on_delete=models.CASCADE, related_name="search_result")
-    search_platform = models.CharField(max_length=50)  # e.g. "Ardhisasa", "eCitizen", "Manual"
+    search_platform = models.CharField(max_length=50)
     official_owner = models.CharField(max_length=200)
     parcel_number = models.CharField(max_length=100)
-    encumbrances = models.TextField(null=True, blank=True)  # caveats, charges, disputes found
+    encumbrances = models.TextField(null=True, blank=True)
     lease_status = models.CharField(max_length=100, null=True, blank=True)
     search_date = models.DateField(null=True, blank=True)
     raw_response_file = models.FileField(upload_to="search_responses/", null=True, blank=True)
-    verified = models.BooleanField(default=False)  # Whether the official search result matches the plot data
+    verified = models.BooleanField(default=False)
     notes = models.TextField(null=True, blank=True)
 
     def __str__(self):
@@ -279,24 +422,126 @@ class TitleSearchResult(models.Model):
 # -----------------------------
 # Plot Verification Workflow Status
 # -----------------------------
-
-class PlotVerificationStatus(models.Model):
-    STATUS_CHOICES = [
-        ('pending', "Pending Verification"),
-        ('in_review', "In Review"),
-        ('verified', "Verified"),
-        ('rejected', "Rejected"),
+class VerificationStatus(models.Model):
+    """Track verification progress for landowners and agents"""
+    
+    STAGES = [
+        ('document_uploaded', 'Documents Uploaded'),
+        ('api_verification_started', 'API Verification Started'),
+        ('title_search_completed', 'Title Search Completed'),
+        ('owner_verified', 'Owner Identity Verified'),
+        ('encumbrance_check', 'Encumbrance Check'),
+        ('physical_location_verified', 'Physical Location Verified'),
+        ('admin_review', 'Under Admin Review'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
     ]
-
-    plot = models.OneToOneField(Plot, on_delete=models.CASCADE, related_name="verification_status")
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
-    reviewed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="verified_plots")
-    reviewed_at = models.DateTimeField(null=True, blank=True)
-    review_notes = models.TextField(null=True, blank=True)
-
+    
+    # Generic relation to either LandownerProfile or Agent
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    current_stage = models.CharField(max_length=50, choices=STAGES, default='document_uploaded')
+    stage_details = models.JSONField(default=dict, blank=True)  # Store stage-specific data
+    is_complete = models.BooleanField(default=False)
+    
+    # API response data
+    api_responses = models.JSONField(default=list, blank=True)  # Store all API responses
+    search_reference = models.CharField(max_length=100, blank=True)
+    search_fee_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
+    # Timestamps for each stage
+    document_uploaded_at = models.DateTimeField(null=True, blank=True)
+    api_started_at = models.DateTimeField(null=True, blank=True)
+    title_search_at = models.DateTimeField(null=True, blank=True)
+    owner_verified_at = models.DateTimeField(null=True, blank=True)
+    admin_review_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     def __str__(self):
-        return f"{self.plot.title} — {self.status}"
+        return f"Verification for {self.content_object} - {self.get_current_stage_display()}"
+    
+    def update_stage(self, stage, details=None):
+        """Update to next stage with timestamp"""
+        self.current_stage = stage
+        if details:
+            self.stage_details[stage] = details
+        
+        # Set corresponding timestamp
+        timestamp_field = f"{stage}_at"
+        if hasattr(self, timestamp_field):
+            setattr(self, timestamp_field, timezone.now())
+        
+        if stage == 'approved':
+            self.is_complete = True
+        
+        self.save()
+    
+    def add_api_response(self, response_data):
+        """Store API response for audit trail"""
+        self.api_responses.append({
+            'timestamp': timezone.now().isoformat(),
+            'data': response_data
+        })
+        self.save()
 
+    @property
+    def progress_percentage(self):
+        """Calculate progress percentage based on current stage"""
+        stages = [stage[0] for stage in self.STAGES]
+        if self.current_stage in stages:
+            index = stages.index(self.current_stage)
+            return int((index + 1) / len(stages) * 100)
+        return 0
+    
+    @property
+    def estimated_completion(self):
+        """Return estimated completion message"""
+        if self.current_stage == 'approved':
+            return "Verification complete"
+        elif self.current_stage == 'rejected':
+            return "Verification rejected"
+        elif self.current_stage == 'admin_review':
+            return "Awaiting admin review (usually within 24 hours)"
+        elif self.current_stage in ['title_search_completed', 'owner_verified', 'encumbrance_check']:
+            return "API verification in progress (typically 2-3 business days)"
+        else:
+            return "Verification in progress"
+
+class PlotVerification(models.Model):
+    """Track verification for individual plots"""
+    
+    plot = models.OneToOneField('Plot', on_delete=models.CASCADE, related_name='verification')
+    owner_verified = models.ForeignKey(VerificationStatus, on_delete=models.SET_NULL, null=True)
+    
+    # Similar stages for plot verification
+    STAGES = [
+        ('submitted', 'Submitted for Verification'),
+        ('document_check', 'Document Check'),
+        ('title_search', 'Title Search with Ardhisasa'),
+        ('physical_verification', 'Physical Verification'),
+        ('admin_approval', 'Admin Approval'),
+        ('approved', 'Approved for Listing'),
+        ('rejected', 'Rejected'),
+    ]
+    
+    current_stage = models.CharField(max_length=50, choices=STAGES, default='submitted')
+    stage_details = models.JSONField(default=dict)
+    api_responses = models.JSONField(default=list)
+    
+    # Timestamps
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    title_search_at = models.DateTimeField(null=True, blank=True)
+    admin_review_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Verification for Plot {self.plot.id}"
 
 # -----------------------------
 # Soil Report Model
@@ -318,7 +563,7 @@ class SoilReport(models.Model):
     sand_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     silt_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     clay_pct = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
-    ec_salinity = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True, help_text='Electrical conductivity (dS/m)')
+    ec_salinity = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
     lab_id = models.CharField(max_length=100, blank=True, default="")
     sample_date = models.DateField(null=True, blank=True)
     geo_lat = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -339,7 +584,9 @@ class SoilReport(models.Model):
         return f"SoilReport {self.id} — {self.plot.title} ({self.verification_status})"
 
 
-# UserInterest model
+# -----------------------------
+# User Interest Model
+# -----------------------------
 class UserInterest(models.Model):
     """Tracks buyer interest in plots."""
     STATUS_CHOICES = [
@@ -354,18 +601,21 @@ class UserInterest(models.Model):
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='buyer_interests')
     message = models.TextField(blank=True, help_text="Buyer's message or inquiry")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    notes = models.TextField(blank=True, help_text="Internal notes from broker")
+    notes = models.TextField(blank=True, help_text="Internal notes from agent")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['-created_at']
-        unique_together = ['user', 'plot']  # Prevent duplicate interests
+        unique_together = ['user', 'plot']
     
     def __str__(self):
         return f"{self.user.username} → {self.plot.title}"
     
-# MESSAGING MODEL
+
+# -----------------------------
+# Messaging / Contact Request Model
+# -----------------------------
 class ContactRequest(models.Model):
     REQUEST_TYPES = [
         ('email', 'Email Inquiry'),
@@ -377,7 +627,7 @@ class ContactRequest(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contact_requests')
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='contact_requests')
-    broker = models.ForeignKey(Broker, on_delete=models.CASCADE, related_name='contact_requests')
+    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='contact_requests')
     request_type = models.CharField(max_length=20, choices=REQUEST_TYPES)
     message = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -388,16 +638,21 @@ class ContactRequest(models.Model):
         null=True,
         help_text="Internal notes for admin use only"
     )
+    
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['responded']),
+        ]
     
     def __str__(self):
-        return f"{self.user.username} → {self.broker.user.username} ({self.request_type})"
+        return f"{self.user.username} → {self.agent.user.username} ({self.request_type})"
 
 
-# =============================
+# -----------------------------
 # Plot Reactions Model
-# =============================
+# -----------------------------
 class PlotReaction(models.Model):
     """Track user reactions (love, like, potential) on plots."""
     REACTION_CHOICES = [
@@ -413,7 +668,7 @@ class PlotReaction(models.Model):
     
     class Meta:
         ordering = ['-created_at']
-        unique_together = ['user', 'plot', 'reaction_type']  # One reaction type per user per plot
+        unique_together = ['user', 'plot', 'reaction_type']
         indexes = [
             models.Index(fields=['plot', 'reaction_type']),
         ]

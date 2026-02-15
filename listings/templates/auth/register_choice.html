@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Join AgriPlot</title>
+<title>Join AgriPlot - Choose Your Role</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link rel="stylesheet" href="{% static 'css/auth-modern.css' %}">
@@ -11,6 +11,26 @@
 </head>
 
 <body class="auth-body">
+
+<!-- ============ NAVIGATION HEADER ============ -->
+<header class="auth-header">
+    <div class="header-container">
+        <div class="logo">
+            <a href="{% url 'listings:home' %}">
+                <i class="fas fa-leaf"></i>
+                <span>AgriPlot</span>
+            </a>
+        </div>
+        <nav class="header-nav">
+            <a href="{% url 'listings:home' %}" class="nav-link">
+                <i class="fas fa-home"></i> Home
+            </a>
+            <a href="{% url 'login' %}" class="nav-link">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </a>
+        </nav>
+    </div>
+</header>
 
 <section class="role-onboarding">
 
@@ -21,44 +41,46 @@
 
     <div class="role-grid">
 
-        <!-- SELLER -->
-        <div class="role-card seller">
+        <!-- LANDOWNER -->
+        <div class="role-card landowner">
             <div class="role-icon">
                 <i class="fas fa-tractor"></i>
             </div>
-            <h3>Sell Your Land</h3>
+            <h3>Register as Landowner</h3>
             <p class="role-desc">
-                List and sell agricultural land directly to verified buyers.
+                Sell or lease your agricultural land directly to verified buyers.
             </p>
             <ul class="role-features">
-                <li>✔ Upload land ownership documents</li>
+                <li>✔ Verified owner badge</li>
+                <li>✔ Upload title deed & ownership documents</li>
                 <li>✔ Add soil & crop suitability data</li>
                 <li>✔ Receive buyer inquiries directly</li>
             </ul>
             <div class="role-footer">
-                <a href="{% url 'listings:register_seller' %}" class="role-btn">
-                    Continue as Seller
+                <a href="{% url 'listings:register_landowner' %}" class="role-btn">
+                    Continue as Landowner
                 </a>
             </div>
         </div>
 
-        <!-- BROKER -->
-        <div class="role-card broker">
+        <!-- AGENT -->
+        <div class="role-card agent">
             <div class="role-icon">
-                <i class="fas fa-user-tie"></i>
+                <i class="fas fa-handshake"></i>
             </div>
-            <h3>Register as Broker</h3>
+            <h3>Register as Agent</h3>
             <p class="role-desc">
-                Manage listings for multiple clients and earn commission.
+                Licensed professional managing listings for multiple clients.
             </p>
             <ul class="role-features">
-                <li>✔ Verified broker badge</li>
-                <li>✔ Manage multiple listings</li>
+                <li>✔ Verified agent badge</li>
+                <li>✔ Manage unlimited property listings</li>
+                <li>✔ Access client management dashboard</li>
                 <li>✔ Build professional credibility</li>
             </ul>
             <div class="role-footer">
-                <a href="{% url 'listings:register_broker' %}" class="role-btn">
-                    Continue as Broker
+                <a href="{% url 'listings:register_agent' %}" class="role-btn">
+                    Continue as Agent
                 </a>
             </div>
         </div>
@@ -70,12 +92,13 @@
             </div>
             <h3>Register as Buyer</h3>
             <p class="role-desc">
-                Browse and buy verified agricultural land with ease.
+                Browse and purchase verified agricultural land with ease.
             </p>
             <ul class="role-features">
                 <li>✔ Access verified land listings</li>
                 <li>✔ Get notifications for new plots</li>
-                <li>✔ Save favorites and contact sellers</li>
+                <li>✔ Save favorites and contact owners</li>
+                <li>✔ Compare soil & crop data</li>
             </ul>
             <div class="role-footer">
                 <a href="{% url 'listings:register_buyer' %}" class="role-btn">
@@ -86,7 +109,133 @@
 
     </div>
 
+    <div class="role-footer-note">
+        <p>Already have an account? <a href="{% url 'login' %}">Sign in here</a></p>
+    </div>
+
 </section>
+
+<style>
+    /* ============ HEADER STYLES ============ */
+    .auth-header {
+        background: linear-gradient(135deg, #1f7a4d 0%, #16603a 100%);
+        padding: 1rem 2rem;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .header-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .logo a {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: white;
+        text-decoration: none;
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+    
+    .logo i {
+        font-size: 1.75rem;
+    }
+    
+    .header-nav {
+        display: flex;
+        gap: 1.5rem;
+    }
+    
+    .nav-link {
+        color: rgba(255,255,255,0.9);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+    
+    .nav-link:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+        transform: translateY(-1px);
+    }
+    
+    .nav-link i {
+        font-size: 1rem;
+    }
+    
+    /* ============ EXISTING STYLES ============ */
+    .role-card.landowner {
+        border-top: 4px solid #28a745;
+    }
+    
+    .role-card.agent {
+        border-top: 4px solid #ffc107;
+    }
+    
+    .role-card.buyer {
+        border-top: 4px solid #17a2b8;
+    }
+    
+    .role-card.landowner .role-icon i {
+        color: #28a745;
+    }
+    
+    .role-card.agent .role-icon i {
+        color: #ffc107;
+    }
+    
+    .role-card.buyer .role-icon i {
+        color: #17a2b8;
+    }
+    
+    .role-footer-note {
+        text-align: center;
+        margin-top: 2rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e9ecef;
+    }
+    
+    .role-footer-note a {
+        color: #1f7a4d;
+        font-weight: 600;
+        text-decoration: none;
+    }
+    
+    .role-footer-note a:hover {
+        text-decoration: underline;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .auth-header {
+            padding: 1rem;
+        }
+        
+        .logo span {
+            display: none;
+        }
+        
+        .nav-link span {
+            display: none;
+        }
+        
+        .nav-link i {
+            font-size: 1.25rem;
+        }
+    }
+</style>
 
 </body>
 </html>

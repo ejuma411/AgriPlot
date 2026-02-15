@@ -1,46 +1,321 @@
 {% extends "auth/auth_split.html" %}
+{% load static %}
 
 {% block info_panel %}
+<div class="info-panel-content">
+    <h1>Become a Verified Land Agent</h1>
 
-<h1>Sell Agricultural Land on AgriPlot</h1>
+    <p>Join AgriPlot as a licensed agent and manage property listings for multiple clients.</p>
 
-<p>Register as a seller to list and manage your farmland listings.</p>
+    <div class="requirements-section">
+        <h3>✓ Agent Benefits</h3>
+        <ul class="info-list">
+            <li>✔ Verified agent badge</li>
+            <li>✔ Manage unlimited property listings</li>
+            <li>✔ Access client management dashboard</li>
+            <li>✔ Priority buyer inquiries</li>
+            <li>✔ Commission tracking tools</li>
+        </ul>
+    </div>
 
-<ul class="info-list">
-    <li>✔ Upload verified land documents</li>
-    <li>✔ Add soil and crop suitability data</li>
-    <li>✔ Connect directly with buyers</li>
-    <li>✔ Increase land visibility nationwide</li>
-</ul>
+    <div class="requirements-section">
+        <h3>📋 Required Documents</h3>
+        <ul class="info-list">
+            <li><strong>National ID</strong> - Valid government ID</li>
+            <li><strong>KRA PIN</strong> - Tax compliance certificate</li>
+            <li><strong>Agent License</strong> - Professional license number</li>
+            <li><strong>License Certificate</strong> - Upload scanned copy</li>
+            <li class="optional">Practicing Certificate (optional)</li>
+            <li class="optional">Good Conduct (optional)</li>
+            <li class="optional">Professional Indemnity (optional)</li>
+        </ul>
+    </div>
 
-<h3>What You Will Need</h3>
-
-<ul class="info-list">
-    <li>📄 Title deed or ownership proof</li>
-    <li>📍 Accurate plot location</li>
-    <li>📸 Clear land photos</li>
-</ul>
-
+    <div class="verification-note">
+        <i class="fas fa-shield-alt"></i>
+        <p>All agents are verified within 24-48 hours. Your license will be checked against the official registry.</p>
+    </div>
+</div>
 {% endblock %}
 
----
-
 {% block form_panel %}
+<div class="form-panel-content">
+    <h2>Register as a Land Agent</h2>
+    <p class="text-muted mb-4">Fill in your details to create an agent account</p>
 
-<h2>Create Seller Account</h2>
+    <form method="POST" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
 
-<form method="POST">
-    {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}
+                    {{ error }}
+                {% endfor %}
+            </div>
+        {% endif %}
 
-    {% for field in form %}
-        <div class="form-group">
-            <label>{{ field.label }}</label>
-            {{ field }}
-            <small>{{ field.errors }}</small>
+        <!-- Personal Information -->
+        <div class="form-section">
+            <h4>Personal Information</h4>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.first_name.id_for_label }}" class="form-label">
+                        {{ form.first_name.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                        <div class="text-danger small">{{ form.first_name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="{{ form.last_name.id_for_label }}" class="form-label">
+                        {{ form.last_name.label }} <span class="text-danger">*</span>
+                    </label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                        <div class="text-danger small">{{ form.last_name.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.username.id_for_label }}" class="form-label">
+                    {{ form.username.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.username }}
+                <div class="form-text">150 characters or fewer. Letters, digits and @/./+/-/_ only.</div>
+                {% if form.username.errors %}
+                    <div class="text-danger small">{{ form.username.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.email.id_for_label }}" class="form-label">
+                    {{ form.email.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <div class="text-danger small">{{ form.email.errors }}</div>
+                {% endif %}
+            </div>
         </div>
-    {% endfor %}
 
-    <button class="btn-auth">Register Seller</button>
-</form>
+        <!-- Contact & License Information -->
+        <div class="form-section mt-4">
+            <h4>Contact & License Details</h4>
+            
+            <div class="mb-3">
+                <label for="{{ form.phone.id_for_label }}" class="form-label">
+                    {{ form.phone.label }} <span class="text-danger">*</span>
+                </label>
+                <div class="input-group">
+                    <span class="input-group-text">+254</span>
+                    {{ form.phone }}
+                </div>
+                <div class="form-text">e.g., 712345678</div>
+                {% if form.phone.errors %}
+                    <div class="text-danger small">{{ form.phone.errors }}</div>
+                {% endif %}
+            </div>
 
+            <div class="mb-3">
+                <label for="{{ form.id_number.id_for_label }}" class="form-label">
+                    {{ form.id_number.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.id_number }}
+                <div class="form-text">{{ form.id_number.help_text }}</div>
+                {% if form.id_number.errors %}
+                    <div class="text-danger small">{{ form.id_number.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.license_number.id_for_label }}" class="form-label">
+                    {{ form.license_number.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.license_number }}
+                <div class="form-text">Your official agent license number</div>
+                {% if form.license_number.errors %}
+                    <div class="text-danger small">{{ form.license_number.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Document Uploads -->
+        <div class="form-section mt-4">
+            <h4>Required Documents</h4>
+            
+            <div class="mb-3">
+                <label for="{{ form.license_doc.id_for_label }}" class="form-label">
+                    License Certificate
+                </label>
+                {{ form.license_doc }}
+                <div class="form-text">{{ form.license_doc.help_text }}</div>
+                {% if form.license_doc.errors %}
+                    <div class="text-danger small">{{ form.license_doc.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.kra_pin.id_for_label }}" class="form-label">
+                    KRA PIN Certificate <span class="text-danger">*</span>
+                </label>
+                {{ form.kra_pin }}
+                <div class="form-text">{{ form.kra_pin.help_text }}</div>
+                {% if form.kra_pin.errors %}
+                    <div class="text-danger small">{{ form.kra_pin.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.practicing_certificate.id_for_label }}" class="form-label">
+                    Practicing Certificate (Optional)
+                </label>
+                {{ form.practicing_certificate }}
+                <div class="form-text">{{ form.practicing_certificate.help_text }}</div>
+                {% if form.practicing_certificate.errors %}
+                    <div class="text-danger small">{{ form.practicing_certificate.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.good_conduct.id_for_label }}" class="form-label">
+                    Certificate of Good Conduct (Optional)
+                </label>
+                {{ form.good_conduct }}
+                <div class="form-text">{{ form.good_conduct.help_text }}</div>
+                {% if form.good_conduct.errors %}
+                    <div class="text-danger small">{{ form.good_conduct.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.professional_indemnity.id_for_label }}" class="form-label">
+                    Professional Indemnity Insurance (Optional)
+                </label>
+                {{ form.professional_indemnity }}
+                <div class="form-text">{{ form.professional_indemnity.help_text }}</div>
+                {% if form.professional_indemnity.errors %}
+                    <div class="text-danger small">{{ form.professional_indemnity.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Password Section -->
+        <div class="form-section mt-4">
+            <h4>Security</h4>
+            
+            <div class="mb-3">
+                <label for="{{ form.password1.id_for_label }}" class="form-label">
+                    {{ form.password1.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.password1 }}
+                <div class="form-text">Your password must contain at least 8 characters.</div>
+                {% if form.password1.errors %}
+                    <div class="text-danger small">{{ form.password1.errors }}</div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="{{ form.password2.id_for_label }}" class="form-label">
+                    {{ form.password2.label }} <span class="text-danger">*</span>
+                </label>
+                {{ form.password2 }}
+                <div class="form-text">Enter the same password as above, for verification.</div>
+                {% if form.password2.errors %}
+                    <div class="text-danger small">{{ form.password2.errors }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="form-check mt-4">
+            <input class="form-check-input" type="checkbox" id="termsCheck" required>
+            <label class="form-check-label" for="termsCheck">
+                I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Terms of Service</a> and 
+                <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">Privacy Policy</a>
+            </label>
+        </div>
+
+        <button type="submit" class="btn-auth mt-4">
+            <i class="fas fa-user-check me-2"></i>Submit for Verification
+        </button>
+
+        <div class="mt-4 text-center">
+            <p class="mb-0">Already have an account? <a href="{% url 'login' %}">Sign in here</a></p>
+        </div>
+    </form>
+</div>
+
+<style>
+    .form-section {
+        background: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-section h4 {
+        margin-top: 0;
+        margin-bottom: 1.25rem;
+        color: #1f7a4d;
+        font-weight: 600;
+        border-bottom: 2px solid #1f7a4d;
+        padding-bottom: 0.5rem;
+    }
+    
+    .requirements-section {
+        margin-bottom: 2rem;
+    }
+    
+    .requirements-section h3 {
+        font-size: 1.25rem;
+        color: #1f7a4d;
+        margin-bottom: 1rem;
+    }
+    
+    .info-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .info-list li {
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .info-list li.optional {
+        color: #ffc107;
+    }
+    
+    .verification-note {
+        background: rgba(255,255,255,0.1);
+        padding: 1rem;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-top: 2rem;
+    }
+    
+    .verification-note i {
+        font-size: 2rem;
+        color: #ffc107;
+    }
+    
+    .verification-note p {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    
+    .input-group-text {
+        background-color: #e9ecef;
+        border: 1px solid #ced4da;
+        border-radius: 0.25rem 0 0 0.25rem;
+    }
+    
+    .input-group .form-control {
+        border-radius: 0 0.25rem 0.25rem 0;
+    }
+</style>
 {% endblock %}

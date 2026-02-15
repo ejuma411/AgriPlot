@@ -308,72 +308,72 @@
                 </div>
             </div>
 
-            <!-- Broker Information & Contact -->
-            <div class="dashboard-card mb-4" id="broker">
+            <!-- Agent Information & Contact -->
+            <div class="dashboard-card mb-4" id="agent">
                 <div class="card-header">
                     <h6 class="card-title">
-                        <i class="fas fa-user-tie me-2"></i>Broker Information
+                        <i class="fas fa-user-tie me-2"></i>Agent Information
                     </h6>
                 </div>
                 <div class="card-body">
-                    <div class="broker-profile">
-                        <div class="broker-header">
-                            <div class="broker-avatar">
-                                {% if plot.broker.profile_picture %}
-                                <img src="{{ plot.broker.profile_picture.url }}" 
-                                    alt="{{ plot.broker.user.get_full_name }}" 
+                    <div class="agent-profile">
+                        <div class="agent-header">
+                            <div class="agent-avatar">
+                                {% if plot.agent.profile_picture %}
+                                <img src="{{ plot.agent.profile_picture.url }}" 
+                                    alt="{{ plot.agent.user.get_full_name }}" 
                                     class="avatar-img">
                                 {% else %}
                                 <div class="avatar-placeholder">
-                                    {{ plot.broker.user.get_full_name|default:plot.broker.user.username|first|upper }}
+                                    {{ plot.agent.user.get_full_name|default:plot.agent.user.username|first|upper }}
                                 </div>
                                 {% endif %}
                             </div>
-                            <div class="broker-name">
-                                <h5>{{ plot.broker.user.get_full_name|default:plot.broker.user.username }}</h5>
-                                <span class="broker-badge {% if plot.broker.verified %}verified{% else %}pending{% endif %}">
-                                    {% if plot.broker.verified %}
-                                    <i class="fas fa-check-circle me-1"></i>Verified Broker
+                            <div class="agent-name">
+                                <h5>{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}</h5>
+                                <span class="agent-badge {% if plot.agent.verified %}verified{% else %}pending{% endif %}">
+                                    {% if plot.agent.verified %}
+                                    <i class="fas fa-check-circle me-1"></i>Verified Agent
                                     {% else %}
                                     <i class="fas fa-clock me-1"></i>Pending Verification
                                     {% endif %}
                                 </span>
-                                {% if plot.broker.rating %}
-                                <div class="broker-rating">
+                                {% if plot.agent.rating %}
+                                <div class="agent-rating">
                                     {% for i in "12345" %}
-                                        {% if forloop.counter <= plot.broker.rating %}
+                                        {% if forloop.counter <= plot.agent.rating %}
                                         <i class="fas fa-star text-warning"></i>
                                         {% else %}
                                         <i class="far fa-star text-warning"></i>
                                         {% endif %}
                                     {% endfor %}
-                                    <small class="text-muted ms-1">({{ plot.broker.review_count }})</small>
+                                    <small class="text-muted ms-1">({{ plot.agent.review_count }})</small>
                                 </div>
                                 {% endif %}
                             </div>
                         </div>
                         
-                        <!-- Broker Stats -->
-                        <div class="broker-stats mt-3">
+                        <!-- Agent Stats -->
+                        <div class="agent-stats mt-3">
                             <div class="stats-grid">
                                 <div class="stat-item">
                                     <i class="fas fa-layer-group text-primary"></i>
                                     <div>
-                                        <strong>{{ plot.broker.total_listings|default:"0" }}</strong>
+                                        <strong>{{ plot.agent.total_listings|default:"0" }}</strong>
                                         <small>Listings</small>
                                     </div>
                                 </div>
                                 <div class="stat-item">
                                     <i class="fas fa-check-circle text-success"></i>
                                     <div>
-                                        <strong>{{ plot.broker.verified_listings|default:"0" }}</strong>
+                                        <strong>{{ plot.agent.verified_listings|default:"0" }}</strong>
                                         <small>Verified</small>
                                     </div>
                                 </div>
                                 <div class="stat-item">
                                     <i class="fas fa-clock text-warning"></i>
                                     <div>
-                                        <strong>{{ plot.broker.response_rate|default:"100" }}%</strong>
+                                        <strong>{{ plot.agent.response_rate|default:"100" }}%</strong>
                                         <small>Response Rate</small>
                                     </div>
                                 </div>
@@ -381,37 +381,37 @@
                         </div>
                         
                         <!-- Direct Contact Section -->
-                        <div class="broker-contact mt-4">
-                            <h6>Contact Broker</h6>
+                        <div class="agent-contact mt-4">
+                            <h6>Contact Agent</h6>
                             
                             {% if user.is_authenticated %}
                             <div class="contact-methods">
                                 <!-- Email -->
-                                <a href="mailto:{{ plot.broker.user.email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.broker.user.get_full_name|default:plot.broker.user.username }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user.get_full_name|default:user.username }}"
+                                <a href="mailto:{{ plot.agent.user.email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.agent.user.get_full_name|default:plot.agent.user.username }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user.get_full_name|default:user.username }}"
                                 class="btn btn-outline-primary w-100 mb-2">
                                     <i class="fas fa-envelope me-2"></i>Send Email
-                                    <small class="d-block text-muted mt-1">{{ plot.broker.user.email }}</small>
+                                    <small class="d-block text-muted mt-1">{{ plot.agent.user.email }}</small>
                                 </a>
                                 
                                 <!-- Phone (if available) -->
-                                {% if plot.broker.phone_number %}
+                                {% if plot.agent.phone_number %}
                                 <div class="phone-contact mb-2">
                                     <button class="btn btn-success w-100" id="showPhoneNumber">
                                         <i class="fas fa-phone me-2"></i>Show Phone Number
                                     </button>
                                     <div id="phoneNumber" class="text-center mt-2 d-none">
-                                        <strong>{{ plot.broker.phone_number }}</strong>
+                                        <strong>{{ plot.agent.phone_number }}</strong>
                                         <div class="btn-group mt-2 w-100">
-                                            <a href="tel:{{ plot.broker.phone_number }}" 
+                                            <a href="tel:{{ plot.agent.phone_number }}" 
                                             class="btn btn-sm btn-outline-primary">
                                                 <i class="fas fa-phone me-1"></i>Call
                                             </a>
-                                            <a href="https://wa.me/{{ plot.broker.phone_number|cut:'+' }}?text=Hello {{ plot.broker.user.get_full_name|default:plot.broker.user.username }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                            <a href="https://wa.me/{{ plot.agent.phone_number|cut:'+' }}?text=Hello {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
                                             class="btn btn-sm btn-outline-success" 
                                             target="_blank">
                                                 <i class="fab fa-whatsapp me-1"></i>WhatsApp
                                             </a>
-                                            <a href="sms:{{ plot.broker.phone_number }}?body=Hello, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                            <a href="sms:{{ plot.agent.phone_number }}?body=Hello, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
                                             class="btn btn-sm btn-outline-info">
                                                 <i class="fas fa-sms me-1"></i>SMS
                                             </a>
@@ -429,11 +429,11 @@
                                 <div class="modal fade" id="contactFormModal" tabindex="-1" aria-hidden="true">
                                     <div class="modal-dialog">
                                         <div class="modal-content">
-                                            <form id="contactForm" method="POST" action="{% url 'listings:contact_broker' plot.id %}">
+                                            <form id="contactForm" method="POST" action="{% url 'listings:contact_agent' plot.id %}">
                                                 {% csrf_token %}
                                                 <div class="modal-header">
                                                     <h5 class="modal-title">
-                                                        <i class="fas fa-paper-plane me-2"></i>Message Broker
+                                                        <i class="fas fa-paper-plane me-2"></i>Message Agent
                                                     </h5>
                                                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                                 </div>
@@ -453,7 +453,7 @@
                                                     </div>
                                                     <div class="alert alert-info">
                                                         <i class="fas fa-info-circle me-2"></i>
-                                                        Your contact information (email: {{ user.email }}) will be shared with the broker.
+                                                        Your contact information (email: {{ user.email }}) will be shared with the agent.
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">
@@ -506,7 +506,7 @@
                                                     </div>
                                                     <div class="alert alert-warning">
                                                         <i class="fas fa-exclamation-triangle me-2"></i>
-                                                        The broker will confirm the visit via email/phone.
+                                                        The agent will confirm the visit via email/phone.
                                                     </div>
                                                 </div>
                                                 <div class="modal-footer">
@@ -531,7 +531,7 @@
                             <div class="guest-contact">
                                 <p class="text-muted mb-3">
                                     <i class="fas fa-info-circle me-2"></i>
-                                    You need to be logged in to contact the broker
+                                    You need to be logged in to contact the agent
                                 </p>
                                 <a href="{% url 'login' %}?next={{ request.path }}" 
                                 class="btn btn-primary w-100 mb-2">
@@ -547,6 +547,36 @@
                     </div>
                 </div>
             </div>
+
+<!-- Quick Actions -->
+<div class="dashboard-card">
+    <div class="card-header">
+        <h6 class="card-title">
+            <i class="fas fa-bolt me-2"></i>Quick Actions
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="quick-actions-grid">
+            {% if user.is_authenticated %}
+                {% if user == plot.agent.user %}
+                <a href="{% url 'listings:edit_plot' plot.id %}" class="btn btn-outline-warning w-100 mb-2">
+                    <i class="fas fa-edit me-2"></i>Edit Listing
+                </a>
+                {% endif %}
+                <a href="{% url 'listings:add_plot' %}" class="btn btn-outline-primary w-100 mb-2">
+                    <i class="fas fa-plus-circle me-2"></i>List Similar Plot
+                </a>
+            {% else %}
+                <a href="{% url 'register' %}?next={{ request.path }}" class="btn btn-primary w-100 mb-2">
+                    <i class="fas fa-user-plus me-2"></i>Register to Contact
+                </a>
+                <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
 
             <!-- Quick Actions -->
             <div class="dashboard-card">
