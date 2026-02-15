@@ -3,6 +3,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import *
+from decimal import Decimal
 
 # ============ CUSTOM FORM WIDGETS ============
 class MultipleFileInput(forms.ClearableFileInput):
@@ -37,8 +38,6 @@ class BaseUserRegistrationForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         # Add Bootstrap classes to all fields
         for field_name, field in self.fields.items():
-            if field_name not in ['username', 'email', 'first_name', 'last_name']:
-                continue
             field.widget.attrs.update({'class': 'form-control'})
 
 
@@ -47,8 +46,14 @@ class BuyerRegistrationForm(BaseUserRegistrationForm):
     pass
 
 
-class SellerRegistrationForm(BaseUserRegistrationForm):
-    """Seller registration with document uploads"""
+class LandownerRegistrationForm(BaseUserRegistrationForm):
+    """Landowner registration with document uploads"""
+    phone = forms.CharField(
+        max_length=15,
+        required=True,
+        help_text="Phone number for contact",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 0712345678'})
+    )
     national_id = forms.FileField(
         required=True,
         help_text="Upload a copy of your national ID",
@@ -61,17 +66,43 @@ class SellerRegistrationForm(BaseUserRegistrationForm):
     )
 
 
-class BrokerRegistrationForm(BaseUserRegistrationForm):
-    """Broker registration with professional details"""
+class AgentRegistrationForm(BaseUserRegistrationForm):
+    """Agent registration with professional details"""
     phone = forms.CharField(
         max_length=20,
         required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    id_number = forms.CharField(
+        max_length=20,
+        required=True,
+        help_text="National ID number",
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
     license_number = forms.CharField(
         max_length=100,
         required=True,
         widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    kra_pin = forms.FileField(
+        required=True,
+        help_text="Upload your KRA PIN certificate",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    practicing_certificate = forms.FileField(
+        required=False,
+        help_text="Upload your practicing certificate (optional)",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    good_conduct = forms.FileField(
+        required=False,
+        help_text="Upload certificate of good conduct (optional)",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    professional_indemnity = forms.FileField(
+        required=False,
+        help_text="Upload professional indemnity insurance (optional)",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
     )
     license_doc = forms.FileField(
         required=False,
@@ -101,15 +132,16 @@ class BaseUpgradeForm(forms.ModelForm):
     )
 
 
-class SellerUpgradeForm(BaseUpgradeForm):
-    """Form for existing users to upgrade to seller"""
+class LandownerUpgradeForm(BaseUpgradeForm):
+    """Form for existing users to upgrade to landowner"""
+    
+    # Remove title_deed from form - should be per-plot, not per-landowner
     class Meta:
-        model = SellerProfile
-        fields = ['national_id', 'kra_pin', 'title_deed', 'land_search', 'lcb_consent']
+        model = LandownerProfile
+        fields = ['national_id', 'kra_pin', 'land_search', 'lcb_consent']
         widgets = {
             'national_id': forms.FileInput(attrs={'class': 'form-control'}),
             'kra_pin': forms.FileInput(attrs={'class': 'form-control'}),
-            'title_deed': forms.FileInput(attrs={'class': 'form-control'}),
             'land_search': forms.FileInput(attrs={'class': 'form-control'}),
             'lcb_consent': forms.FileInput(attrs={'class': 'form-control'}),
         }
@@ -118,6 +150,14 @@ class SellerUpgradeForm(BaseUpgradeForm):
         super().__init__(*args, **kwargs)
         self.fields['national_id'].required = True
         self.fields['kra_pin'].required = True
+        self.fields['land_search'].required = False
+        self.fields['lcb_consent'].required = False
+        
+        # Add help texts
+        self.fields['national_id'].help_text = "Upload your national ID (required)"
+        self.fields['kra_pin'].help_text = "Upload your KRA PIN certificate (required)"
+        self.fields['land_search'].help_text = "Optional: Upload land search certificate if you have one"
+        self.fields['lcb_consent'].help_text = "Optional: Upload LCB consent if applicable"
     
     def save(self, user=None, commit=True):
         instance = super().save(commit=False)
@@ -129,10 +169,39 @@ class SellerUpgradeForm(BaseUpgradeForm):
         return instance
 
 
-class BrokerUpgradeForm(BaseUpgradeForm):
-    """Form for existing users to upgrade to broker"""
+class AgentUpgradeForm(BaseUpgradeForm):
+    """Form for existing users to upgrade to agent"""
+    
+    # Add all required professional fields
+    id_number = forms.CharField(
+        max_length=20,
+        required=True,
+        help_text="National ID number",
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    kra_pin = forms.FileField(
+        required=True,
+        help_text="Upload your KRA PIN certificate",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    practicing_certificate = forms.FileField(
+        required=False,
+        help_text="Upload your practicing certificate (optional)",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    good_conduct = forms.FileField(
+        required=False,
+        help_text="Upload certificate of good conduct (optional)",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    professional_indemnity = forms.FileField(
+        required=False,
+        help_text="Upload professional indemnity insurance (optional)",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    
     class Meta:
-        model = Broker
+        model = Agent
         fields = ['phone', 'license_number', 'license_doc']
         widgets = {
             'phone': forms.TextInput(attrs={'class': 'form-control'}),
@@ -144,11 +213,31 @@ class BrokerUpgradeForm(BaseUpgradeForm):
         super().__init__(*args, **kwargs)
         self.fields['phone'].required = True
         self.fields['license_number'].required = True
+        self.fields['license_doc'].required = False
+        
+        # Reorder fields
+        self.order_fields([
+            'username', 'email', 'phone', 'id_number', 'license_number',
+            'license_doc', 'kra_pin', 'practicing_certificate', 
+            'good_conduct', 'professional_indemnity'
+        ])
     
     def save(self, user=None, commit=True):
         instance = super().save(commit=False)
         if user:
             instance.user = user
+            instance.id_number = self.cleaned_data.get('id_number', '')
+        
+        # Save file fields
+        if self.cleaned_data.get('kra_pin'):
+            instance.kra_pin = self.cleaned_data['kra_pin']
+        if self.cleaned_data.get('practicing_certificate'):
+            instance.practicing_certificate = self.cleaned_data['practicing_certificate']
+        if self.cleaned_data.get('good_conduct'):
+            instance.good_conduct = self.cleaned_data['good_conduct']
+        if self.cleaned_data.get('professional_indemnity'):
+            instance.professional_indemnity = self.cleaned_data['professional_indemnity']
+        
         instance.verified = False
         if commit:
             instance.save()
@@ -180,13 +269,183 @@ class PlotForm(forms.ModelForm):
         ('Other', 'Other'),
     ]
     
+    # Listing type choices
+    LISTING_TYPE_CHOICES = [
+        ('sale', 'For Sale'),
+        ('lease', 'For Lease'),
+        ('both', 'For Sale & Lease'),
+    ]
+    
+    # Land type choices
+    LAND_TYPE_CHOICES = [
+        ('agricultural', 'Agricultural Land'),
+        ('residential', 'Residential Plot'),
+        ('commercial', 'Commercial Land'),
+        ('mixed_use', 'Mixed Use'),
+        ('industrial', 'Industrial Land'),
+    ]
+    
+    # Add new fields for enhanced plot details
+    listing_type = forms.ChoiceField(
+        choices=LISTING_TYPE_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    land_type = forms.ChoiceField(
+        choices=LAND_TYPE_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    land_use_description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        help_text="Describe the current use of this land"
+    )
+    
+    # Sale fields
+    sale_price = forms.DecimalField(
+        required=False,
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g., 5000000',
+            'min': '0',
+            'step': '0.01'
+        }),
+        help_text="Price if selling (KES)"
+    )
+    
+    price_per_acre = forms.DecimalField(
+        required=False,
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Auto-calculated',
+            'readonly': 'readonly',
+            'step': '0.01'
+        }),
+        help_text="Price per acre (auto-calculated)"
+    )
+    
+    # Lease fields
+    lease_price_monthly = forms.DecimalField(
+        required=False,
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g., 50000',
+            'min': '0',
+            'step': '0.01'
+        }),
+        help_text="Monthly lease price (KES)"
+    )
+    
+    lease_price_yearly = forms.DecimalField(
+        required=False,
+        max_digits=10,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g., 500000',
+            'min': '0',
+            'step': '0.01'
+        }),
+        help_text="Yearly lease price (KES)"
+    )
+    
+    lease_duration = forms.ChoiceField(
+        choices=Plot.LEASE_DURATION_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    lease_terms = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+        help_text="Specific lease conditions and restrictions"
+    )
+    
+    # Infrastructure fields
+    has_water = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    water_source = forms.ChoiceField(
+        choices=Plot.WATER_SOURCE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    has_electricity = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    electricity_meter = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text="Has meter installed"
+    )
+    
+    has_road_access = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    road_type = forms.ChoiceField(
+        choices=Plot.ROAD_TYPE_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
+    road_distance_km = forms.DecimalField(
+        required=False,
+        max_digits=5,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g., 0.5',
+            'min': '0',
+            'step': '0.1'
+        }),
+        help_text="Distance to main road (km)"
+    )
+    
+    has_buildings = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    building_description = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        help_text="Describe any buildings or structures"
+    )
+    
+    fencing = forms.ChoiceField(
+        choices=Plot.FENCING_CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    
     class Meta:
         model = Plot
         fields = [
-            'title', 'location', 'price', 'area',
+            'title', 'location', 'area', 'listing_type', 'land_type',
+            'land_use_description', 'sale_price', 'price_per_acre',
+            'lease_price_monthly', 'lease_price_yearly', 'lease_duration', 'lease_terms',
             'soil_type', 'ph_level', 'crop_suitability',
-            'title_deed', 'soil_report',
-            'official_search', 'seller_id', 'kra_pin'
+            'has_water', 'water_source', 'has_electricity', 'electricity_meter',
+            'has_road_access', 'road_type', 'road_distance_km',
+            'has_buildings', 'building_description', 'fencing',
+            'title_deed', 'soil_report', 'official_search', 
+            'landowner_id_doc', 'kra_pin'
         ]
         widgets = {
             'title': forms.TextInput(attrs={
@@ -196,12 +455,6 @@ class PlotForm(forms.ModelForm):
             'location': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'e.g., Kitale, Trans-Nzoia County'
-            }),
-            'price': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., 5000000',
-                'min': '0',
-                'step': '0.01'
             }),
             'area': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -232,7 +485,7 @@ class PlotForm(forms.ModelForm):
                 'class': 'form-control',
                 'accept': '.pdf,.jpg,.jpeg,.png'
             }),
-            'seller_id': forms.ClearableFileInput(attrs={
+            'landowner_id_doc': forms.ClearableFileInput(attrs={
                 'class': 'form-control',
                 'accept': '.pdf,.jpg,.jpeg,.png'
             }),
@@ -243,6 +496,8 @@ class PlotForm(forms.ModelForm):
         }
     
     def __init__(self, *args, **kwargs):
+        # Pop owner from kwargs if provided
+        self.owner = kwargs.pop('owner', None)
         self.is_edit = kwargs.get('instance', None) is not None
         super().__init__(*args, **kwargs)
         
@@ -255,9 +510,14 @@ class PlotForm(forms.ModelForm):
         # Set required fields for creation vs edit
         if not self.is_edit:
             # For new plots, all documents are required except soil_report
-            required_docs = ['title_deed', 'official_search', 'seller_id', 'kra_pin']
+            required_docs = ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin']
             for doc_field in required_docs:
-                self.fields[doc_field].required = True
+                if doc_field in self.fields:
+                    self.fields[doc_field].required = True
+            
+            # Listing type is required
+            self.fields['listing_type'].required = True
+            self.fields['land_type'].required = True
             self.fields['images'].required = True
         else:
             # For editing, documents are optional (allow updates)
@@ -266,7 +526,6 @@ class PlotForm(forms.ModelForm):
         # Add help texts
         self.fields['title'].help_text = "Give your plot a descriptive title"
         self.fields['location'].help_text = "County, Sub-county, Ward, and nearest town"
-        self.fields['price'].help_text = "Price in Kenyan Shillings (KES)"
         self.fields['area'].help_text = "Size in acres"
         self.fields['soil_type'].help_text = "Type of soil on the plot"
         self.fields['ph_level'].help_text = "Soil pH level (0-14), optional"
@@ -274,14 +533,43 @@ class PlotForm(forms.ModelForm):
         self.fields['title_deed'].help_text = "Upload title deed document (PDF/Image, max 10MB)"
         self.fields['soil_report'].help_text = "Upload soil test report (PDF/Image, max 10MB, optional)"
         self.fields['official_search'].help_text = "Official land search certificate (PDF/Image, max 10MB)"
-        self.fields['seller_id'].help_text = "Seller's national ID (PDF/Image, max 10MB)"
-        self.fields['kra_pin'].help_text = "KRA PIN certificate (PDF/Image, max 10MB)"
+        self.fields['landowner_id_doc'].help_text = "Landowner's national ID (PDF/Image, max 10MB)"
+        self.fields['kra_pin'].help_text = "Landowner's KRA PIN certificate (PDF/Image, max 10MB)"
+        
+        # Conditional field requirements based on listing type
+        if self.data.get('listing_type') in ['sale', 'both']:
+            self.fields['sale_price'].required = True
+        if self.data.get('listing_type') in ['lease', 'both']:
+            self.fields['lease_price_monthly'].required = False  # Either monthly or yearly
+            self.fields['lease_price_yearly'].required = False
+            self.fields['lease_duration'].required = True
     
     def clean(self):
         cleaned_data = super().clean()
         
+        # 👇 TEMPORARILY SET OWNER FOR VALIDATION
+        if self.owner and not self.is_edit:
+            if isinstance(self.owner, Agent):
+                self.instance.agent = self.owner
+            elif isinstance(self.owner, LandownerProfile):
+                self.instance.landowner = self.owner
+        
+        # Validate listing type and corresponding price fields
+        listing_type = cleaned_data.get('listing_type')
+        sale_price = cleaned_data.get('sale_price')
+        lease_price_monthly = cleaned_data.get('lease_price_monthly')
+        lease_price_yearly = cleaned_data.get('lease_price_yearly')
+        
+        if listing_type in ['sale', 'both'] and not sale_price:
+            self.add_error('sale_price', 'Sale price is required for properties listed for sale')
+        
+        if listing_type in ['lease', 'both']:
+            if not lease_price_monthly and not lease_price_yearly:
+                self.add_error('lease_price_monthly', 'Either monthly or yearly lease price is required')
+                self.add_error('lease_price_yearly', 'Either monthly or yearly lease price is required')
+        
         # Validate document file sizes (max 10MB)
-        document_fields = ['title_deed', 'soil_report', 'official_search', 'seller_id', 'kra_pin']
+        document_fields = ['title_deed', 'soil_report', 'official_search', 'landowner_id_doc', 'kra_pin']
         
         for field_name in document_fields:
             document = cleaned_data.get(field_name)
@@ -295,6 +583,17 @@ class PlotForm(forms.ModelForm):
                 file_extension = os.path.splitext(document.name)[1].lower()
                 if file_extension not in valid_extensions:
                     self.add_error(field_name, f"Invalid file type for {field_name.replace('_', ' ').title()}. Allowed: PDF, JPG, PNG")
+        
+        # Calculate price per acre if both sale price and area are provided
+        area = cleaned_data.get('area')
+        if sale_price and area and area > 0:
+            # Convert area to Decimal for division with Decimal
+            from decimal import Decimal
+            area_decimal = Decimal(str(area))
+            cleaned_data['price_per_acre'] = sale_price / area_decimal
+            cleaned_data['price'] = sale_price
+        elif sale_price:
+            cleaned_data['price'] = sale_price
         
         return cleaned_data
     
@@ -324,7 +623,6 @@ class PlotForm(forms.ModelForm):
                 valid_content_types = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp']
                 
                 # Get file extension
-                import os
                 file_extension = os.path.splitext(image.name)[1].lower()
                 
                 # Check both extension and content type
@@ -344,6 +642,17 @@ class PlotForm(forms.ModelForm):
     def save(self, commit=True):
         plot = super().save(commit=False)
         
+        # Set owner if provided
+        if hasattr(self, 'owner') and self.owner:
+            if isinstance(self.owner, Agent):
+                plot.agent = self.owner
+            elif isinstance(self.owner, LandownerProfile):
+                plot.landowner = self.owner
+        
+        # Set legacy price field from sale_price
+        if self.cleaned_data.get('sale_price'):
+            plot.price = self.cleaned_data['sale_price']
+        
         if commit:
             plot.save()
             
@@ -354,7 +663,7 @@ class PlotForm(forms.ModelForm):
                     PlotImage.objects.create(plot=plot, image=image)
         
         return plot
-    
+
 # ============ VERIFICATION FORMS ============
 class VerificationDocumentForm(forms.ModelForm):
     """Form for uploading verification documents"""
@@ -365,6 +674,10 @@ class VerificationDocumentForm(forms.ModelForm):
             'doc_type': forms.Select(attrs={'class': 'form-select'}),
             'file': forms.FileInput(attrs={'class': 'form-control'}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['doc_type'].choices = VerificationDocument.DOC_TYPE_CHOICES
 
 
 class TitleSearchResultForm(forms.ModelForm):
@@ -372,7 +685,7 @@ class TitleSearchResultForm(forms.ModelForm):
     class Meta:
         model = TitleSearchResult
         fields = ['search_platform', 'official_owner', 'parcel_number',
-                 'encumbrances', 'lease_status', 'search_date', 'raw_response_file']
+                 'encumbrances', 'lease_status', 'search_date', 'raw_response_file', 'verified', 'notes']
         widgets = {
             'search_platform': forms.Select(attrs={'class': 'form-control'}),
             'official_owner': forms.TextInput(attrs={'class': 'form-control'}),
@@ -381,38 +694,72 @@ class TitleSearchResultForm(forms.ModelForm):
             'lease_status': forms.TextInput(attrs={'class': 'form-control'}),
             'search_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
             'raw_response_file': forms.FileInput(attrs={'class': 'form-control'}),
+            'verified': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['search_platform'].choices = [
+            ('', 'Select Platform'),
+            ('Ardhisasa', 'Ardhisasa'),
+            ('eCitizen', 'eCitizen'),
+            ('Manual', 'Manual Search'),
+            ('Other', 'Other'),
+        ]
 
 
 class PlotVerificationStatusForm(forms.ModelForm):
     """Form for updating plot verification status"""
     class Meta:
-        model = PlotVerificationStatus
-        fields = ['status', 'review_notes']
+        model = VerificationStatus
+        fields = ['current_stage', 'stage_details']
         widgets = {
-            'status': forms.Select(attrs={'class': 'form-select'}),
-            'review_notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
+            'current_stage': forms.Select(attrs={'class': 'form-select'}),
+            'stage_details': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         }
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['current_stage'].choices = VerificationStatus.CURRENT_STAGE_CHOICES
 
 
-# ============ SELLER WIZARD FORMS ============
-class SellerStep1Form(BaseUserRegistrationForm):
+# ============ LANDOWNER WIZARD FORMS ============
+class LandownerStep1Form(BaseUserRegistrationForm):
     """Step 1: Personal information"""
     pass
 
 
-class SellerStep2Form(forms.Form):
+class LandownerStep2Form(forms.Form):
     """Step 2: Contact information"""
-    phone = forms.CharField(max_length=15, widget=forms.TextInput(attrs={'class': 'form-control'}))
-    region = forms.CharField(max_length=100, widget=forms.TextInput(attrs={'class': 'form-control'}))
-    city = forms.CharField(max_length=100, widget=forms.TextInput(attrs={'class': 'form-control'}))
-
-
-class SellerStep3Form(forms.Form):
-    """Step 3: Documents"""
-    title_deed = forms.FileField(
+    phone = forms.CharField(
+        max_length=15, 
         required=True,
-        widget=forms.FileInput(attrs={'class': 'form-control'})
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 0712345678'})
+    )
+    region = forms.CharField(
+        max_length=100, 
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Rift Valley'})
+    )
+    city = forms.CharField(
+        max_length=100, 
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Nakuru'})
+    )
+
+
+class LandownerStep3Form(forms.Form):
+    """Step 3: Documents"""
+    national_id = forms.FileField(
+        required=True,
+        widget=forms.FileInput(attrs={'class': 'form-control'}),
+        help_text="Upload your national ID (PDF/Image)"
+    )
+    kra_pin = forms.FileField(
+        required=True,
+        widget=forms.FileInput(attrs={'class': 'form-control'}),
+        help_text="Upload your KRA PIN certificate (PDF/Image)"
     )
     land_photos = MultipleFileField(
         required=True,
@@ -421,9 +768,15 @@ class SellerStep3Form(forms.Form):
     )
 
 
-class SellerStep4Form(forms.Form):
+class LandownerStep4Form(forms.Form):
     """Step 4: Confirmation"""
     agree_terms = forms.BooleanField(
         required=True,
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        error_messages={'required': 'You must agree to the terms and conditions to continue.'}
+    )
+    agree_privacy = forms.BooleanField(
+        required=True,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        error_messages={'required': 'You must agree to the privacy policy.'}
     )

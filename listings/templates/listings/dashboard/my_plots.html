@@ -82,7 +82,7 @@
                         </div>
                         <div class="metric-content">
                             <p class="metric-label">Verified</p>
-                            <h2 class="metric-value">{{ status_counts.verified }}</h2>
+                            <h2 class="metric-value">{{ status_counts.approved }}</h2>  <!-- ✅ Changed from verified to approved -->
                         </div>
                     </div>
 
@@ -92,7 +92,7 @@
                         </div>
                         <div class="metric-content">
                             <p class="metric-label">In Review</p>
-                            <h2 class="metric-value">{{ status_counts.in_review }}</h2>
+                            <h2 class="metric-value">{{ status_counts.admin_review }}</h2>  <!-- ✅ Changed from in_review to admin_review -->
                         </div>
                     </div>
 
@@ -131,8 +131,8 @@
                                     <label class="form-label">Status</label>
                                     <select name="status" class="form-select">
                                         <option value="all" {% if status_filter == 'all' %}selected{% endif %}>All Statuses</option>
-                                        <option value="verified" {% if status_filter == 'verified' %}selected{% endif %}>✓ Verified</option>
-                                        <option value="in_review" {% if status_filter == 'in_review' %}selected{% endif %}>⟳ In Review</option>
+                                        <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>✓ Verified</option>
+                                        <option value="admin_review" {% if status_filter == 'admin_review' %}selected{% endif %}>⟳ In Review</option>
                                         <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>⏳ Pending</option>
                                         <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>✗ Rejected</option>
                                     </select>
@@ -203,18 +203,20 @@
                                             {% endwith %}
                                         </td>
                                         <td>
-                                            {% if plot.verification_status %}
-                                                {% if plot.verification_status.status == 'verified' %}
-                                                    <span class="status-badge bg-success">✓ Verified</span>
-                                                {% elif plot.verification_status.status == 'in_review' %}
-                                                    <span class="status-badge bg-info">⟳ In Review</span>
-                                                {% elif plot.verification_status.status == 'pending' %}
-                                                    <span class="status-badge bg-warning">⏳ Pending</span>
-                                                {% elif plot.verification_status.status == 'rejected' %}
-                                                    <span class="status-badge bg-danger">✗ Rejected</span>
-                                                {% else %}
-                                                    <span class="status-badge bg-secondary">{{ plot.verification_status.status|title }}</span>
-                                                {% endif %}
+                                            {% if plot.verification %}
+                                                {% with status=plot.verification.current_stage %}
+                                                    {% if status == 'approved' %}
+                                                        <span class="status-badge bg-success">✓ Verified</span>
+                                                    {% elif status == 'admin_review' %}
+                                                        <span class="status-badge bg-info">⟳ In Review</span>
+                                                    {% elif status == 'pending' %}
+                                                        <span class="status-badge bg-warning">⏳ Pending</span>
+                                                    {% elif status == 'rejected' %}
+                                                        <span class="status-badge bg-danger">✗ Rejected</span>
+                                                    {% else %}
+                                                        <span class="status-badge bg-secondary">{{ status|title }}</span>
+                                                    {% endif %}
+                                                {% endwith %}
                                             {% else %}
                                                 <span class="status-badge bg-light text-muted">No Status</span>
                                             {% endif %}
@@ -227,7 +229,7 @@
                                                 <a href="{% url 'listings:edit_plot' plot.id %}" class="btn btn-sm btn-outline-secondary" title="Edit Plot">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                <a href="{% url 'listings:upload_checklist' plot.id %}" class="btn btn-sm btn-outline-success" title="Upload Documents">
+                                                <a href="{% url 'listings:upload_verification_doc' plot.id %}" class="btn btn-sm btn-outline-success" title="Upload Documents">
                                                     <i class="fas fa-file-upload"></i>
                                                 </a>
                                             </div>
@@ -256,12 +258,12 @@
                             <ul class="pagination justify-content-center">
                                 {% if page_obj.has_previous %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page=1&status={{ status_filter }}&search={{ search_query }}">
+                                        <a class="page-link" href="?page=1&status={{ status_filter }}&search={{ search_query|urlencode }}">
                                             <i class="fas fa-chevron-left me-1"></i>First
                                         </a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ status_filter }}&search={{ search_query }}">Previous</a>
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}&status={{ status_filter }}&search={{ search_query|urlencode }}">Previous</a>
                                     </li>
                                 {% else %}
                                     <li class="page-item disabled"><span class="page-link">First</span></li>
@@ -276,10 +278,10 @@
 
                                 {% if page_obj.has_next %}
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ status_filter }}&search={{ search_query }}">Next</a>
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}&status={{ status_filter }}&search={{ search_query|urlencode }}">Next</a>
                                     </li>
                                     <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&status={{ status_filter }}&search={{ search_query }}">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&status={{ status_filter }}&search={{ search_query|urlencode }}">
                                             Last<i class="fas fa-chevron-right ms-1"></i>
                                         </a>
                                     </li>

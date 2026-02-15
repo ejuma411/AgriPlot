@@ -134,11 +134,115 @@
                     </div>
                 </div>
 
+                <!-- ============ NEW: Verification Progress Section ============ -->
+                {% if verification %}
+                <div class="card status-card">
+                    <div class="card-header">
+                        <h3 class="card-title">
+                            <i class="fas fa-shield-alt me-2"></i>Account Verification Progress
+                        </h3>
+                    </div>
+                    <div class="card-body">
+                        <!-- Timeline Progress -->
+                        <div class="verification-timeline">
+                            <!-- Stage 1: Documents Uploaded -->
+                            <div class="timeline-item {% if verification.current_stage != 'document_uploaded' %}completed{% endif %}">
+                                <div class="timeline-marker">
+                                    <i class="fas {% if verification.current_stage != 'document_uploaded' %}fa-check{% else %}fa-cloud-upload-alt{% endif %}"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h4>Documents Uploaded</h4>
+                                    <p>{{ verification.document_uploaded_at|date:"M d, Y H:i" }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Stage 2: API Verification -->
+                            <div class="timeline-item {% if verification.current_stage in 'title_search_completed,owner_verified,encumbrance_check,admin_review,approved' %}completed{% endif %}">
+                                <div class="timeline-marker">
+                                    <i class="fas {% if verification.current_stage in 'title_search_completed,owner_verified,encumbrance_check,admin_review,approved' %}fa-check{% else %}fa-search{% endif %}"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h4>API Verification</h4>
+                                    {% if verification.current_stage == 'api_verification_started' %}
+                                        <p>Verifying with Ardhisasa...</p>
+                                    {% elif verification.current_stage == 'title_search_completed' %}
+                                        <p>Title Search Complete</p>
+                                        {% if verification.search_reference %}
+                                            <small class="text-muted">Ref: {{ verification.search_reference }}</small>
+                                        {% endif %}
+                                    {% elif verification.current_stage == 'owner_verified' %}
+                                        <p>Owner Identity Verified</p>
+                                    {% elif verification.current_stage == 'encumbrance_check' %}
+                                        <p>Encumbrance Check Complete</p>
+                                    {% elif verification.current_stage in 'admin_review,approved' %}
+                                        <p>API Verification Complete</p>
+                                    {% else %}
+                                        <p>Pending</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Stage 3: Admin Review -->
+                            <div class="timeline-item {% if verification.current_stage in 'admin_review,approved' %}active{% endif %} {% if verification.current_stage == 'approved' %}completed{% endif %}">
+                                <div class="timeline-marker">
+                                    <i class="fas {% if verification.current_stage == 'approved' %}fa-check{% elif verification.current_stage == 'admin_review' %}fa-user-check{% else %}fa-hourglass-half{% endif %}"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h4>Admin Review</h4>
+                                    {% if verification.current_stage == 'admin_review' %}
+                                        <p>Under review (usually within 24 hours)</p>
+                                    {% elif verification.current_stage == 'approved' %}
+                                        <p>Approved by Admin</p>
+                                        <small class="text-muted">{{ verification.admin_review_at|date:"M d, Y H:i" }}</small>
+                                    {% else %}
+                                        <p>Pending</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- Stage 4: Approved -->
+                            <div class="timeline-item {% if verification.current_stage == 'approved' %}completed{% endif %}">
+                                <div class="timeline-marker">
+                                    <i class="fas {% if verification.current_stage == 'approved' %}fa-check{% else %}fa-check-circle{% endif %}"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <h4>Verification Complete</h4>
+                                    {% if verification.current_stage == 'approved' %}
+                                        <p>Account Verified! You can now list properties.</p>
+                                        <small class="text-muted">{{ verification.approved_at|date:"M d, Y H:i" }}</small>
+                                    {% else %}
+                                        <p>Awaiting verification</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div class="mt-4">
+                            <div class="progress-header">
+                                <span class="progress-label">Overall Progress</span>
+                                <span class="progress-value">{{ verification.progress }}%</span>
+                            </div>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill bg-success" style="width: {{ verification.progress }}%;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Estimated Time -->
+                        <div class="alert alert-info mt-3 mb-0">
+                            <i class="fas fa-clock me-2"></i>
+                            {{ verification.estimated_completion }}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                <!-- ============ END NEW SECTION ============ -->
+
                 <!-- Verification Progress -->
                 <div class="card status-card">
                     <div class="card-header">
                         <h3 class="card-title">
-                            <i class="fas fa-chart-pie me-2"></i>Verification Progress
+                            <i class="fas fa-chart-pie me-2"></i>Plot Verification Progress
                         </h3>
                     </div>
                     <div class="card-body">
@@ -206,19 +310,21 @@
                                 {% for plot in plots %}
                                 <div class="plot-card">
                                     <div class="plot-header">
-                                        <span class="plot-status-badge status-{{ plot.verification_status.status|default:'none' }}">
-                                            {% if plot.verification_status.status == 'verified' %}
+                                        {% with status=plot.verification.current_stage|default:'none' %}
+                                        <span class="plot-status-badge status-{{ status }}">
+                                            {% if status == 'approved' %}
                                                 <i class="fas fa-check"></i> Verified
-                                            {% elif plot.verification_status.status == 'in_review' %}
+                                            {% elif status == 'admin_review' %}
                                                 <i class="fas fa-sync-alt"></i> In Review
-                                            {% elif plot.verification_status.status == 'pending' %}
+                                            {% elif status == 'pending' %}
                                                 <i class="fas fa-hourglass-half"></i> Pending
-                                            {% elif plot.verification_status.status == 'rejected' %}
+                                            {% elif status == 'rejected' %}
                                                 <i class="fas fa-times"></i> Rejected
                                             {% else %}
                                                 No Status
                                             {% endif %}
                                         </span>
+                                        {% endwith %}
                                     </div>
                                     <div class="plot-body">
                                         <h4 class="plot-title">
@@ -351,7 +457,7 @@
     </main>
 
     <style>
-    /* Root Variables */
+    /* Root Variables - EXACTLY AS ORIGINAL */
     :root {
         --primary: #069132;
         --primary-light: #e3ebf7;
@@ -375,14 +481,14 @@
         --transition: all 0.2s ease;
     }
 
-    /* Dashboard Layout */
+    /* Dashboard Layout - EXACTLY AS ORIGINAL */
     .dashboard-wrapper {
         display: flex;
         height: 100vh;
         background: var(--gray-100);
     }
 
-    /* Sidebar */
+    /* Sidebar - EXACTLY AS ORIGINAL */
     .dashboard-sidebar {
         width: 260px;
         background: white;
@@ -485,7 +591,7 @@
         color: var(--gray-600);
     }
 
-    /* Main Content */
+    /* Main Content - EXACTLY AS ORIGINAL */
     .dashboard-main {
         flex: 1;
         margin-left: 260px;
@@ -536,7 +642,7 @@
         color: #856404;
     }
 
-    /* Dashboard Content */
+    /* Dashboard Content - EXACTLY AS ORIGINAL */
     .dashboard-content {
         padding: 2rem;
         display: grid;
@@ -560,7 +666,7 @@
         gap: 2rem;
     }
 
-    /* Metrics Grid */
+    /* Metrics Grid - EXACTLY AS ORIGINAL */
     .metrics-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -629,7 +735,7 @@
         color: var(--gray-600);
     }
 
-    /* Cards */
+    /* Cards - EXACTLY AS ORIGINAL */
     .card {
         background: white;
         border-radius: var(--radius);
@@ -656,7 +762,7 @@
         padding: 1.5rem;
     }
 
-    /* Status Card */
+    /* Status Card - EXACTLY AS ORIGINAL */
     .status-card .card-body {
         display: flex;
         flex-direction: column;
@@ -708,7 +814,110 @@
         transition: var(--transition);
     }
 
-    /* Plots Grid */
+    /* ===== NEW: Verification Timeline Styles ===== */
+    .verification-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        position: relative;
+        padding-left: 1rem;
+    }
+
+    .verification-timeline::before {
+        content: '';
+        position: absolute;
+        left: 23px;
+        top: 10px;
+        bottom: 10px;
+        width: 2px;
+        background: var(--gray-300);
+        z-index: 0;
+    }
+
+    .timeline-item {
+        display: flex;
+        gap: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .timeline-marker {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: white;
+        border: 2px solid var(--gray-300);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--gray-600);
+        font-size: 1.25rem;
+        flex-shrink: 0;
+        transition: var(--transition);
+    }
+
+    .timeline-item.completed .timeline-marker {
+        background: var(--success);
+        border-color: var(--success);
+        color: white;
+    }
+
+    .timeline-item.active .timeline-marker {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(6, 145, 50, 0.7);
+        }
+        70% {
+            box-shadow: 0 0 0 10px rgba(6, 145, 50, 0);
+        }
+        100% {
+            box-shadow: 0 0 0 0 rgba(6, 145, 50, 0);
+        }
+    }
+
+    .timeline-content {
+        flex: 1;
+        padding: 0.5rem 0;
+    }
+
+    .timeline-content h4 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+
+    .timeline-content p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--gray-600);
+    }
+
+    .timeline-content small {
+        font-size: 0.75rem;
+    }
+
+    .alert {
+        padding: 1rem;
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+    }
+
+    .alert-info {
+        background: var(--info-light);
+        color: var(--info);
+        border: 1px solid var(--info);
+    }
+    /* ===== END NEW STYLES ===== */
+
+    /* Plots Grid - EXACTLY AS ORIGINAL */
     .plots-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -808,7 +1017,7 @@
         padding: 0 1.25rem 1.25rem;
     }
 
-    /* Quick Actions */
+    /* Quick Actions - EXACTLY AS ORIGINAL */
     .action-btn {
         display: flex;
         align-items: center;
@@ -848,7 +1057,7 @@
         font-size: 0.95rem;
     }
 
-    /* Activity */
+    /* Activity - EXACTLY AS ORIGINAL */
     .activity-list {
         display: flex;
         flex-direction: column;
@@ -894,7 +1103,7 @@
         color: var(--gray-600);
     }
 
-    /* Broker Info */
+    /* Broker Info - EXACTLY AS ORIGINAL */
     .broker-info-item {
         display: flex;
         justify-content: space-between;
@@ -919,7 +1128,7 @@
         color: var(--gray-800);
     }
 
-    /* Empty State */
+    /* Empty State - EXACTLY AS ORIGINAL */
     .empty-state {
         text-align: center;
         padding: 3rem 1rem;
@@ -943,7 +1152,7 @@
         font-weight: 600;
     }
 
-    /* Responsive */
+    /* Responsive - EXACTLY AS ORIGINAL */
     @media (max-width: 1200px) {
         .dashboard-content {
             grid-template-columns: 1fr;
