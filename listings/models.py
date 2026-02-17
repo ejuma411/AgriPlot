@@ -320,6 +320,22 @@ class Plot(models.Model):
         help_text="KRA PIN certificate"
     )
     
+    # GIS / Location (latitude & longitude for mapping)
+    latitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Latitude (e.g. -1.292066 for Nairobi)"
+    )
+    longitude = models.DecimalField(
+        max_digits=9,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        help_text="Longitude (e.g. 36.821946 for Nairobi)"
+    )
+    
     # Environmental / regulatory (Q4)
     elevation_meters = models.IntegerField(null=True, blank=True, help_text="Elevation in metres")
     climate_zone = models.CharField(max_length=100, blank=True)
@@ -342,6 +358,7 @@ class Plot(models.Model):
             models.Index(fields=['listing_type']),
             models.Index(fields=['land_type']),
             models.Index(fields=['soil_type']),
+            models.Index(fields=['latitude', 'longitude']),
         ]
 
     def __str__(self):
@@ -363,9 +380,9 @@ class Plot(models.Model):
         super().save(*args, **kwargs)
 
     @property
-    def images_list(self):
-        """Return all images for this plot"""
-        return self.images.all()
+    def has_coordinates(self):
+        """True if plot has latitude and longitude for GIS mapping."""
+        return self.latitude is not None and self.longitude is not None
     
     @property
     def has_all_documents(self):
@@ -393,18 +410,6 @@ class Plot(models.Model):
     def total_reaction_count(self):
         """Get total number of all reactions"""
         return self.reactions.count()
-
-
-class PlotImage(models.Model):
-    plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='plot_images/')
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-    
-    def __str__(self):
-        return f"Image for {self.plot.title}"
-    
-    class Meta:
-        ordering = ['uploaded_at']
 
 
 # -----------------------------

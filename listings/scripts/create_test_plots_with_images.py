@@ -1,10 +1,9 @@
 # listings/scripts/create_test_plots_with_images.py
+# NOTE: Plot images removed in favour of GIS (latitude/longitude). This script now creates plots with coordinates.
 import random
 from django.core.files.base import ContentFile
-from listings.models import Plot, Broker, PlotImage
+from listings.models import Plot, Broker
 from django.contrib.auth.models import User
-from PIL import Image
-from io import BytesIO
 
 # Get broker 'admin'
 try:
@@ -31,8 +30,11 @@ if broker:
     ]
     soil_types = ['Loam', 'Clay', 'Sandy', 'Silty', 'Peaty']
     crops = ['Maize, Beans', 'Wheat, Barley', 'Tomatoes, Onions', 'Sugarcane', 'Bananas, Coffee']
+    # Sample coordinates (Kenya)
+    coords = [(0.9947, 34.5994), (-0.5143, 35.2698), (-0.3031, 36.0800), (-1.0833, 35.8667), (-1.0333, 37.0694)]
 
     for i in range(5):
+        lat, lon = coords[i]
         plot = Plot.objects.create(
             title=titles[i],
             location=locations[i],
@@ -41,22 +43,15 @@ if broker:
             soil_type=random.choice(soil_types),
             ph_level=round(random.uniform(5.5, 7.5), 1),
             crop_suitability=crops[i],
-            broker=broker
+            agent=broker,
+            latitude=lat,
+            longitude=lon,
         )
 
-        # Dummy title deed & soil report
-        plot.title_deed.save(f"title_deed_{i}.pdf", ContentFile(b"Dummy title deed content"))
-        plot.soil_report.save(f"soil_report_{i}.pdf", ContentFile(b"Dummy soil report content"))
-
-        # Generate 3 real dummy images
-        for j in range(1, 4):
-            # Create image with PIL
-            img = Image.new('RGB', (200, 200), color=(random.randint(0,255), random.randint(0,255), random.randint(0,255)))
-            buffer = BytesIO()
-            img.save(buffer, format='JPEG')
-            buffer.seek(0)
-
-            image_file = ContentFile(buffer.read(), name=f"plot_{i}_image_{j}.jpg")
-            PlotImage.objects.create(plot=plot, image=image_file)
-
-        print(f"Created plot: {plot.title} with 3 images")
+        try:
+            plot.title_deed.save(f"title_deed_{i}.pdf", ContentFile(b"Dummy title deed content"), save=False)
+            plot.soil_report.save(f"soil_report_{i}.pdf", ContentFile(b"Dummy soil report content"), save=False)
+        except Exception:
+            pass
+        plot.save()
+        print(f"Created plot: {plot.title} with coordinates ({lat}, {lon})")

@@ -4,15 +4,18 @@
     {% for plot in featured_plots %}
     <div class="market-card">
 
-        <!-- IMAGE -->
-        <div class="market-image plot-gallery">
-            {% if plot.images_list %}
-                {% for img in plot.images_list.all %}
-                    <img src="{{ img.image.url }}" class="{% if forloop.first %}active{% endif %}" 
-                         alt="{{ plot.title }} image {{ forloop.counter }}">
-                {% endfor %}
+        <!-- LOCATION / MAP PIN -->
+        <div class="market-image plot-location">
+            {% if plot.has_coordinates %}
+            <a href="https://www.openstreetmap.org/?mlat={{ plot.latitude }}&mlon={{ plot.longitude }}#map=14/{{ plot.latitude }}/{{ plot.longitude }}" target="_blank" rel="noopener" class="location-pin-link" title="View on map">
+                <span class="location-pin"><i class="fas fa-map-marker-alt"></i></span>
+                <span class="coordinates-text">{{ plot.latitude }}, {{ plot.longitude }}</span>
+            </a>
             {% else %}
-                <img src="{% static 'images/placeholder-plot.jpg' %}" alt="No image available">
+            <div class="location-pin-placeholder">
+                <i class="fas fa-map fa-2x text-muted"></i>
+                <span class="text-muted small">{{ plot.location|truncatewords:4 }}</span>
+            </div>
             {% endif %}
 
             <!-- PRICE -->

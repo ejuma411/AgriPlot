@@ -28,22 +28,6 @@ class AgentInline(admin.StackedInline):
     fields = ('phone', 'id_number', 'license_number', 'license_doc', 'kra_pin', 'verified')
     readonly_fields = ('phone', 'id_number', 'license_number', 'license_doc', 'kra_pin')
 
-class PlotImageInline(admin.TabularInline):
-    model = PlotImage
-    extra = 1
-    fields = ('image', 'preview', 'uploaded_at')
-    readonly_fields = ('preview', 'uploaded_at')
-    
-    def preview(self, obj):
-        if obj.image:
-            return format_html(
-                '<img src="{}" style="max-height: 100px; max-width: 150px;" />',
-                obj.image.url
-            )
-        return "No image"
-    preview.short_description = "Preview"
-
-
 class VerificationDocumentInline(admin.TabularInline):
     model = VerificationDocument
     extra = 0
@@ -255,11 +239,11 @@ class PlotAdmin(admin.ModelAdmin):
         "title",
         "owner_info",
         "location",
+        "coordinates_display",
         "price_display",
         "area",
         "listing_type_display",
         "land_type_display",
-        "image_count",
         "verification_display",
         "has_all_documents",
         "reaction_count_display",
@@ -285,7 +269,6 @@ class PlotAdmin(admin.ModelAdmin):
         "agent",
         "landowner",
         "verification_info",
-        "image_preview",
         "contact_requests_summary",
         "documents_summary",
         "created_at",
@@ -295,7 +278,7 @@ class PlotAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ("Basic Information", {
-            "fields": ("title", "agent", "landowner", "location", "area", "listing_type", "land_type", "land_use_description")
+            "fields": ("title", "agent", "landowner", "location", "area", "latitude", "longitude", "listing_type", "land_type", "land_use_description")
         }),
         ("Pricing Information", {
             "fields": ("price", "sale_price", "price_per_acre_display", 
@@ -318,10 +301,6 @@ class PlotAdmin(admin.ModelAdmin):
             "fields": ("official_search", "landowner_id_doc", "kra_pin"),
             "classes": ("collapse",),
         }),
-        ("Images", {
-            "fields": ("image_preview",),
-            "classes": ("collapse",),
-        }),
         ("Documents Summary", {
             "fields": ("documents_summary",),
             "classes": ("collapse",),
@@ -340,9 +319,9 @@ class PlotAdmin(admin.ModelAdmin):
         }),
     )
     
-    inlines = [PlotImageInline, VerificationDocumentInline, TitleSearchResultInline]
+    inlines = [VerificationDocumentInline, TitleSearchResultInline]
     
-    actions = ["verify_selected", "reject_selected", "add_sample_images", "export_as_csv"]
+    actions = ["verify_selected", "reject_selected", "export_as_csv"]
     
     def owner_info(self, obj):
         """Display owner (agent or landowner) with verification status"""
@@ -391,44 +370,25 @@ class PlotAdmin(admin.ModelAdmin):
     
     def price_per_acre_display(self, obj):
         """Display price per acre"""
+        from decimal import Decimal
         if obj.price_per_acre:
             return f"KES {obj.price_per_acre:,.0f}"
-        elif obj.sale_price and obj.area and obj.area > 0:
-            per_acre = obj.sale_price / obj.area
+        if obj.sale_price and obj.area and obj.area > 0:
+            area = Decimal(str(obj.area))
+            per_acre = obj.sale_price / area
             return f"KES {per_acre:,.0f} (calculated)"
         return "-"
     price_per_acre_display.short_description = "Price/Acre"
     
-    def image_count(self, obj):
-        """Display image count with color"""
-        count = obj.images.count()
-        if count > 0:
+    def coordinates_display(self, obj):
+        """Display latitude/longitude for GIS"""
+        if obj.latitude is not None and obj.longitude is not None:
             return format_html(
-                '<span style="color: green; font-weight: bold;">{}</span>',
-                count
+                '<span title="Open in map">{}°, {}°</span>',
+                obj.latitude, obj.longitude
             )
-        return format_html(
-            '<span style="color: red; font-weight: bold;">{}</span>',
-            "0"
-        )
-    image_count.short_description = "Images"
-    
-    def image_preview(self, obj):
-        """Preview images"""
-        images = obj.images.all()[:5]
-        if images.exists():
-            html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">'
-            for image in images:
-                html += format_html(
-                    '<div style="flex: 0 0 150px; margin-bottom: 10px;">'
-                    '<img src="{}" style="width: 150px; height: 100px; object-fit: cover; border-radius: 5px;" />'
-                    '</div>',
-                    image.image.url if image.image else ''
-                )
-            html += '</div>'
-            return format_html(html)
-        return "No images uploaded"
-    image_preview.short_description = "Image Gallery"
+        return format_html('<span style="color: #999;">—</span>')
+    coordinates_display.short_description = "Coordinates"
     
     def documents_summary(self, obj):
         """Display summary of document status"""
@@ -615,8 +575,16 @@ class PlotAdmin(admin.ModelAdmin):
     
     def verification_info(self, obj):
         """Display detailed verification information"""
-        verification = self.get_verification(obj)
-        if verification:
+        if hasattr(obj, "verification") and obj.verification:
+            verification = obj.verification
+            stage_details = verification.stage_details or {}
+            
+            # Safely get values with defaults
+            created_by = stage_details.get('created_by', 'System')
+            reviewed_by = stage_details.get('reviewed_by', 'Not reviewed')
+            reviewed_at = stage_details.get('reviewed_at', 'Not reviewed')
+            notes = stage_details.get('notes', 'No notes')
+            
             info = f"""
             <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
                 <strong>Status:</strong> {verification.get_current_stage_display()}<br>
@@ -626,6 +594,10 @@ class PlotAdmin(admin.ModelAdmin):
                 <strong>Submitted:</strong> {verification.document_uploaded_at or 'Not submitted'}<br>
                 <strong>Admin Review:</strong> {verification.admin_review_at or 'Not yet'}<br>
                 <strong>Approved:</strong> {verification.approved_at or 'Not yet'}<br>
+                <strong>Created By:</strong> {created_by}<br>
+                <strong>Reviewed By:</strong> {reviewed_by}<br>
+                <strong>Reviewed At:</strong> {reviewed_at}<br>
+                <strong>Notes:</strong> {notes}<br>
                 <strong>Details:</strong> {verification.stage_details or 'No details'}
             </div>
             """
@@ -705,7 +677,7 @@ class PlotAdmin(admin.ModelAdmin):
         writer.writerow([
             'ID', 'Title', 'Location', 'Price', 'Area', 'Listing Type', 'Land Type',
             'Soil Type', 'Crop Suitability', 'Owner Type', 'Owner', 'Status',
-            'Progress %', 'Images', 'Created At'
+            'Progress %', 'Coordinates', 'Created At'
         ])
         
         content_type = ContentType.objects.get_for_model(Plot)
@@ -741,61 +713,12 @@ class PlotAdmin(admin.ModelAdmin):
                 owner_name,
                 status_display,
                 f"{progress}%",
-                plot.images.count(),
+                f"{plot.latitude},{plot.longitude}" if (plot.latitude and plot.longitude) else "",
                 plot.created_at.strftime('%Y-%m-%d')
             ])
         
         return response
     export_as_csv.short_description = "📊 Export selected to CSV"
-    
-    def add_sample_images(self, request, queryset):
-        """Add sample images to plots without images"""
-        try:
-            from django.core.files import File
-            from PIL import Image, ImageDraw
-            import io
-            import random
-            
-            colors = [(73, 109, 137), (46, 125, 50), (183, 28, 28), (245, 124, 0), (106, 27, 154)]
-            count = 0
-            
-            for plot in queryset:
-                if plot.images.count() == 0:
-                    img = Image.new('RGB', (800, 600), color=random.choice(colors))
-                    draw = ImageDraw.Draw(img)
-                    
-                    try:
-                        from PIL import ImageFont
-                        font = ImageFont.truetype("arial.ttf", 40)
-                    except:
-                        font = None
-                    
-                    text = f"Plot: {plot.title[:20]}"
-                    if font:
-                        bbox = draw.textbbox((0, 0), text, font=font)
-                        text_width = bbox[2] - bbox[0]
-                        text_height = bbox[3] - bbox[1]
-                        x = (800 - text_width) / 2
-                        y = (600 - text_height) / 2
-                        draw.text((x, y), text, fill=(255, 255, 255), font=font)
-                    else:
-                        draw.text((100, 250), text, fill=(255, 255, 255))
-                    
-                    img_io = io.BytesIO()
-                    img.save(img_io, 'JPEG', quality=85)
-                    img_io.seek(0)
-                    
-                    plot_image = PlotImage(plot=plot)
-                    plot_image.image.save(f"plot_{plot.id}_sample.jpg", File(img_io), save=True)
-                    plot_image.save()
-                    count += 1
-            
-            self.message_user(request, f"🖼️ Added sample images to {count} plot(s).")
-        except ImportError:
-            self.message_user(request, "PIL/Pillow not installed. Cannot generate sample images.", level='error')
-        except Exception as e:
-            self.message_user(request, f"Error generating sample images: {str(e)}", level='error')
-    add_sample_images.short_description = "🖼️ Add sample images to selected plots"
     
     def save_model(self, request, obj, form, change):
         """Create verification status for new plots"""
@@ -809,7 +732,7 @@ class PlotAdmin(admin.ModelAdmin):
                 content_type=content_type,
                 object_id=obj.id,
                 defaults={
-                    'current_stage': 'pending',
+                    'current_stage': 'document_uploaded',
                     'document_uploaded_at': timezone.now()
                 }
             )
@@ -823,30 +746,10 @@ class PlotAdmin(admin.ModelAdmin):
             'agent__user',
             'landowner__user'
         ).prefetch_related(
-            'images',
             'contact_requests',
             'reactions'
         )
         return queryset
-    
-# ----------------------------------------
-# PLOT IMAGES (Simple)
-# ----------------------------------------
-@admin.register(PlotImage)
-class PlotImageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'plot_title', 'image_preview', 'uploaded_at')
-    list_filter = ('uploaded_at',)
-    search_fields = ('plot__title',)
-    
-    def plot_title(self, obj):
-        return obj.plot.title
-    plot_title.short_description = 'Plot'
-    
-    def image_preview(self, obj):
-        if obj.image:
-            return format_html('<img src="{}" style="max-height: 50px;" />', obj.image.url)
-        return '-'
-    image_preview.short_description = 'Preview'
 
 
 # ----------------------------------------

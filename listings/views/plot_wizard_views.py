@@ -3,12 +3,11 @@ from django.shortcuts import redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 
-from listings.models import Plot, PlotImage, Broker
+from listings.models import Plot, Broker
 from listings.forms.plot_wizard_forms import (
     PlotStep1Form,
     PlotStep2Form,
     PlotStep3Form,
-    PlotStep4Form
 )
 
 
@@ -18,7 +17,6 @@ class PlotCreateWizard(LoginRequiredMixin, SessionWizardView):
         ("basic", PlotStep1Form),
         ("soil", PlotStep2Form),
         ("documents", PlotStep3Form),
-        ("images", PlotStep4Form),
     ]
 
     template_name = "listings/plot_wizard.html"
@@ -43,13 +41,4 @@ class PlotCreateWizard(LoginRequiredMixin, SessionWizardView):
                     setattr(plot, field, value)
 
         plot.save()
-
-        # Handle images step
-        images_data = self.get_cleaned_data_for_step("images_list")
-
-        if images_data:
-            images = images_data.get("images_list", [])
-            for img in images:
-                PlotImage.objects.create(plot=plot, image=img)
-
         return redirect("dashboard")
