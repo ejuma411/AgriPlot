@@ -330,7 +330,7 @@ def home(request):
     # Get verified plots - removed verification from select_related
     verified_plots = Plot.objects.filter(
         verification__current_stage="approved"
-    ).prefetch_related('images').select_related('agent__user')  # ✅ Removed 'verification'
+    ).select_related('agent__user')
     
     # Apply ordering (most recent first)
     verified_plots = verified_plots.order_by('-created_at')
@@ -456,7 +456,7 @@ def ajax_search(request):
     """Return rendered market grid fragment for AJAX search requests."""
     verified_plots = Plot.objects.filter(
         verification__current_stage="approved"
-    ).prefetch_related('images').select_related('agent__user')  # ✅ Removed 'verification'
+    ).select_related('agent__user')
     verified_plots = verified_plots.order_by('-created_at')
 
     # Filters (same as home)
@@ -545,10 +545,7 @@ def plot_detail(request, id):
         Plot.objects.select_related(
             'agent__user', 
             'landowner__user'
-        ).prefetch_related(
-            'images', 
-            'verification_docs'
-        ),
+        ).prefetch_related('verification_docs'),
         id=id
     )
     
@@ -588,11 +585,18 @@ def plot_detail(request, id):
     
     similar_plots = similar_plots.filter(similarity_q)[:4]
     
+    # Bbox for OpenStreetMap embed (min_lon, min_lat, max_lon, max_lat)
+    map_bbox = ''
+    if plot.latitude is not None and plot.longitude is not None:
+        delta = 0.02
+        map_bbox = f"{float(plot.longitude) - delta},{float(plot.latitude) - delta},{float(plot.longitude) + delta},{float(plot.latitude) + delta}"
+    
     context = {
         'plot': plot,
-        'verification': verification,  # Pass verification to template
+        'verification': verification,
         'is_owner': is_owner,
         'similar_plots': similar_plots,
+        'map_bbox': map_bbox,
         'today': date.today().strftime('%Y-%m-%d'),
     }
     
@@ -667,15 +671,6 @@ def add_plot(request):
                 else:
                     logger.info(f"ℹ️ Verification status already exists for plot {plot.id}")
                 
-                # Handle image uploads
-                images = request.FILES.getlist('images')
-                if images:
-                    for image in images[:5]:
-                        PlotImage.objects.create(plot=plot, image=image)
-                    logger.info(f"✅ {len(images[:5])} images uploaded for plot {plot.id}")
-                else:
-                    logger.warning(f"⚠️ No images uploaded for plot {plot.id}")
-                
                 messages.success(request, 
                     "✅ Plot submitted successfully! Your listing is now under verification review."
                 )
@@ -746,12 +741,6 @@ def edit_plot(request, id):
             plot = form.save()
             log_audit(request, 'edit_plot', object_type='Plot', object_id=plot.id, extra={'plot_id': plot.id})
 
-            # Handle new images
-            images = request.FILES.getlist('images')
-            for image in images[:5]:
-                if image:
-                    PlotImage.objects.create(plot=plot, image=image)
-            
             messages.success(request, "✅ Plot updated successfully!")
             return redirect('listings:plot_detail', id=plot.id)
         else:
@@ -761,39 +750,10 @@ def edit_plot(request, id):
     else:
         form = PlotForm(instance=plot)
     
-    # Get existing images to display in template
-    existing_images = plot.images.all()
-    
     return render(request, 'listings/edit_plot.html', {
         'form': form,
         'plot': plot,
-        'existing_images': existing_images,
     })
-
-
-@login_required
-def delete_image(request, id):
-    """Delete plot image"""
-    try:
-        image = PlotImage.objects.get(id=id)
-        plot = image.plot
-        
-        # Check permission
-        is_agent = hasattr(request.user, 'agent') and plot.agent == request.user.agent
-        is_landowner = hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile
-        
-        if not (is_agent or is_landowner):
-            messages.error(request, "You don't have permission to delete this image.")
-            return redirect('listings:home')
-        
-        plot_id = image.plot.id
-        image.delete()
-        messages.success(request, "Image deleted successfully.")
-        return redirect('listings:edit_plot', id=plot_id)
-        
-    except PlotImage.DoesNotExist:
-        messages.error(request, "Image not found.")
-        return redirect('listings:home')
 
 
 # ============ DOCUMENT MANAGEMENT ============

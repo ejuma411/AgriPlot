@@ -32,8 +32,8 @@
                             </span>
                         </div>
                         <div class="stat-badge">
-                            <span class="stat-badge-value">{{ plot.plot_images.count }}</span>
-                            <span class="stat-badge-label">Images</span>
+                            <span class="stat-badge-value">{% if plot.has_coordinates %}<i class="fas fa-map-marker-alt text-success"></i>{% else %}—{% endif %}</span>
+                            <span class="stat-badge-label">Map</span>
                         </div>
                     </div>
                 </div>
@@ -51,7 +51,7 @@
                 <a href="#basic" class="nav-link active">Basic Info</a>
                 <a href="#agricultural" class="nav-link">Agricultural Details</a>
                 <a href="#documents" class="nav-link">Documents</a>
-                <a href="#images" class="nav-link">Images</a>
+                <a href="#location" class="nav-link">Location</a>
             </nav>
         </div>
     </div>
@@ -418,68 +418,33 @@
                             </div>
                         </div>
 
-                        <!-- Section 4: Images -->
-                        <div class="form-section-table mb-5" id="images">
+                        <!-- Section 4: Location / GIS Coordinates -->
+                        <div class="form-section-table mb-5" id="location">
                             <div class="section-header mb-4">
                                 <h5 class="section-title">
-                                    <i class="fas fa-images me-2 text-info"></i>Plot Images
+                                    <i class="fas fa-map-marker-alt me-2 text-info"></i>Location &amp; Map Coordinates
                                 </h5>
-                                <p class="section-subtitle text-muted mb-0">Add or update plot photos</p>
+                                <p class="section-subtitle text-muted mb-0">Latitude and longitude for GIS mapping</p>
                             </div>
-                            
-                            <div class="images-table">
-                                <!-- Current Images -->
-                                {% if plot.plot_images.exists %}
-                                <div class="current-images mb-4">
-                                    <h6 class="mb-3">Current Images ({{ plot.plot_images.count }}):</h6>
-                                    <div class="d-flex flex-wrap gap-3">
-                                        {% for image in plot.plot_images.all %}
-                                        <div class="image-item">
-                                            <img src="{{ image.image.url }}" 
-                                                 alt="Plot image {{ forloop.counter }}"
-                                                 class="current-image">
-                                            <div class="image-actions">
-                                                <small class="text-muted">{{ image.caption|default:"No caption" }}</small>
-                                                <a href="{% url 'listings:delete_image' image.id %}" 
-                                                   class="btn btn-sm btn-outline-danger mt-1"
-                                                   onclick="return confirm('Delete this image?')">
-                                                    <i class="fas fa-trash"></i>
-                                                </a>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                {% endif %}
-                                
-                                <!-- Add More Images -->
-                                <div class="add-images">
-                                    <h6 class="mb-3">Add More Images:</h6>
-                                    <div class="image-upload-container">
-                                        <div class="image-upload-area">
-                                            <div class="upload-content">
-                                                <i class="fas fa-cloud-upload-alt fa-3x text-info mb-3"></i>
-                                                <p class="mb-2">Click to upload or drag & drop</p>
-                                                <small class="text-muted">JPEG, PNG (Max 5MB each, up to 5 images)</small>
-                                            </div>
-                                            {{ form.images }}
-                                        </div>
-                                        <div class="form-feedback mt-2">
-                                            {% if form.images.help_text %}
-                                            <small class="text-muted">
-                                                <i class="fas fa-info-circle me-1"></i>
-                                                {{ form.images.help_text }}
-                                            </small>
-                                            {% endif %}
-                                            {% if form.images.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.images.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="form-table">
+                                <table class="form-field-table">
+                                    <tr>
+                                        <td class="field-label"><label for="{{ form.latitude.id_for_label }}"><i class="fas fa-map-pin me-2"></i>Latitude</label></td>
+                                        <td class="field-input">
+                                            {{ form.latitude }}
+                                            {% if form.latitude.errors %}<small class="text-danger">{{ form.latitude.errors }}</small>{% endif %}
+                                        </td>
+                                        <td class="field-help"><small class="text-muted">e.g. -1.292066</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label"><label for="{{ form.longitude.id_for_label }}"><i class="fas fa-map-pin me-2"></i>Longitude</label></td>
+                                        <td class="field-input">
+                                            {{ form.longitude }}
+                                            {% if form.longitude.errors %}<small class="text-danger">{{ form.longitude.errors }}</small>{% endif %}
+                                        </td>
+                                        <td class="field-help"><small class="text-muted">e.g. 36.821946</small></td>
+                                    </tr>
+                                </table>
                             </div>
                         </div>
 
@@ -539,11 +504,11 @@
                         </div>
                         <div class="help-item">
                             <div class="help-icon text-success">
-                                <i class="fas fa-images"></i>
+                                <i class="fas fa-map-marker-alt"></i>
                             </div>
                             <div class="help-content">
-                                <strong>Image Updates</strong>
-                                <p class="mb-0">New images are added, existing images remain</p>
+                                <strong>Map Coordinates</strong>
+                                <p class="mb-0">Set latitude/longitude to show this plot on the map</p>
                             </div>
                         </div>
                         <div class="help-item">
@@ -575,8 +540,8 @@
                             </span>
                         </div>
                         <div class="preview-item mb-3">
-                            <strong>Images:</strong>
-                            <span>{{ plot.plot_images.count }} uploaded</span>
+                            <strong>Coordinates:</strong>
+                            <span>{% if plot.has_coordinates %}{{ plot.latitude }}°, {{ plot.longitude }}°{% else %}Not set{% endif %}</span>
                         </div>
                         <div class="preview-item mb-3">
                             <strong>Documents:</strong>
@@ -1012,27 +977,6 @@
         
         setupFilePreview(titleDeedInput);
         setupFilePreview(soilReportInput);
-        
-        // Image upload preview
-        const imageInput = document.querySelector('#{{ form.images.id_for_label }}');
-        if (imageInput) {
-            imageInput.addEventListener('change', function() {
-                const fileCount = this.files.length;
-                if (fileCount > 0) {
-                    const uploadArea = document.querySelector('.image-upload-area');
-                    if (uploadArea) {
-                        uploadArea.innerHTML = `
-                            <div class="text-success">
-                                <i class="fas fa-check-circle fa-3x mb-3"></i>
-                                <p class="mb-2">${fileCount} file${fileCount > 1 ? 's' : ''} selected</p>
-                                <small class="text-muted">Ready to upload</small>
-                            </div>
-                            ${uploadArea.innerHTML}
-                        `;
-                    }
-                }
-            });
-        }
         
         // Form submission
         if (form) {

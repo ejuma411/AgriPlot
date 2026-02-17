@@ -49,7 +49,7 @@
                     <i class="fas fa-arrow-left me-2"></i>Back to Listings
                 </a>
                 <a href="#details" class="nav-link active">Details</a>
-                <a href="#images" class="nav-link">Images</a>
+                <a href="#location" class="nav-link">Location</a>
                 <a href="#documents" class="nav-link">Documents</a>
                 <a href="#broker" class="nav-link">Broker</a>
             </nav>
@@ -58,31 +58,45 @@
 
     <!-- Main Content Grid -->
     <div class="row">
-        <!-- Left Column: Images Gallery -->
+        <!-- Left Column: Location & Details -->
         <div class="col-lg-8 mb-4">
-            <!-- Image Gallery -->
-            <div class="dashboard-card mb-4" id="images">
+            <!-- Location / GIS Map -->
+            <div class="dashboard-card mb-4" id="location">
                 <div class="card-header">
                     <h6 class="card-title">
-                        <i class="fas fa-images me-2"></i>Plot Images
+                        <i class="fas fa-map-marker-alt me-2"></i>Location &amp; Map
                     </h6>
                 </div>
                 <div class="card-body">
-                    {% if plot.images_list.exists %}
-                    <div class="image-gallery">
-                        <div class="gallery-hover">
-                            {% for img in plot.images_list.all %}
-                            <img src="{{ img.image.url }}" 
-                                alt="{{ plot.title }} - image {{ forloop.counter }}"
-                                class="{% if forloop.first %}active{% endif %}">
-                            {% endfor %}
-                        </div>
+                    {% if plot.has_coordinates %}
+                    <p class="mb-2">
+                        <i class="fas fa-globe me-2 text-primary"></i>
+                        <strong>Coordinates:</strong> {{ plot.latitude }}°, {{ plot.longitude }}°
+                    </p>
+                    {% if map_bbox %}
+                    <div class="map-embed rounded overflow-hidden border" style="height: 300px; background: #e9ecef;">
+                        <iframe
+                            width="100%"
+                            height="300"
+                            style="border:0"
+                            loading="lazy"
+                            allowfullscreen
+                            referrerpolicy="no-referrer-when-downgrade"
+                            src="https://www.openstreetmap.org/export/embed.html?bbox={{ map_bbox }}&amp;layer=map&amp;marker={{ plot.latitude }}%2C{{ plot.longitude }}">
+                        </iframe>
                     </div>
+                    {% endif %}
+                    <p class="mt-2 mb-0">
+                        <a href="https://www.openstreetmap.org/?mlat={{ plot.latitude }}&amp;mlon={{ plot.longitude }}#map=15/{{ plot.latitude }}/{{ plot.longitude }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-external-link-alt me-1"></i>Open in OpenStreetMap
+                        </a>
+                    </p>
                     {% else %}
                     <div class="empty-gallery text-center py-5">
-                        <i class="fas fa-image fa-4x text-muted mb-3"></i>
-                        <h5>No Images Available</h5>
-                        <p class="text-muted mb-0">This plot doesn't have any images yet.</p>
+                        <i class="fas fa-map fa-4x text-muted mb-3"></i>
+                        <h5>No coordinates set</h5>
+                        <p class="text-muted mb-0">Location: {{ plot.location }}</p>
+                        <p class="text-muted small">Coordinates can be added by the listing owner for map view.</p>
                     </div>
                     {% endif %}
                 </div>

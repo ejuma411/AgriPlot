@@ -248,13 +248,6 @@ class AgentUpgradeForm(BaseUpgradeForm):
 
 # ============ PLOT FORMS ============
 class PlotForm(forms.ModelForm):
-    # Images field (not in model, handled separately)
-    images = MultipleFileField(
-        required=True,
-        widget=MultipleFileInput(attrs={'class': 'form-control'}),
-        help_text="Upload 1-5 images (JPEG, PNG, WEBP, max 5MB each)"
-    )
-    
     # Soil type choices
     SOIL_TYPE_CHOICES = [
         ('', 'Select Soil Type'),
@@ -446,6 +439,7 @@ class PlotForm(forms.ModelForm):
             'has_water', 'water_source', 'has_electricity', 'electricity_meter',
             'has_road_access', 'road_type', 'road_distance_km',
             'has_buildings', 'building_description', 'fencing',
+            'latitude', 'longitude',
             'elevation_meters', 'climate_zone', 'is_protected_area', 'special_features',
             'title_deed', 'soil_report', 'official_search',
             'landowner_id_doc', 'kra_pin'
@@ -521,10 +515,9 @@ class PlotForm(forms.ModelForm):
             # Listing type is required
             self.fields['listing_type'].required = True
             self.fields['land_type'].required = True
-            self.fields['images'].required = True
         else:
             # For editing, documents are optional (allow updates)
-            self.fields['images'].required = False
+            pass
         
         # Add help texts
         self.fields['title'].help_text = "Give your plot a descriptive title"
@@ -600,48 +593,6 @@ class PlotForm(forms.ModelForm):
         
         return cleaned_data
     
-    def clean_images(self):
-        """Validate uploaded images"""
-        images = self.files.getlist('images') if self.files else []
-        
-        # For new plots, require at least one image
-        if not self.is_edit and not images:
-            raise forms.ValidationError("Please upload at least one image.")
-        
-        errors = []
-        
-        if images:
-            # Check total number of images
-            if len(images) > 5:
-                errors.append("You can upload a maximum of 5 images.")
-            
-            # Validate each image
-            for image in images:
-                # Check file size
-                if image.size > 5 * 1024 * 1024:  # 5MB
-                    errors.append(f"Image '{image.name}' ({image.size / (1024*1024):.1f}MB) exceeds 5MB size limit.")
-                
-                # Check file type by extension AND content type
-                valid_extensions = ['.jpg', '.jpeg', '.png', '.webp']
-                valid_content_types = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp']
-                
-                # Get file extension
-                file_extension = os.path.splitext(image.name)[1].lower()
-                
-                # Check both extension and content type
-                if (file_extension not in valid_extensions or 
-                    (hasattr(image, 'content_type') and image.content_type not in valid_content_types)):
-                    errors.append(f"File '{image.name}' is not a valid image type. Please upload JPEG, PNG, or WEBP images only.")
-        
-        if errors:
-            # Show only the first few errors to avoid overwhelming the user
-            if len(errors) > 3:
-                errors = errors[:3]
-                errors.append("... and more errors. Please check all your files.")
-            raise forms.ValidationError(errors)
-        
-        return images
-
     def save(self, commit=True):
         plot = super().save(commit=False)
         
@@ -652,18 +603,18 @@ class PlotForm(forms.ModelForm):
             elif isinstance(self.owner, LandownerProfile):
                 plot.landowner = self.owner
         
-        # Set legacy price field from sale_price
+        # Set legacy price field (required on Plot): prefer sale_price, else lease yearly, else lease monthly*12, else 0
         if self.cleaned_data.get('sale_price'):
             plot.price = self.cleaned_data['sale_price']
+        elif self.cleaned_data.get('lease_price_yearly'):
+            plot.price = self.cleaned_data['lease_price_yearly']
+        elif self.cleaned_data.get('lease_price_monthly'):
+            plot.price = self.cleaned_data['lease_price_monthly'] * 12
+        else:
+            plot.price = Decimal('0')
         
         if commit:
             plot.save()
-            
-            # Handle multiple image uploads
-            images = self.cleaned_data.get('images', [])
-            for image in images[:5]:
-                if image:
-                    PlotImage.objects.create(plot=plot, image=image)
         
         return plot
 

@@ -16,7 +16,6 @@ urlpatterns = [
     # ============ Plot Management ============
     path('add-plot/', views.add_plot, name='add_plot'),  # Changed from add_plot/ to add-plot/ for consistency
     path('plot/<int:id>/edit/', views.edit_plot, name='edit_plot'),
-    path('image/<int:id>/delete/', views.delete_image, name='delete_image'),
     
     # ============ Document Management ============
     path('plot/<int:plot_id>/upload-document/', views.upload_verification_doc, name='upload_verification_doc'),

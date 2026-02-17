@@ -947,108 +947,49 @@
                             </div>
                         </div>
 
-                        <!-- Section 6: Plot Images -->
+                        <!-- Section 6: Location / GIS Coordinates -->
                         <div class="form-section-table mb-5">
                             <div class="section-header mb-4">
                                 <h5 class="section-title d-flex align-items-center">
                                     <span class="section-badge bg-info">6</span>
-                                    <span>Plot Images</span>
+                                    <span>Location &amp; Map Coordinates</span>
                                 </h5>
-                                <p class="section-subtitle text-muted mb-0">Upload clear photos of the plot</p>
+                                <p class="section-subtitle text-muted mb-0">Latitude and longitude for GIS mapping (optional but recommended)</p>
                             </div>
-                            
-                            <div class="images-table">
-                                <table class="images-upload-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Upload Area</th>
-                                            <th>Guidelines</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>
-                                                <div class="image-upload-container">
-                                                    <div class="form-group">
-                                                        <div class="image-upload-area" id="imageUploadArea">
-                                                            {{ form.images }}
-                                                            <div class="upload-content">
-                                                                <i class="fas fa-cloud-upload-alt fa-3x text-info mb-3"></i>
-                                                                <p class="mb-2">Click to select images</p>
-                                                                <small class="text-muted">Hold Ctrl/Cmd to select multiple</small>
-                                                            </div>
-                                                        </div>
-                                                        <div class="form-feedback mt-2">
-                                                            {% if form.images.help_text %}
-                                                            <small class="text-muted">
-                                                                <i class="fas fa-info-circle me-1"></i>
-                                                                {{ form.images.help_text }}
-                                                            </small>
-                                                            {% endif %}
-                                                            {% if form.images.errors %}
-                                                            <div class="text-danger small mt-1">
-                                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                                {{ form.images.errors }}
-                                                            </div>
-                                                            {% endif %}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="upload-tips">
-                                                    <h6><i class="fas fa-lightbulb me-2 text-warning"></i>Image Guidelines:</h6>
-                                                    <ul class="mb-0">
-                                                        <li><strong>Maximum:</strong> 5 images per plot</li>
-                                                        <li><strong>Size limit:</strong> 5MB per image</li>
-                                                        <li><strong>Formats:</strong> JPEG, PNG, WEBP</li>
-                                                        <li><strong>Recommended:</strong> Show boundaries, soil, access</li>
-                                                        <li><strong>Quality:</strong> Clear, well-lit photos</li>
-                                                    </ul>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="upload-status">
-                                                    <div class="status-card">
-                                                        <div class="status-item">
-                                                            <span class="status-label">Images required:</span>
-                                                            <span class="status-value text-success">Yes (1-5)</span>
-                                                        </div>
-                                                        <div class="status-item">
-                                                            <span class="status-label">Will display:</span>
-                                                            <span class="status-value">On home page</span>
-                                                        </div>
-                                                        <div class="status-item">
-                                                            <span class="status-label">Benefit:</span>
-                                                            <span class="status-value text-success">Higher engagement</span>
-                                                        </div>
-                                                    </div>
-                                                    <div class="mt-3">
-                                                        <small class="text-muted">
-                                                            <i class="fas fa-star me-1 text-warning"></i>
-                                                            Listings with images get 3x more views
-                                                        </small>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        
-                                        <!-- Preview area for selected files -->
-                                        <tr id="filePreviewRow" class="d-none">
-                                            <td colspan="3">
-                                                <div class="file-previews-section">
-                                                    <h6 class="mb-3">
-                                                        <i class="fas fa-images me-2"></i>
-                                                        Selected Files
-                                                        <span id="fileCount" class="badge bg-primary ms-2">0</span>
-                                                        <span id="uploadSize" class="badge bg-secondary ms-1">Max 5 files</span>
-                                                    </h6>
-                                                    <div id="fileList" class="file-list"></div>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
+                            <div class="form-table">
+                                <table class="form-field-table">
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.latitude.id_for_label }}">
+                                                <i class="fas fa-map-pin me-2"></i>Latitude
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            {{ form.latitude }}
+                                            {% if form.latitude.errors %}
+                                            <small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>{{ form.latitude.errors }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">e.g. -1.292066 (Nairobi). Used for map display.</small>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">
+                                            <label for="{{ form.longitude.id_for_label }}">
+                                                <i class="fas fa-map-pin me-2"></i>Longitude
+                                            </label>
+                                        </td>
+                                        <td class="field-input">
+                                            {{ form.longitude }}
+                                            {% if form.longitude.errors %}
+                                            <small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>{{ form.longitude.errors }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="field-help">
+                                            <small class="text-muted">e.g. 36.821946 (Nairobi). Used for map display.</small>
+                                        </td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>
@@ -2017,94 +1958,6 @@
                 });
             }
         });
-        
-        // Image upload handling
-        const imageInput = document.getElementById('{{ form.images.id_for_label }}');
-        const filePreviewRow = document.getElementById('filePreviewRow');
-        const fileList = document.getElementById('fileList');
-        const fileCount = document.getElementById('fileCount');
-        const uploadSize = document.getElementById('uploadSize');
-        
-        if (imageInput) {
-            imageInput.addEventListener('change', function(e) {
-                const files = Array.from(e.target.files);
-                fileList.innerHTML = '';
-                
-                if (files.length > 0) {
-                    filePreviewRow.classList.remove('d-none');
-                    fileCount.textContent = files.length;
-                    
-                    let totalSize = 0;
-                    let hasOversized = false;
-                    let hasInvalid = false;
-                    
-                    files.forEach((file, index) => {
-                        totalSize += file.size;
-                        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-                        const isOversized = file.size > 5 * 1024 * 1024;
-                        if (isOversized) hasOversized = true;
-                        
-                        const fileExtension = file.name.split('.').pop().toLowerCase();
-                        const validExtensions = ['jpg', 'jpeg', 'png', 'webp'];
-                        const isValidImage = validExtensions.includes(fileExtension);
-                        if (!isValidImage) hasInvalid = true;
-                        
-                        const fileItem = document.createElement('div');
-                        fileItem.className = 'file-item';
-                        fileItem.innerHTML = `
-                            <div class="file-info">
-                                <i class="fas fa-image file-icon ${isValidImage && !isOversized ? 'text-success' : 'text-danger'}"></i>
-                                <div>
-                                    <div class="file-name" title="${file.name}">
-                                        ${file.name.length > 30 ? file.name.substring(0, 27) + '...' : file.name}
-                                    </div>
-                                    <div class="file-size">
-                                        ${fileSizeMB} MB
-                                        ${!isValidImage ? ' - <span class="text-danger">Invalid type</span>' : ''}
-                                        ${isOversized ? ' - <span class="text-danger">Too large</span>' : ''}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="file-status">
-                                ${isValidImage && !isOversized ? 
-                                    '<span class="badge bg-success">OK</span>' : 
-                                    '<span class="badge bg-danger">Invalid</span>'}
-                            </div>
-                        `;
-                        fileList.appendChild(fileItem);
-                    });
-                    
-                    const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
-                    uploadSize.textContent = `${totalSizeMB} MB / 5 files max`;
-                    uploadSize.className = `badge ${hasOversized || hasInvalid ? 'bg-danger' : 'bg-primary'} ms-1`;
-                    
-                    if (files.length > 5) {
-                        const warning = document.createElement('div');
-                        warning.className = 'alert alert-warning mt-2';
-                        warning.innerHTML = `
-                            <i class="fas fa-exclamation-triangle me-1"></i>
-                            You selected ${files.length} files. Maximum is 5. Only the first 5 will be uploaded.
-                        `;
-                        fileList.parentNode.insertBefore(warning, fileList.nextSibling);
-                    }
-                    
-                    if (hasOversized || hasInvalid) {
-                        const warning = document.createElement('div');
-                        warning.className = 'alert alert-danger mt-2 image-warning';
-                        warning.innerHTML = `
-                            <i class="fas fa-exclamation-triangle me-1"></i>
-                            Some files are invalid. Only JPEG, PNG, and WEBP images under 5MB are allowed.
-                        `;
-                        fileList.parentNode.insertBefore(warning, fileList.nextSibling);
-                    }
-                } else {
-                    filePreviewRow.classList.add('d-none');
-                    uploadSize.textContent = 'Max 5 files';
-                    uploadSize.className = 'badge bg-secondary ms-1';
-                }
-                updateFormCompletion();
-            });
-        }
         
         // Form submission validation
         const form = document.getElementById('plotForm');
