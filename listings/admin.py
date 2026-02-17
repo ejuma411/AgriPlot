@@ -107,10 +107,10 @@ class LandownerProfileAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('User Information', {
-            'fields': ('user', 'verified')
+            'fields': ('user', 'verified', 'verified_at', 'reviewed_by', 'rejection_reason')
         }),
         ('Documents', {
-            'fields': ('national_id', 'kra_pin', 'land_search'),
+            'fields': ('national_id', 'kra_pin', 'title_deed', 'land_search', 'lcb_consent'),
         }),
     )
     
@@ -137,8 +137,14 @@ class LandownerProfileAdmin(admin.ModelAdmin):
     actions = ['verify_selected']
     
     def verify_selected(self, request, queryset):
-        updated = queryset.update(verified=True)
-        self.message_user(request, f"{updated} landowner(s) verified.")
+        from django.utils import timezone
+        for obj in queryset:
+            obj.verified = True
+            obj.verified_at = timezone.now()
+            obj.reviewed_by = request.user
+            obj.rejection_reason = ''
+            obj.save()
+        self.message_user(request, f"{queryset.count()} landowner(s) verified.")
     verify_selected.short_description = "Verify selected landowners"
 
 
@@ -964,7 +970,54 @@ class VerificationStatusAdmin(admin.ModelAdmin):
     
     def reset_to_pending(self, request, queryset):
         for obj in queryset:
-            obj.update_stage('pending')
+            obj.update_stage('document_uploaded')
         self.message_user(request, f"{queryset.count()} verification(s) reset to pending.")
     reset_to_pending.short_description = "Reset selected to pending"
+
+
+# -----------------------------
+# FYP: Audit, Pricing, Verification Tasks, Document Verification
+# -----------------------------
+@admin.register(AuditLog)
+class AuditLogAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'action', 'object_type', 'object_id', 'ip_address', 'created_at')
+    list_filter = ('action', 'created_at')
+    search_fields = ('user__username', 'action', 'object_type')
+    readonly_fields = ('user', 'action', 'object_type', 'object_id', 'extra', 'ip_address', 'user_agent', 'created_at')
+    date_hierarchy = 'created_at'
+
+
+@admin.register(PriceComparable)
+class PriceComparableAdmin(admin.ModelAdmin):
+    list_display = ('location', 'area_acres', 'sale_price', 'price_per_acre', 'soil_type', 'sale_date', 'verified')
+    list_filter = ('verified',)
+    search_fields = ('location', 'soil_type')
+
+
+@admin.register(PricingSuggestion)
+class PricingSuggestionAdmin(admin.ModelAdmin):
+    list_display = ('plot', 'suggested_price', 'price_range_min', 'price_range_max', 'comparable_plots_used', 'generated_at')
+    list_filter = ('generated_at',)
+    search_fields = ('plot__title',)
+
+
+@admin.register(VerificationTask)
+class VerificationTaskAdmin(admin.ModelAdmin):
+    list_display = ('plot', 'verification_type', 'assigned_to', 'status', 'approved', 'assigned_at')
+    list_filter = ('verification_type', 'status')
+    search_fields = ('plot__title', 'assigned_to__username')
+
+
+@admin.register(VerificationLog)
+class VerificationLogAdmin(admin.ModelAdmin):
+    list_display = ('plot', 'verified_by', 'verification_type', 'created_at')
+    list_filter = ('verification_type',)
+    search_fields = ('plot__title',)
+
+
+@admin.register(DocumentVerification)
+class DocumentVerificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'document_type', 'approved', 'name_matches_user', 'verified_by', 'verified_at')
+    list_filter = ('document_type', 'approved')
+    search_fields = ('user__username',)
 

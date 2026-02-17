@@ -141,11 +141,18 @@ class LandownerProfile(models.Model):
         help_text="Upload a copy of your KRA PIN"
     )
     
+    title_deed = models.FileField(
+        upload_to="docs/landowner_title_deeds/",
+        blank=True,
+        null=True,
+        help_text="Land title deed proving ownership (required for verification)"
+    )
+    
     land_search = models.FileField(
         upload_to="docs/land_searches/",
         blank=True,
         null=True,
-        help_text="Upload the official land search certificate (optional)"
+        help_text="Official land search certificate (ARDHI/Ardhisasa, validity ~3 months)"
     )
     
     lcb_consent = models.FileField(
@@ -156,6 +163,18 @@ class LandownerProfile(models.Model):
     )
     
     verified = models.BooleanField(default=False)
+    verified_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="landowner_verifications_reviewed"
+    )
+    rejection_reason = models.TextField(
+        blank=True,
+        help_text="Reason for rejection if verification failed (allows re-submission)"
+    )
     
     def __str__(self):
         return f"LandownerProfile: {self.user.username}"
@@ -299,6 +318,18 @@ class Plot(models.Model):
         null=True,
         blank=True,
         help_text="KRA PIN certificate"
+    )
+    
+    # Environmental / regulatory (Q4)
+    elevation_meters = models.IntegerField(null=True, blank=True, help_text="Elevation in metres")
+    climate_zone = models.CharField(max_length=100, blank=True)
+    is_protected_area = models.BooleanField(
+        default=False,
+        help_text="Conservancy, forest reserve, etc."
+    )
+    special_features = models.TextField(
+        blank=True,
+        help_text="e.g., mature trees, water tank, scenic view"
     )
     
     # Additional metadata
@@ -675,3 +706,193 @@ class PlotReaction(models.Model):
     
     def __str__(self):
         return f"{self.user.username} {self.get_reaction_type_display()} {self.plot.title}"
+
+
+# -----------------------------
+# Audit Log (Q8 - ZTA/CIA)
+# -----------------------------
+class AuditLog(models.Model):
+    """Log sensitive actions for compliance and security (who did what when)."""
+    ACTION_CHOICES = [
+        ('create_plot', 'Create Listing'),
+        ('edit_plot', 'Edit Listing'),
+        ('delete_plot', 'Delete Listing'),
+        ('verify_landowner', 'Verify Landowner'),
+        ('reject_landowner', 'Reject Landowner'),
+        ('verify_agent', 'Verify Agent'),
+        ('verify_plot', 'Verify Plot'),
+        ('reject_plot', 'Reject Plot'),
+        ('change_price', 'Change Price'),
+        ('login', 'Login'),
+        ('failed_login', 'Failed Login'),
+    ]
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='audit_logs'
+    )
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    object_type = models.CharField(max_length=50, blank=True)  # e.g. 'Plot', 'LandownerProfile'
+    object_id = models.PositiveIntegerField(null=True, blank=True)
+    extra = models.JSONField(default=dict, blank=True)  # e.g. {'plot_id': 1, 'old_price': 100}
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.CharField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['user', 'action']),
+        ]
+
+    def __str__(self):
+        return f"{self.get_action_display()} by {self.user_id} at {self.created_at}"
+
+
+# -----------------------------
+# Pricing - Comparables & Suggestions (Q6)
+# -----------------------------
+class PriceComparable(models.Model):
+    """Market comparable sales for pricing suggestions."""
+    location = models.CharField(max_length=300)
+    area_acres = models.DecimalField(max_digits=10, decimal_places=2)
+    sale_price = models.DecimalField(max_digits=12, decimal_places=2)
+    price_per_acre = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    soil_type = models.CharField(max_length=100, blank=True)
+    crop_type = models.CharField(max_length=200, blank=True)
+    sale_date = models.DateField(null=True, blank=True)
+    data_source = models.CharField(max_length=100, blank=True)  # Ardhisasa, Agent, Manual
+    verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-sale_date', '-created_at']
+
+    def save(self, *args, **kwargs):
+        if self.area_acres and self.area_acres > 0 and not self.price_per_acre:
+            self.price_per_acre = self.sale_price / self.area_acres
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.location} — {self.area_acres} ac @ {self.sale_price}"
+
+
+class PricingSuggestion(models.Model):
+    """AI/system-generated pricing recommendation for a plot."""
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='pricing_suggestions')
+    suggested_price = models.DecimalField(max_digits=12, decimal_places=2)
+    price_range_min = models.DecimalField(max_digits=12, decimal_places=2)
+    price_range_max = models.DecimalField(max_digits=12, decimal_places=2)
+    methodology = models.CharField(max_length=200, blank=True)
+    comparable_plots_used = models.IntegerField(default=0)
+    explanation = models.TextField(blank=True)
+    generated_at = models.DateTimeField(auto_now_add=True)
+    landowner_accepted = models.BooleanField(null=True, blank=True)
+    final_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+
+    class Meta:
+        ordering = ['-generated_at']
+
+    def __str__(self):
+        return f"Suggestion for Plot {self.plot_id}: {self.suggested_price}"
+
+
+# -----------------------------
+# Verification Task & Log (Q5)
+# -----------------------------
+class VerificationTask(models.Model):
+    """Assign verification tasks to staff (document review, extension review, surveyor)."""
+    TASK_TYPE_CHOICES = [
+        ('document_review', 'Document Review'),
+        ('extension_review', 'Extension Officer Review'),
+        ('surveyor_inspection', 'Land Surveyor Inspection'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+    ]
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='verification_tasks')
+    verification_type = models.CharField(max_length=30, choices=TASK_TYPE_CHOICES)
+    assigned_to = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='assigned_verification_tasks'
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    assigned_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    approved = models.BooleanField(null=True, blank=True)  # True/False/None
+
+    class Meta:
+        ordering = ['-assigned_at']
+
+    def __str__(self):
+        return f"{self.get_verification_type_display()} — Plot {self.plot_id} ({self.status})"
+
+
+class VerificationLog(models.Model):
+    """Track all verification events (audit trail)."""
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='verification_logs')
+    verified_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='verification_actions'
+    )
+    verification_type = models.CharField(max_length=50)
+    comment = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Plot {self.plot_id} — {self.verification_type} by {self.verified_by_id}"
+
+
+# -----------------------------
+# Document Verification (Q7 - impersonation prevention)
+# -----------------------------
+class DocumentVerification(models.Model):
+    """Per-document verification checks (readability, name match, approval)."""
+    DOC_TYPE_CHOICES = [
+        ('national_id', 'National ID'),
+        ('kra_pin', 'KRA PIN'),
+        ('title_deed', 'Title Deed'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='document_verifications')
+    document_type = models.CharField(max_length=30, choices=DOC_TYPE_CHOICES)
+    document_file = models.FileField(upload_to="verification_docs/", null=True, blank=True)
+
+    is_readable = models.BooleanField(null=True, blank=True)
+    is_not_expired = models.BooleanField(null=True, blank=True)
+    name_matches_user = models.BooleanField(null=True, blank=True)
+    all_names_match = models.BooleanField(null=True, blank=True)
+
+    verified_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='documents_verified'
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+    verification_notes = models.TextField(blank=True)
+    approved = models.BooleanField(null=True, blank=True)  # True/False/None (pending)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = [['user', 'document_type']]
+
+    def __str__(self):
+        return f"{self.user.username} — {self.get_document_type_display()} ({self.approved})"

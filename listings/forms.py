@@ -135,13 +135,13 @@ class BaseUpgradeForm(forms.ModelForm):
 class LandownerUpgradeForm(BaseUpgradeForm):
     """Form for existing users to upgrade to landowner"""
     
-    # Remove title_deed from form - should be per-plot, not per-landowner
     class Meta:
         model = LandownerProfile
-        fields = ['national_id', 'kra_pin', 'land_search', 'lcb_consent']
+        fields = ['national_id', 'kra_pin', 'title_deed', 'land_search', 'lcb_consent']
         widgets = {
             'national_id': forms.FileInput(attrs={'class': 'form-control'}),
             'kra_pin': forms.FileInput(attrs={'class': 'form-control'}),
+            'title_deed': forms.FileInput(attrs={'class': 'form-control'}),
             'land_search': forms.FileInput(attrs={'class': 'form-control'}),
             'lcb_consent': forms.FileInput(attrs={'class': 'form-control'}),
         }
@@ -150,13 +150,15 @@ class LandownerUpgradeForm(BaseUpgradeForm):
         super().__init__(*args, **kwargs)
         self.fields['national_id'].required = True
         self.fields['kra_pin'].required = True
+        self.fields['title_deed'].required = False
         self.fields['land_search'].required = False
         self.fields['lcb_consent'].required = False
         
         # Add help texts
         self.fields['national_id'].help_text = "Upload your national ID (required)"
         self.fields['kra_pin'].help_text = "Upload your KRA PIN certificate (required)"
-        self.fields['land_search'].help_text = "Optional: Upload land search certificate if you have one"
+        self.fields['title_deed'].help_text = "Optional: Land title deed for verification"
+        self.fields['land_search'].help_text = "Optional: Official land search certificate (ARDHI/Ardhisasa)"
         self.fields['lcb_consent'].help_text = "Optional: Upload LCB consent if applicable"
     
     def save(self, user=None, commit=True):
@@ -444,7 +446,8 @@ class PlotForm(forms.ModelForm):
             'has_water', 'water_source', 'has_electricity', 'electricity_meter',
             'has_road_access', 'road_type', 'road_distance_km',
             'has_buildings', 'building_description', 'fencing',
-            'title_deed', 'soil_report', 'official_search', 
+            'elevation_meters', 'climate_zone', 'is_protected_area', 'special_features',
+            'title_deed', 'soil_report', 'official_search',
             'landowner_id_doc', 'kra_pin'
         ]
         widgets = {
@@ -721,7 +724,7 @@ class PlotVerificationStatusForm(forms.ModelForm):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['current_stage'].choices = VerificationStatus.CURRENT_STAGE_CHOICES
+        self.fields['current_stage'].choices = VerificationStatus.STAGES
 
 
 # ============ LANDOWNER WIZARD FORMS ============

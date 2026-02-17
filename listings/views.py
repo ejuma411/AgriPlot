@@ -35,6 +35,9 @@ from .forms import *
 # Import all models
 from .models import *
 
+# FYP Q8: audit logging
+from .utils import log_audit
+
 logger = logging.getLogger(__name__)
 
 wizard_file_storage = FileSystemStorage(location='/tmp/agriplot_uploads')
@@ -641,13 +644,15 @@ def add_plot(request):
                 logger.info(f"Plot saved successfully! ID: {plot.id}")
                 logger.info(f"Agent: {plot.agent}, Landowner: {plot.landowner}")
                 
+                log_audit(request, 'create_plot', object_type='Plot', object_id=plot.id)
+
                 # ✅ FIX: Create verification status using VerificationStatus model
                 content_type = ContentType.objects.get_for_model(Plot)
                 verification, created = VerificationStatus.objects.get_or_create(
                     content_type=content_type,
                     object_id=plot.id,
                     defaults={
-                        'current_stage': 'pending',
+                        'current_stage': 'document_uploaded',
                         'document_uploaded_at': timezone.now(),
                         'stage_details': {
                             'created_by': request.user.username,
@@ -739,7 +744,8 @@ def edit_plot(request, id):
         form = PlotForm(request.POST, request.FILES, instance=plot)
         if form.is_valid():
             plot = form.save()
-            
+            log_audit(request, 'edit_plot', object_type='Plot', object_id=plot.id, extra={'plot_id': plot.id})
+
             # Handle new images
             images = request.FILES.getlist('images')
             for image in images[:5]:
@@ -1323,7 +1329,7 @@ def review_plot(request, plot_id):
     verification, created = VerificationStatus.objects.get_or_create(
         content_type=content_type,
         object_id=plot.id,
-        defaults={'current_stage': 'pending', 'document_uploaded_at': timezone.now()}
+        defaults={'current_stage': 'document_uploaded', 'document_uploaded_at': timezone.now()}
     )
 
     if request.method == 'POST':
@@ -1334,6 +1340,11 @@ def review_plot(request, plot_id):
             if sform.instance:
                 sform.save()
             vform.save()
+            verification.refresh_from_db()
+            if verification.current_stage == 'approved':
+                log_audit(request, 'verify_plot', object_type='Plot', object_id=plot.id, extra={'plot_id': plot.id})
+            elif verification.current_stage == 'rejected':
+                log_audit(request, 'reject_plot', object_type='Plot', object_id=plot.id, extra={'plot_id': plot.id})
             messages.success(request, f"Plot verification status updated to {verification.get_current_stage_display()}.")
             return redirect('listings:verification_dashboard')
         else:
