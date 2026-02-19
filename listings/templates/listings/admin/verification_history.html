@@ -1,0 +1,371 @@
+{% extends "listings/admin/base_admin.html" %}
+{% load static %}
+
+{% block title %}Verification History: {{ plot.title }}{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="page-header-title">
+            <h1><i class="fas fa-history me-2"></i>Verification History</h1>
+            <p class="page-header-subtitle">{{ plot.title }}</p>
+        </div>
+        <div class="page-header-actions">
+            <a href="{% url 'listings:review_plot' plot.id %}" class="btn">
+                <i class="fas fa-arrow-left me-2"></i>Back to Review
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column: Summary -->
+    <div class="col-md-4 mb-4">
+        <!-- Plot Summary Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-info-circle me-2"></i>Plot Summary
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <table class="details-table">
+                    <tr>
+                        <th>Title:</th>
+                        <td>{{ plot.title }}</td>
+                    </tr>
+                    <tr>
+                        <th>ID:</th>
+                        <td>#{{ plot.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Location:</th>
+                        <td>{{ plot.county|default:plot.location }}</td>
+                    </tr>
+                    <tr>
+                        <th>Seller:</th>
+                        <td>
+                            {% if plot.agent and plot.agent.user %}
+                                {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
+                            {% elif plot.landowner and plot.landowner.user %}
+                                {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}
+                            {% else %}
+                                <span class="text-muted">Unknown</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Created:</th>
+                        <td>{{ plot.created_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Current Status Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-check-circle me-2"></i>Current Status
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                {% if verification %}
+                    <div class="status-box">
+                        <span class="badge 
+                            {% if verification.current_stage == 'approved' %}badge-success
+                            {% elif verification.current_stage == 'rejected' %}badge-danger
+                            {% elif verification.current_stage == 'document_uploaded' %}badge-warning
+                            {% else %}badge-info{% endif %} 
+                            p-3 mb-3" style="font-size: 1.2rem;">
+                            {{ verification.get_current_stage_display }}
+                        </span>
+                        
+                        <div class="mt-3">
+                            <strong>Progress:</strong>
+                            <div class="progress mt-2">
+                                <div class="progress-bar" role="progressbar" style="width: {{ verification.progress_percentage }}%;">
+                                    {{ verification.progress_percentage }}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No verification status found.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Task Summary Card -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-tasks me-2"></i>Task Summary
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <div class="task-stats">
+                    <div class="task-stat-item">
+                        <span class="task-stat-label">Total Tasks:</span>
+                        <span class="task-stat-value">{{ total_tasks }}</span>
+                    </div>
+                    <div class="task-stat-item">
+                        <span class="task-stat-label">Completed:</span>
+                        <span class="task-stat-value text-success">{{ completed_tasks }}</span>
+                    </div>
+                    <div class="task-stat-item">
+                        <span class="task-stat-label">Pending:</span>
+                        <span class="task-stat-value text-warning">{{ pending_tasks }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: History Timeline -->
+    <div class="col-md-8 mb-4">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-timeline me-2"></i>Verification Timeline
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                {% if logs %}
+                    <div class="timeline">
+                        {% for log in logs %}
+                            <div class="timeline-item">
+                                <div class="timeline-badge 
+                                    {% if log.verification_type == 'approval' %}bg-success
+                                    {% elif log.verification_type == 'rejection' %}bg-danger
+                                    {% elif log.verification_type == 'change_request' %}bg-warning
+                                    {% elif log.verification_type == 'assignment' %}bg-info
+                                    {% else %}bg-secondary{% endif %}">
+                                    <i class="fas 
+                                        {% if log.verification_type == 'approval' %}fa-check
+                                        {% elif log.verification_type == 'rejection' %}fa-times
+                                        {% elif log.verification_type == 'change_request' %}fa-edit
+                                        {% elif log.verification_type == 'assignment' %}fa-user-plus
+                                        {% else %}fa-info{% endif %}"></i>
+                                </div>
+                                <div class="timeline-content">
+                                    <div class="timeline-header">
+                                        <h6>{{ log.get_verification_type_display }}</h6>
+                                        <small class="text-muted">{{ log.created_at|date:"M d, Y H:i:s" }}</small>
+                                    </div>
+                                    <div class="timeline-body">
+                                        <p>{{ log.comment|default:"No comments provided." }}</p>
+                                        <small class="text-muted">
+                                            <i class="fas fa-user me-1"></i>
+                                            {% if log.verified_by %}
+                                                {{ log.verified_by.get_full_name|default:log.verified_by.username }}
+                                            {% else %}
+                                                <em>System</em>
+                                            {% endif %}
+                                            - {{ log.created_at|timesince }} ago
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-history fa-4x text-muted mb-3"></i>
+                        <h5>No History Available</h5>
+                        <p class="text-muted">No verification events have been logged for this plot.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .details-table {
+        width: 100%;
+    }
+
+    .details-table th {
+        text-align: left;
+        padding: 0.5rem 0;
+        color: var(--secondary);
+        font-weight: 500;
+        width: 40%;
+    }
+
+    .details-table td {
+        padding: 0.5rem 0;
+    }
+
+    .task-stats {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .task-stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem;
+        background: var(--light);
+        border-radius: 6px;
+    }
+
+    .task-stat-label {
+        font-weight: 500;
+        color: var(--secondary);
+    }
+
+    .task-stat-value {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    /* Timeline */
+    .timeline {
+        position: relative;
+        padding-left: 50px;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-bottom: 2rem;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -30px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+
+    .timeline-item:last-child::before {
+        display: none;
+    }
+
+    .timeline-badge {
+        position: absolute;
+        left: -42px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        z-index: 1;
+    }
+
+    .bg-success {
+        background: var(--success) !important;
+    }
+
+    .bg-danger {
+        background: var(--danger) !important;
+    }
+
+    .bg-warning {
+        background: var(--warning) !important;
+        color: #333;
+    }
+
+    .bg-info {
+        background: var(--info) !important;
+    }
+
+    .bg-secondary {
+        background: var(--secondary) !important;
+    }
+
+    .timeline-content {
+        background: var(--light);
+        border-radius: 8px;
+        padding: 1rem;
+        border: 1px solid #e9ecef;
+    }
+
+    .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+    }
+
+    .timeline-header h6 {
+        margin: 0;
+        font-weight: 600;
+        color: var(--dark);
+    }
+
+    .timeline-body p {
+        margin-bottom: 0.5rem;
+        color: #666;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 0.5rem 1rem;
+        border-radius: 30px;
+        font-weight: 600;
+    }
+
+    .badge-success {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .badge-warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .badge-info {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+
+    .progress {
+        height: 10px;
+        background: #e9ecef;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 5px;
+        transition: width 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+        .timeline {
+            padding-left: 40px;
+        }
+        
+        .timeline-badge {
+            left: -35px;
+            width: 25px;
+            height: 25px;
+            font-size: 0.8rem;
+        }
+
+        .timeline-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.25rem;
+        }
+    }
+</style>
+{% endblock %}

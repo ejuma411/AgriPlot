@@ -86,7 +86,7 @@
                             </div>
                             <div class="progress-step" data-step="6">
                                 <span class="step-number">6</span>
-                                <span class="step-label">Images</span>
+                                <span class="step-label">Location</span>
                             </div>
                             <div class="progress-step" data-step="7">
                                 <span class="step-number">7</span>
@@ -119,1096 +119,1167 @@
 
                 <!-- Form Card -->
                 <div class="card">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-file-alt me-2"></i>Plot Information Form
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <form method="POST" enctype="multipart/form-data" id="plotForm">
-                        {% csrf_token %}
-                        
-                        <!-- Section 1: Basic Information -->
-                        <div class="form-section-table mb-5">
-                            <div class="section-header mb-4">
-                                <h5 class="section-title d-flex align-items-center">
-                                    <span class="section-badge bg-primary">1</span>
-                                    <span>Basic Information</span>
-                                </h5>
-                                <p class="section-subtitle text-muted mb-0">Essential plot details for buyers</p>
-                            </div>
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-file-alt me-2"></i>Plot Information Form
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" enctype="multipart/form-data" id="plotForm" novalidate>
+                            {% csrf_token %}
                             
-                            <div class="form-table">
-                                <table class="form-field-table">
+                            <!-- Section 1: Basic Information -->
+                            <div class="form-section mb-5">
+                                <div class="section-header mb-4">
+                                    <h5 class="section-title d-flex align-items-center">
+                                        <span class="section-badge bg-primary">1</span>
+                                        <span>Basic Information</span>
+                                    </h5>
+                                    <p class="section-subtitle text-muted mb-0">Essential plot details for buyers</p>
+                                </div>
+                                
+                                <div class="form-fields">
                                     <!-- Title -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.title.id_for_label }}" class="required">
-                                                <i class="fas fa-heading me-2"></i>Plot Title
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.title }}
-                                            <div class="field-feedback">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.title.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-heading me-2"></i>Plot Title
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.title }}
                                                 {% if form.title.errors %}
-                                                <small class="text-danger">
+                                                <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
                                                     {{ form.title.errors }}
-                                                </small>
+                                                </div>
                                                 {% endif %}
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">
-                                                <i class="fas fa-info-circle"></i> {{ form.title.help_text }}
-                                            </small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle"></i> {{ form.title.help_text }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <!-- Location -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.location.id_for_label }}" class="required">
-                                                <i class="fas fa-map-marker-alt me-2"></i>Location
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.location }}
-                                            <div class="field-feedback">
-                                                {% if form.location.errors %}
-                                                <small class="text-danger">
-                                                    <i class="fas fa-exclamation-circle me-1"></i>
-                                                    {{ form.location.errors }}
-                                                </small>
-                                                {% endif %}
+                                    <!-- County -->
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="id_county" class="form-label required">
+                                                    <i class="fas fa-map-marker-alt me-2"></i>County
+                                                </label>
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">
-                                                <i class="fas fa-info-circle"></i> {{ form.location.help_text }}
-                                            </small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-6">
+                                                <select name="county" id="id_county" class="form-select county-select" required>
+                                                    <option value="">-- Select County --</option>
+                                                    {% for county in counties %}
+                                                    <option value="{{ county }}" {% if county == selected_county %}selected{% endif %}>
+                                                        {{ county }}
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                                <div class="field-feedback" id="county-feedback">
+                                                    {% if form.county.errors %}
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                                        {{ form.county.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle"></i> Select the county where your plot is located
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Sub-county -->
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="id_subcounty" class="form-label required">
+                                                    <i class="fas fa-map-pin me-2"></i>Sub-county
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="subcounty-wrapper">
+                                                    <select name="subcounty" id="id_subcounty" class="form-select subcounty-select" required {% if not selected_county %}disabled{% endif %}>
+                                                        <option value="">-- Select Sub-county --</option>
+                                                        {% if selected_county and sub_counties %}
+                                                            {% for subcounty in sub_counties %}
+                                                            <option value="{{ subcounty }}" {% if subcounty == selected_subcounty %}selected{% endif %}>
+                                                                {{ subcounty }}
+                                                            </option>
+                                                            {% endfor %}
+                                                        {% endif %}
+                                                    </select>
+                                                    
+                                                    <!-- Loading spinner (hidden by default) -->
+                                                    <div class="subcounty-loading" id="subcounty-loading" style="display: none;">
+                                                        <i class="fas fa-spinner fa-spin"></i> Loading sub-counties...
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="field-feedback" id="subcounty-feedback">
+                                                    {% if form.subcounty.errors %}
+                                                    <small class="text-danger">
+                                                        <i class="fas fa-exclamation-circle me-1"></i>
+                                                        {{ form.subcounty.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle"></i> Select the specific sub-county
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Hidden location field (populated by JavaScript) -->
+                                    {{ form.location }}
 
                                     <!-- Area -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.area.id_for_label }}" class="required">
-                                                <i class="fas fa-ruler-combined me-2"></i>Area (Acres)
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="input-group">
-                                                {{ form.area }}
-                                                <span class="input-group-text">Acres</span>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.area.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-ruler-combined me-2"></i>Area (Acres)
+                                                </label>
                                             </div>
-                                            {% if form.area.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.area.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">
-                                                <i class="fas fa-info-circle"></i> {{ form.area.help_text }}
-                                            </small>
-                                        </td>
-                                    </tr>
-                                </table>
+                                            <div class="col-md-6">
+                                                <div class="input-group">
+                                                    {{ form.area }}
+                                                    <span class="input-group-text">acres</span>
+                                                </div>
+                                                {% if form.area.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.area.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle"></i> {{ form.area.help_text }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Section 2: Listing Details -->
-                        <div class="form-section-table mb-5">
-                            <div class="section-header mb-4">
-                                <h5 class="section-title d-flex align-items-center">
-                                    <span class="section-badge bg-primary">2</span>
-                                    <span>Listing Details</span>
-                                </h5>
-                                <p class="section-subtitle text-muted mb-0">Property listing information</p>
-                            </div>
-                            
-                            <div class="form-table">
-                                <table class="form-field-table">
+                            <!-- Section 2: Listing Details -->
+                            <div class="form-section mb-5">
+                                <div class="section-header mb-4">
+                                    <h5 class="section-title d-flex align-items-center">
+                                        <span class="section-badge bg-primary">2</span>
+                                        <span>Listing Details</span>
+                                    </h5>
+                                    <p class="section-subtitle text-muted mb-0">Property listing information</p>
+                                </div>
+                                
+                                <div class="form-fields">
                                     <!-- Listing Type -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.listing_type.id_for_label }}" class="required">
-                                                <i class="fas fa-tag me-2"></i>Listing Type
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.listing_type }}
-                                            <div class="field-feedback">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.listing_type.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-tag me-2"></i>Listing Type
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.listing_type }}
                                                 {% if form.listing_type.errors %}
-                                                <small class="text-danger">
+                                                <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
                                                     {{ form.listing_type.errors }}
-                                                </small>
+                                                </div>
                                                 {% endif %}
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Select whether the property is for sale, lease, or both</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Select whether the property is for sale, lease, or both</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <!-- Land Type -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.land_type.id_for_label }}" class="required">
-                                                <i class="fas fa-tree me-2"></i>Land Type
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.land_type }}
-                                            <div class="field-feedback">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.land_type.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-tree me-2"></i>Land Type
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.land_type }}
                                                 {% if form.land_type.errors %}
-                                                <small class="text-danger">
+                                                <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
                                                     {{ form.land_type.errors }}
-                                                </small>
+                                                </div>
                                                 {% endif %}
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Primary use classification of the land</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Primary use classification of the land</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <!-- Land Use Description -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.land_use_description.id_for_label }}">
-                                                <i class="fas fa-info-circle me-2"></i>Land Use Description
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.land_use_description }}
-                                            <div class="field-feedback">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.land_use_description.id_for_label }}">
+                                                    <i class="fas fa-info-circle me-2"></i>Land Use Description
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.land_use_description }}
                                                 {% if form.land_use_description.errors %}
-                                                <small class="text-danger">
+                                                <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
                                                     {{ form.land_use_description.errors }}
-                                                </small>
+                                                </div>
                                                 {% endif %}
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">{{ form.land_use_description.help_text }}</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.land_use_description.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <!-- Sale Price -->
-                                    <tr id="sale-price-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.sale_price.id_for_label }}">
-                                                <i class="fas fa-money-bill-wave me-2"></i>Sale Price (KES)
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="input-group">
-                                                <span class="input-group-text">KES</span>
-                                                {{ form.sale_price }}
+                                    <div class="form-row mb-4" id="sale-price-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.sale_price.id_for_label }}">
+                                                    <i class="fas fa-money-bill-wave me-2"></i>Sale Price (KES)
+                                                </label>
                                             </div>
-                                            <div id="pricePerAcreDisplay" class="mt-2">
-                                                <small class="text-muted">{{ form.price_per_acre.help_text }}</small>
+                                            <div class="col-md-6">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">KES</span>
+                                                    {{ form.sale_price }}
+                                                </div>
+                                                <div id="pricePerAcreDisplay" class="mt-2">
+                                                    <small class="text-muted">{{ form.price_per_acre.help_text }}</small>
+                                                </div>
+                                                {% if form.sale_price.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.sale_price.errors }}
+                                                </div>
+                                                {% endif %}
                                             </div>
-                                            {% if form.sale_price.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.sale_price.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">{{ form.sale_price.help_text }}</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.sale_price.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <!-- Lease Fields -->
-                                    <tr id="lease-price-monthly-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.lease_price_monthly.id_for_label }}">
-                                                <i class="fas fa-calendar-alt me-2"></i>Monthly Lease (KES)
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="input-group">
-                                                <span class="input-group-text">KES</span>
-                                                {{ form.lease_price_monthly }}
+                                    <div class="form-row mb-4" id="lease-price-monthly-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.lease_price_monthly.id_for_label }}">
+                                                    <i class="fas fa-calendar-alt me-2"></i>Monthly Lease (KES)
+                                                </label>
                                             </div>
-                                            {% if form.lease_price_monthly.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.lease_price_monthly.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">{{ form.lease_price_monthly.help_text }}</small>
-                                        </td>
-                                    </tr>
-
-                                    <tr id="lease-price-yearly-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.lease_price_yearly.id_for_label }}">
-                                                <i class="fas fa-calendar-alt me-2"></i>Yearly Lease (KES)
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="input-group">
-                                                <span class="input-group-text">KES</span>
-                                                {{ form.lease_price_yearly }}
+                                            <div class="col-md-6">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">KES</span>
+                                                    {{ form.lease_price_monthly }}
+                                                </div>
+                                                {% if form.lease_price_monthly.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.lease_price_monthly.errors }}
+                                                </div>
+                                                {% endif %}
                                             </div>
-                                            {% if form.lease_price_yearly.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.lease_price_yearly.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">{{ form.lease_price_yearly.help_text }}</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.lease_price_monthly.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <tr id="lease-duration-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.lease_duration.id_for_label }}">
-                                                <i class="fas fa-clock me-2"></i>Lease Duration
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.lease_duration }}
-                                            {% if form.lease_duration.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.lease_duration.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Duration of the lease agreement</small>
-                                        </td>
-                                    </tr>
+                                    <div class="form-row mb-4" id="lease-price-yearly-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.lease_price_yearly.id_for_label }}">
+                                                    <i class="fas fa-calendar-alt me-2"></i>Yearly Lease (KES)
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="input-group">
+                                                    <span class="input-group-text">KES</span>
+                                                    {{ form.lease_price_yearly }}
+                                                </div>
+                                                {% if form.lease_price_yearly.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.lease_price_yearly.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.lease_price_yearly.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <tr id="lease-terms-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.lease_terms.id_for_label }}">
-                                                <i class="fas fa-file-signature me-2"></i>Lease Terms
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.lease_terms }}
-                                            {% if form.lease_terms.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.lease_terms.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">{{ form.lease_terms.help_text }}</small>
-                                        </td>
-                                    </tr>
-                                </table>
+                                    <div class="form-row mb-4" id="lease-duration-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.lease_duration.id_for_label }}">
+                                                    <i class="fas fa-clock me-2"></i>Lease Duration
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.lease_duration }}
+                                                {% if form.lease_duration.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.lease_duration.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Duration of the lease agreement</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row mb-4" id="lease-terms-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.lease_terms.id_for_label }}">
+                                                    <i class="fas fa-file-signature me-2"></i>Lease Terms
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.lease_terms }}
+                                                {% if form.lease_terms.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.lease_terms.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.lease_terms.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Section 3: Agricultural Details -->
-                        <div class="form-section-table mb-5">
-                            <div class="section-header mb-4">
-                                <h5 class="section-title d-flex align-items-center">
-                                    <span class="section-badge bg-success">3</span>
-                                    <span>Agricultural Details</span>
-                                </h5>
-                                <p class="section-subtitle text-muted mb-0">Technical specifications for farming</p>
-                            </div>
-                            
-                            <div class="form-table">
-                                <table class="form-field-table">
+                            <!-- Section 3: Agricultural Details -->
+                            <div class="form-section mb-5">
+                                <div class="section-header mb-4">
+                                    <h5 class="section-title d-flex align-items-center">
+                                        <span class="section-badge bg-success">3</span>
+                                        <span>Agricultural Details</span>
+                                    </h5>
+                                    <p class="section-subtitle text-muted mb-0">Technical specifications for farming</p>
+                                </div>
+                                
+                                <div class="form-fields">
                                     <!-- Soil Type -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.soil_type.id_for_label }}" class="required">
-                                                <i class="fas fa-seedling me-2"></i>Soil Type
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.soil_type }}
-                                            <div class="field-feedback">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.soil_type.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-seedling me-2"></i>Soil Type
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.soil_type }}
                                                 {% if form.soil_type.errors %}
-                                                <small class="text-danger">
+                                                <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
                                                     {{ form.soil_type.errors }}
-                                                </small>
+                                                </div>
                                                 {% endif %}
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">
-                                                <i class="fas fa-info-circle"></i> {{ form.soil_type.help_text }}
-                                            </small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle"></i> {{ form.soil_type.help_text }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <!-- pH Level -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.ph_level.id_for_label }}">
-                                                <i class="fas fa-flask me-2"></i>Soil pH Level
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="input-group">
-                                                {{ form.ph_level }}
-                                                <span class="input-group-text">pH</span>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.ph_level.id_for_label }}">
+                                                    <i class="fas fa-flask me-2"></i>Soil pH Level
+                                                </label>
                                             </div>
-                                            <div class="field-feedback">
+                                            <div class="col-md-6">
+                                                <div class="input-group">
+                                                    {{ form.ph_level }}
+                                                    <span class="input-group-text">pH</span>
+                                                </div>
                                                 {% if form.ph_level.errors %}
-                                                <small class="text-danger">
+                                                <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
                                                     {{ form.ph_level.errors }}
-                                                </small>
+                                                </div>
                                                 {% endif %}
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <div class="ph-guide">
-                                                <div class="d-flex align-items-center mb-1">
-                                                    <span class="ph-indicator acidic me-2"></span>
-                                                    <small>Acidic (0-4)</small>
-                                                </div>
-                                                <div class="d-flex align-items-center mb-1">
-                                                    <span class="ph-indicator neutral me-2"></span>
-                                                    <small>Neutral (5-7)</small>
-                                                </div>
-                                                <div class="d-flex align-items-center">
-                                                    <span class="ph-indicator alkaline me-2"></span>
-                                                    <small>Alkaline (8-14)</small>
+                                            <div class="col-md-3">
+                                                <div class="ph-guide">
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <span class="ph-indicator acidic me-2"></span>
+                                                        <small>Acidic (0-4)</small>
+                                                    </div>
+                                                    <div class="d-flex align-items-center mb-1">
+                                                        <span class="ph-indicator neutral me-2"></span>
+                                                        <small>Neutral (5-7)</small>
+                                                    </div>
+                                                    <div class="d-flex align-items-center">
+                                                        <span class="ph-indicator alkaline me-2"></span>
+                                                        <small>Alkaline (8-14)</small>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </div>
+                                    </div>
 
                                     <!-- Crop Suitability -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.crop_suitability.id_for_label }}" class="required">
-                                                <i class="fas fa-leaf me-2"></i>Crop Suitability
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.crop_suitability }}
-                                            <div class="field-feedback">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.crop_suitability.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-leaf me-2"></i>Crop Suitability
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.crop_suitability }}
                                                 {% if form.crop_suitability.errors %}
-                                                <small class="text-danger">
+                                                <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
                                                     {{ form.crop_suitability.errors }}
-                                                </small>
+                                                </div>
                                                 {% endif %}
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <div class="crop-tags">
-                                                <small class="d-block mb-1">Common Crops:</small>
-                                                <div class="d-flex flex-wrap gap-1">
-                                                    <span class="crop-tag">Maize</span>
-                                                    <span class="crop-tag">Wheat</span>
-                                                    <span class="crop-tag">Coffee</span>
-                                                    <span class="crop-tag">Tea</span>
-                                                    <span class="crop-tag">Beans</span>
+                                            <div class="col-md-3">
+                                                <div class="crop-tags">
+                                                    <small class="d-block mb-1">Common Crops:</small>
+                                                    <div class="d-flex flex-wrap gap-1">
+                                                        <span class="crop-tag">Maize</span>
+                                                        <span class="crop-tag">Wheat</span>
+                                                        <span class="crop-tag">Coffee</span>
+                                                        <span class="crop-tag">Tea</span>
+                                                        <span class="crop-tag">Beans</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </td>
-                                    </tr>
-                                </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Section 4: Infrastructure -->
-                        <div class="form-section-table mb-5">
-                            <div class="section-header mb-4">
-                                <h5 class="section-title d-flex align-items-center">
-                                    <span class="section-badge bg-info">4</span>
-                                    <span>Infrastructure</span>
-                                </h5>
-                                <p class="section-subtitle text-muted mb-0">Amenities and access information</p>
-                            </div>
-                            
-                            <div class="form-table">
-                                <table class="form-field-table">
+                            <!-- Section 4: Infrastructure -->
+                            <div class="form-section mb-5">
+                                <div class="section-header mb-4">
+                                    <h5 class="section-title d-flex align-items-center">
+                                        <span class="section-badge bg-info">4</span>
+                                        <span>Infrastructure</span>
+                                    </h5>
+                                    <p class="section-subtitle text-muted mb-0">Amenities and access information</p>
+                                </div>
+                                
+                                <div class="form-fields">
                                     <!-- Water -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.has_water.id_for_label }}">
-                                                <i class="fas fa-water me-2"></i>Water Access
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="form-check">
-                                                {{ form.has_water }}
-                                                <label class="form-check-label" for="{{ form.has_water.id_for_label }}">
-                                                    Has water source
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.has_water.id_for_label }}">
+                                                    <i class="fas fa-water me-2"></i>Water Access
                                                 </label>
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Check if water is available on the property</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    {{ form.has_water }}
+                                                    <label class="form-check-label" for="{{ form.has_water.id_for_label }}">
+                                                        Has water source
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Check if water is available on the property</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <tr id="water-source-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.water_source.id_for_label }}">
-                                                <i class="fas fa-tint me-2"></i>Water Source
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.water_source }}
-                                            {% if form.water_source.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.water_source.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Type of water source available</small>
-                                        </td>
-                                    </tr>
+                                    <div class="form-row mb-4" id="water-source-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.water_source.id_for_label }}">
+                                                    <i class="fas fa-tint me-2"></i>Water Source
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.water_source }}
+                                                {% if form.water_source.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.water_source.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Type of water source available</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <!-- Electricity -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.has_electricity.id_for_label }}">
-                                                <i class="fas fa-bolt me-2"></i>Electricity
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="form-check">
-                                                {{ form.has_electricity }}
-                                                <label class="form-check-label" for="{{ form.has_electricity.id_for_label }}">
-                                                    Has electricity
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.has_electricity.id_for_label }}">
+                                                    <i class="fas fa-bolt me-2"></i>Electricity
                                                 </label>
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Check if electricity is available</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    {{ form.has_electricity }}
+                                                    <label class="form-check-label" for="{{ form.has_electricity.id_for_label }}">
+                                                        Has electricity
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Check if electricity is available</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <tr id="electricity-meter-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.electricity_meter.id_for_label }}">
-                                                <i class="fas fa-gauge me-2"></i>Electricity Meter
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="form-check">
-                                                {{ form.electricity_meter }}
-                                                <label class="form-check-label" for="{{ form.electricity_meter.id_for_label }}">
-                                                    Meter installed
+                                    <div class="form-row mb-4" id="electricity-meter-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.electricity_meter.id_for_label }}">
+                                                    <i class="fas fa-gauge me-2"></i>Electricity Meter
                                                 </label>
                                             </div>
-                                            {% if form.electricity_meter.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.electricity_meter.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">{{ form.electricity_meter.help_text }}</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    {{ form.electricity_meter }}
+                                                    <label class="form-check-label" for="{{ form.electricity_meter.id_for_label }}">
+                                                        Meter installed
+                                                    </label>
+                                                </div>
+                                                {% if form.electricity_meter.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.electricity_meter.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.electricity_meter.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <!-- Road Access -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.has_road_access.id_for_label }}">
-                                                <i class="fas fa-road me-2"></i>Road Access
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="form-check">
-                                                {{ form.has_road_access }}
-                                                <label class="form-check-label" for="{{ form.has_road_access.id_for_label }}">
-                                                    Has road access
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.has_road_access.id_for_label }}">
+                                                    <i class="fas fa-road me-2"></i>Road Access
                                                 </label>
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Check if there is road access to the property</small>
-                                        </td>
-                                    </tr>
-
-                                    <tr id="road-type-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.road_type.id_for_label }}">
-                                                <i class="fas fa-pavement me-2"></i>Road Type
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.road_type }}
-                                            {% if form.road_type.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.road_type.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Type of road accessing the property</small>
-                                        </td>
-                                    </tr>
-
-                                    <tr id="road-distance-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.road_distance_km.id_for_label }}">
-                                                <i class="fas fa-route me-2"></i>Distance to Main Road
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="input-group">
-                                                {{ form.road_distance_km }}
-                                                <span class="input-group-text">km</span>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    {{ form.has_road_access }}
+                                                    <label class="form-check-label" for="{{ form.has_road_access.id_for_label }}">
+                                                        Has road access
+                                                    </label>
+                                                </div>
                                             </div>
-                                            {% if form.road_distance_km.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.road_distance_km.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">{{ form.road_distance_km.help_text }}</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Check if there is road access to the property</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row mb-4" id="road-type-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.road_type.id_for_label }}">
+                                                    <i class="fas fa-pavement me-2"></i>Road Type
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.road_type }}
+                                                {% if form.road_type.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.road_type.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Type of road accessing the property</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row mb-4" id="road-distance-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.road_distance_km.id_for_label }}">
+                                                    <i class="fas fa-route me-2"></i>Distance to Main Road
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="input-group">
+                                                    {{ form.road_distance_km }}
+                                                    <span class="input-group-text">km</span>
+                                                </div>
+                                                {% if form.road_distance_km.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.road_distance_km.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.road_distance_km.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <!-- Buildings -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.has_buildings.id_for_label }}">
-                                                <i class="fas fa-building me-2"></i>Buildings
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            <div class="form-check">
-                                                {{ form.has_buildings }}
-                                                <label class="form-check-label" for="{{ form.has_buildings.id_for_label }}">
-                                                    Has buildings/structures
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.has_buildings.id_for_label }}">
+                                                    <i class="fas fa-building me-2"></i>Buildings
                                                 </label>
                                             </div>
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Check if there are buildings on the property</small>
-                                        </td>
-                                    </tr>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    {{ form.has_buildings }}
+                                                    <label class="form-check-label" for="{{ form.has_buildings.id_for_label }}">
+                                                        Has buildings/structures
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Check if there are buildings on the property</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                    <tr id="building-description-row">
-                                        <td class="field-label">
-                                            <label for="{{ form.building_description.id_for_label }}">
-                                                <i class="fas fa-pen me-2"></i>Building Description
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.building_description }}
-                                            {% if form.building_description.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.building_description.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">{{ form.building_description.help_text }}</small>
-                                        </td>
-                                    </tr>
+                                    <div class="form-row mb-4" id="building-description-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.building_description.id_for_label }}">
+                                                    <i class="fas fa-pen me-2"></i>Building Description
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.building_description }}
+                                                {% if form.building_description.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.building_description.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.building_description.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
 
                                     <!-- Fencing -->
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.fencing.id_for_label }}">
-                                                <i class="fas fa-fence me-2"></i>Fencing
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.fencing }}
-                                            {% if form.fencing.errors %}
-                                            <small class="text-danger">
-                                                <i class="fas fa-exclamation-circle me-1"></i>
-                                                {{ form.fencing.errors }}
-                                            </small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">Type of fencing around the property</small>
-                                        </td>
-                                    </tr>
-                                </table>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.fencing.id_for_label }}">
+                                                    <i class="fas fa-fence me-2"></i>Fencing
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.fencing }}
+                                                {% if form.fencing.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.fencing.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Type of fencing around the property</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
 
-                        <!-- Section 5: Documents -->
-                        <div class="form-section-table mb-5">
-                            <div class="section-header mb-4">
-                                <h5 class="section-title d-flex align-items-center">
-                                    <span class="section-badge bg-warning">5</span>
-                                    <span>Required Documents</span>
-                                </h5>
-                                <p class="section-subtitle text-muted mb-0">Upload all required documents</p>
-                            </div>
-                            
-                            <div class="documents-table">
-                                <table class="documents-upload-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Document</th>
-                                            <th>Status</th>
-                                            <th>Preview</th>
-                                            <th>Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <!-- Title Deed -->
-                                        <tr>
-                                            <td>
+                            <!-- Section 5: Documents -->
+                            <div class="form-section mb-5">
+                                <div class="section-header mb-4">
+                                    <h5 class="section-title d-flex align-items-center">
+                                        <span class="section-badge bg-warning">5</span>
+                                        <span>Required Documents</span>
+                                    </h5>
+                                    <p class="section-subtitle text-muted mb-0">Upload all required documents</p>
+                                </div>
+                                
+                                <div class="documents-grid">
+                                    <!-- Title Deed -->
+                                    <div class="document-card mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
                                                 <div class="document-info">
-                                                    <i class="fas fa-file-contract text-danger me-2"></i>
+                                                    <i class="fas fa-file-contract text-danger fa-2x me-3"></i>
                                                     <div>
-                                                        <div class="document-name">Title Deed</div>
+                                                        <div class="document-name fw-bold">Title Deed</div>
                                                         <small class="text-muted">{{ form.title_deed.help_text }}</small>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <span class="document-status badge bg-danger">Required</span>
-                                            </td>
-                                            <td>
-                                                <div id="titleDeedPreview" class="document-preview">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-danger">Required</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="titleDeedPreview" class="document-preview text-muted">
                                                     No file selected
                                                 </div>
-                                            </td>
-                                            <td>
+                                            </div>
+                                            <div class="col-md-3">
                                                 <div class="document-upload-btn">
                                                     <label for="{{ form.title_deed.id_for_label }}" class="btn btn-sm btn-outline-danger">
                                                         <i class="fas fa-upload me-1"></i> Upload
                                                     </label>
                                                     {{ form.title_deed }}
                                                     {% if form.title_deed.errors %}
-                                                    <small class="text-danger d-block">
+                                                    <small class="text-danger d-block mt-1">
                                                         {{ form.title_deed.errors }}
                                                     </small>
                                                     {% endif %}
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                        <!-- Official Search Certificate -->
-                                        <tr>
-                                            <td>
+                                    <!-- Official Search Certificate -->
+                                    <div class="document-card mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
                                                 <div class="document-info">
-                                                    <i class="fas fa-search text-primary me-2"></i>
+                                                    <i class="fas fa-search text-primary fa-2x me-3"></i>
                                                     <div>
-                                                        <div class="document-name">Official Search Certificate</div>
+                                                        <div class="document-name fw-bold">Official Search Certificate</div>
                                                         <small class="text-muted">{{ form.official_search.help_text }}</small>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <span class="document-status badge bg-danger">Required</span>
-                                            </td>
-                                            <td>
-                                                <div id="officialSearchPreview" class="document-preview">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-danger">Required</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="officialSearchPreview" class="document-preview text-muted">
                                                     No file selected
                                                 </div>
-                                            </td>
-                                            <td>
+                                            </div>
+                                            <div class="col-md-3">
                                                 <div class="document-upload-btn">
                                                     <label for="{{ form.official_search.id_for_label }}" class="btn btn-sm btn-outline-primary">
                                                         <i class="fas fa-upload me-1"></i> Upload
                                                     </label>
                                                     {{ form.official_search }}
                                                     {% if form.official_search.errors %}
-                                                    <small class="text-danger d-block">
+                                                    <small class="text-danger d-block mt-1">
                                                         {{ form.official_search.errors }}
                                                     </small>
                                                     {% endif %}
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                        <!-- Landowner ID -->
-                                        <tr>
-                                            <td>
+                                    <!-- Landowner ID -->
+                                    <div class="document-card mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
                                                 <div class="document-info">
-                                                    <i class="fas fa-id-card text-warning me-2"></i>
+                                                    <i class="fas fa-id-card text-warning fa-2x me-3"></i>
                                                     <div>
-                                                        <div class="document-name">Landowner's ID</div>
+                                                        <div class="document-name fw-bold">Landowner's ID</div>
                                                         <small class="text-muted">{{ form.landowner_id_doc.help_text }}</small>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <span class="document-status badge bg-danger">Required</span>
-                                            </td>
-                                            <td>
-                                                <div id="landownerIdPreview" class="document-preview">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-danger">Required</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="landownerIdPreview" class="document-preview text-muted">
                                                     No file selected
                                                 </div>
-                                            </td>
-                                            <td>
+                                            </div>
+                                            <div class="col-md-3">
                                                 <div class="document-upload-btn">
                                                     <label for="{{ form.landowner_id_doc.id_for_label }}" class="btn btn-sm btn-outline-warning">
                                                         <i class="fas fa-upload me-1"></i> Upload
                                                     </label>
                                                     {{ form.landowner_id_doc }}
                                                     {% if form.landowner_id_doc.errors %}
-                                                    <small class="text-danger d-block">
+                                                    <small class="text-danger d-block mt-1">
                                                         {{ form.landowner_id_doc.errors }}
                                                     </small>
                                                     {% endif %}
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                        <!-- KRA PIN Certificate -->
-                                        <tr>
-                                            <td>
+                                    <!-- KRA PIN Certificate -->
+                                    <div class="document-card mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
                                                 <div class="document-info">
-                                                    <i class="fas fa-file-invoice-dollar text-success me-2"></i>
+                                                    <i class="fas fa-file-invoice-dollar text-success fa-2x me-3"></i>
                                                     <div>
-                                                        <div class="document-name">KRA PIN Certificate</div>
+                                                        <div class="document-name fw-bold">KRA PIN Certificate</div>
                                                         <small class="text-muted">{{ form.kra_pin.help_text }}</small>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <span class="document-status badge bg-danger">Required</span>
-                                            </td>
-                                            <td>
-                                                <div id="kraPinPreview" class="document-preview">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-danger">Required</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="kraPinPreview" class="document-preview text-muted">
                                                     No file selected
                                                 </div>
-                                            </td>
-                                            <td>
+                                            </div>
+                                            <div class="col-md-3">
                                                 <div class="document-upload-btn">
                                                     <label for="{{ form.kra_pin.id_for_label }}" class="btn btn-sm btn-outline-success">
                                                         <i class="fas fa-upload me-1"></i> Upload
                                                     </label>
                                                     {{ form.kra_pin }}
                                                     {% if form.kra_pin.errors %}
-                                                    <small class="text-danger d-block">
+                                                    <small class="text-danger d-block mt-1">
                                                         {{ form.kra_pin.errors }}
                                                     </small>
                                                     {% endif %}
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                                        <!-- Soil Report (Optional) -->
-                                        <tr>
-                                            <td>
+                                    <!-- Soil Report (Optional) -->
+                                    <div class="document-card mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
                                                 <div class="document-info">
-                                                    <i class="fas fa-flask text-info me-2"></i>
+                                                    <i class="fas fa-flask text-info fa-2x me-3"></i>
                                                     <div>
-                                                        <div class="document-name">Soil Test Report</div>
+                                                        <div class="document-name fw-bold">Soil Test Report</div>
                                                         <small class="text-muted">{{ form.soil_report.help_text }}</small>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            <td>
-                                                <span class="document-status badge bg-info">Optional</span>
-                                            </td>
-                                            <td>
-                                                <div id="soilReportPreview" class="document-preview">
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-info">Optional</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="soilReportPreview" class="document-preview text-muted">
                                                     No file selected
                                                 </div>
-                                            </td>
-                                            <td>
+                                            </div>
+                                            <div class="col-md-3">
                                                 <div class="document-upload-btn">
                                                     <label for="{{ form.soil_report.id_for_label }}" class="btn btn-sm btn-outline-info">
                                                         <i class="fas fa-upload me-1"></i> Upload
                                                     </label>
                                                     {{ form.soil_report }}
                                                     {% if form.soil_report.errors %}
-                                                    <small class="text-danger d-block">
+                                                    <small class="text-danger d-block mt-1">
                                                         {{ form.soil_report.errors }}
                                                     </small>
                                                     {% endif %}
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Section 6: Location / GIS Coordinates -->
-                        <div class="form-section-table mb-5">
-                            <div class="section-header mb-4">
-                                <h5 class="section-title d-flex align-items-center">
-                                    <span class="section-badge bg-info">6</span>
-                                    <span>Location &amp; Map Coordinates</span>
-                                </h5>
-                                <p class="section-subtitle text-muted mb-0">Latitude and longitude for GIS mapping (optional but recommended)</p>
-                            </div>
-                            <div class="form-table">
-                                <table class="form-field-table">
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.latitude.id_for_label }}">
-                                                <i class="fas fa-map-pin me-2"></i>Latitude
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.latitude }}
-                                            {% if form.latitude.errors %}
-                                            <small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>{{ form.latitude.errors }}</small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">e.g. -1.292066 (Nairobi). Used for map display.</small>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="field-label">
-                                            <label for="{{ form.longitude.id_for_label }}">
-                                                <i class="fas fa-map-pin me-2"></i>Longitude
-                                            </label>
-                                        </td>
-                                        <td class="field-input">
-                                            {{ form.longitude }}
-                                            {% if form.longitude.errors %}
-                                            <small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i>{{ form.longitude.errors }}</small>
-                                            {% endif %}
-                                        </td>
-                                        <td class="field-help">
-                                            <small class="text-muted">e.g. 36.821946 (Nairobi). Used for map display.</small>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Section 7: Agreement Table -->
-                        <div class="form-section-table mb-5">
-                            <div class="section-header mb-4">
-                                <h5 class="section-title d-flex align-items-center">
-                                    <span class="section-badge bg-dark">7</span>
-                                    <span>Listing Agreement</span>
-                                </h5>
-                                <p class="section-subtitle text-muted mb-0">Confirm your understanding and agreement</p>
-                            </div>
-                            
-                            <div class="agreement-table">
-                                <table class="terms-table">
-                                    <tbody>
-                                        <tr>
-                                            <td class="term-check">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="accuracyCheck" required>
-                                                    <label class="form-check-label" for="accuracyCheck"></label>
-                                                </div>
-                                            </td>
-                                            <td class="term-content">
-                                                <strong>Accuracy Declaration</strong>
-                                                <p class="mb-0">I certify that all information provided is accurate and I am the authorized landowner/agent for this plot.</p>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td class="term-check">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="documentCheck" required>
-                                                    <label class="form-check-label" for="documentCheck"></label>
-                                                </div>
-                                            </td>
-                                            <td class="term-content">
-                                                <strong>Document Authenticity</strong>
-                                                <p class="mb-0">I confirm that all uploaded documents are valid and authentic.</p>
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td class="term-check">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="termsCheck" required>
-                                                    <label class="form-check-label" for="termsCheck"></label>
-                                                </div>
-                                            </td>
-                                            <td class="term-content">
-                                                <strong>Terms Acceptance</strong>
-                                                <p class="mb-0">I agree to the <a href="#" class="terms-link" data-bs-toggle="modal" data-bs-target="#termsModal">Terms of Service</a> and understand that false information may result in listing removal.</p>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- Form Actions -->
-                        <div class="form-actions-table">
-                            <table class="actions-table">
-                                <tbody>
-                                    <tr>
-                                        <td class="actions-left">
-                                            <a href="{% url 'listings:home' %}" class="btn btn-outline-secondary">
-                                                <i class="fas fa-times me-1"></i> Cancel
-                                            </a>
-                                        </td>
-                                        <td class="actions-center">
-                                            <div class="form-progress">
-                                                <small class="text-muted">Form completion: <span id="completionPercent">0%</span></small>
-                                                <div class="progress" style="height: 6px;">
-                                                    <div class="progress-bar" id="completionBar" style="width: 0%"></div>
-                                                </div>
                                             </div>
-                                        </td>
-                                        <td class="actions-right">
-                                            <button type="submit" class="btn btn-success px-4" id="submitBtn">
-                                                <i class="fas fa-plus-circle me-2"></i>
-                                                <span id="submitText">Submit Listing</span>
-                                                <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 6: Location / GIS Coordinates -->
+                            <div class="form-section mb-5">
+                                <div class="section-header mb-4">
+                                    <h5 class="section-title d-flex align-items-center">
+                                        <span class="section-badge bg-info">6</span>
+                                        <span>Location &amp; Map Coordinates</span>
+                                    </h5>
+                                    <p class="section-subtitle text-muted mb-0">Latitude and longitude for GIS mapping (optional but recommended)</p>
+                                </div>
+                                
+                                <div class="form-fields">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.latitude.id_for_label }}">
+                                                    <i class="fas fa-map-pin me-2"></i>Latitude
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.latitude }}
+                                                {% if form.latitude.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.latitude.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">e.g. -1.292066 (Nairobi). Used for map display.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.longitude.id_for_label }}">
+                                                    <i class="fas fa-map-pin me-2"></i>Longitude
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.longitude }}
+                                                {% if form.longitude.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.longitude.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">e.g. 36.821946 (Nairobi). Used for map display.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 7: Agreement -->
+                            <div class="form-section mb-5">
+                                <div class="section-header mb-4">
+                                    <h5 class="section-title d-flex align-items-center">
+                                        <span class="section-badge bg-dark">7</span>
+                                        <span>Listing Agreement</span>
+                                    </h5>
+                                    <p class="section-subtitle text-muted mb-0">Confirm your understanding and agreement</p>
+                                </div>
+                                
+                                <div class="agreement-card">
+                                    <div class="agreement-item mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="accuracyCheck" required>
+                                            <label class="form-check-label fw-bold" for="accuracyCheck">
+                                                Accuracy Declaration
+                                            </label>
+                                            <p class="text-muted mt-1 mb-0">I certify that all information provided is accurate and I am the authorized landowner/agent for this plot.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="agreement-item mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="documentCheck" required>
+                                            <label class="form-check-label fw-bold" for="documentCheck">
+                                                Document Authenticity
+                                            </label>
+                                            <p class="text-muted mt-1 mb-0">I confirm that all uploaded documents are valid and authentic.</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="agreement-item mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="termsCheck" required>
+                                            <label class="form-check-label fw-bold" for="termsCheck">
+                                                Terms Acceptance
+                                            </label>
+                                            <p class="text-muted mt-1 mb-0">I agree to the <a href="#" class="terms-link" data-bs-toggle="modal" data-bs-target="#termsModal">Terms of Service</a> and understand that false information may result in listing removal.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Form Actions -->
+                            <div class="form-actions">
+                                <div class="row align-items-center">
+                                    <div class="col-md-3">
+                                        <a href="{% url 'listings:home' %}" class="btn btn-outline-secondary">
+                                            <i class="fas fa-times me-1"></i> Cancel
+                                        </a>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-progress">
+                                            <small class="text-muted">Form completion: <span id="completionPercent">0%</span></small>
+                                            <div class="progress" style="height: 6px;">
+                                                <div class="progress-bar" id="completionBar" style="width: 0%"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 text-end">
+                                        <button type="submit" class="btn btn-success px-4" id="submitBtn">
+                                            <i class="fas fa-plus-circle me-2"></i>
+                                            <span id="submitText">Submit Listing</span>
+                                            <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
+
+            <!-- Right Sidebar -->
+            <div class="content-right">
+                <!-- Document Requirements Card -->
+                <div class="dashboard-card mb-4">
+                    <div class="card-header bg-warning">
+                        <h6 class="card-title text-white">
+                            <i class="fas fa-file-alt me-2"></i>Document Requirements
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="document-requirements">
+                            <div class="req-item mb-3">
+                                <div class="req-icon text-danger">
+                                    <i class="fas fa-file-contract"></i>
+                                </div>
+                                <div class="req-content">
+                                    <strong>Title Deed</strong>
+                                    <p class="mb-0">Official land ownership document. Must be valid and clear.</p>
+                                </div>
+                            </div>
+                            <div class="req-item mb-3">
+                                <div class="req-icon text-primary">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                <div class="req-content">
+                                    <strong>Official Search</strong>
+                                    <p class="mb-0">Land registry search certificate from government.</p>
+                                </div>
+                            </div>
+                            <div class="req-item mb-3">
+                                <div class="req-icon text-warning">
+                                    <i class="fas fa-id-card"></i>
+                                </div>
+                                <div class="req-content">
+                                    <strong>Landowner ID</strong>
+                                    <p class="mb-0">National ID or passport of the plot owner.</p>
+                                </div>
+                            </div>
+                            <div class="req-item">
+                                <div class="req-icon text-success">
+                                    <i class="fas fa-file-invoice-dollar"></i>
+                                </div>
+                                <div class="req-content">
+                                    <strong>KRA PIN</strong>
+                                    <p class="mb-0">KRA PIN certificate for tax purposes.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Verification Timeline Card -->
+                <div class="dashboard-card mb-4">
+                    <div class="card-header bg-info">
+                        <h6 class="card-title text-white">
+                            <i class="fas fa-clock me-2"></i>Verification Timeline
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline-steps">
+                            <div class="timeline-step completed">
+                                <div class="step-dot"></div>
+                                <div class="step-content">
+                                    <strong>Submission</strong>
+                                    <small>Plot submitted for review</small>
+                                </div>
+                            </div>
+                            <div class="timeline-step">
+                                <div class="step-dot"></div>
+                                <div class="step-content">
+                                    <strong>Document Review</strong>
+                                    <small>24 hours (average)</small>
+                                </div>
+                            </div>
+                            <div class="timeline-step">
+                                <div class="step-dot"></div>
+                                <div class="step-content">
+                                    <strong>Approval</strong>
+                                    <small>Listed on marketplace</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Help Card -->
+                <div class="dashboard-card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-question-circle me-2"></i>Quick Help
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="help-items">
+                            <div class="help-item">
+                                <div class="help-icon text-primary">
+                                    <i class="fas fa-star"></i>
+                                </div>
+                                <div class="help-content">
+                                    <strong>Required Fields</strong>
+                                    <p class="mb-0">All sections must be completed for submission</p>
+                                </div>
+                            </div>
+                            <div class="help-item">
+                                <div class="help-icon text-success">
+                                    <i class="fas fa-check"></i>
+                                </div>
+                                <div class="help-content">
+                                    <strong>Verification</strong>
+                                    <p class="mb-0">Listings reviewed within 24-48 hours</p>
+                                </div>
+                            </div>
+                            <div class="help-item">
+                                <div class="help-icon text-warning">
+                                    <i class="fas fa-exclamation"></i>
+                                </div>
+                                <div class="help-content">
+                                    <strong>Document Size</strong>
+                                    <p class="mb-0">Maximum file size: 10MB per document</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
-</div>
-
-<!-- Right Sidebar (outside main content) -->
-<div class="content-right">
-    <!-- Document Requirements Card -->
-    <div class="dashboard-card mb-4">
-        <div class="card-header bg-warning">
-            <h6 class="card-title text-white">
-                <i class="fas fa-file-alt me-2"></i>Document Requirements
-            </h6>
-        </div>
-        <div class="card-body">
-            <div class="document-requirements">
-                <div class="req-item mb-3">
-                    <div class="req-icon text-danger">
-                        <i class="fas fa-file-contract"></i>
-                    </div>
-                    <div class="req-content">
-                        <strong>Title Deed</strong>
-                        <p class="mb-0">Official land ownership document. Must be valid and clear.</p>
-                    </div>
-                </div>
-                <div class="req-item mb-3">
-                    <div class="req-icon text-primary">
-                        <i class="fas fa-search"></i>
-                    </div>
-                    <div class="req-content">
-                        <strong>Official Search</strong>
-                        <p class="mb-0">Land registry search certificate from government.</p>
-                    </div>
-                </div>
-                <div class="req-item mb-3">
-                    <div class="req-icon text-warning">
-                        <i class="fas fa-id-card"></i>
-                    </div>
-                    <div class="req-content">
-                        <strong>Landowner ID</strong>
-                        <p class="mb-0">National ID or passport of the plot owner.</p>
-                    </div>
-                </div>
-                <div class="req-item">
-                    <div class="req-icon text-success">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                    </div>
-                    <div class="req-content">
-                        <strong>KRA PIN</strong>
-                        <p class="mb-0">KRA PIN certificate for tax purposes.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Verification Timeline Card -->
-    <div class="dashboard-card mb-4">
-        <div class="card-header bg-info">
-            <h6 class="card-title text-white">
-                <i class="fas fa-clock me-2"></i>Verification Timeline
-            </h6>
-        </div>
-        <div class="card-body">
-            <div class="timeline-steps">
-                <div class="timeline-step completed">
-                    <div class="step-dot"></div>
-                    <div class="step-content">
-                        <strong>Submission</strong>
-                        <small>Plot submitted for review</small>
-                    </div>
-                </div>
-                <div class="timeline-step">
-                    <div class="step-dot"></div>
-                    <div class="step-content">
-                        <strong>Document Review</strong>
-                        <small>24 hours (average)</small>
-                    </div>
-                </div>
-                <div class="timeline-step">
-                    <div class="step-dot"></div>
-                    <div class="step-content">
-                        <strong>Approval</strong>
-                        <small>Listed on marketplace</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Help Card -->
-    <div class="dashboard-card mb-4">
-        <div class="card-header">
-            <h6 class="card-title">
-                <i class="fas fa-question-circle me-2"></i>Quick Help
-            </h6>
-        </div>
-        <div class="card-body">
-            <div class="help-items">
-                <div class="help-item">
-                    <div class="help-icon text-primary">
-                        <i class="fas fa-star"></i>
-                    </div>
-                    <div class="help-content">
-                        <strong>Required Fields</strong>
-                        <p class="mb-0">All sections must be completed for submission</p>
-                    </div>
-                </div>
-                <div class="help-item">
-                    <div class="help-icon text-success">
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <div class="help-content">
-                        <strong>Verification</strong>
-                        <p class="mb-0">Listings reviewed within 24-48 hours</p>
-                    </div>
-                </div>
-                <div class="help-item">
-                    <div class="help-icon text-warning">
-                        <i class="fas fa-exclamation"></i>
-                    </div>
-                    <div class="help-content">
-                        <strong>Document Size</strong>
-                        <p class="mb-0">Maximum file size: 10MB per document</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 <!-- Terms Modal -->
@@ -1237,9 +1308,9 @@
     </div>
 </div>
 
-<!-- Include all the CSS and JavaScript from the original template -->
+<!-- All CSS and JavaScript from original template remains -->
 <style>
-    /* All the original CSS styles remain exactly the same */
+    /* All CSS styles from your original template remain exactly the same */
     :root {
         --primary: #069132;
         --primary-light: #e3ebf7;
@@ -1511,7 +1582,7 @@
     }
 
     /* Form Styles */
-    .form-section-table {
+    .form-section {
         margin-bottom: 2rem;
     }
 
@@ -1543,48 +1614,33 @@
     .section-subtitle {
         color: var(--gray-600);
         font-size: 0.95rem;
+        margin-left: 44px;
     }
 
-    .form-field-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .form-field-table tr {
+    /* Form Row */
+    .form-row {
         border-bottom: 1px solid var(--gray-200);
+        padding-bottom: 1.5rem;
     }
 
-    .form-field-table tr:last-child {
+    .form-row:last-child {
         border-bottom: none;
+        padding-bottom: 0;
     }
 
-    .field-label {
-        width: 25%;
-        padding: 1rem;
-        background: var(--gray-100);
+    .form-label {
         font-weight: 500;
         color: var(--gray-700);
-        border-right: 1px solid var(--gray-200);
+        margin-bottom: 0;
+        padding-top: 0.5rem;
     }
 
-    .field-label .required::after {
+    .form-label.required::after {
         content: " *";
         color: var(--danger);
     }
 
-    .field-input {
-        width: 50%;
-        padding: 1rem;
-    }
-
-    .field-help {
-        width: 25%;
-        padding: 1rem;
-        border-left: 1px solid var(--gray-200);
-        background: var(--gray-50);
-        font-size: 0.85rem;
-    }
-
+    /* Form Controls */
     .form-control, .form-select {
         border-radius: 6px;
         border: 2px solid var(--gray-300);
@@ -1598,8 +1654,118 @@
         box-shadow: 0 0 0 0.25rem rgba(6, 145, 50, 0.15);
     }
 
-    .field-feedback {
-        margin-top: 0.5rem;
+    .form-check-input:checked {
+        background-color: var(--primary);
+        border-color: var(--primary);
+    }
+
+    /* County and Subcounty select styling */
+    .county-select, .subcounty-select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1.5px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+        background-color: white;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1.2rem;
+    }
+
+    .county-select:focus, .subcounty-select:focus {
+        border-color: #1f7a4d;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(31, 122, 77, 0.1);
+    }
+
+    .county-select:hover, .subcounty-select:hover {
+        border-color: #1f7a4d;
+    }
+
+    .county-select:disabled, .subcounty-select:disabled {
+        background-color: #f8f9fa;
+        cursor: not-allowed;
+        opacity: 0.7;
+        border-color: #dee2e6;
+    }
+
+    /* Subcounty wrapper for loading indicator */
+    .subcounty-wrapper {
+        position: relative;
+    }
+
+    .subcounty-loading {
+        position: absolute;
+        right: 10px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #1f7a4d;
+        background: white;
+        padding-left: 10px;
+        pointer-events: none;
+    }
+
+    .subcounty-loading i {
+        font-size: 1.2rem;
+    }
+
+    /* Input group styling */
+    .input-group {
+        display: flex;
+        align-items: center;
+    }
+
+    .input-group .form-control {
+        flex: 1;
+        border-top-right-radius: 0;
+        border-bottom-right-radius: 0;
+        border-right: none;
+    }
+
+    .input-group .input-group-text {
+        background: #f8f9fa;
+        border: 1.5px solid #e0e0e0;
+        border-left: none;
+        border-top-right-radius: 10px;
+        border-bottom-right-radius: 10px;
+        padding: 0.75rem 1.5rem;
+        color: #666;
+        font-weight: 500;
+    }
+
+    /* Document Cards */
+    .document-card {
+        background: var(--gray-100);
+        padding: 1.5rem;
+        border-radius: var(--radius);
+        border: 1px solid var(--gray-200);
+        transition: var(--transition);
+    }
+
+    .document-card:hover {
+        box-shadow: var(--shadow);
+        border-color: var(--primary);
+    }
+
+    .document-info {
+        display: flex;
+        align-items: center;
+    }
+
+    .document-preview {
+        font-size: 0.85rem;
+        background: white;
+        padding: 0.5rem;
+        border-radius: 4px;
+        border: 1px solid var(--gray-200);
+    }
+
+    .document-upload-btn input[type="file"] {
+        display: none;
     }
 
     /* Buttons */
@@ -1616,32 +1782,270 @@
         cursor: pointer;
     }
 
-    .btn-primary {
+    .btn-success {
         background: var(--primary);
         color: white;
     }
 
-    .btn-primary:hover {
+    .btn-success:hover {
         background: #0b9810;
     }
 
-    .btn-secondary {
-        background: var(--gray-600);
-        color: white;
+    .btn-outline-secondary {
+        background: white;
+        border-color: var(--gray-300);
+        color: var(--gray-700);
     }
 
-    .btn-secondary:hover {
-        background: var(--gray-700);
+    .btn-outline-secondary:hover {
+        background: var(--gray-100);
+        border-color: var(--gray-600);
+    }
+
+    /* Form Actions */
+    .form-actions {
+        padding: 1.5rem 0;
+        border-top: 2px solid var(--gray-200);
+    }
+
+    .form-progress {
+        max-width: 300px;
+        margin: 0 auto;
+    }
+
+    /* Field feedback */
+    .invalid-feedback.d-block {
+        display: block;
+        margin-top: 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    /* Right Sidebar */
+    .content-right {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .dashboard-card {
+        background: white;
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        overflow: hidden;
+    }
+
+    .dashboard-card .card-header {
+        padding: 1rem 1.5rem;
+        background: white;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .dashboard-card .card-header.bg-warning {
+        background: var(--warning) !important;
+    }
+
+    .dashboard-card .card-header.bg-info {
+        background: var(--info) !important;
+    }
+
+    .dashboard-card .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Document Requirements */
+    .req-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .req-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-100);
+        font-size: 1.25rem;
+    }
+
+    .req-content {
+        flex: 1;
+    }
+
+    .req-content p {
+        font-size: 0.85rem;
+        color: var(--gray-600);
+    }
+
+    /* Timeline */
+    .timeline-steps {
+        position: relative;
+        padding-left: 20px;
+    }
+
+    .timeline-step {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+
+    .timeline-step:last-child {
+        padding-bottom: 0;
+    }
+
+    .timeline-step::before {
+        content: '';
+        position: absolute;
+        left: 6px;
+        top: 20px;
+        bottom: 0;
+        width: 2px;
+        background: var(--gray-300);
+    }
+
+    .timeline-step:last-child::before {
+        display: none;
+    }
+
+    .step-dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--gray-300);
+        position: relative;
+        z-index: 1;
+    }
+
+    .timeline-step.completed .step-dot {
+        background: var(--primary);
+    }
+
+    .step-content {
+        flex: 1;
+    }
+
+    .step-content strong {
+        display: block;
+        font-size: 0.95rem;
+    }
+
+    .step-content small {
+        font-size: 0.8rem;
+        color: var(--gray-600);
+    }
+
+    /* Help Items */
+    .help-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .help-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .help-icon {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--gray-100);
+        font-size: 1rem;
+    }
+
+    .help-content {
+        flex: 1;
+    }
+
+    .help-content strong {
+        display: block;
+        font-size: 0.9rem;
+    }
+
+    .help-content p {
+        font-size: 0.85rem;
+        color: var(--gray-600);
+    }
+
+    /* Crop Tags */
+    .crop-tags {
+        background: var(--gray-100);
+        padding: 0.75rem;
+        border-radius: 6px;
+    }
+
+    .crop-tag {
+        background: white;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        border: 1px solid var(--gray-200);
+        cursor: default;
+    }
+
+    /* pH Guide */
+    .ph-guide {
+        background: var(--gray-100);
+        padding: 0.75rem;
+        border-radius: 6px;
+    }
+
+    .ph-indicator {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+    }
+
+    .ph-indicator.acidic {
+        background: #ff4444;
+    }
+
+    .ph-indicator.neutral {
+        background: #4caf50;
+    }
+
+    .ph-indicator.alkaline {
+        background: #2196f3;
+    }
+
+    /* Agreement Card */
+    .agreement-card {
+        background: var(--gray-100);
+        padding: 1.5rem;
+        border-radius: var(--radius);
+    }
+
+    /* Terms Modal */
+    .modal-content {
+        border-radius: var(--radius);
+    }
+
+    .terms-list {
+        padding-left: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .terms-list li {
+        margin-bottom: 0.5rem;
+        color: var(--gray-700);
     }
 
     /* Responsive */
     @media (max-width: 1200px) {
-        .field-label,
-        .field-input,
-        .field-help {
-            width: auto;
-            display: block;
-            padding: 0.75rem;
+        .dashboard-content {
+            grid-template-columns: 1fr;
+        }
+        
+        .content-right {
+            order: -1;
         }
     }
 
@@ -1692,6 +2096,10 @@
             width: 50%;
             margin-bottom: 1rem;
         }
+
+        .document-card .row > div {
+            margin-bottom: 1rem;
+        }
     }
 
     @media (max-width: 480px) {
@@ -1706,296 +2114,377 @@
         .progress-step {
             width: 100%;
         }
-
-        .form-field-table {
-            font-size: 0.9rem;
-        }
-
-        .field-label,
-        .field-input,
-        .field-help {
-            padding: 0.5rem;
-        }
     }
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Form completion tracking
-        function updateFormCompletion() {
-            const requiredFields = document.querySelectorAll('.required');
-            let completed = 0;
+document.addEventListener('DOMContentLoaded', function() {
+    // Get DOM elements
+    const countySelect = document.getElementById('id_county');
+    const subcountySelect = document.getElementById('id_subcounty');
+    const subcountyLoading = document.getElementById('subcounty-loading');
+    
+    // Sub-counties data (passed from Django view)
+    const subCountiesData = {{ sub_counties_json|safe }};
+    
+    // Function to update subcounty dropdown
+    function updateSubcounties() {
+        const selectedCounty = countySelect.value;
+        
+        // Show loading indicator
+        if (subcountyLoading) {
+            subcountyLoading.style.display = 'block';
+        }
+        
+        // Clear and disable subcounty dropdown
+        subcountySelect.innerHTML = '<option value="">-- Select Sub-county --</option>';
+        subcountySelect.disabled = true;
+        
+        // Clear any previous validation messages
+        const feedback = document.getElementById('subcounty-feedback');
+        if (feedback) feedback.innerHTML = '';
+        
+        if (selectedCounty && subCountiesData[selectedCounty]) {
+            // Add new options
+            subCountiesData[selectedCounty].forEach(function(subcounty) {
+                const option = document.createElement('option');
+                option.value = subcounty;
+                option.textContent = subcounty;
+                subcountySelect.appendChild(option);
+            });
             
-            requiredFields.forEach(label => {
-                const inputId = label.getAttribute('for');
-                if (inputId) {
-                    const input = document.getElementById(inputId);
-                    if (input) {
-                        if (input.type === 'checkbox') {
-                            if (input.checked) completed++;
-                        } else if (input.type === 'file') {
-                            if (input.files.length > 0) {
-                                completed++;
-                            }
-                        } else if (input.value.trim()) {
+            // Enable dropdown
+            subcountySelect.disabled = false;
+        }
+        
+        // Hide loading indicator
+        if (subcountyLoading) {
+            setTimeout(() => {
+                subcountyLoading.style.display = 'none';
+            }, 300);
+        }
+    }
+    
+    // Event listeners
+    if (countySelect) {
+        countySelect.addEventListener('change', function() {
+            updateSubcounties();
+            
+            // Clear county validation if any
+            const countyFeedback = document.getElementById('county-feedback');
+            if (countyFeedback) countyFeedback.innerHTML = '';
+        });
+    }
+    
+    // Initial setup if county is pre-selected (edit mode)
+    if (countySelect && countySelect.value) {
+        updateSubcounties();
+    }
+    
+    // Form validation
+    const form = document.getElementById('plotForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const county = countySelect.value;
+            const subcounty = subcountySelect.value;
+            const subcountyFeedback = document.getElementById('subcounty-feedback');
+            const countyFeedback = document.getElementById('county-feedback');
+            
+            if (!county) {
+                e.preventDefault();
+                if (countyFeedback) {
+                    countyFeedback.innerHTML = '<small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i> Please select a county</small>';
+                }
+                countySelect.focus();
+                return;
+            }
+            
+            if (!subcounty) {
+                e.preventDefault();
+                if (subcountyFeedback) {
+                    subcountyFeedback.innerHTML = '<small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i> Please select a sub-county</small>';
+                }
+                subcountySelect.focus();
+                return;
+            }
+        });
+    }
+
+    // Form completion tracking
+    function updateFormCompletion() {
+        const requiredFields = document.querySelectorAll('.form-label.required');
+        let completed = 0;
+        
+        requiredFields.forEach(label => {
+            const forAttr = label.getAttribute('for');
+            if (forAttr) {
+                const input = document.getElementById(forAttr);
+                if (input) {
+                    if (input.type === 'checkbox') {
+                        if (input.checked) completed++;
+                    } else if (input.type === 'file') {
+                        if (input.files.length > 0) {
                             completed++;
                         }
+                    } else if (input.value && input.value.trim()) {
+                        completed++;
                     }
                 }
-            });
-            
-            // Also check agreement checkboxes
-            ['accuracyCheck', 'documentCheck', 'termsCheck'].forEach(id => {
-                const checkbox = document.getElementById(id);
-                if (checkbox && checkbox.checked) {
-                    completed++;
-                }
-            });
-            
-            const totalRequired = requiredFields.length + 3;
-            const percent = Math.round((completed / totalRequired) * 100);
-            
-            document.getElementById('completionPercent').textContent = percent + '%';
-            document.getElementById('completionBar').style.width = percent + '%';
-            document.getElementById('completionBar').className = 'progress-bar ' + 
+            }
+        });
+        
+        // Also check county and subcounty
+        if (countySelect && countySelect.value) completed++;
+        if (subcountySelect && subcountySelect.value) completed++;
+        
+        // Check agreement checkboxes
+        ['accuracyCheck', 'documentCheck', 'termsCheck'].forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (checkbox && checkbox.checked) {
+                completed++;
+            }
+        });
+        
+        const totalRequired = requiredFields.length + 5; // +2 for county/subcounty, +3 for checkboxes
+        const percent = Math.min(Math.round((completed / totalRequired) * 100), 100);
+        
+        const completionPercent = document.getElementById('completionPercent');
+        const completionBar = document.getElementById('completionBar');
+        
+        if (completionPercent) completionPercent.textContent = percent + '%';
+        if (completionBar) {
+            completionBar.style.width = percent + '%';
+            completionBar.className = 'progress-bar ' + 
                 (percent < 50 ? 'bg-danger' : percent < 100 ? 'bg-warning' : 'bg-success');
-            
-            // Update progress steps
-            const steps = document.querySelectorAll('.progress-step');
+        }
+        
+        // Update progress steps
+        const steps = document.querySelectorAll('.progress-step');
+        if (steps.length) {
             if (percent >= 100) {
                 steps.forEach(step => step.classList.add('active'));
             } else if (percent >= 85) {
                 steps.forEach((step, index) => {
-                    if (index < 7) step.classList.add('active');
+                    if (index < 6) step.classList.add('active');
                     else step.classList.remove('active');
                 });
             } else if (percent >= 70) {
                 steps.forEach((step, index) => {
-                    if (index < 6) step.classList.add('active');
+                    if (index < 5) step.classList.add('active');
                     else step.classList.remove('active');
                 });
             } else if (percent >= 55) {
                 steps.forEach((step, index) => {
-                    if (index < 5) step.classList.add('active');
+                    if (index < 4) step.classList.add('active');
                     else step.classList.remove('active');
                 });
             } else if (percent >= 40) {
                 steps.forEach((step, index) => {
-                    if (index < 4) step.classList.add('active');
+                    if (index < 3) step.classList.add('active');
                     else step.classList.remove('active');
                 });
             } else if (percent >= 25) {
                 steps.forEach((step, index) => {
-                    if (index < 3) step.classList.add('active');
+                    if (index < 2) step.classList.add('active');
                     else step.classList.remove('active');
                 });
             } else {
                 steps.forEach((step, index) => {
-                    if (index < 2) step.classList.add('active');
+                    if (index < 1) step.classList.add('active');
                     else step.classList.remove('active');
                 });
             }
         }
+    }
+    
+    // Price per acre calculation
+    const areaInput = document.getElementById('{{ form.area.id_for_label }}');
+    const salePriceInput = document.getElementById('{{ form.sale_price.id_for_label }}');
+    const pricePerAcreDisplay = document.getElementById('pricePerAcreDisplay');
+    
+    function calculatePricePerAcre() {
+        const area = parseFloat(areaInput?.value) || 0;
+        const price = parseFloat(salePriceInput?.value) || 0;
         
-        // Price per acre calculation
-        const areaInput = document.getElementById('{{ form.area.id_for_label }}');
-        const salePriceInput = document.getElementById('{{ form.sale_price.id_for_label }}');
-        const pricePerAcreDisplay = document.getElementById('pricePerAcreDisplay');
-        
-        function calculatePricePerAcre() {
-            const area = parseFloat(areaInput?.value) || 0;
-            const price = parseFloat(salePriceInput?.value) || 0;
-            
-            if (area > 0 && price > 0) {
-                const perAcre = price / area;
-                const display = pricePerAcreDisplay.querySelector('small');
-                if (display) {
-                    display.textContent = `KES ${perAcre.toLocaleString('en-KE')} per acre`;
-                    display.className = 'text-success';
-                }
-            } else if (pricePerAcreDisplay) {
-                const display = pricePerAcreDisplay.querySelector('small');
-                if (display) {
-                    display.textContent = 'Enter area and sale price to calculate';
-                    display.className = 'text-muted';
-                }
-            }
+        if (area > 0 && price > 0) {
+            const perAcre = price / area;
+            pricePerAcreDisplay.innerHTML = `<small class="text-success">KES ${perAcre.toLocaleString('en-KE')} per acre</small>`;
+        } else {
+            pricePerAcreDisplay.innerHTML = `<small class="text-muted">{{ form.price_per_acre.help_text }}</small>`;
         }
+    }
+    
+    if (areaInput && salePriceInput && pricePerAcreDisplay) {
+        areaInput.addEventListener('input', calculatePricePerAcre);
+        salePriceInput.addEventListener('input', calculatePricePerAcre);
+        calculatePricePerAcre();
+    }
+    
+    // Toggle conditional fields based on listing type
+    const listingTypeSelect = document.getElementById('{{ form.listing_type.id_for_label }}');
+    
+    function toggleListingTypeFields() {
+        const listingType = listingTypeSelect?.value;
         
-        if (areaInput && salePriceInput && pricePerAcreDisplay) {
-            areaInput.addEventListener('input', calculatePricePerAcre);
-            salePriceInput.addEventListener('input', calculatePricePerAcre);
-            calculatePricePerAcre();
+        const saleRow = document.getElementById('sale-price-row');
+        const leaseMonthlyRow = document.getElementById('lease-price-monthly-row');
+        const leaseYearlyRow = document.getElementById('lease-price-yearly-row');
+        const leaseDurationRow = document.getElementById('lease-duration-row');
+        const leaseTermsRow = document.getElementById('lease-terms-row');
+        
+        if (listingType === 'sale') {
+            if (saleRow) saleRow.style.display = 'block';
+            if (leaseMonthlyRow) leaseMonthlyRow.style.display = 'none';
+            if (leaseYearlyRow) leaseYearlyRow.style.display = 'none';
+            if (leaseDurationRow) leaseDurationRow.style.display = 'none';
+            if (leaseTermsRow) leaseTermsRow.style.display = 'none';
+        } else if (listingType === 'lease') {
+            if (saleRow) saleRow.style.display = 'none';
+            if (leaseMonthlyRow) leaseMonthlyRow.style.display = 'block';
+            if (leaseYearlyRow) leaseYearlyRow.style.display = 'block';
+            if (leaseDurationRow) leaseDurationRow.style.display = 'block';
+            if (leaseTermsRow) leaseTermsRow.style.display = 'block';
+        } else if (listingType === 'both') {
+            if (saleRow) saleRow.style.display = 'block';
+            if (leaseMonthlyRow) leaseMonthlyRow.style.display = 'block';
+            if (leaseYearlyRow) leaseYearlyRow.style.display = 'block';
+            if (leaseDurationRow) leaseDurationRow.style.display = 'block';
+            if (leaseTermsRow) leaseTermsRow.style.display = 'block';
         }
-        
-        // Toggle conditional fields based on listing type
-        const listingTypeSelect = document.getElementById('{{ form.listing_type.id_for_label }}');
-        
-        function toggleListingTypeFields() {
-            const listingType = listingTypeSelect?.value;
-            
-            const saleRow = document.getElementById('sale-price-row');
-            const leaseMonthlyRow = document.getElementById('lease-price-monthly-row');
-            const leaseYearlyRow = document.getElementById('lease-price-yearly-row');
-            const leaseDurationRow = document.getElementById('lease-duration-row');
-            const leaseTermsRow = document.getElementById('lease-terms-row');
-            
-            if (listingType === 'sale') {
-                if (saleRow) saleRow.style.display = 'table-row';
-                if (leaseMonthlyRow) leaseMonthlyRow.style.display = 'none';
-                if (leaseYearlyRow) leaseYearlyRow.style.display = 'none';
-                if (leaseDurationRow) leaseDurationRow.style.display = 'none';
-                if (leaseTermsRow) leaseTermsRow.style.display = 'none';
-            } else if (listingType === 'lease') {
-                if (saleRow) saleRow.style.display = 'none';
-                if (leaseMonthlyRow) leaseMonthlyRow.style.display = 'table-row';
-                if (leaseYearlyRow) leaseYearlyRow.style.display = 'table-row';
-                if (leaseDurationRow) leaseDurationRow.style.display = 'table-row';
-                if (leaseTermsRow) leaseTermsRow.style.display = 'table-row';
-            } else if (listingType === 'both') {
-                if (saleRow) saleRow.style.display = 'table-row';
-                if (leaseMonthlyRow) leaseMonthlyRow.style.display = 'table-row';
-                if (leaseYearlyRow) leaseYearlyRow.style.display = 'table-row';
-                if (leaseDurationRow) leaseDurationRow.style.display = 'table-row';
-                if (leaseTermsRow) leaseTermsRow.style.display = 'table-row';
-            }
+    }
+    
+    if (listingTypeSelect) {
+        listingTypeSelect.addEventListener('change', toggleListingTypeFields);
+        toggleListingTypeFields(); // Initial call
+    }
+    
+    // Toggle conditional fields based on checkboxes
+    const hasWaterCheckbox = document.getElementById('{{ form.has_water.id_for_label }}');
+    const waterSourceRow = document.getElementById('water-source-row');
+    
+    if (hasWaterCheckbox && waterSourceRow) {
+        function toggleWaterSource() {
+            waterSourceRow.style.display = hasWaterCheckbox.checked ? 'block' : 'none';
         }
-        
-        if (listingTypeSelect) {
-            listingTypeSelect.addEventListener('change', toggleListingTypeFields);
-            toggleListingTypeFields(); // Initial call
+        hasWaterCheckbox.addEventListener('change', toggleWaterSource);
+        toggleWaterSource();
+    }
+    
+    const hasElectricityCheckbox = document.getElementById('{{ form.has_electricity.id_for_label }}');
+    const electricityMeterRow = document.getElementById('electricity-meter-row');
+    
+    if (hasElectricityCheckbox && electricityMeterRow) {
+        function toggleElectricityMeter() {
+            electricityMeterRow.style.display = hasElectricityCheckbox.checked ? 'block' : 'none';
         }
-        
-        // Toggle conditional fields based on checkboxes
-        const hasWaterCheckbox = document.getElementById('{{ form.has_water.id_for_label }}');
-        const waterSourceRow = document.getElementById('water-source-row');
-        
-        if (hasWaterCheckbox && waterSourceRow) {
-            function toggleWaterSource() {
-                waterSourceRow.style.display = hasWaterCheckbox.checked ? 'table-row' : 'none';
-            }
-            hasWaterCheckbox.addEventListener('change', toggleWaterSource);
-            toggleWaterSource();
+        hasElectricityCheckbox.addEventListener('change', toggleElectricityMeter);
+        toggleElectricityMeter();
+    }
+    
+    const hasRoadAccessCheckbox = document.getElementById('{{ form.has_road_access.id_for_label }}');
+    const roadTypeRow = document.getElementById('road-type-row');
+    const roadDistanceRow = document.getElementById('road-distance-row');
+    
+    if (hasRoadAccessCheckbox && roadTypeRow && roadDistanceRow) {
+        function toggleRoadFields() {
+            const display = hasRoadAccessCheckbox.checked ? 'block' : 'none';
+            roadTypeRow.style.display = display;
+            roadDistanceRow.style.display = display;
         }
-        
-        const hasElectricityCheckbox = document.getElementById('{{ form.has_electricity.id_for_label }}');
-        const electricityMeterRow = document.getElementById('electricity-meter-row');
-        
-        if (hasElectricityCheckbox && electricityMeterRow) {
-            function toggleElectricityMeter() {
-                electricityMeterRow.style.display = hasElectricityCheckbox.checked ? 'table-row' : 'none';
-            }
-            hasElectricityCheckbox.addEventListener('change', toggleElectricityMeter);
-            toggleElectricityMeter();
+        hasRoadAccessCheckbox.addEventListener('change', toggleRoadFields);
+        toggleRoadFields();
+    }
+    
+    const hasBuildingsCheckbox = document.getElementById('{{ form.has_buildings.id_for_label }}');
+    const buildingDescriptionRow = document.getElementById('building-description-row');
+    
+    if (hasBuildingsCheckbox && buildingDescriptionRow) {
+        function toggleBuildingDescription() {
+            buildingDescriptionRow.style.display = hasBuildingsCheckbox.checked ? 'block' : 'none';
         }
+        hasBuildingsCheckbox.addEventListener('change', toggleBuildingDescription);
+        toggleBuildingDescription();
+    }
+    
+    // File upload preview for document fields
+    const documentFields = [
+        { id: '{{ form.title_deed.id_for_label }}', previewId: 'titleDeedPreview' },
+        { id: '{{ form.official_search.id_for_label }}', previewId: 'officialSearchPreview' },
+        { id: '{{ form.landowner_id_doc.id_for_label }}', previewId: 'landownerIdPreview' },
+        { id: '{{ form.kra_pin.id_for_label }}', previewId: 'kraPinPreview' },
+        { id: '{{ form.soil_report.id_for_label }}', previewId: 'soilReportPreview' }
+    ];
+    
+    documentFields.forEach(field => {
+        const input = document.getElementById(field.id);
+        const preview = document.getElementById(field.previewId);
         
-        const hasRoadAccessCheckbox = document.getElementById('{{ form.has_road_access.id_for_label }}');
-        const roadTypeRow = document.getElementById('road-type-row');
-        const roadDistanceRow = document.getElementById('road-distance-row');
-        
-        if (hasRoadAccessCheckbox && roadTypeRow && roadDistanceRow) {
-            function toggleRoadFields() {
-                const display = hasRoadAccessCheckbox.checked ? 'table-row' : 'none';
-                roadTypeRow.style.display = display;
-                roadDistanceRow.style.display = display;
-            }
-            hasRoadAccessCheckbox.addEventListener('change', toggleRoadFields);
-            toggleRoadFields();
-        }
-        
-        const hasBuildingsCheckbox = document.getElementById('{{ form.has_buildings.id_for_label }}');
-        const buildingDescriptionRow = document.getElementById('building-description-row');
-        
-        if (hasBuildingsCheckbox && buildingDescriptionRow) {
-            function toggleBuildingDescription() {
-                buildingDescriptionRow.style.display = hasBuildingsCheckbox.checked ? 'table-row' : 'none';
-            }
-            hasBuildingsCheckbox.addEventListener('change', toggleBuildingDescription);
-            toggleBuildingDescription();
-        }
-        
-        // File upload preview for document fields
-        const documentFields = [
-            { id: '{{ form.title_deed.id_for_label }}', previewId: 'titleDeedPreview' },
-            { id: '{{ form.official_search.id_for_label }}', previewId: 'officialSearchPreview' },
-            { id: '{{ form.landowner_id_doc.id_for_label }}', previewId: 'landownerIdPreview' },
-            { id: '{{ form.kra_pin.id_for_label }}', previewId: 'kraPinPreview' },
-            { id: '{{ form.soil_report.id_for_label }}', previewId: 'soilReportPreview' }
-        ];
-        
-        documentFields.forEach(field => {
-            const input = document.getElementById(field.id);
-            const preview = document.getElementById(field.previewId);
-            
-            if (input && preview) {
-                input.addEventListener('change', function() {
-                    if (this.files.length > 0) {
-                        const file = this.files[0];
-                        const fileSize = (file.size / (1024 * 1024)).toFixed(2);
-                        
-                        preview.innerHTML = `
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-file ${fileSize > 10 ? 'text-danger' : 'text-success'} me-2"></i>
-                                <div>
-                                    <div class="${fileSize > 10 ? 'text-danger' : 'text-success'}">
-                                        ${file.name}
-                                    </div>
-                                    <small class="text-muted">${fileSize} MB</small>
+        if (input && preview) {
+            input.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    const fileSize = (file.size / (1024 * 1024)).toFixed(2);
+                    
+                    preview.innerHTML = `
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-file ${fileSize > 10 ? 'text-danger' : 'text-success'} me-2"></i>
+                            <div>
+                                <div class="${fileSize > 10 ? 'text-danger' : 'text-success'}">
+                                    ${file.name}
                                 </div>
+                                <small class="text-muted">${fileSize} MB</small>
                             </div>
-                        `;
-                        
-                        if (file.size > 10 * 1024 * 1024) {
-                            const warning = document.createElement('small');
-                            warning.className = 'text-danger d-block mt-1';
-                            warning.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>File exceeds 10MB limit';
-                            preview.appendChild(warning);
-                        }
-                    } else {
-                        preview.textContent = 'No file selected';
+                        </div>
+                    `;
+                    
+                    if (file.size > 10 * 1024 * 1024) {
+                        preview.innerHTML += '<small class="text-danger d-block mt-1"><i class="fas fa-exclamation-triangle me-1"></i>File exceeds 10MB limit</small>';
                     }
-                    updateFormCompletion();
-                });
-            }
-        });
-        
-        // Form submission validation
-        const form = document.getElementById('plotForm');
-        if (form) {
-            form.addEventListener('input', updateFormCompletion);
-            form.addEventListener('change', updateFormCompletion);
-            
-            form.addEventListener('submit', function(e) {
-                const requiredCheckboxes = ['accuracyCheck', 'documentCheck', 'termsCheck'];
-                let allChecked = true;
-                
-                requiredCheckboxes.forEach(id => {
-                    const checkbox = document.getElementById(id);
-                    if (checkbox && !checkbox.checked) {
-                        allChecked = false;
-                        checkbox.focus();
-                    }
-                });
-                
-                if (!allChecked) {
-                    e.preventDefault();
-                    alert('Please agree to all terms and conditions');
-                    return false;
+                } else {
+                    preview.textContent = 'No file selected';
                 }
-                
-                const submitBtn = document.getElementById('submitBtn');
-                const submitText = document.getElementById('submitText');
-                const loadingSpinner = document.getElementById('loadingSpinner');
-                
+                updateFormCompletion();
+            });
+        }
+    });
+    
+    // Form submission loading state
+    if (form) {
+        form.addEventListener('input', updateFormCompletion);
+        form.addEventListener('change', updateFormCompletion);
+        
+        form.addEventListener('submit', function(e) {
+            const requiredCheckboxes = ['accuracyCheck', 'documentCheck', 'termsCheck'];
+            let allChecked = true;
+            
+            requiredCheckboxes.forEach(id => {
+                const checkbox = document.getElementById(id);
+                if (checkbox && !checkbox.checked) {
+                    allChecked = false;
+                }
+            });
+            
+            if (!allChecked) {
+                e.preventDefault();
+                alert('Please agree to all terms and conditions');
+                return false;
+            }
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const submitText = document.getElementById('submitText');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            
+            if (submitBtn && submitText && loadingSpinner) {
                 submitBtn.disabled = true;
                 submitText.textContent = 'Submitting...';
                 loadingSpinner.classList.remove('d-none');
-                
-                return true;
-            });
-        }
-        
-        updateFormCompletion();
-    });
+            }
+            
+            return true;
+        });
+    }
+    
+    updateFormCompletion();
+});
 </script>
 {% endblock %}

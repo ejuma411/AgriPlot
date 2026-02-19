@@ -1,9 +1,15 @@
+import logging
 import os
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import *
 from decimal import Decimal
+from .location_utils import validate_kenyan_location, get_subcounties_for_county
+
+# Get logger for this module
+logger = logging.getLogger(__name__)
+validation_logger = logging.getLogger('listings.validation')
 
 # ============ CUSTOM FORM WIDGETS ============
 class MultipleFileInput(forms.ClearableFileInput):
@@ -247,6 +253,13 @@ class AgentUpgradeForm(BaseUpgradeForm):
 
 
 # ============ PLOT FORMS ============
+# forms.py
+import os
+from decimal import Decimal
+from django import forms
+from .models import Plot, Agent, LandownerProfile
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
+
 class PlotForm(forms.ModelForm):
     # Soil type choices
     SOIL_TYPE_CHOICES = [
@@ -279,6 +292,33 @@ class PlotForm(forms.ModelForm):
         ('mixed_use', 'Mixed Use'),
         ('industrial', 'Industrial Land'),
     ]
+    
+    # Kenyan county and subcounty fields - make them not required at form level
+    # since they're now model fields
+    county = forms.ChoiceField(
+        choices=[('', '-- Select County --')] + [(c, c) for c in KENYA_COUNTIES],
+        required=True,
+        widget=forms.Select(attrs={
+            'class': 'form-control county-select',
+            'id': 'id_county'
+        })
+    )
+    
+    subcounty = forms.ChoiceField(
+        choices=[('', '-- Select Sub-county --')],
+        required=True,
+        widget=forms.Select(attrs={
+            'class': 'form-control subcounty-select',
+            'id': 'id_subcounty'
+        })
+    )
+    
+    # Keep location field but make it optional (will be auto-generated)
+    location = forms.CharField(
+        required=False,
+        widget=forms.HiddenInput(),
+        help_text="Auto-generated from county and subcounty"
+    )
     
     # Add new fields for enhanced plot details
     listing_type = forms.ChoiceField(
@@ -432,7 +472,7 @@ class PlotForm(forms.ModelForm):
     class Meta:
         model = Plot
         fields = [
-            'title', 'location', 'area', 'listing_type', 'land_type',
+            'title', 'county', 'subcounty', 'location', 'area', 'listing_type', 'land_type',
             'land_use_description', 'sale_price', 'price_per_acre',
             'lease_price_monthly', 'lease_price_yearly', 'lease_duration', 'lease_terms',
             'soil_type', 'ph_level', 'crop_suitability',
@@ -448,10 +488,6 @@ class PlotForm(forms.ModelForm):
             'title': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'e.g., 5-Acre Fertile Farm in Kitale'
-            }),
-            'location': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., Kitale, Trans-Nzoia County'
             }),
             'area': forms.NumberInput(attrs={
                 'class': 'form-control',
@@ -504,6 +540,24 @@ class PlotForm(forms.ModelForm):
             attrs={'class': 'form-control'}
         )
         
+        # If this is a POST request, update subcounty choices based on submitted county
+        if self.data.get('county'):
+            county = self.data.get('county')
+            if county in KENYA_SUB_COUNTIES:
+                self.fields['subcounty'].choices = [('', '-- Select Sub-county --')] + [
+                    (sc, sc) for sc in KENYA_SUB_COUNTIES[county]
+                ]
+        
+        # If editing an existing plot, set county and subcounty values
+        elif self.instance and self.instance.county and self.instance.subcounty:
+            self.fields['county'].initial = self.instance.county
+            # Update subcounty choices for this county
+            if self.instance.county in KENYA_SUB_COUNTIES:
+                self.fields['subcounty'].choices = [('', '-- Select Sub-county --')] + [
+                    (sc, sc) for sc in KENYA_SUB_COUNTIES[self.instance.county]
+                ]
+                self.fields['subcounty'].initial = self.instance.subcounty
+        
         # Set required fields for creation vs edit
         if not self.is_edit:
             # For new plots, all documents are required except soil_report
@@ -521,7 +575,8 @@ class PlotForm(forms.ModelForm):
         
         # Add help texts
         self.fields['title'].help_text = "Give your plot a descriptive title"
-        self.fields['location'].help_text = "County, Sub-county, Ward, and nearest town"
+        self.fields['county'].help_text = "Select the county where your plot is located"
+        self.fields['subcounty'].help_text = "Select the specific sub-county"
         self.fields['area'].help_text = "Size in acres"
         self.fields['soil_type'].help_text = "Type of soil on the plot"
         self.fields['ph_level'].help_text = "Soil pH level (0-14), optional"
@@ -531,70 +586,211 @@ class PlotForm(forms.ModelForm):
         self.fields['official_search'].help_text = "Official land search certificate (PDF/Image, max 10MB)"
         self.fields['landowner_id_doc'].help_text = "Landowner's national ID (PDF/Image, max 10MB)"
         self.fields['kra_pin'].help_text = "Landowner's KRA PIN certificate (PDF/Image, max 10MB)"
-        
-        # Conditional field requirements based on listing type
-        if self.data.get('listing_type') in ['sale', 'both']:
-            self.fields['sale_price'].required = True
-        if self.data.get('listing_type') in ['lease', 'both']:
-            self.fields['lease_price_monthly'].required = False  # Either monthly or yearly
-            self.fields['lease_price_yearly'].required = False
-            self.fields['lease_duration'].required = True
     
     def clean(self):
+        """Validate all form data with comprehensive error checking"""
         cleaned_data = super().clean()
         
-        # 👇 TEMPORARILY SET OWNER FOR VALIDATION
-        if self.owner and not self.is_edit:
-            if isinstance(self.owner, Agent):
-                self.instance.agent = self.owner
-            elif isinstance(self.owner, LandownerProfile):
-                self.instance.landowner = self.owner
+        # Track validation errors for logging
+        validation_errors = []
         
-        # Validate listing type and corresponding price fields
+        # =========================================================================
+        # LOCATION VALIDATION (County & Subcounty)
+        # =========================================================================
+        county = cleaned_data.get('county')
+        subcounty = cleaned_data.get('subcounty')
+        
+        logger.debug(f"Validating location - County: {county}, Subcounty: {subcounty}")
+        
+        # County validation
+        if not county:
+            error_msg = 'Please select a county'
+            self.add_error('county', error_msg)
+            validation_errors.append(f"county: {error_msg}")
+            validation_logger.warning(f"County not selected")
+        elif county not in KENYA_COUNTIES:
+            error_msg = f'Invalid county selected: "{county}" is not a valid Kenyan county'
+            self.add_error('county', error_msg)
+            validation_errors.append(f"county: {error_msg}")
+            validation_logger.error(f"Invalid county selected: {county}")
+        
+        # Subcounty validation
+        if not subcounty:
+            error_msg = 'Please select a sub-county'
+            self.add_error('subcounty', error_msg)
+            validation_errors.append(f"subcounty: {error_msg}")
+            validation_logger.warning(f"Subcounty not selected")
+        elif county and subcounty:
+            # Validate that subcounty belongs to selected county
+            valid_subcounties = KENYA_SUB_COUNTIES.get(county, [])
+            if subcounty not in valid_subcounties:
+                error_msg = f'"{subcounty}" is not a valid sub-county for {county}'
+                self.add_error('subcounty', error_msg)
+                validation_errors.append(f"subcounty: {error_msg}")
+                validation_logger.error(f"Invalid subcounty '{subcounty}' for county '{county}'")
+                validation_logger.debug(f"Valid subcounties for {county}: {valid_subcounties}")
+        
+        # Combine county and subcounty into location field for backward compatibility
+        if county and subcounty:
+            cleaned_data['location'] = f"{county} - {subcounty}"
+            logger.debug(f"Generated location: {cleaned_data['location']}")
+        
+        # =========================================================================
+        # OWNER VALIDATION
+        # =========================================================================
+        if self.owner and not self.is_edit:
+            try:
+                if isinstance(self.owner, Agent):
+                    self.instance.agent = self.owner
+                    logger.debug(f"Set agent owner: {self.owner.id}")
+                elif isinstance(self.owner, LandownerProfile):
+                    self.instance.landowner = self.owner
+                    logger.debug(f"Set landowner owner: {self.owner.id}")
+            except Exception as e:
+                error_msg = f"Error setting owner: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                raise ValidationError(error_msg)
+        
+        # =========================================================================
+        # LISTING TYPE AND PRICE VALIDATION
+        # =========================================================================
         listing_type = cleaned_data.get('listing_type')
         sale_price = cleaned_data.get('sale_price')
         lease_price_monthly = cleaned_data.get('lease_price_monthly')
         lease_price_yearly = cleaned_data.get('lease_price_yearly')
         
-        if listing_type in ['sale', 'both'] and not sale_price:
-            self.add_error('sale_price', 'Sale price is required for properties listed for sale')
+        logger.debug(f"Validating listing type: {listing_type}")
+        logger.debug(f"Sale price: {sale_price}, Lease monthly: {lease_price_monthly}, Lease yearly: {lease_price_yearly}")
         
+        # Validate listing type
+        valid_listing_types = ['sale', 'lease', 'both']
+        if listing_type and listing_type not in valid_listing_types:
+            error_msg = f'Invalid listing type: {listing_type}'
+            self.add_error('listing_type', error_msg)
+            validation_errors.append(f"listing_type: {error_msg}")
+            logger.error(error_msg)
+        
+        # Sale price validation
+        if listing_type in ['sale', 'both']:
+            if not sale_price:
+                error_msg = 'Sale price is required for properties listed for sale'
+                self.add_error('sale_price', error_msg)
+                validation_errors.append(f"sale_price: {error_msg}")
+            elif sale_price < 0:
+                error_msg = 'Sale price cannot be negative'
+                self.add_error('sale_price', error_msg)
+                validation_errors.append(f"sale_price: {error_msg}")
+        
+        # Lease price validation
         if listing_type in ['lease', 'both']:
             if not lease_price_monthly and not lease_price_yearly:
-                self.add_error('lease_price_monthly', 'Either monthly or yearly lease price is required')
-                self.add_error('lease_price_yearly', 'Either monthly or yearly lease price is required')
+                error_msg = 'Either monthly or yearly lease price is required'
+                self.add_error('lease_price_monthly', error_msg)
+                self.add_error('lease_price_yearly', error_msg)
+                validation_errors.append(f"lease_prices: {error_msg}")
+            
+            # Validate lease prices are positive
+            if lease_price_monthly and lease_price_monthly < 0:
+                error_msg = 'Monthly lease price cannot be negative'
+                self.add_error('lease_price_monthly', error_msg)
+                validation_errors.append(f"lease_price_monthly: {error_msg}")
+            
+            if lease_price_yearly and lease_price_yearly < 0:
+                error_msg = 'Yearly lease price cannot be negative'
+                self.add_error('lease_price_yearly', error_msg)
+                validation_errors.append(f"lease_price_yearly: {error_msg}")
         
-        # Validate document file sizes (max 10MB)
+        # =========================================================================
+        # DOCUMENT VALIDATION
+        # =========================================================================
         document_fields = ['title_deed', 'soil_report', 'official_search', 'landowner_id_doc', 'kra_pin']
         
         for field_name in document_fields:
             document = cleaned_data.get(field_name)
-            if document:
-                # Check file size
-                if document.size > 10 * 1024 * 1024:  # 10MB
-                    self.add_error(field_name, f"{field_name.replace('_', ' ').title()} must be less than 10MB")
+            if document and hasattr(document, 'size'):
+                logger.debug(f"Validating document: {field_name}, Size: {document.size} bytes")
+                
+                # Check file size (max 10MB)
+                max_size = 10 * 1024 * 1024  # 10MB
+                if document.size > max_size:
+                    size_mb = document.size / (1024 * 1024)
+                    error_msg = f"{field_name.replace('_', ' ').title()} must be less than 10MB (current: {size_mb:.2f}MB)"
+                    self.add_error(field_name, error_msg)
+                    validation_errors.append(f"{field_name}: {error_msg}")
+                    logger.warning(f"File too large: {field_name} - {size_mb:.2f}MB")
                 
                 # Check file type
                 valid_extensions = ['.pdf', '.jpg', '.jpeg', '.png']
                 file_extension = os.path.splitext(document.name)[1].lower()
                 if file_extension not in valid_extensions:
-                    self.add_error(field_name, f"Invalid file type for {field_name.replace('_', ' ').title()}. Allowed: PDF, JPG, PNG")
+                    error_msg = f"Invalid file type for {field_name.replace('_', ' ').title()}. Allowed: PDF, JPG, PNG"
+                    self.add_error(field_name, error_msg)
+                    validation_errors.append(f"{field_name}: {error_msg}")
+                    logger.warning(f"Invalid file type: {field_name} - {file_extension}")
         
-        # Calculate price per acre if both sale price and area are provided
+        # =========================================================================
+        # PRICE PER ACRE CALCULATION
+        # =========================================================================
         area = cleaned_data.get('area')
-        if sale_price and area and area > 0:
-            # Convert area to Decimal for division with Decimal
-            from decimal import Decimal
-            area_decimal = Decimal(str(area))
-            cleaned_data['price_per_acre'] = sale_price / area_decimal
-            cleaned_data['price'] = sale_price
+        
+        if sale_price and area:
+            try:
+                area_decimal = Decimal(str(area))
+                if area_decimal > 0:
+                    price_per_acre = Decimal(str(sale_price)) / area_decimal
+                    cleaned_data['price_per_acre'] = price_per_acre
+                    cleaned_data['price'] = sale_price
+                    logger.debug(f"Calculated price per acre: {price_per_acre}")
+                else:
+                    error_msg = 'Area must be greater than 0'
+                    self.add_error('area', error_msg)
+                    validation_errors.append(f"area: {error_msg}")
+            except (InvalidOperation, ZeroDivisionError, TypeError) as e:
+                error_msg = f'Error calculating price per acre: {str(e)}'
+                logger.error(error_msg, exc_info=True)
+                # Don't add form error, just log it
         elif sale_price:
             cleaned_data['price'] = sale_price
         
+        # =========================================================================
+        # AREA VALIDATION
+        # =========================================================================
+        if area is not None:
+            try:
+                area_float = float(area)
+                if area_float <= 0:
+                    error_msg = 'Area must be greater than 0'
+                    self.add_error('area', error_msg)
+                    validation_errors.append(f"area: {error_msg}")
+                elif area_float > 100000:  # Sanity check: max 100,000 acres
+                    error_msg = 'Area seems unusually large. Please verify the size.'
+                    self.add_error('area', error_msg)
+                    validation_errors.append(f"area: {error_msg}")
+            except (ValueError, TypeError):
+                error_msg = 'Invalid area value'
+                self.add_error('area', error_msg)
+                validation_errors.append(f"area: {error_msg}")
+        
+        # =========================================================================
+        # LOG VALIDATION RESULTS
+        # =========================================================================
+        if validation_errors:
+            validation_logger.warning(f"Form validation failed with {len(validation_errors)} errors")
+            for error in validation_errors:
+                validation_logger.debug(f"Validation error: {error}")
+        else:
+            logger.debug("Form validation successful")
+        
         return cleaned_data
-    
+
     def save(self, commit=True):
         plot = super().save(commit=False)
+        
+        # Ensure county and subcounty are set
+        if self.cleaned_data.get('county'):
+            plot.county = self.cleaned_data['county']
+        if self.cleaned_data.get('subcounty'):
+            plot.subcounty = self.cleaned_data['subcounty']
         
         # Set owner if provided
         if hasattr(self, 'owner') and self.owner:
@@ -616,7 +812,8 @@ class PlotForm(forms.ModelForm):
         if commit:
             plot.save()
         
-        return plot
+        return plot   
+
 
 # ============ VERIFICATION FORMS ============
 class VerificationDocumentForm(forms.ModelForm):

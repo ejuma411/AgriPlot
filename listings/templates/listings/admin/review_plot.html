@@ -1,0 +1,962 @@
+{% extends "listings/admin/base_admin.html" %}
+{% load static %}
+{% load plot_extras %}
+
+{% block title %}Review Plot: {{ plot.title }}{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="page-header-title">
+            <h1><i class="fas fa-search me-2"></i>Review Plot</h1>
+            <p class="page-header-subtitle">{{ plot.title }}</p>
+        </div>
+        <div class="page-header-actions">
+            <a href="{% url 'listings:verification_queue' %}" class="btn">
+                <i class="fas fa-arrow-left me-2"></i>Back to Queue
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column: Plot Information -->
+    <div class="col-md-4 mb-4">
+        <!-- Plot Details Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-info-circle me-2"></i>Plot Details
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <table class="details-table">
+                    <tr>
+                        <th>Title:</th>
+                        <td>{{ plot.title }}</td>
+                    </tr>
+                    <tr>
+                        <th>ID:</th>
+                        <td>#{{ plot.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Location:</th>
+                        <td>
+                            {% if plot.county %}
+                                {{ plot.county }}{% if plot.subcounty %} - {{ plot.subcounty }}{% endif %}
+                            {% else %}
+                                {{ plot.location }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Area:</th>
+                        <td>{{ plot.area }} acres</td>
+                    </tr>
+                    <tr>
+                        <th>Listing Type:</th>
+                        <td>
+                            {% if plot.listing_type == 'sale' %}
+                                For Sale
+                            {% elif plot.listing_type == 'lease' %}
+                                For Lease
+                            {% elif plot.listing_type == 'both' %}
+                                Sale & Lease
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Land Type:</th>
+                        <td>{{ plot.get_land_type_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>Price:</th>
+                        <td>KES {{ plot.price|floatformat:0|intcomma }}</td>
+                    </tr>
+                    <tr>
+                        <th>Created:</th>
+                        <td>{{ plot.created_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Last Updated:</th>
+                        <td>{{ plot.updated_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Seller Information Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-user me-2"></i>Seller Information
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                {% if plot.agent %}
+                    <div class="seller-type mb-2">
+                        <span class="badge bg-info">Licensed Agent</span>
+                        {% if plot.agent.verified %}
+                            <span class="badge bg-success">Verified</span>
+                        {% else %}
+                            <span class="badge bg-warning">Unverified</span>
+                        {% endif %}
+                    </div>
+                    <table class="details-table">
+                        <tr>
+                            <th>Name:</th>
+                            <td>{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email:</th>
+                            <td>{{ plot.agent.user.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Phone:</th>
+                            <td>{{ plot.agent.phone|default:"Not provided" }}</td>
+                        </tr>
+                        <tr>
+                            <th>License:</th>
+                            <td>{{ plot.agent.license_number|default:"Not provided" }}</td>
+                        </tr>
+                    </table>
+                {% elif plot.landowner %}
+                    <div class="seller-type mb-2">
+                        <span class="badge bg-primary">Landowner</span>
+                        {% if plot.landowner.verified %}
+                            <span class="badge bg-success">Verified</span>
+                        {% else %}
+                            <span class="badge bg-warning">Unverified</span>
+                        {% endif %}
+                    </div>
+                    <table class="details-table">
+                        <tr>
+                            <th>Name:</th>
+                            <td>{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email:</th>
+                            <td>{{ plot.landowner.user.email }}</td>
+                        </tr>
+                        <tr>
+                            <th>Phone:</th>
+                            <td>{{ plot.landowner.phone|default:"Not provided" }}</td>
+                        </tr>
+                    </table>
+                {% else %}
+                    <p class="text-muted">No seller information available</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Agricultural Details Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-seedling me-2"></i>Agricultural Details
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <table class="details-table">
+                    <tr>
+                        <th>Soil Type:</th>
+                        <td>{{ plot.soil_type|default:"Not specified" }}</td>
+                    </tr>
+                    <tr>
+                        <th>pH Level:</th>
+                        <td>{{ plot.ph_level|default:"Not specified" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Crop Suitability:</th>
+                        <td>{{ plot.crop_suitability|default:"Not specified" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Middle Column: Document Viewer -->
+    <div class="col-md-5 mb-4">
+        <div class="admin-card h-100">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-file-alt me-2"></i>Document Viewer
+                </h5>
+            </div>
+            <div class="admin-card-body p-0">
+                <div class="document-tabs p-3">
+                    <ul class="nav nav-pills mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="title-tab" data-bs-toggle="pill" data-bs-target="#title" type="button" role="tab">
+                                <i class="fas fa-file-contract me-1"></i> Title Deed
+                                {% if plot.title_deed %}
+                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
+                                {% else %}
+                                    <span class="badge bg-danger ms-1"><i class="fas fa-times"></i></span>
+                                {% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="search-tab" data-bs-toggle="pill" data-bs-target="#search" type="button" role="tab">
+                                <i class="fas fa-search me-1"></i> Official Search
+                                {% if plot.official_search %}
+                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
+                                {% else %}
+                                    <span class="badge bg-danger ms-1"><i class="fas fa-times"></i></span>
+                                {% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="id-tab" data-bs-toggle="pill" data-bs-target="#id" type="button" role="tab">
+                                <i class="fas fa-id-card me-1"></i> ID Document
+                                {% if plot.landowner_id_doc %}
+                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
+                                {% else %}
+                                    <span class="badge bg-danger ms-1"><i class="fas fa-times"></i></span>
+                                {% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="kra-tab" data-bs-toggle="pill" data-bs-target="#kra" type="button" role="tab">
+                                <i class="fas fa-file-invoice me-1"></i> KRA PIN
+                                {% if plot.kra_pin %}
+                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
+                                {% else %}
+                                    <span class="badge bg-danger ms-1"><i class="fas fa-times"></i></span>
+                                {% endif %}
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="soil-tab" data-bs-toggle="pill" data-bs-target="#soil" type="button" role="tab">
+                                <i class="fas fa-flask me-1"></i> Soil Report
+                                {% if plot.soil_report %}
+                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
+                                {% else %}
+                                    <span class="badge bg-secondary ms-1">Optional</span>
+                                {% endif %}
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="title" role="tabpanel">
+                            {% if plot.title_deed %}
+                                <div class="document-viewer-container">
+                                    {% if plot.title_deed.url|lower|slice:'-4:' == '.pdf' %}
+                                        <iframe src="{{ plot.title_deed.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                    {% else %}
+                                        <img src="{{ plot.title_deed.url }}" class="img-fluid" alt="Title Deed">
+                                    {% endif %}
+                                </div>
+                                <div class="mt-2">
+                                    <a href="{{ plot.title_deed.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-file-contract fa-4x text-muted mb-3"></i>
+                                    <h5>No Title Deed Uploaded</h5>
+                                    <p class="text-muted">This document is required for verification.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="tab-pane fade" id="search" role="tabpanel">
+                            {% if plot.official_search %}
+                                <div class="document-viewer-container">
+                                    {% if plot.official_search.url|lower|slice:'-4:' == '.pdf' %}
+                                        <iframe src="{{ plot.official_search.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                    {% else %}
+                                        <img src="{{ plot.official_search.url }}" class="img-fluid" alt="Official Search">
+                                    {% endif %}
+                                </div>
+                                <div class="mt-2">
+                                    <a href="{{ plot.official_search.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                                    <h5>No Official Search Uploaded</h5>
+                                    <p class="text-muted">This document is required for verification.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="tab-pane fade" id="id" role="tabpanel">
+                            {% if plot.landowner_id_doc %}
+                                <div class="document-viewer-container">
+                                    {% if plot.landowner_id_doc.url|lower|slice:'-4:' == '.pdf' %}
+                                        <iframe src="{{ plot.landowner_id_doc.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                    {% else %}
+                                        <img src="{{ plot.landowner_id_doc.url }}" class="img-fluid" alt="ID Document">
+                                    {% endif %}
+                                </div>
+                                <div class="mt-2">
+                                    <a href="{{ plot.landowner_id_doc.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-id-card fa-4x text-muted mb-3"></i>
+                                    <h5>No ID Document Uploaded</h5>
+                                    <p class="text-muted">This document is required for verification.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="tab-pane fade" id="kra" role="tabpanel">
+                            {% if plot.kra_pin %}
+                                <div class="document-viewer-container">
+                                    {% if plot.kra_pin.url|lower|slice:'-4:' == '.pdf' %}
+                                        <iframe src="{{ plot.kra_pin.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                    {% else %}
+                                        <img src="{{ plot.kra_pin.url }}" class="img-fluid" alt="KRA PIN">
+                                    {% endif %}
+                                </div>
+                                <div class="mt-2">
+                                    <a href="{{ plot.kra_pin.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-file-invoice fa-4x text-muted mb-3"></i>
+                                    <h5>No KRA PIN Uploaded</h5>
+                                    <p class="text-muted">This document is required for verification.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="tab-pane fade" id="soil" role="tabpanel">
+                            {% if plot.soil_report %}
+                                <div class="document-viewer-container">
+                                    {% if plot.soil_report.url|lower|slice:'-4:' == '.pdf' %}
+                                        <iframe src="{{ plot.soil_report.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                    {% else %}
+                                        <img src="{{ plot.soil_report.url }}" class="img-fluid" alt="Soil Report">
+                                    {% endif %}
+                                </div>
+                                <div class="mt-2">
+                                    <a href="{{ plot.soil_report.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
+                                    </a>
+                                </div>
+                            {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-flask fa-4x text-muted mb-3"></i>
+                                    <h5>No Soil Report Uploaded</h5>
+                                    <p class="text-muted">This document is optional but recommended.</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Review Actions -->
+    <div class="col-md-3 mb-4">
+        <!-- Verification Status Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-check-circle me-2"></i>Verification Status
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                {% if verification %}
+                    <div class="status-timeline">
+                        <div class="timeline-item {% if verification.current_stage == 'document_uploaded' %}active{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <strong>Documents Uploaded</strong>
+                                <small>{{ verification.document_uploaded_at|date:"M d, Y"|default:"Pending" }}</small>
+                            </div>
+                        </div>
+                        <div class="timeline-item {% if verification.current_stage == 'api_verification_started' %}active{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <strong>API Verification</strong>
+                                <small>{{ verification.api_started_at|date:"M d, Y"|default:"Pending" }}</small>
+                            </div>
+                        </div>
+                        <div class="timeline-item {% if verification.current_stage == 'admin_review' %}active{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <strong>Admin Review</strong>
+                                <small>{{ verification.admin_review_at|date:"M d, Y"|default:"Pending" }}</small>
+                            </div>
+                        </div>
+                        <div class="timeline-item {% if verification.current_stage == 'approved' %}active completed{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <strong>Approved</strong>
+                                <small>{{ verification.approved_at|date:"M d, Y"|default:"Pending" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="progress mt-3">
+                        <div class="progress-bar" role="progressbar" style="width: {{ verification.progress_percentage }}%;" 
+                             aria-valuenow="{{ verification.progress_percentage }}" aria-valuemin="0" aria-valuemax="100">
+                            {{ verification.progress_percentage }}%
+                        </div>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No verification status found.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Review Actions Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-gavel me-2"></i>Review Actions
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <form method="POST" id="reviewForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Review Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4" 
+                                  placeholder="Enter your observations, concerns, or approval notes..."></textarea>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" name="action" value="approve" class="btn btn-success btn-lg" 
+                                onclick="return confirm('Are you sure you want to APPROVE this plot?')">
+                            <i class="fas fa-check-circle me-2"></i> Approve Plot
+                        </button>
+                        
+                        <button type="submit" name="action" value="request_changes" class="btn btn-warning btn-lg"
+                                onclick="return confirm('Request changes from the seller?')">
+                            <i class="fas fa-edit me-2"></i> Request Changes
+                        </button>
+                        
+                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg"
+                                onclick="return confirm('Are you sure you want to REJECT this plot? This action cannot be undone.')">
+                            <i class="fas fa-times-circle me-2"></i> Reject Plot
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Recent Activity Card -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-history me-2"></i>Recent Activity
+                </h5>
+            </div>
+            <div class="admin-card-body p-0">
+                <div class="activity-list">
+                    {% for log in verification_logs %}
+                        <div class="activity-item">
+                            <div class="activity-icon">
+                                {% if log.verification_type == 'approval' %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% elif log.verification_type == 'rejection' %}
+                                    <i class="fas fa-times-circle text-danger"></i>
+                                {% elif log.verification_type == 'change_request' %}
+                                    <i class="fas fa-edit text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-info-circle text-info"></i>
+                                {% endif %}
+                            </div>
+                            <div class="activity-content">
+                                <strong>{{ log.get_verification_type_display }}</strong>
+                                <p class="mb-0">{{ log.comment|truncatechars:50 }}</p>
+                                <small class="text-muted">
+                                    by {% if log.verified_by %}{{ log.verified_by.username }}{% else %}System{% endif %} 
+                                    {{ log.created_at|timesince }} ago
+                                </small>
+                            </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center py-4">
+                            <p class="text-muted">No activity yet</p>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="admin-card-footer text-center">
+                <a href="{% url 'listings:verification_history' plot.id %}" class="btn btn-sm btn-outline-primary">
+                    View Full History
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .details-table {
+        width: 100%;
+    }
+
+    .details-table th {
+        text-align: left;
+        padding: 0.5rem 0;
+        color: var(--secondary);
+        font-weight: 500;
+        width: 40%;
+    }
+
+    .details-table td {
+        padding: 0.5rem 0;
+    }
+
+    .nav-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+
+    .nav-pills .nav-link {
+        border-radius: 30px;
+        color: var(--secondary);
+        margin-bottom: 0.25rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .nav-pills .nav-link.active {
+        background: var(--primary);
+        color: white;
+    }
+
+    .nav-pills .nav-link .badge {
+        margin-left: 0.5rem;
+    }
+
+    .document-viewer-container {
+        background: var(--light);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .document-viewer-container iframe,
+    .document-viewer-container img {
+        max-width: 100%;
+        height: auto;
+    }
+
+    /* Timeline */
+    .status-timeline {
+        position: relative;
+        padding-left: 30px;
+    }
+
+    .timeline-item {
+        position: relative;
+        padding-bottom: 1.5rem;
+    }
+
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -20px;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+    }
+
+    .timeline-item:last-child::before {
+        display: none;
+    }
+
+    .timeline-dot {
+        position: absolute;
+        left: -24px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #e9ecef;
+        border: 2px solid white;
+        z-index: 1;
+    }
+
+    .timeline-item.active .timeline-dot {
+        background: var(--primary);
+        box-shadow: 0 0 0 3px rgba(6, 145, 50, 0.2);
+    }
+
+    .timeline-item.completed .timeline-dot {
+        background: var(--success);
+    }
+
+    .timeline-content {
+        padding-left: 0.5rem;
+    }
+
+    .timeline-content strong {
+        display: block;
+        font-size: 0.95rem;
+    }
+
+    .timeline-content small {
+        color: var(--secondary);
+    }
+
+    /* Activity List */
+    .activity-list {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    .activity-item {
+        display: flex;
+        padding: 1rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: var(--light);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+
+    .activity-content {
+        flex: 1;
+        min-width: 0; /* Prevents text overflow issues */
+    }
+
+    .activity-content p {
+        font-size: 0.9rem;
+        margin: 0.25rem 0;
+        word-wrap: break-word;
+    }
+
+    .btn-lg {
+        padding: 1rem;
+        font-weight: 600;
+        width: 100%;
+    }
+
+    /* Mobile Responsive Styles */
+    @media (max-width: 992px) {
+        .row {
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+        }
+        
+        [class*="col-"] {
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        /* Typography adjustments */
+        .page-header-title h1 {
+            font-size: 1.5rem;
+        }
+        
+        .page-header-subtitle {
+            font-size: 0.9rem;
+        }
+        
+        /* Card adjustments */
+        .admin-card-header {
+            padding: 1rem;
+        }
+        
+        .admin-card-body {
+            padding: 1rem;
+        }
+        
+        .admin-card-title {
+            font-size: 1rem;
+        }
+        
+        /* Table adjustments */
+        .details-table th,
+        .details-table td {
+            padding: 0.35rem 0;
+            font-size: 0.9rem;
+        }
+        
+        .details-table th {
+            width: 35%;
+        }
+        
+        /* Document tabs - horizontal scroll on mobile */
+        .nav-pills {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+        }
+        
+        .nav-pills::-webkit-scrollbar {
+            height: 4px;
+        }
+        
+        .nav-pills::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+        
+        .nav-pills .nav-link {
+            white-space: nowrap;
+            font-size: 0.85rem;
+            padding: 0.4rem 0.8rem;
+        }
+        
+        /* Document viewer */
+        .document-viewer-container iframe {
+            height: 400px;
+        }
+        
+        /* Timeline adjustments */
+        .status-timeline {
+            padding-left: 25px;
+        }
+        
+        .timeline-item {
+            padding-bottom: 1rem;
+        }
+        
+        .timeline-content strong {
+            font-size: 0.9rem;
+        }
+        
+        .timeline-content small {
+            font-size: 0.8rem;
+        }
+        
+        /* Activity list */
+        .activity-item {
+            padding: 0.75rem;
+        }
+        
+        .activity-icon {
+            width: 28px;
+            height: 28px;
+            font-size: 0.9rem;
+        }
+        
+        .activity-content p {
+            font-size: 0.85rem;
+        }
+        
+        /* Button adjustments */
+        .btn-lg {
+            padding: 0.75rem;
+            font-size: 0.95rem;
+        }
+        
+        .btn-sm {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        /* Extra small devices */
+        .page-header {
+            padding: 1.5rem 1rem;
+        }
+        
+        .page-header-actions .btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+        }
+        
+        .admin-card-header {
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+        
+        .details-table th {
+            width: 40%;
+            font-size: 0.85rem;
+        }
+        
+        .details-table td {
+            font-size: 0.85rem;
+        }
+        
+        .document-viewer-container iframe {
+            height: 300px;
+        }
+        
+        /* Stack seller badges on mobile */
+        .seller-type {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+        
+        .seller-type .badge {
+            font-size: 0.7rem;
+        }
+        
+        /* Timeline further adjustments */
+        .timeline-dot {
+            left: -22px;
+            width: 10px;
+            height: 10px;
+        }
+        
+        .timeline-content strong {
+            font-size: 0.85rem;
+        }
+        
+        /* Review actions */
+        .d-grid.gap-2 {
+            gap: 0.5rem !important;
+        }
+        
+        /* Modal adjustments */
+        .modal-dialog {
+            margin: 0.5rem;
+        }
+        
+        .modal-body {
+            padding: 1rem;
+        }
+    }
+
+    /* Landscape mode on phones */
+    @media (max-height: 500px) and (orientation: landscape) {
+        .document-viewer-container iframe {
+            height: 250px;
+        }
+        
+        .activity-list {
+            max-height: 200px;
+        }
+    }
+
+    /* Tablet landscape */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .details-table th {
+            width: 35%;
+        }
+        
+        .nav-pills .nav-link {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.85rem;
+        }
+    }
+
+    /* Print styles */
+    @media print {
+        .page-header-actions,
+        .btn,
+        .review-actions,
+        .admin-card-footer {
+            display: none !important;
+        }
+        
+        .admin-card {
+            break-inside: avoid;
+            box-shadow: none;
+            border: 1px solid #ddd;
+        }
+        
+        .document-viewer-container iframe {
+            height: 500px;
+        }
+    }
+
+    /* Touch-friendly improvements */
+    @media (hover: none) and (pointer: coarse) {
+        .btn, 
+        .nav-link,
+        [data-bs-toggle="pill"] {
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-sm {
+            min-height: 36px;
+        }
+        
+        input, 
+        select, 
+        textarea {
+            font-size: 16px !important; /* Prevents zoom on iOS */
+        }
+    }
+
+    /* Smooth transitions */
+    .admin-card,
+    .btn,
+    .nav-link,
+    .timeline-dot {
+        transition: all 0.3s ease;
+    }
+
+    /* Loading states */
+    .btn:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+    }
+
+    /* Focus states for accessibility */
+    .btn:focus,
+    .nav-link:focus,
+    .form-control:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(6, 145, 50, 0.25);
+    }
+
+    /* Dark mode support (optional) */
+    @media (prefers-color-scheme: dark) {
+        /* Add dark mode styles if needed */
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add warning if notes are empty for rejection
+    const reviewForm = document.getElementById('reviewForm');
+    const notesField = document.getElementById('notes');
+    
+    reviewForm.addEventListener('submit', function(e) {
+        const action = e.submitter?.value;
+        const notes = notesField.value.trim();
+        
+        if (action === 'reject' && !notes) {
+            e.preventDefault();
+            alert('Please provide a reason for rejection in the notes.');
+        }
+        
+        if (action === 'request_changes' && !notes) {
+            e.preventDefault();
+            alert('Please specify what changes are needed in the notes.');
+        }
+    });
+});
+</script>
+{% endblock %}
