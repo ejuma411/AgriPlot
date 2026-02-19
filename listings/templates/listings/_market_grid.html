@@ -1,121 +1,1275 @@
-{% load static %}
-<div class="market-grid">
+<!-- FEATURED LISTINGS SECTION -->
+<section class="market-section container95">
+    <div class="section-head">
+        <h2>Featured Plots</h2>
+        <p class="section-subtitle">Discover verified agricultural and residential land</p>
+    </div>
 
-    {% for plot in featured_plots %}
-    <div class="market-card">
+    {% load plot_extras %}
+    {% load static %}
+    <div class="market-grid">
 
-        <!-- LOCATION / MAP PIN -->
-        <div class="market-image plot-location">
+        {% for plot in featured_plots %}
+        <div class="market-card" data-land-type="{{ plot.land_type }}">
+
+            <!-- PLOT IMAGE / LOCATION SECTION -->
+            <div class="market-image plot-location">
+                <!-- Land Type Badge -->
+                <span class="land-type-badge land-type-{{ plot.land_type }}">
+                    <i class="fas fa-{% if plot.land_type == 'agricultural' %}tractor{% elif plot.land_type == 'residential' %}home{% elif plot.land_type == 'commercial' %}store{% elif plot.land_type == 'mixed_use' %}mix{% else %}mountain{% endif %} me-1"></i>
+                    {{ plot.get_land_type_display }}
+                </span>
+
+                <!-- Dynamic Map Background based on coordinates -->
+                {% if plot.has_coordinates %}
+                <div class="map-preview" 
+                    data-lat="{{ plot.latitude }}" 
+                    data-lng="{{ plot.longitude }}"
+                    data-zoom="15"
+                    id="map-{{ plot.id }}">
+                    <!-- Map will be rendered here via JavaScript -->
+                    <div class="map-loading">
+                        <i class="fas fa-map-marked-alt fa-3x"></i>
+                        <span>Loading map...</span>
+                    </div>
+                </div>
+                
+                <!-- Location Info Overlay -->
+                <div class="location-info">
+                    <div class="location-coordinates">
+                        <i class="fas fa-crosshairs"></i>
+                        <span>{{ plot.latitude|floatformat:6 }}, {{ plot.longitude|floatformat:6 }}</span>
+                    </div>
+                    <div class="location-address">
+                        <i class="fas fa-map-pin"></i>
+                        <span>
+                            {% if plot.county %}
+                                {{ plot.county }}{% if plot.subcounty %} - {{ plot.subcounty }}{% endif %}
+                            {% else %}
+                                {{ plot.location|truncatechars:40 }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Map Action Buttons -->
+                <div class="map-actions">
+                    <a href="https://www.openstreetmap.org/?mlat={{ plot.latitude }}&mlon={{ plot.longitude }}#map=16/{{ plot.latitude }}/{{ plot.longitude }}" 
+                    target="_blank" 
+                    rel="noopener" 
+                    class="map-action-btn osm-btn"
+                    title="Open in OpenStreetMap">
+                        <i class="fas fa-map"></i>
+                    </a>
+                    <a href="https://www.google.com/maps?q={{ plot.latitude }},{{ plot.longitude }}" 
+                    target="_blank" 
+                    rel="noopener" 
+                    class="map-action-btn google-btn"
+                    title="Open in Google Maps">
+                        <i class="fab fa-google"></i>
+                    </a>
+                    <a href="https://maps.apple.com/?ll={{ plot.latitude }},{{ plot.longitude }}" 
+                    target="_blank" 
+                    rel="noopener" 
+                    class="map-action-btn apple-btn"
+                    title="Open in Apple Maps">
+                        <i class="fas fa-map-pin"></i>
+                    </a>
+                </div>
+
+                <!-- Static Map Fallback (if JavaScript fails) -->
+                <noscript>
+                    <div class="static-map-fallback">
+                        <a href="https://www.openstreetmap.org/?mlat={{ plot.latitude }}&mlon={{ plot.longitude }}#map=16/{{ plot.latitude }}/{{ plot.longitude }}" target="_blank">
+                            <img src="https://staticmap.openstreetmap.de/staticmap.php?center={{ plot.latitude }},{{ plot.longitude }}&zoom=15&size=400x200&maptype=mapnik&markers={{ plot.latitude }},{{ plot.longitude }},lightblue" 
+                                alt="Map location for {{ plot.title }}"
+                                class="static-map">
+                        </a>
+                    </div>
+                </noscript>
+
+                {% else %}
+                <!-- No Coordinates Available -->
+                <div class="no-coordinates">
+                    <div class="no-coordinates-content">
+                        <i class="fas fa-map-marked-alt fa-3x mb-2"></i>
+                        <h4>Location Pending</h4>
+                        <p>Exact coordinates not yet available</p>
+                        <div class="location-text-fallback">
+                            <i class="fas fa-map-marker-alt"></i>
+                            <span>{{ plot.location|default:"Location not specified" }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- PRICE TAG -->
+                <span class="price-tag">
+                    <span class="price-currency">KES</span>
+                    <span class="price-value">{{ plot.price|floatformat:0|intcomma }}</span>
+                    {% if plot.listing_type == 'lease' %}
+                    <span class="price-period">/month</span>
+                    {% endif %}
+                </span>
+
+                <!-- VERIFIED BADGE -->
+                {% if plot.verification_status.status == "verified" %}
+                <span class="verified-badge">
+                    <i class="fas fa-check-circle me-1"></i> Verified
+                </span>
+                {% endif %}
+
+                <!-- LISTING TYPE BADGE -->
+                <span class="listing-type-badge listing-{{ plot.listing_type }}">
+                    {% if plot.listing_type == 'sale' %}
+                        <i class="fas fa-tag me-1"></i>For Sale
+                    {% elif plot.listing_type == 'lease' %}
+                        <i class="fas fa-clock me-1"></i>For Lease
+                    {% elif plot.listing_type == 'both' %}
+                        <i class="fas fa-exchange-alt me-1"></i>Sale/Lease
+                    {% endif %}
+                </span>
+            </div>
+
+            <!-- Add this CSS -->
+            <style>
+                .market-image {
+                    position: relative;
+                    height: 220px;
+                    overflow: hidden;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }
+
+                /* Map Preview Styles */
+                .map-preview {
+                    width: 100%;
+                    height: 100%;
+                    position: relative;
+                    background: #1a2634;
+                }
+
+                .map-loading {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    color: rgba(255, 255, 255, 0.7);
+                    text-align: center;
+                    z-index: 1;
+                }
+
+                .map-loading i {
+                    display: block;
+                    margin-bottom: 10px;
+                    animation: pulse 1.5s ease-in-out infinite;
+                }
+
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; transform: scale(1); }
+                    50% { opacity: 0.7; transform: scale(1.05); }
+                }
+
+                /* Location Info Overlay */
+                .location-info {
+                    position: absolute;
+                    top: 50px;
+                    left: 15px;
+                    right: 15px;
+                    background: rgba(0, 0, 0, 0.7);
+                    backdrop-filter: blur(5px);
+                    padding: 10px 15px;
+                    border-radius: 8px;
+                    color: white;
+                    z-index: 5;
+                    font-size: 0.85rem;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    pointer-events: none;
+                }
+
+                .location-coordinates {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    margin-bottom: 5px;
+                    font-family: monospace;
+                    font-size: 0.8rem;
+                    color: #a8e6cf;
+                }
+
+                .location-address {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .location-address span {
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                /* Map Action Buttons */
+                .map-actions {
+                    position: absolute;
+                    top: 50px;
+                    right: 15px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    z-index: 10;
+                }
+
+                .map-action-btn {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    background: white;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #333;
+                    text-decoration: none;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+                    border: 2px solid transparent;
+                }
+
+                .map-action-btn:hover {
+                    transform: scale(1.1);
+                    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+                }
+
+                .map-action-btn.osm-btn:hover {
+                    background: #7fadf2;
+                    color: white;
+                    border-color: #5c8ac9;
+                }
+
+                .map-action-btn.google-btn:hover {
+                    background: #4285F4;
+                    color: white;
+                    border-color: #3367d6;
+                }
+
+                .map-action-btn.apple-btn:hover {
+                    background: #000;
+                    color: white;
+                    border-color: #333;
+                }
+
+                /* No Coordinates Fallback */
+                .no-coordinates {
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    text-align: center;
+                    position: relative;
+                }
+
+                .no-coordinates-content {
+                    max-width: 80%;
+                }
+
+                .no-coordinates-content i {
+                    opacity: 0.8;
+                    animation: float 3s ease-in-out infinite;
+                }
+
+                @keyframes float {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-10px); }
+                }
+
+                .location-text-fallback {
+                    margin-top: 15px;
+                    padding: 8px 15px;
+                    background: rgba(255, 255, 255, 0.2);
+                    border-radius: 30px;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    backdrop-filter: blur(5px);
+                    font-size: 0.9rem;
+                }
+
+                /* Static Map Fallback */
+                .static-map-fallback {
+                    width: 100%;
+                    height: 100%;
+                }
+
+                .static-map {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+
+                /* Responsive adjustments */
+                @media (max-width: 768px) {
+                    .location-info {
+                        top: 45px;
+                        font-size: 0.75rem;
+                        padding: 8px 10px;
+                    }
+
+                    .map-actions {
+                        top: 45px;
+                        gap: 5px;
+                    }
+
+                    .map-action-btn {
+                        width: 32px;
+                        height: 32px;
+                        font-size: 0.9rem;
+                    }
+
+                    .location-coordinates span {
+                        display: none; /* Hide coordinates on mobile to save space */
+                    }
+                }
+            </style>
+
+            <!-- Add this JavaScript for dynamic map loading -->
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Function to load a static map preview using OpenStreetMap's static map API
+                function loadMapPreview(container) {
+                    const lat = container.dataset.lat;
+                    const lng = container.dataset.lng;
+                    const zoom = container.dataset.zoom || 15;
+                    const plotId = container.id;
+                    
+                    // Create a static map image as fallback
+                    const mapImg = document.createElement('img');
+                    mapImg.src = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=${zoom}&size=400x200&maptype=mapnik&markers=${lat},${lng},lightblue`;
+                    mapImg.alt = 'Map location';
+                    mapImg.className = 'static-map';
+                    mapImg.style.width = '100%';
+                    mapImg.style.height = '100%';
+                    mapImg.style.objectFit = 'cover';
+                    
+                    // Clear loading state and add image
+                    container.innerHTML = '';
+                    container.appendChild(mapImg);
+                    
+                    // Add click handler to open in OSM
+                    container.addEventListener('click', function() {
+                        window.open(`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`, '_blank');
+                    });
+                    
+                    container.style.cursor = 'pointer';
+                }
+                
+                // Load maps for all plot containers
+                document.querySelectorAll('.map-preview').forEach(loadMapPreview);
+            });
+            </script>
+
+            <!-- Optional: Use Leaflet for interactive maps (more advanced) -->
             {% if plot.has_coordinates %}
-            <a href="https://www.openstreetmap.org/?mlat={{ plot.latitude }}&mlon={{ plot.longitude }}#map=14/{{ plot.latitude }}/{{ plot.longitude }}" target="_blank" rel="noopener" class="location-pin-link" title="View on map">
-                <span class="location-pin"><i class="fas fa-map-marker-alt"></i></span>
-                <span class="coordinates-text">{{ plot.latitude }}, {{ plot.longitude }}</span>
-            </a>
+            <!-- Add Leaflet CSS and JS -->
+            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+            <script>
+            // Advanced: Load interactive Leaflet map
+            function loadInteractiveMap(container) {
+                const lat = parseFloat(container.dataset.lat);
+                const lng = parseFloat(container.dataset.lng);
+                const zoom = parseInt(container.dataset.zoom) || 15;
+                const plotId = container.id;
+                
+                // Clear container
+                container.innerHTML = '';
+                container.style.background = '#e9ecef';
+                
+                // Initialize map
+                const map = L.map(container, {
+                    center: [lat, lng],
+                    zoom: zoom,
+                    zoomControl: false,
+                    dragging: false,
+                    touchZoom: false,
+                    scrollWheelZoom: false,
+                    doubleClickZoom: false,
+                    boxZoom: false,
+                    keyboard: false,
+                    attributionControl: false
+                });
+                
+                // Add tile layer
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19
+                }).addTo(map);
+                
+                // Add marker
+                L.marker([lat, lng]).addTo(map)
+                    .bindTooltip('Plot Location', { permanent: false, direction: 'top' });
+                
+                // Add click handler to open full map
+                container.addEventListener('click', function() {
+                    window.open(`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`, '_blank');
+                });
+                
+                container.style.cursor = 'pointer';
+            }
+
+            // Use this instead of the simple static map loader if you prefer interactive maps
+            // document.querySelectorAll('.map-preview').forEach(loadInteractiveMap);
+            </script>
+            {% endif %}
+
+            <!-- CONTENT SECTION -->
+            <div class="market-body">
+                <!-- Title and Location -->
+                <div class="title-section">
+                    <h3 class="plot-title">{{ plot.title|truncatechars:50 }}</h3>
+                    <p class="market-location">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span class="location-detail">
+                            {% if plot.county %}
+                                {{ plot.county }}{% if plot.subcounty %} - {{ plot.subcounty }}{% endif %}
+                            {% else %}
+                                {{ plot.location|truncatechars:40 }}
+                            {% endif %}
+                        </span>
+                    </p>
+                </div>
+
+                <!-- KEY METRICS -->
+                <div class="plot-metrics">
+                    <div class="metric-item">
+                        <i class="fas fa-ruler-combined"></i>
+                        <div class="metric-detail">
+                            <span class="metric-label">Size</span>
+                            <span class="metric-value">{{ plot.area|floatformat:1 }} acres</span>
+                        </div>
+                    </div>
+                    
+                    {% if plot.price_per_acre %}
+                    <div class="metric-item">
+                        <i class="fas fa-calculator"></i>
+                        <div class="metric-detail">
+                            <span class="metric-label">Per Acre</span>
+                            <span class="metric-value">KES {{ plot.price_per_acre|floatformat:0|intcomma }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- QUICK SPECS CHIPS -->
+                <div class="plot-specs">
+                    {% if plot.soil_type %}
+                    <span class="spec-chip" title="Soil Type">
+                        <i class="fas fa-seedling me-1"></i>{{ plot.soil_type }}
+                    </span>
+                    {% endif %}
+
+                    {% if plot.crop_suitability %}
+                    {% with crops=plot.crop_suitability|split:"," %}
+                    <span class="spec-chip" title="Suitable Crops">
+                        <i class="fas fa-leaf me-1"></i>{{ crops.0|truncatechars:15 }}{% if crops|length > 1 %} +{{ crops|length|add:"-1" }}{% endif %}
+                    </span>
+                    {% endwith %}
+                    {% endif %}
+
+                    {% if plot.has_water %}
+                    <span class="spec-chip has-water" title="Water Available">
+                        <i class="fas fa-water me-1"></i>Water
+                    </span>
+                    {% endif %}
+
+                    {% if plot.has_electricity %}
+                    <span class="spec-chip has-power" title="Electricity Available">
+                        <i class="fas fa-bolt me-1"></i>Power
+                    </span>
+                    {% endif %}
+
+                    {% if plot.has_road_access %}
+                    <span class="spec-chip has-road" title="Road Access">
+                        <i class="fas fa-road me-1"></i>Road
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- SELLER INFO -->
+                <div class="seller-mini">
+    <div class="seller-avatar" style="background-color: {% cycle '#1f7a4d' '#2c3e50' '#c0392b' '#2980b9' '#8e44ad' %}">
+        {% if plot.agent and plot.agent.user %}
+            {{ plot.agent.user.get_full_name|default:plot.agent.user.username|first|upper }}
+        {% elif plot.landowner and plot.landowner.user %}
+            {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username|first|upper }}
+        {% else %}
+            <i class="fas fa-user"></i>
+        {% endif %}
+    </div>
+    
+    <div class="seller-details">
+        <div class="seller-name">
+            {% if plot.agent and plot.agent.user %}
+                {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
+            {% elif plot.landowner and plot.landowner.user %}
+                {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}
             {% else %}
-            <div class="location-pin-placeholder">
-                <i class="fas fa-map fa-2x text-muted"></i>
-                <span class="text-muted small">{{ plot.location|truncatewords:4 }}</span>
-            </div>
-            {% endif %}
-
-            <!-- PRICE -->
-            <span class="price-tag">
-                KSh {{ plot.price|floatformat:0 }}
-            </span>
-
-            <!-- VERIFIED BADGE -->
-            {% if plot.verification_status.status == "verified" %}
-            <span class="verified-badge">✔ Verified</span>
+                Unknown Seller
             {% endif %}
         </div>
-
-
-        <!-- CONTENT -->
-        <div class="market-body">
-
-            <h3 class="plot-title">{{ plot.title }}</h3>
-
-            <p class="market-location">
-                <i class="fas fa-map-marker-alt"></i>
-                {{ plot.location.county }}
-            </p>
-
-            <!-- QUICK SPECS -->
-            <div class="plot-specs">
-
-                {% if plot.soil_type %}
-                <span class="spec-chip">{{ plot.soil_type }}</span>
+        
+        <div class="seller-badge">
+            {% if plot.agent %}
+                {% if plot.agent.verified %}
+                <span class="badge-verified">
+                    <i class="fas fa-check-circle"></i> Licensed Agent
+                </span>
+                {% else %}
+                <span class="badge-unverified">
+                    <i class="fas fa-clock"></i> Agent (Unverified)
+                </span>
                 {% endif %}
-
-                {% if plot.crop_suitability %}
-                <span class="spec-chip">{{ plot.crop_suitability }}</span>
+            {% elif plot.landowner %}
+                {% if plot.landowner.verified %}
+                <span class="badge-verified">
+                    <i class="fas fa-check-circle"></i> Verified Owner
+                </span>
+                {% else %}
+                <span class="badge-unverified">
+                    <i class="fas fa-clock"></i> Owner (Unverified)
+                </span>
                 {% endif %}
-
-                {% if plot.size %}
-                <span class="spec-chip">{{ plot.size }} Acres</span>
-                {% endif %}
-
-            </div>
-
-            <!-- SELLER -->
-            <div class="seller-mini">
-
-                <div class="seller-avatar">
-                    {{ plot.broker.user.username|first|upper }}
-                </div>
-
-                <div>
-                    <strong>{{ plot.broker.user.username }}</strong>
-                    <small>Licensed Broker</small>
-                </div>
-
-            </div>
-
-            <!-- ACTIONS -->
-            <div class="card-actions">
-
-                <a href="{% url 'listings:plot_detail' plot.id %}" class="btn-view">
-                    View Plot
-                </a>
-
-                {% if plot.broker.phone_number %}
-                <a href="https://wa.me/{{ plot.broker.phone_number|cut:'+' }}"
-                class="btn-contact"
-                target="_blank">
-                WhatsApp
-                </a>
-                {% endif %}
-
-            </div>
-
+            {% else %}
+                <span class="badge-unverified">Unverified</span>
+            {% endif %}
+        </div>
+        
+        <!-- Additional seller info - with null checks -->
+        <div class="seller-meta">
+            
+            {% if plot.agent and plot.agent.total_listings %}
+            <br>
+            <small class="text-muted">
+                <i class="fas fa-list me-1"></i>
+                {{ plot.agent.total_listings }} listings
+            </small>
+            {% endif %}
         </div>
     </div>
-    {% empty %}
-    <div class="empty-state">
-        <h4>No Verified Plots Found</h4>
-        <p>Try adjusting your filters or check again later.</p>
+    
+    <!-- Rating section - only for agents with proper null checks -->
+    {% if plot.agent and plot.agent.rating %}
+    <div class="seller-rating">
+        <span class="rating-stars">
+            {% with rating=plot.agent.rating|floatformat:0 %}
+                {% for i in "12345" %}
+                    {% if forloop.counter <= rating %}
+                        <i class="fas fa-star"></i>
+                    {% elif forloop.counter <= rating|add:"0.5" %}
+                        <i class="fas fa-star-half-alt"></i>
+                    {% else %}
+                        <i class="far fa-star"></i>
+                    {% endif %}
+                {% endfor %}
+            {% endwith %}
+        </span>
+        <span class="rating-count">({{ plot.agent.review_count|default:0 }})</span>
+        
+        {% if plot.agent.response_rate %}
+        <div class="response-rate mt-1">
+            <small class="text-success">
+                <i class="fas fa-reply"></i> {{ plot.agent.response_rate }}% response rate
+            </small>
+        </div>
+        {% endif %}
+        
+        {% if plot.agent.average_response_time %}
+        <div class="response-time">
+            <small class="text-muted">
+                <i class="fas fa-clock"></i> Avg. response: {{ plot.agent.average_response_time }}h
+            </small>
+        </div>
+        {% endif %}
     </div>
-    {% endfor %}
-
-</div>
-
-<!-- PAGINATION CONTROLS -->
-{% if featured_plots.has_other_pages %}
-<div class="pagination">
-    {% if featured_plots.has_previous %}
-        <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.previous_page_number }}" class="ajax-page">&laquo; Previous</a>
-    {% else %}
-        <span class="disabled">&laquo; Previous</span>
-    {% endif %}
-
-    <span class="current">
-        Page {{ featured_plots.number }} of {{ featured_plots.paginator.num_pages }}
-    </span>
-
-    {% if featured_plots.has_next %}
-        <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.next_page_number }}" class="ajax-page">Next &raquo;</a>
-    {% else %}
-        <span class="disabled">Next &raquo;</span>
     {% endif %}
 </div>
-{% endif %}
+
+            
+                <!-- ACTION BUTTONS -->
+                <div class="card-actions">
+                    <a href="{% url 'listings:plot_detail' plot.id %}" class="btn-view">
+                        <i class="fas fa-eye me-2"></i>View Details
+                    </a>
+
+                    {% if plot.broker and plot.broker.phone %}
+                    <a href="https://wa.me/{{ plot.broker.phone|cut:'+'|cut:' '|cut:'-' }}?text=Hi%2C%20I'm%20interested%20in%20{{ plot.title|urlencode }}"
+                    class="btn-contact"
+                    target="_blank"
+                    rel="noopener">
+                        <i class="fab fa-whatsapp me-2"></i>WhatsApp
+                    </a>
+                    {% elif plot.landowner and plot.landowner.phone %}
+                    <a href="https://wa.me/{{ plot.landowner.phone|cut:'+'|cut:' '|cut:'-' }}?text=Hi%2C%20I'm%20interested%20in%20{{ plot.title|urlencode }}"
+                    class="btn-contact"
+                    target="_blank"
+                    rel="noopener">
+                        <i class="fab fa-whatsapp me-2"></i>WhatsApp
+                    </a>
+                    {% else %}
+                    <!-- Use plot_detail URL instead of contact_owner -->
+                    <a href="{% url 'listings:plot_detail' plot.id %}#contact" class="btn-contact">
+                        <i class="fas fa-envelope me-2"></i>Contact
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <h4>No Verified Plots Found</h4>
+            <p>Try adjusting your filters or check again later for new listings.</p>
+            <a href="?" class="btn-clear-filters">
+                <i class="fas fa-redo-alt me-2"></i>Clear All Filters
+            </a>
+        </div>
+        {% endfor %}
+
+    </div>
+
+    <!-- PAGINATION CONTROLS -->
+    {% if featured_plots.has_other_pages %}
+    <div class="pagination-wrapper">
+        <div class="pagination">
+            {% if featured_plots.has_previous %}
+                <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.previous_page_number }}" class="page-link ajax-page" aria-label="Previous">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            {% else %}
+                <span class="page-link disabled" aria-disabled="true">
+                    <i class="fas fa-chevron-left"></i>
+                </span>
+            {% endif %}
+
+            {% for i in featured_plots.paginator.page_range %}
+                {% if featured_plots.number == i %}
+                    <span class="page-link active">{{ i }}</span>
+                {% elif i > featured_plots.number|add:'-3' and i < featured_plots.number|add:'3' %}
+                    <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ i }}" class="page-link ajax-page">{{ i }}</a>
+                {% endif %}
+            {% endfor %}
+
+            {% if featured_plots.has_next %}
+                <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.next_page_number }}" class="page-link ajax-page" aria-label="Next">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            {% else %}
+                <span class="page-link disabled" aria-disabled="true">
+                    <i class="fas fa-chevron-right"></i>
+                </span>
+            {% endif %}
+        </div>
+        
+        <div class="pagination-info">
+            Showing {{ featured_plots.start_index }} - {{ featured_plots.end_index }} of {{ featured_plots.paginator.count }} plots
+        </div>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Add this CSS to your styles -->
+<style>
+/* Section Header Enhancement */
+.section-head {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.section-head h2 {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 10px;
+    position: relative;
+    display: inline-block;
+}
+
+.section-head h2::after {
+    content: '';
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #1f7a4d, #2ecc71);
+    border-radius: 2px;
+}
+
+.section-subtitle {
+    color: #7f8c8d;
+    font-size: 1.1rem;
+    margin-top: 15px;
+}
+
+/* Market Grid Enhancement */
+.market-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 30px;
+    margin: 30px 0;
+}
+
+/* Market Card */
+.market-card {
+    background: white;
+    border-radius: 50%x;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.market-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* Image Section */
+.market-image {
+    position: relative;
+    height: 220px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
+}
+
+.market-image::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.6) 100%);
+    z-index: 1;
+}
+
+/* Land Type Badge */
+.land-type-badge {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    padding: 6px 12px;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 3;
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+.land-type-agricultural {
+    background: linear-gradient(135deg, #1f7a4d, #2ecc71);
+}
+
+.land-type-residential {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+}
+
+.land-type-commercial {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+}
+
+.land-type-mixed_use {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+}
+
+.land-type-industrial {
+    background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+/* Location Pin */
+.location-pin-link {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    color: white;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    z-index: 3;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 6px 12px;
+    border-radius: 30px;
+    backdrop-filter: blur(5px);
+    transition: all 0.3s ease;
+}
+
+.location-pin-link:hover {
+    background: rgba(31, 122, 77, 0.9);
+    transform: scale(1.05);
+}
+
+.location-pin {
+    font-size: 1rem;
+}
+
+.coordinates-text {
+    font-size: 0.8rem;
+    font-family: monospace;
+}
+
+.location-pin-placeholder {
+    position: absolute;
+    bottom: 15px;
+    left: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: white;
+    z-index: 3;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 8px 15px;
+    border-radius: 30px;
+    backdrop-filter: blur(5px);
+}
+
+/* Price Tag */
+.price-tag {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #1f7a4d, #2ecc71);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    z-index: 3;
+    box-shadow: 0 4px 15px rgba(31, 122, 77, 0.3);
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.price-currency {
+    font-size: 0.8rem;
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.price-period {
+    font-size: 0.7rem;
+    font-weight: 500;
+    opacity: 0.8;
+    margin-left: 4px;
+}
+
+/* Verified Badge */
+.verified-badge {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: linear-gradient(135deg, #f1c40f, #f39c12);
+    color: #2c3e50;
+    padding: 6px 12px;
+    border-radius: 30px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 3;
+    box-shadow: 0 4px 10px rgba(241, 196, 15, 0.3);
+    display: flex;
+    align-items: center;
+}
+
+/* Listing Type Badge */
+.listing-type-badge {
+    position: absolute;
+    top: 60px;
+    right: 15px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    z-index: 3;
+    color: white;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Market Body */
+.market-body {
+    padding: 20px;
+}
+
+/* Title Section */
+.title-section {
+    margin-bottom: 15px;
+}
+
+.plot-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 5px;
+    line-height: 1.4;
+}
+
+.market-location {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.market-location i {
+    color: #1f7a4d;
+    font-size: 0.9rem;
+}
+
+/* Metrics */
+.plot-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.metric-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.metric-item i {
+    font-size: 1.2rem;
+    color: #1f7a4d;
+    width: 24px;
+}
+
+.metric-detail {
+    display: flex;
+    flex-direction: column;
+}
+
+.metric-label {
+    font-size: 0.7rem;
+    color: #95a5a6;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+/* Specs Chips */
+.plot-specs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.spec-chip {
+    background: #f0f7f4;
+    color: #1f7a4d;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    border: 1px solid rgba(31, 122, 77, 0.2);
+}
+
+.spec-chip.has-water {
+    background: #e3f2fd;
+    color: #1976d2;
+    border-color: rgba(25, 118, 210, 0.2);
+}
+
+.spec-chip.has-power {
+    background: #fff3e0;
+    color: #f57c00;
+    border-color: rgba(245, 124, 0, 0.2);
+}
+
+.spec-chip.has-road {
+    background: #e8f5e8;
+    color: #388e3c;
+    border-color: rgba(56, 142, 60, 0.2);
+}
+
+/* Seller Info */
+.seller-mini {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 15px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.seller-avatar {
+    width: 45px;
+    height: 45px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.2rem;
+    color: white;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.seller-details {
+    flex: 1;
+}
+
+.seller-name {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.95rem;
+    margin-bottom: 3px;
+}
+
+.badge-verified {
+    font-size: 0.7rem;
+    color: #27ae60;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.badge-verified i {
+    font-size: 0.7rem;
+}
+
+.badge-unverified {
+    font-size: 0.7rem;
+    color: #e74c3c;
+}
+
+.seller-rating {
+    text-align: right;
+}
+
+.rating-stars {
+    color: #f1c40f;
+    font-size: 0.8rem;
+    display: inline-block;
+    margin-right: 4px;
+}
+
+.rating-count {
+    font-size: 0.7rem;
+    color: #95a5a6;
+}
+
+/* Action Buttons */
+.card-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-view, .btn-contact {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-view {
+    background: #1f7a4d;
+    color: white;
+}
+
+.btn-view:hover {
+    background: #155c3a;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(31, 122, 77, 0.3);
+    color: white;
+}
+
+.btn-contact {
+    background: #25D366;
+    color: white;
+}
+
+.btn-contact:hover {
+    background: #128C7E;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(37, 211, 102, 0.3);
+    color: white;
+}
+
+/* Empty State */
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+    border-radius: 20px;
+    margin: 20px 0;
+}
+
+.empty-state-icon {
+    font-size: 4rem;
+    color: #1f7a4d;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h4 {
+    font-size: 1.8rem;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.empty-state p {
+    color: #7f8c8d;
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+}
+
+.btn-clear-filters {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 30px;
+    background: #1f7a4d;
+    color: white;
+    text-decoration: none;
+    border-radius: 30px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-clear-filters:hover {
+    background: #155c3a;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(31, 122, 77, 0.3);
+    color: white;
+}
+
+/* Pagination */
+.pagination-wrapper {
+    margin-top: 40px;
+    text-align: center;
+}
+
+.pagination {
+    display: inline-flex;
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.page-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: white;
+    color: #2c3e50;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 1px solid #e0e0e0;
+    font-weight: 500;
+}
+
+.page-link:hover:not(.disabled) {
+    background: #1f7a4d;
+    color: white;
+    border-color: #1f7a4d;
+    transform: scale(1.1);
+}
+
+.page-link.active {
+    background: #1f7a4d;
+    color: white;
+    border-color: #1f7a4d;
+}
+
+.page-link.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.pagination-info {
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .market-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-head h2 {
+        font-size: 2rem;
+    }
+    
+    .plot-metrics {
+        grid-template-columns: 1fr;
+    }
+    
+    .card-actions {
+        flex-direction: column;
+    }
+    
+    .location-pin-link {
+        max-width: 200px;
+    }
+    
+    .coordinates-text {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .market-image {
+        height: 180px;
+    }
+    
+    .price-tag {
+        font-size: 1rem;
+        padding: 6px 12px;
+    }
+    
+    .land-type-badge {
+        font-size: 0.7rem;
+        padding: 4px 8px;
+    }
+}
+</style>

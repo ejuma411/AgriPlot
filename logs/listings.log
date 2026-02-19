@@ -1,0 +1,223 @@
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 701 | === PLOT CREATION STARTED ===
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 702 | User: juma (ID: 17)
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 703 | IP Address: 127.0.0.1
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 704 | User Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 710 | User type - Agent: True, Landowner: False
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 940 | Processing GET request for plot creation form
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 956 | Empty form initialized for GET request
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 961 | Prepared subcounties data for 47 counties
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 968 | Total request processing time: 0.01 seconds
+INFO | 2026-02-19 09:00:01 | listings.views | views | add_plot | 969 | === PLOT CREATION ENDED ===
+
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 701 | === PLOT CREATION STARTED ===
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 702 | User: juma (ID: 17)
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 703 | IP Address: 127.0.0.1
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 704 | User Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 710 | User type - Agent: True, Landowner: False
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 739 | Processing POST request for plot creation
+DEBUG | 2026-02-19 09:04:09 | listings.views | views | add_plot | 740 | POST data: {'title': 'New Plot for Lease', 'county': 'Kericho', 'subcounty': 'Bureti', 'location': '', 'area': '2', 'listing_type': 'lease', 'land_type': 'agricultural', 'land_use_description': 'Agriculture', 'sale_price': '', 'lease_price_monthly': '', 'lease_price_yearly': '12000', 'lease_duration': 'seasonal', 'lease_terms': '', 'soil_type': 'Sandy', 'ph_level': '4', 'crop_suitability': 'Maize, Beans, Vegetables', 'has_water': 'on', 'water_source': 'borehole', 'has_electricity': 'on', 'electricity_meter': 'on', 'has_road_access': 'on', 'road_type': 'tarmac', 'road_distance_km': '2', 'has_buildings': 'on', 'building_description': 'wertyuio', 'fencing': 'full', 'soil_report': '', 'latitude': '-1.29', 'longitude': '36.8219'}
+DEBUG | 2026-02-19 09:04:09 | listings.views | views | add_plot | 741 | FILES uploaded: ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin']
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 747 | Selected County: Kericho
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 748 | Selected Sub-county: Bureti
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 764 | Owner set as Agent: 1
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 776 | PlotForm initialized successfully
+DEBUG | 2026-02-19 09:04:09 | listings.forms | forms | clean | 595 | Validating location - County: Kericho, Subcounty: None
+WARNING | 2026-02-19 09:04:09 | listings.validation | forms | clean | 614 | Subcounty not selected
+DEBUG | 2026-02-19 09:04:09 | listings.forms | forms | clean | 637 | Set agent owner: 1
+DEBUG | 2026-02-19 09:04:09 | listings.forms | forms | clean | 654 | Validating listing type: lease
+DEBUG | 2026-02-19 09:04:09 | listings.forms | forms | clean | 655 | Sale price: None, Lease monthly: None, Lease yearly: 12000
+DEBUG | 2026-02-19 09:04:09 | listings.forms | forms | clean | 703 | Validating document: title_deed, Size: 96223 bytes
+DEBUG | 2026-02-19 09:04:09 | listings.forms | forms | clean | 703 | Validating document: official_search, Size: 109825 bytes
+DEBUG | 2026-02-19 09:04:09 | listings.forms | forms | clean | 703 | Validating document: landowner_id_doc, Size: 101094 bytes
+DEBUG | 2026-02-19 09:04:09 | listings.forms | forms | clean | 703 | Validating document: kra_pin, Size: 164381 bytes
+WARNING | 2026-02-19 09:04:09 | listings.validation | forms | clean | 770 | Form validation failed with 1 errors
+DEBUG | 2026-02-19 09:04:09 | listings.validation | forms | clean | 772 | Validation error: subcounty: Please select a sub-county
+WARNING | 2026-02-19 09:04:09 | listings.views | views | add_plot | 905 | Form validation failed with 1 error(s)
+ERROR | 2026-02-19 09:04:09 | listings.validation | views | add_plot | 916 | Validation error - subcounty: Select a valid choice. Bureti is not one of the available choices.
+ERROR | 2026-02-19 09:04:09 | listings.validation | views | add_plot | 917 | Field value: Bureti
+ERROR | 2026-02-19 09:04:09 | listings.views | views | add_plot | 921 | Location validation error - subcounty: Select a valid choice. Bureti is not one of the available choices.
+ERROR | 2026-02-19 09:04:09 | listings.views | views | add_plot | 922 | County selected: Kericho
+ERROR | 2026-02-19 09:04:09 | listings.views | views | add_plot | 923 | Subcounty selected: Bureti
+ERROR | 2026-02-19 09:04:09 | listings.validation | views | add_plot | 916 | Validation error - subcounty: Please select a sub-county
+ERROR | 2026-02-19 09:04:09 | listings.validation | views | add_plot | 917 | Field value: Bureti
+ERROR | 2026-02-19 09:04:09 | listings.views | views | add_plot | 921 | Location validation error - subcounty: Please select a sub-county
+ERROR | 2026-02-19 09:04:09 | listings.views | views | add_plot | 922 | County selected: Kericho
+ERROR | 2026-02-19 09:04:09 | listings.views | views | add_plot | 923 | Subcounty selected: Bureti
+ERROR | 2026-02-19 09:04:09 | listings.views | views | add_plot | 929 | Form validation errors summary: ['subcounty: Select a valid choice. Bureti is not one of the available choices.', 'subcounty: Please select a sub-county']
+ERROR | 2026-02-19 09:04:09 | listings.views | views | add_plot | 930 | POST data summary: County=Kericho, Subcounty=Bureti
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 935 | Loaded 6 subcounties for Kericho
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 961 | Prepared subcounties data for 47 counties
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 968 | Total request processing time: 0.01 seconds
+INFO | 2026-02-19 09:04:09 | listings.views | views | add_plot | 969 | === PLOT CREATION ENDED ===
+
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 701 | === PLOT CREATION STARTED ===
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 702 | User: juma (ID: 17)
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 703 | IP Address: 127.0.0.1
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 704 | User Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 710 | User type - Agent: True, Landowner: False
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 739 | Processing POST request for plot creation
+DEBUG | 2026-02-19 09:07:02 | listings.views | views | add_plot | 740 | POST data: {'title': 'New Plot for Lease', 'county': 'Kericho', 'subcounty': 'Belgut', 'location': '', 'area': '2', 'listing_type': 'lease', 'land_type': 'agricultural', 'land_use_description': 'Agriculture', 'sale_price': '', 'lease_price_monthly': '', 'lease_price_yearly': '12000', 'lease_duration': 'seasonal', 'lease_terms': 'ertyui', 'soil_type': 'Sandy', 'ph_level': '4', 'crop_suitability': 'Maize, Beans, Vegetables', 'has_water': 'on', 'water_source': 'borehole', 'has_electricity': 'on', 'electricity_meter': 'on', 'has_road_access': 'on', 'road_type': 'tarmac', 'road_distance_km': '2', 'has_buildings': 'on', 'building_description': 'wertyuio', 'fencing': 'full', 'latitude': '-1.29', 'longitude': '36.8219'}
+DEBUG | 2026-02-19 09:07:02 | listings.views | views | add_plot | 741 | FILES uploaded: ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin', 'soil_report']
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 747 | Selected County: Kericho
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 748 | Selected Sub-county: Belgut
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 764 | Owner set as Agent: 1
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 776 | PlotForm initialized successfully
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 603 | Validating location - County: Kericho, Subcounty: Belgut
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 636 | Generated location: Kericho - Belgut
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 645 | Set agent owner: 1
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 662 | Validating listing type: lease
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 663 | Sale price: None, Lease monthly: None, Lease yearly: 12000
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 711 | Validating document: title_deed, Size: 63969 bytes
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 711 | Validating document: soil_report, Size: 102150 bytes
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 711 | Validating document: official_search, Size: 109825 bytes
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 711 | Validating document: landowner_id_doc, Size: 101094 bytes
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 711 | Validating document: kra_pin, Size: 96223 bytes
+DEBUG | 2026-02-19 09:07:02 | listings.forms | forms | clean | 782 | Form validation successful
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 783 | Form validation successful
+DEBUG | 2026-02-19 09:07:02 | listings.views | views | add_plot | 789 | Cleaned data: {'title': 'New Plot for Lease', 'county': 'Kericho', 'subcounty': 'Belgut', 'location': 'Kericho - Belgut', 'area': 2.0, 'listing_type': 'lease', 'land_type': 'agricultural', 'land_use_description': 'Agriculture', 'sale_price': None, 'price_per_acre': None, 'lease_price_monthly': None, 'lease_price_yearly': Decimal('12000'), 'lease_duration': 'seasonal', 'lease_terms': 'ertyui', 'soil_type': 'Sandy', 'ph_level': 4.0, 'crop_suitability': 'Maize, Beans, Vegetables', 'has_water': True, 'water_source': 'borehole', 'has_electricity': True, 'electricity_meter': True, 'has_road_access': True, 'road_type': 'tarmac', 'road_distance_km': Decimal('2'), 'has_buildings': True, 'building_description': 'wertyuio', 'fencing': 'full', 'latitude': Decimal('-1.29'), 'longitude': Decimal('36.8219'), 'elevation_meters': None, 'climate_zone': '', 'is_protected_area': False, 'special_features': ''}
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 798 | ✅ Plot saved successfully! ID: 10
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 799 | Plot Title: New Plot for Lease
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 800 | County: Kericho, Subcounty: Belgut
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 801 | Location: Kericho - Belgut
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 802 | Area: 2.0 acres
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 803 | Listing Type: lease
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 804 | Processing time: 0.12 seconds
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 819 | Uploaded documents: ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin', 'soil_report']
+INFO | 2026-02-19 09:07:02 | listings.audit | views | add_plot | 822 | User juma created plot ID 10
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 848 | ✅ Verification status created for plot 10
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 849 | Verification ID: 13
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 850 | Current stage: document_uploaded
+INFO | 2026-02-19 09:07:02 | listings.views | views | add_plot | 864 | === PLOT CREATION COMPLETED SUCCESSFULLY (ID: 10) ===
+
+DEBUG | 2026-02-19 09:43:50 | listings.forms | forms | clean | 603 | Validating location - County: None, Subcounty: None
+WARNING | 2026-02-19 09:43:50 | listings.validation | forms | clean | 610 | County not selected
+WARNING | 2026-02-19 09:43:50 | listings.validation | forms | clean | 622 | Subcounty not selected
+DEBUG | 2026-02-19 09:43:50 | listings.forms | forms | clean | 662 | Validating listing type: None
+DEBUG | 2026-02-19 09:43:50 | listings.forms | forms | clean | 663 | Sale price: None, Lease monthly: None, Lease yearly: None
+DEBUG | 2026-02-19 09:43:50 | listings.forms | forms | clean | 711 | Validating document: title_deed, Size: 1013813 bytes
+DEBUG | 2026-02-19 09:43:50 | listings.forms | forms | clean | 711 | Validating document: soil_report, Size: 144943 bytes
+DEBUG | 2026-02-19 09:43:50 | listings.forms | forms | clean | 711 | Validating document: official_search, Size: 346871 bytes
+DEBUG | 2026-02-19 09:43:50 | listings.forms | forms | clean | 711 | Validating document: landowner_id_doc, Size: 103627 bytes
+DEBUG | 2026-02-19 09:43:50 | listings.forms | forms | clean | 711 | Validating document: kra_pin, Size: 504989 bytes
+WARNING | 2026-02-19 09:43:50 | listings.validation | forms | clean | 778 | Form validation failed with 2 errors
+DEBUG | 2026-02-19 09:43:50 | listings.validation | forms | clean | 780 | Validation error: county: Please select a county
+DEBUG | 2026-02-19 09:43:50 | listings.validation | forms | clean | 780 | Validation error: subcounty: Please select a sub-county
+DEBUG | 2026-02-19 09:50:52 | listings.forms | forms | clean | 603 | Validating location - County: None, Subcounty: None
+WARNING | 2026-02-19 09:50:52 | listings.validation | forms | clean | 610 | County not selected
+WARNING | 2026-02-19 09:50:52 | listings.validation | forms | clean | 622 | Subcounty not selected
+DEBUG | 2026-02-19 09:50:52 | listings.forms | forms | clean | 662 | Validating listing type: None
+DEBUG | 2026-02-19 09:50:52 | listings.forms | forms | clean | 663 | Sale price: None, Lease monthly: None, Lease yearly: None
+DEBUG | 2026-02-19 09:50:52 | listings.forms | forms | clean | 711 | Validating document: title_deed, Size: 1013813 bytes
+DEBUG | 2026-02-19 09:50:52 | listings.forms | forms | clean | 711 | Validating document: soil_report, Size: 144943 bytes
+DEBUG | 2026-02-19 09:50:52 | listings.forms | forms | clean | 711 | Validating document: official_search, Size: 346871 bytes
+DEBUG | 2026-02-19 09:50:52 | listings.forms | forms | clean | 711 | Validating document: landowner_id_doc, Size: 103627 bytes
+DEBUG | 2026-02-19 09:50:52 | listings.forms | forms | clean | 711 | Validating document: kra_pin, Size: 504989 bytes
+WARNING | 2026-02-19 09:50:52 | listings.validation | forms | clean | 778 | Form validation failed with 2 errors
+DEBUG | 2026-02-19 09:50:52 | listings.validation | forms | clean | 780 | Validation error: county: Please select a county
+DEBUG | 2026-02-19 09:50:52 | listings.validation | forms | clean | 780 | Validation error: subcounty: Please select a sub-county
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1021 | === PLOT EDIT STARTED ===
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1022 | User: juma (ID: 17)
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1023 | Plot ID: 9
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1024 | IP Address: 127.0.0.1
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1025 | User Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1030 | Plot found: 'TEST' (Current county: None, subcounty: None)
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1040 | User type - Agent: True, Landowner: False
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1192 | Processing GET request for plot edit form (ID: 9)
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1203 | Prepared subcounties data for 47 counties
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1210 | Total request processing time: 0.01 seconds
+INFO | 2026-02-19 11:51:19 | listings.views | views | edit_plot | 1211 | === PLOT EDIT ENDED ===
+
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1021 | === PLOT EDIT STARTED ===
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1022 | User: juma (ID: 17)
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1023 | Plot ID: 9
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1024 | IP Address: 127.0.0.1
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1025 | User Agent: Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1030 | Plot found: 'TEST' (Current county: None, subcounty: None)
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1040 | User type - Agent: True, Landowner: False
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1057 | Processing POST request for plot edit (ID: 9)
+DEBUG | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1058 | POST data: {'title': 'TEST', 'county': 'Elgeyo Marakwet', 'subcounty': 'Keiyo South', 'location': 'Nakuru, Njoro', 'area': '5.0', 'listing_type': 'lease', 'land_type': 'agricultural', 'land_use_description': 'Agricultural land', 'sale_price': '', 'lease_price_monthly': '3000.00', 'lease_price_yearly': '36000.00', 'lease_duration': 'seasonal', 'lease_terms': 'Must pay', 'soil_type': 'Loam', 'ph_level': '5.0', 'crop_suitability': 'Maize, Beans, Vegetables', 'has_water': 'on', 'water_source': 'borehole', 'has_electricity': 'on', 'electricity_meter': 'on', 'has_road_access': 'on', 'road_type': 'murram', 'road_distance_km': '1.00', 'has_buildings': 'on', 'building_description': 'Buildings', 'fencing': 'partial', 'title_deed': '', 'official_search': '', 'landowner_id_doc': '', 'kra_pin': '', 'soil_report': '', 'latitude': '-0.303100', 'longitude': '30.080000'}
+DEBUG | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1059 | FILES uploaded: []
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1064 | Selected County: Elgeyo Marakwet
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1065 | Selected Sub-county: Keiyo South
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1080 | PlotForm initialized successfully for edit
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 603 | Validating location - County: Elgeyo Marakwet, Subcounty: Keiyo South
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 636 | Generated location: Elgeyo Marakwet - Keiyo South
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 662 | Validating listing type: lease
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 663 | Sale price: None, Lease monthly: 3000.00, Lease yearly: 36000.00
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 711 | Validating document: title_deed, Size: 1013813 bytes
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 711 | Validating document: soil_report, Size: 144943 bytes
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 711 | Validating document: official_search, Size: 346871 bytes
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 711 | Validating document: landowner_id_doc, Size: 103627 bytes
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 711 | Validating document: kra_pin, Size: 504989 bytes
+DEBUG | 2026-02-19 11:52:17 | listings.forms | forms | clean | 782 | Form validation successful
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1087 | Form validation successful
+DEBUG | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1093 | Cleaned data: {'title': 'TEST', 'county': 'Elgeyo Marakwet', 'subcounty': 'Keiyo South', 'location': 'Elgeyo Marakwet - Keiyo South', 'area': 5.0, 'listing_type': 'lease', 'land_type': 'agricultural', 'land_use_description': 'Agricultural land', 'sale_price': None, 'price_per_acre': None, 'lease_price_monthly': Decimal('3000.00'), 'lease_price_yearly': Decimal('36000.00'), 'lease_duration': 'seasonal', 'lease_terms': 'Must pay', 'soil_type': 'Loam', 'ph_level': 5.0, 'crop_suitability': 'Maize, Beans, Vegetables', 'has_water': True, 'water_source': 'borehole', 'has_electricity': True, 'electricity_meter': True, 'has_road_access': True, 'road_type': 'murram', 'road_distance_km': Decimal('1.00'), 'has_buildings': True, 'building_description': 'Buildings', 'fencing': 'partial', 'latitude': Decimal('-0.303100'), 'longitude': Decimal('30.080000'), 'elevation_meters': None, 'climate_zone': '', 'is_protected_area': False, 'special_features': ''}
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1102 | ✅ Plot updated successfully! ID: 9
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1103 | Plot Title: TEST
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1104 | County: Elgeyo Marakwet, Subcounty: Keiyo South
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1105 | Location: Elgeyo Marakwet - Keiyo South
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1106 | Area: 5.0 acres
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1107 | Listing Type: lease
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1108 | Processing time: 0.10 seconds
+INFO | 2026-02-19 11:52:17 | listings.audit | views | edit_plot | 1120 | User juma edited plot ID 9
+INFO | 2026-02-19 11:52:17 | listings.views | views | edit_plot | 1125 | === PLOT EDIT COMPLETED SUCCESSFULLY (ID: 9) ===
+
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1024 | === PLOT EDIT STARTED ===
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1025 | User: juma (ID: 17)
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1026 | Plot ID: 10
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1027 | IP Address: 127.0.0.1
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1028 | User Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1033 | Plot found: 'New Plot for Lease' (Current county: Kericho, subcounty: Belgut)
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1043 | User type - Agent: True, Landowner: False
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1054 | No verification tasks found for plot 10, creating them...
+INFO | 2026-02-19 22:23:07 | listings.verification_service | verification_service | create_verification_tasks | 33 | Created document review task for plot 10
+INFO | 2026-02-19 22:23:07 | listings.verification_service | verification_service | create_verification_tasks | 47 | Created extension review task for plot 10
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1056 | Created missing verification tasks for plot 10: ['document_review', 'extension_review']
+DEBUG | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1068 | Loaded 6 subcounties for county 'Kericho'
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1273 | Processing GET request for plot edit form (ID: 10)
+DEBUG | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1279 | Loaded 6 subcounties for existing county 'Kericho'
+DEBUG | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1296 | Plot verification status: approved
+DEBUG | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1297 | Pending tasks: 2
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1304 | Prepared subcounties data for 47 counties
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1311 | Total request processing time: 0.20 seconds
+INFO | 2026-02-19 22:23:07 | listings.views | views | edit_plot | 1312 | === PLOT EDIT ENDED ===
+
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1024 | === PLOT EDIT STARTED ===
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1025 | User: juma (ID: 17)
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1026 | Plot ID: 10
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1027 | IP Address: 127.0.0.1
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1028 | User Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1033 | Plot found: 'New Plot for Lease' (Current county: Kericho, subcounty: Belgut)
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1043 | User type - Agent: True, Landowner: False
+DEBUG | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1068 | Loaded 6 subcounties for county 'Kericho'
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1071 | Processing POST request for plot edit (ID: 10)
+DEBUG | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1072 | POST data: {'title': 'New Plot for Lease', 'county': 'Kericho', 'subcounty': 'Bureti', 'location': 'Kericho - Belgut', 'area': '2.0', 'listing_type': 'lease', 'land_type': 'agricultural', 'land_use_description': 'Agriculture', 'sale_price': '', 'lease_price_monthly': '', 'lease_price_yearly': '12000.00', 'lease_duration': 'seasonal', 'lease_terms': 'ertyui', 'soil_type': 'Sandy', 'ph_level': '4.0', 'crop_suitability': 'Maize, Beans, Vegetables', 'has_water': 'on', 'water_source': 'borehole', 'has_electricity': 'on', 'electricity_meter': 'on', 'has_road_access': 'on', 'road_type': 'tarmac', 'road_distance_km': '2.00', 'has_buildings': 'on', 'building_description': 'wertyuio', 'fencing': 'full', 'title_deed': '', 'official_search': '', 'landowner_id_doc': '', 'kra_pin': '', 'soil_report': '', 'latitude': '-1.289951', 'longitude': '36.821900'}
+DEBUG | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1073 | FILES uploaded: []
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1078 | Selected County: Kericho
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1079 | Selected Sub-county: Bureti
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1094 | PlotForm initialized successfully for edit
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 603 | Validating location - County: Kericho, Subcounty: Bureti
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 636 | Generated location: Kericho - Bureti
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 662 | Validating listing type: lease
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 663 | Sale price: None, Lease monthly: None, Lease yearly: 12000.00
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 711 | Validating document: title_deed, Size: 63969 bytes
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 711 | Validating document: soil_report, Size: 102150 bytes
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 711 | Validating document: official_search, Size: 109825 bytes
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 711 | Validating document: landowner_id_doc, Size: 101094 bytes
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 711 | Validating document: kra_pin, Size: 96223 bytes
+DEBUG | 2026-02-19 22:24:17 | listings.forms | forms | clean | 782 | Form validation successful
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1101 | Form validation successful
+DEBUG | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1107 | Cleaned data: {'title': 'New Plot for Lease', 'county': 'Kericho', 'subcounty': 'Bureti', 'location': 'Kericho - Bureti', 'area': 2.0, 'listing_type': 'lease', 'land_type': 'agricultural', 'land_use_description': 'Agriculture', 'sale_price': None, 'price_per_acre': None, 'lease_price_monthly': None, 'lease_price_yearly': Decimal('12000.00'), 'lease_duration': 'seasonal', 'lease_terms': 'ertyui', 'soil_type': 'Sandy', 'ph_level': 4.0, 'crop_suitability': 'Maize, Beans, Vegetables', 'has_water': True, 'water_source': 'borehole', 'has_electricity': True, 'electricity_meter': True, 'has_road_access': True, 'road_type': 'tarmac', 'road_distance_km': Decimal('2.00'), 'has_buildings': True, 'building_description': 'wertyuio', 'fencing': 'full', 'latitude': Decimal('-1.289951'), 'longitude': Decimal('36.821900'), 'elevation_meters': None, 'climate_zone': '', 'is_protected_area': False, 'special_features': ''}
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1130 | Critical changes detected: ['subcounty', 'price']. Resetting verification status.
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1174 | ✅ Plot updated successfully! ID: 10
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1175 | Plot Title: New Plot for Lease
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1176 | County: Kericho, Subcounty: Bureti
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1177 | Location: Kericho - Bureti
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1178 | Area: 2.0 acres
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1179 | Listing Type: lease
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1180 | Critical changes: ['subcounty', 'price']
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1181 | Processing time: 0.35 seconds
+INFO | 2026-02-19 22:24:17 | listings.audit | views | edit_plot | 1201 | User juma edited plot ID 10
+INFO | 2026-02-19 22:24:17 | listings.views | views | edit_plot | 1206 | === PLOT EDIT COMPLETED SUCCESSFULLY (ID: 10) ===
+
+INFO | 2026-02-19 23:07:28 | listings.verification_service | verification_service | assign_task | 92 | Task 1 assigned to Administrator

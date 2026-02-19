@@ -4,6 +4,7 @@ from .views import LandownerWizard
 from django.views.generic import TemplateView
 from django.contrib.auth.views import LogoutView
 from django.views.generic.base import RedirectView # For backward compatibility redirects
+from . import views_admin
 
 app_name = 'listings'
 
@@ -66,4 +67,25 @@ urlpatterns = [
     path('register/broker/', RedirectView.as_view(pattern_name='listings:register_agent', permanent=True), name='register_broker'),
     path('register/landowner/simple/', RedirectView.as_view(pattern_name='listings:register_landowner', permanent=True)),
 
+    # urls.py
+    path('get-subcounties/', views.get_subcounties, name='get_subcounties'),
+
+    # Verification Admin URLs
+    path('verify/verification/', views_admin.verification_dashboard, name='verification_dashboard'),
+    path('verify/verification/queue/', views_admin.verification_queue, name='verification_queue'),
+    path('verify/verification/review/<int:plot_id>/', views_admin.review_plot, name='review_plot'),
+    path('verify/verification/history/<int:plot_id>/', views_admin.plot_verification_history, name='verification_history'),
+
+    # Task Management URLs
+    path('verify/tasks/', views_admin.task_assignment, name='task_assignment'),
+    path('verify/tasks/my/', views_admin.my_tasks, name='my_tasks'),
+    path('verify/tasks/complete/<int:task_id>/', views_admin.complete_task_view, name='complete_task'),
+    path('verify/tasks/ajax/assign/', views_admin.ajax_assign_task, name='ajax_assign_task'),
+
+    path('verify/tasks/my/', views_admin.my_tasks, name='my_tasks'),
+    path('verify/tasks/complete/<int:task_id>/', views_admin.complete_task_view, name='complete_task'),
+
+    path('notifications/', views_admin.get_notifications, name='get_notifications'),
+    path('notifications/mark/<int:notification_id>/', views_admin.mark_notification_read, name='mark_notification_read'),
+    path('notifications/mark-all/', views_admin.mark_all_notifications_read, name='mark_all_notifications_read'),
 ]

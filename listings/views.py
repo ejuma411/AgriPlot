@@ -21,6 +21,11 @@ from django.core.exceptions import ValidationError
 from decimal import Decimal
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
+import json
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
+from .utils import log_audit
+
+logger = logging.getLogger(__name__)
 
 # Import formtools if you're using it
 try:
@@ -451,6 +456,67 @@ def home(request):
             'ec_max': ec_max, 'texture': texture
         },
     })
+# In your view, add these context variables
+def get_context_data(self, **kwargs):
+    context = super().get_context_data(**kwargs)
+    
+    # Count active filters
+    active_filters = []
+    request = self.request
+    
+    # Check each filter and build active filters list
+    if request.GET.get('soil_type'):
+        active_filters.append({
+            'label': 'Soil',
+            'value': request.GET.get('soil_type'),
+            'remove_url': self.build_remove_url('soil_type')
+        })
+    
+    if request.GET.get('crop_preset'):
+        active_filters.append({
+            'label': 'Crop',
+            'value': request.GET.get('crop_preset'),
+            'remove_url': self.build_remove_url('crop_preset')
+        })
+    
+    if request.GET.get('listing_type'):
+        listing_type = request.GET.get('listing_type')
+        active_filters.append({
+            'label': 'Type',
+            'value': 'For Sale' if listing_type == 'sale' else 'For Lease',
+            'remove_url': self.build_remove_url('listing_type')
+        })
+    
+    if request.GET.get('min_price') or request.GET.get('max_price'):
+        price_str = []
+        if request.GET.get('min_price'):
+            price_str.append(f"Min: {request.GET.get('min_price')}")
+        if request.GET.get('max_price'):
+            price_str.append(f"Max: {request.GET.get('max_price')}")
+        active_filters.append({
+            'label': 'Price',
+            'value': ' '.join(price_str),
+            'remove_url': self.build_remove_url(['min_price', 'max_price'])
+        })
+    
+    context['active_filters'] = active_filters
+    context['has_active_filters'] = len(active_filters) > 0
+    context['active_filters_count'] = len(active_filters)
+    context['plots_count'] = self.get_queryset().count()
+    
+    return context
+
+def build_remove_url(self, params_to_remove):
+    """Build URL with specified parameters removed"""
+    if not isinstance(params_to_remove, list):
+        params_to_remove = [params_to_remove]
+    
+    new_params = self.request.GET.copy()
+    for param in params_to_remove:
+        if param in new_params:
+            del new_params[param]
+    
+    return f"?{new_params.urlencode()}"
 
 def ajax_search(request):
     """Return rendered market grid fragment for AJAX search requests."""
@@ -602,157 +668,666 @@ def plot_detail(request, id):
     
     return render(request, 'listings/details.html', context)
 # ============ PLOT MANAGEMENT ============
+
+import json
+import logging
+import traceback
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect
+from django.utils import timezone
+from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
+from django.db import IntegrityError, DatabaseError
+from .forms import PlotForm
+from .models import Plot, VerificationStatus, Agent, LandownerProfile
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
+from .utils import log_audit
+
+# Get loggers
+logger = logging.getLogger(__name__)
+validation_logger = logging.getLogger('listings.validation')
+error_logger = logging.getLogger('listings.errors')
+audit_logger = logging.getLogger('listings.audit')
+
 @login_required
 def add_plot(request):
     """Create new plot with ALL required documents upfront"""
+    # Start timing for performance monitoring
+    import time
+    start_time = time.time()
+    
+    # Log entry with user context
+    logger.info(f"=== PLOT CREATION STARTED ===")
+    logger.info(f"User: {request.user.username} (ID: {request.user.id})")
+    logger.info(f"IP Address: {request.META.get('REMOTE_ADDR')}")
+    logger.info(f"User Agent: {request.META.get('HTTP_USER_AGENT')}")
+    
     # Check if user is agent or landowner
     is_agent = hasattr(request.user, 'agent')
     is_landowner = hasattr(request.user, 'landownerprofile')
     
+    logger.info(f"User type - Agent: {is_agent}, Landowner: {is_landowner}")
+    
     if not (is_agent or is_landowner):
+        logger.warning(f"User {request.user.username} attempted to add plot without proper profile")
         messages.error(request, "You must be a verified agent or landowner to list land.")
         return redirect("listings:register_choice")
     
     # Check verification status
-    if is_agent and not request.user.agent.verified:
-        messages.error(request, "Your agent account needs to be verified before you can list plots.")
-        return redirect("listings:register_agent")
-    
-    if is_landowner and not request.user.landownerprofile.verified:
-        messages.error(request, "Your landowner account needs to be verified before you can list plots.")
-        return redirect("listings:register_landowner")
+    try:
+        if is_agent and not request.user.agent.verified:
+            logger.warning(f"Unverified agent {request.user.username} attempted to add plot")
+            messages.error(request, "Your agent account needs to be verified before you can list plots.")
+            return redirect("listings:register_agent")
+        
+        if is_landowner and not request.user.landownerprofile.verified:
+            logger.warning(f"Unverified landowner {request.user.username} attempted to add plot")
+            messages.error(request, "Your landowner account needs to be verified before you can list plots.")
+            return redirect("listings:register_landowner")
+    except (Agent.DoesNotExist, LandownerProfile.DoesNotExist) as e:
+        logger.error(f"Profile access error for user {request.user.username}: {str(e)}")
+        messages.error(request, "Error accessing your profile. Please contact support.")
+        return redirect("listings:home")
+
+    # Initialize selected values for county/subcounty
+    selected_county = None
+    selected_subcounty = None
+    sub_counties = []
 
     if request.method == "POST":
+        logger.info(f"Processing POST request for plot creation")
+        logger.debug(f"POST data: { {k: v for k, v in request.POST.items() if 'csrf' not in k} }")
+        logger.debug(f"FILES uploaded: {list(request.FILES.keys())}")
+        
+        # Validate county and subcounty early
+        selected_county = request.POST.get('county')
+        selected_subcounty = request.POST.get('subcounty')
+        
+        logger.info(f"Selected County: {selected_county}")
+        logger.info(f"Selected Sub-county: {selected_subcounty}")
+        
+        # Validate county exists in our data
+        if selected_county and selected_county not in KENYA_COUNTIES:
+            error_msg = f"Invalid county selected: {selected_county}"
+            logger.error(error_msg)
+            messages.error(request, error_msg)
+            # Get subcounties for this county if it exists in our data
+            if selected_county in KENYA_SUB_COUNTIES:
+                sub_counties = KENYA_SUB_COUNTIES[selected_county]
+        
         # Determine the owner based on user type
         owner = None
-        if is_agent:
-            owner = request.user.agent
-        elif is_landowner:
-            owner = request.user.landownerprofile
-        
-        # Create form with POST data, FILES, and the owner
-        plot_form = PlotForm(request.POST, request.FILES, owner=owner)
-        
-        # Debug: Print form data
-        logger.info(f"User {request.user.username} attempting to add plot")
-        logger.info(f"Is Agent: {is_agent}, Is Landowner: {is_landowner}")
-        logger.info(f"Owner object: {owner}")
-        logger.info(f"POST keys: {list(request.POST.keys())}")
-        logger.info(f"FILES keys: {list(request.FILES.keys())}")
+        try:
+            if is_agent:
+                owner = request.user.agent
+                logger.info(f"Owner set as Agent: {owner.id}")
+            elif is_landowner:
+                owner = request.user.landownerprofile
+                logger.info(f"Owner set as Landowner: {owner.id}")
+        except Exception as e:
+            logger.error(f"Error getting owner profile: {str(e)}", exc_info=True)
+            messages.error(request, "Error accessing your profile. Please try again.")
+            plot_form = PlotForm()
+        else:
+            # Create form with POST data, FILES, and the owner
+            try:
+                plot_form = PlotForm(request.POST, request.FILES, owner=owner)
+                logger.info("PlotForm initialized successfully")
+            except Exception as e:
+                logger.error(f"Error initializing PlotForm: {str(e)}", exc_info=True)
+                messages.error(request, "Error processing form. Please try again.")
+                plot_form = PlotForm()
         
         if plot_form.is_valid():
+            logger.info("Form validation successful")
+            
+            # Log cleaned data (excluding sensitive info)
+            safe_cleaned = {k: v for k, v in plot_form.cleaned_data.items() 
+                           if k not in ['csrfmiddlewaretoken', 'title_deed', 'official_search', 
+                                       'landowner_id_doc', 'kra_pin', 'soil_report']}
+            logger.debug(f"Cleaned data: {safe_cleaned}")
+            
             try:
                 # Save the plot - owner is handled in form.save()
                 plot = plot_form.save()
                 
-                logger.info(f"Plot saved successfully! ID: {plot.id}")
-                logger.info(f"Agent: {plot.agent}, Landowner: {plot.landowner}")
+                # Calculate processing time
+                processing_time = time.time() - start_time
                 
+                logger.info(f"✅ Plot saved successfully! ID: {plot.id}")
+                logger.info(f"Plot Title: {plot.title}")
+                logger.info(f"County: {plot.county}, Subcounty: {plot.subcounty}")
+                logger.info(f"Location: {plot.location}")
+                logger.info(f"Area: {plot.area} acres")
+                logger.info(f"Listing Type: {plot.listing_type}")
+                logger.info(f"Processing time: {processing_time:.2f} seconds")
+                
+                # Log document uploads
+                uploaded_docs = []
+                if plot.title_deed:
+                    uploaded_docs.append('title_deed')
+                if plot.official_search:
+                    uploaded_docs.append('official_search')
+                if plot.landowner_id_doc:
+                    uploaded_docs.append('landowner_id_doc')
+                if plot.kra_pin:
+                    uploaded_docs.append('kra_pin')
+                if plot.soil_report:
+                    uploaded_docs.append('soil_report')
+                
+                logger.info(f"Uploaded documents: {uploaded_docs}")
+                
+                # Audit log
+                audit_logger.info(f"User {request.user.username} created plot ID {plot.id}")
                 log_audit(request, 'create_plot', object_type='Plot', object_id=plot.id)
 
-                # ✅ FIX: Create verification status using VerificationStatus model
-                content_type = ContentType.objects.get_for_model(Plot)
-                verification, created = VerificationStatus.objects.get_or_create(
-                    content_type=content_type,
-                    object_id=plot.id,
-                    defaults={
-                        'current_stage': 'document_uploaded',
-                        'document_uploaded_at': timezone.now(),
-                        'stage_details': {
-                            'created_by': request.user.username,
-                            'created_at': timezone.now().isoformat(),
-                            'plot_title': plot.title
+                # Create verification status using VerificationStatus model
+                try:
+                    content_type = ContentType.objects.get_for_model(Plot)
+                    verification, created = VerificationStatus.objects.get_or_create(
+                        content_type=content_type,
+                        object_id=plot.id,
+                        defaults={
+                            'current_stage': 'document_uploaded',
+                            'document_uploaded_at': timezone.now(),
+                            'stage_details': {
+                                'created_by': request.user.username,
+                                'created_by_id': request.user.id,
+                                'created_at': timezone.now().isoformat(),
+                                'plot_title': plot.title,
+                                'plot_id': plot.id,
+                                'county': plot.county,
+                                'subcounty': plot.subcounty,
+                                'documents_uploaded': uploaded_docs
+                            }
                         }
-                    }
-                )
-                
-                if created:
-                    logger.info(f"✅ Verification status created for plot {plot.id}")
-                else:
-                    logger.info(f"ℹ️ Verification status already exists for plot {plot.id}")
+                    )
+                    
+                    if created:
+                        logger.info(f"✅ Verification status created for plot {plot.id}")
+                        logger.info(f"Verification ID: {verification.id}")
+                        logger.info(f"Current stage: {verification.current_stage}")
+                    else:
+                        logger.info(f"ℹ️ Verification status already exists for plot {plot.id}")
+                        logger.info(f"Existing verification stage: {verification.current_stage}")
+                        
+                except Exception as e:
+                    logger.error(f"Error creating verification status: {str(e)}", exc_info=True)
+                    # Don't fail the whole request, just log the error
+                    messages.warning(request, "Plot saved but verification status creation failed. Please contact support.")
                 
                 messages.success(request, 
                     "✅ Plot submitted successfully! Your listing is now under verification review."
                 )
+                
+                logger.info(f"=== PLOT CREATION COMPLETED SUCCESSFULLY (ID: {plot.id}) ===\n")
                 return redirect("listings:plot_detail", id=plot.id)
 
+            except ValidationError as e:
+                error_msg = f"Validation error while saving plot: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                messages.error(request, f"Validation error: {str(e)}")
+                
+            except IntegrityError as e:
+                error_msg = f"Database integrity error: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                messages.error(request, "A database error occurred. Please try again.")
+                
+            except DatabaseError as e:
+                error_msg = f"Database error: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                messages.error(request, "A database error occurred. Please try again.")
+                
             except Exception as e:
+                error_msg = f"Unexpected error creating plot: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                
+                # Log additional context for debugging
+                logger.error(f"User: {request.user.username}")
+                logger.error(f"Request method: {request.method}")
+                logger.error(f"POST keys: {list(request.POST.keys())}")
+                logger.error(f"FILES keys: {list(request.FILES.keys())}")
+                
                 messages.error(request, f"❌ Error creating plot: {str(e)}")
-                logger.error(f"Error creating plot: {str(e)}", exc_info=True)
                 
                 # If plot was created but verification failed, try to clean up
                 if 'plot' in locals() and plot.id:
                     try:
                         plot.delete()
-                        logger.info(f"Cleaned up plot {plot.id} due to verification error")
-                    except:
-                        pass
+                        logger.info(f"Cleaned up plot {plot.id} due to error")
+                    except Exception as cleanup_error:
+                        logger.error(f"Error cleaning up plot {plot.id}: {cleanup_error}")
+        
         else:
-            # Show form errors
+            # Form validation failed
+            error_count = len(plot_form.errors)
+            logger.warning(f"Form validation failed with {error_count} error(s)")
+            
+            # Log all form errors in detail
             error_messages = []
             for field, errors in plot_form.errors.items():
+                field_value = request.POST.get(field, 'Not provided')
                 for error in errors:
                     error_msg = f"{field}: {error}"
                     error_messages.append(error_msg)
+                    
+                    # Log each validation error with context
+                    validation_logger.error(f"Validation error - {error_msg}")
+                    validation_logger.error(f"Field value: {field_value}")
+                    
+                    # Special logging for county/subcounty errors
+                    if field in ['county', 'subcounty']:
+                        logger.error(f"Location validation error - {field}: {error}")
+                        logger.error(f"County selected: {selected_county}")
+                        logger.error(f"Subcounty selected: {selected_subcounty}")
+                    
+                    # Display error to user
                     messages.error(request, error_msg)
             
-            logger.error(f"Form validation errors: {error_messages}")
+            # Log all validation errors together
+            logger.error(f"Form validation errors summary: {error_messages}")
+            logger.error(f"POST data summary: County={selected_county}, Subcounty={selected_subcounty}")
+            
+            # If county is selected, get its subcounties for the dropdown
+            if selected_county and selected_county in KENYA_SUB_COUNTIES:
+                sub_counties = KENYA_SUB_COUNTIES[selected_county]
+                logger.info(f"Loaded {len(sub_counties)} subcounties for {selected_county}")
+            else:
+                logger.warning(f"Selected county '{selected_county}' not found in subcounties data")
     else:
+        # GET request - initialize empty form
+        logger.info("Processing GET request for plot creation form")
+        
         # Pre-fill form with initial data based on user type
         initial_data = {
             'crop_suitability': 'Maize, Beans, Vegetables'
         }
         
-        # If user is landowner, pre-fill with their details if available
-        if is_landowner and request.user.landownerprofile:
-            # You could add more pre-filled data here
-            pass
+        # Add user-specific initial data if available
+        try:
+            if is_landowner and request.user.landownerprofile:
+                # Could add landowner-specific defaults here
+                logger.info("Landowner-specific initial data added")
+        except Exception as e:
+            logger.error(f"Error adding user-specific initial data: {str(e)}")
         
         plot_form = PlotForm(initial=initial_data)
+        logger.info("Empty form initialized for GET request")
+
+    # Prepare subcounties data for JavaScript
+    try:
+        sub_counties_json = json.dumps(KENYA_SUB_COUNTIES)
+        logger.info(f"Prepared subcounties data for {len(KENYA_SUB_COUNTIES)} counties")
+    except Exception as e:
+        logger.error(f"Error serializing subcounties data: {str(e)}")
+        sub_counties_json = '{}'
+
+    # Calculate total processing time
+    total_time = time.time() - start_time
+    logger.info(f"Total request processing time: {total_time:.2f} seconds")
+    logger.info("=== PLOT CREATION ENDED ===\n")
 
     return render(request, "listings/add_plot.html", {
         "form": plot_form,
         "is_agent": is_agent,
         "is_landowner": is_landowner,
         "profile_type": "Agent" if is_agent else "Landowner",
+        "counties": KENYA_COUNTIES,
+        "sub_counties_json": sub_counties_json,
+        "selected_county": selected_county,
+        "selected_subcounty": selected_subcounty,
+        "sub_counties": sub_counties,
     })
 
+from django.http import JsonResponse
+
+def get_subcounties(request):
+    county = request.GET.get('county')
+    if county and county in KENYA_SUB_COUNTIES:
+        return JsonResponse({
+            'subcounties': KENYA_SUB_COUNTIES[county]
+        })
+    return JsonResponse({'subcounties': []})
+
+import json
+import logging
+import traceback
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import IntegrityError, DatabaseError
+from django.utils import timezone
+from django.contrib.contenttypes.models import ContentType
+from .forms import PlotForm
+from .models import Plot, Agent, LandownerProfile, VerificationTask, VerificationStatus, VerificationLog
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
+from .utils import log_audit
+from .verification_service import VerificationService
+
+# Get loggers
+logger = logging.getLogger(__name__)
+validation_logger = logging.getLogger('listings.validation')
+error_logger = logging.getLogger('listings.errors')
+audit_logger = logging.getLogger('listings.audit')
 
 @login_required
 def edit_plot(request, id):
-    """Edit existing plot"""
+    """Edit existing plot with comprehensive logging and validation"""
+    # Start timing for performance monitoring
+    import time
+    start_time = time.time()
+    
+    # Log entry with user context
+    logger.info(f"=== PLOT EDIT STARTED ===")
+    logger.info(f"User: {request.user.username} (ID: {request.user.id})")
+    logger.info(f"Plot ID: {id}")
+    logger.info(f"IP Address: {request.META.get('REMOTE_ADDR')}")
+    logger.info(f"User Agent: {request.META.get('HTTP_USER_AGENT')}")
+    
+    # Get the plot
     try:
         plot = Plot.objects.get(id=id)
-        # Check permission
-        is_agent = hasattr(request.user, 'agent') and plot.agent == request.user.agent
-        is_landowner = hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile
-        
-        if not (is_agent or is_landowner):
-            messages.error(request, "You don't have permission to edit this plot.")
-            return redirect('listings:plot_detail', id=id)
-            
+        logger.info(f"Plot found: '{plot.title}' (Current county: {plot.county}, subcounty: {plot.subcounty})")
     except Plot.DoesNotExist:
+        logger.error(f"Plot with ID {id} not found")
         messages.error(request, "Plot not found.")
         return redirect('listings:home')
     
+    # Check permission
+    is_agent = hasattr(request.user, 'agent') and plot.agent == request.user.agent
+    is_landowner = hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile
+    
+    logger.info(f"User type - Agent: {is_agent}, Landowner: {is_landowner}")
+    
+    if not (is_agent or is_landowner):
+        logger.warning(f"User {request.user.username} attempted to edit plot {id} without permission")
+        messages.error(request, "You don't have permission to edit this plot.")
+        return redirect('listings:plot_detail', id=id)
+    
+    # Check if verification tasks exist, create if missing (for backwards compatibility)
+    try:
+        existing_tasks = VerificationTask.objects.filter(plot=plot).count()
+        if existing_tasks == 0:
+            logger.info(f"No verification tasks found for plot {plot.id}, creating them...")
+            tasks_created = VerificationService.create_verification_tasks(plot)
+            logger.info(f"Created missing verification tasks for plot {plot.id}: {tasks_created}")
+    except Exception as e:
+        logger.error(f"Error checking/creating tasks for edit: {str(e)}", exc_info=True)
+        # Don't block the edit, just log the error
+    
+    # Initialize subcounties for the plot's county
+    selected_county = plot.county
+    selected_subcounty = plot.subcounty
+    sub_counties = []
+    
+    if selected_county and selected_county in KENYA_SUB_COUNTIES:
+        sub_counties = KENYA_SUB_COUNTIES[selected_county]
+        logger.debug(f"Loaded {len(sub_counties)} subcounties for county '{selected_county}'")
+    
     if request.method == 'POST':
-        form = PlotForm(request.POST, request.FILES, instance=plot)
+        logger.info(f"Processing POST request for plot edit (ID: {id})")
+        logger.debug(f"POST data: { {k: v for k, v in request.POST.items() if 'csrf' not in k} }")
+        logger.debug(f"FILES uploaded: {list(request.FILES.keys())}")
+        
+        # Get county and subcounty from POST data for logging
+        selected_county = request.POST.get('county')
+        selected_subcounty = request.POST.get('subcounty')
+        logger.info(f"Selected County: {selected_county}")
+        logger.info(f"Selected Sub-county: {selected_subcounty}")
+        
+        # Validate county exists in our data
+        if selected_county and selected_county not in KENYA_COUNTIES:
+            error_msg = f"Invalid county selected: {selected_county}"
+            logger.error(error_msg)
+            messages.error(request, error_msg)
+        
+        # Update subcounties for dropdown if county changed
+        if selected_county and selected_county in KENYA_SUB_COUNTIES:
+            sub_counties = KENYA_SUB_COUNTIES[selected_county]
+        
+        # Create form with POST data and instance
+        try:
+            form = PlotForm(request.POST, request.FILES, instance=plot)
+            logger.info("PlotForm initialized successfully for edit")
+        except Exception as e:
+            logger.error(f"Error initializing PlotForm: {str(e)}", exc_info=True)
+            messages.error(request, "Error processing form. Please try again.")
+            form = PlotForm(instance=plot)
+        
         if form.is_valid():
-            plot = form.save()
-            log_audit(request, 'edit_plot', object_type='Plot', object_id=plot.id, extra={'plot_id': plot.id})
+            logger.info("Form validation successful")
+            
+            # Log cleaned data (excluding sensitive info)
+            safe_cleaned = {k: v for k, v in form.cleaned_data.items() 
+                           if k not in ['csrfmiddlewaretoken', 'title_deed', 'official_search', 
+                                       'landowner_id_doc', 'kra_pin', 'soil_report']}
+            logger.debug(f"Cleaned data: {safe_cleaned}")
+            
+            try:
+                # Check if critical fields changed that might affect verification
+                original_plot = Plot.objects.get(id=id)
+                critical_changes = []
+                
+                if original_plot.title != form.cleaned_data.get('title'):
+                    critical_changes.append('title')
+                if original_plot.county != form.cleaned_data.get('county'):
+                    critical_changes.append('county')
+                if original_plot.subcounty != form.cleaned_data.get('subcounty'):
+                    critical_changes.append('subcounty')
+                if original_plot.area != form.cleaned_data.get('area'):
+                    critical_changes.append('area')
+                if original_plot.price != form.cleaned_data.get('price'):
+                    critical_changes.append('price')
+                
+                # Save the plot
+                plot = form.save()
+                
+                # If critical changes were made, reset verification status
+                if critical_changes:
+                    logger.info(f"Critical changes detected: {critical_changes}. Resetting verification status.")
+                    
+                    # Get or create verification status
+                    content_type = ContentType.objects.get_for_model(Plot)
+                    verification, created = VerificationStatus.objects.get_or_create(
+                        content_type=content_type,
+                        object_id=plot.id
+                    )
+                    
+                    # Reset to document_uploaded stage
+                    verification.current_stage = 'document_uploaded'
+                    verification.approved_at = None
+                    verification.rejected_at = None
+                    verification.stage_details['last_edit'] = {
+                        'edited_by': request.user.username,
+                        'edited_at': timezone.now().isoformat(),
+                        'changes': critical_changes,
+                        'previous_stage': verification.current_stage
+                    }
+                    verification.save()
+                    
+                    # Reset all tasks to pending
+                    VerificationTask.objects.filter(plot=plot).update(
+                        status='pending',
+                        assigned_to=None,
+                        completed_at=None,
+                        approved=None
+                    )
+                    
+                    # Log the reset
+                    VerificationLog.objects.create(
+                        plot=plot,
+                        verified_by=request.user,
+                        verification_type='system',
+                        comment=f"Verification reset due to changes: {', '.join(critical_changes)}"
+                    )
+                    
+                    messages.warning(request, 
+                        "⚠️ Critical changes detected. The plot has been moved back to pending verification."
+                    )
+                
+                # Calculate processing time
+                processing_time = time.time() - start_time
+                
+                logger.info(f"✅ Plot updated successfully! ID: {plot.id}")
+                logger.info(f"Plot Title: {plot.title}")
+                logger.info(f"County: {plot.county}, Subcounty: {plot.subcounty}")
+                logger.info(f"Location: {plot.location}")
+                logger.info(f"Area: {plot.area} acres")
+                logger.info(f"Listing Type: {plot.listing_type}")
+                logger.info(f"Critical changes: {critical_changes}")
+                logger.info(f"Processing time: {processing_time:.2f} seconds")
+                
+                # Log document uploads (if any)
+                uploaded_docs = []
+                for doc_field in ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin', 'soil_report']:
+                    if doc_field in request.FILES:
+                        uploaded_docs.append(doc_field)
+                
+                if uploaded_docs:
+                    logger.info(f"New documents uploaded: {uploaded_docs}")
+                    
+                    # Log document uploads in verification log
+                    VerificationLog.objects.create(
+                        plot=plot,
+                        verified_by=request.user,
+                        verification_type='document_update',
+                        comment=f"New documents uploaded: {', '.join(uploaded_docs)}"
+                    )
+                
+                # Audit log
+                audit_logger.info(f"User {request.user.username} edited plot ID {plot.id}")
+                log_audit(request, 'edit_plot', object_type='Plot', object_id=plot.id, 
+                         extra={'plot_id': plot.id, 'changes': critical_changes})
 
-            messages.success(request, "✅ Plot updated successfully!")
-            return redirect('listings:plot_detail', id=plot.id)
+                messages.success(request, "✅ Plot updated successfully!")
+                logger.info(f"=== PLOT EDIT COMPLETED SUCCESSFULLY (ID: {plot.id}) ===\n")
+                return redirect('listings:plot_detail', id=plot.id)
+
+            except ValidationError as e:
+                error_msg = f"Validation error while saving plot: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                messages.error(request, f"Validation error: {str(e)}")
+                
+            except IntegrityError as e:
+                error_msg = f"Database integrity error: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                messages.error(request, "A database error occurred. Please try again.")
+                
+            except DatabaseError as e:
+                error_msg = f"Database error: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                messages.error(request, "A database error occurred. Please try again.")
+                
+            except Exception as e:
+                error_msg = f"Unexpected error updating plot: {str(e)}"
+                logger.error(error_msg, exc_info=True)
+                logger.error(f"Traceback: {traceback.format_exc()}")
+                
+                # Log additional context for debugging
+                logger.error(f"User: {request.user.username}")
+                logger.error(f"Plot ID: {id}")
+                logger.error(f"Request method: {request.method}")
+                logger.error(f"POST keys: {list(request.POST.keys())}")
+                logger.error(f"FILES keys: {list(request.FILES.keys())}")
+                
+                messages.error(request, f"❌ Error updating plot: {str(e)}")
         else:
+            # Form validation failed
+            error_count = len(form.errors)
+            logger.warning(f"Form validation failed with {error_count} error(s)")
+            
+            # Log all form errors in detail
+            error_messages = []
             for field, errors in form.errors.items():
+                field_value = request.POST.get(field, 'Not provided')
                 for error in errors:
-                    messages.error(request, f"{field}: {error}")
+                    error_msg = f"{field}: {error}"
+                    error_messages.append(error_msg)
+                    
+                    # Log each validation error with context
+                    validation_logger.error(f"Validation error - {error_msg}")
+                    validation_logger.error(f"Field value: {field_value}")
+                    
+                    # Special logging for county/subcounty errors
+                    if field in ['county', 'subcounty']:
+                        logger.error(f"Location validation error - {field}: {error}")
+                        logger.error(f"County selected: {selected_county}")
+                        logger.error(f"Subcounty selected: {selected_subcounty}")
+                    
+                    # Display error to user
+                    messages.error(request, error_msg)
+            
+            # Log all validation errors together
+            logger.error(f"Form validation errors summary: {error_messages}")
+            logger.error(f"POST data summary: County={selected_county}, Subcounty={selected_subcounty}")
+            
+            # Update subcounties for dropdown if county was provided
+            if selected_county and selected_county in KENYA_SUB_COUNTIES:
+                sub_counties = KENYA_SUB_COUNTIES[selected_county]
+                logger.info(f"Loaded {len(sub_counties)} subcounties for {selected_county}")
     else:
+        # GET request - display form with existing data
+        logger.info(f"Processing GET request for plot edit form (ID: {id})")
         form = PlotForm(instance=plot)
+        
+        # Get subcounties for the plot's county for the dropdown
+        if plot.county and plot.county in KENYA_SUB_COUNTIES:
+            sub_counties = KENYA_SUB_COUNTIES[plot.county]
+            logger.debug(f"Loaded {len(sub_counties)} subcounties for existing county '{plot.county}'")
+    
+    # Get current verification status for display
+    verification_status = None
+    pending_tasks = 0
+    try:
+        content_type = ContentType.objects.get_for_model(Plot)
+        verification_status = VerificationStatus.objects.filter(
+            content_type=content_type,
+            object_id=plot.id
+        ).first()
+        
+        pending_tasks = VerificationTask.objects.filter(
+            plot=plot,
+            status__in=['pending', 'in_progress']
+        ).count()
+        
+        logger.debug(f"Plot verification status: {verification_status.current_stage if verification_status else 'None'}")
+        logger.debug(f"Pending tasks: {pending_tasks}")
+    except Exception as e:
+        logger.error(f"Error fetching verification data: {str(e)}")
+    
+    # Prepare subcounties data for JavaScript
+    try:
+        sub_counties_json = json.dumps(KENYA_SUB_COUNTIES)
+        logger.info(f"Prepared subcounties data for {len(KENYA_SUB_COUNTIES)} counties")
+    except Exception as e:
+        logger.error(f"Error serializing subcounties data: {str(e)}")
+        sub_counties_json = '{}'
+    
+    # Calculate total processing time
+    total_time = time.time() - start_time
+    logger.info(f"Total request processing time: {total_time:.2f} seconds")
+    logger.info("=== PLOT EDIT ENDED ===\n")
+    
+    # Determine user type for template
+    is_agent = hasattr(request.user, 'agent') and plot.agent == request.user.agent
+    is_landowner = hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile
     
     return render(request, 'listings/edit_plot.html', {
         'form': form,
         'plot': plot,
+        'is_agent': is_agent,
+        'is_landowner': is_landowner,
+        'profile_type': "Agent" if is_agent else "Landowner",
+        'counties': KENYA_COUNTIES,
+        'sub_counties_json': sub_counties_json,
+        'sub_counties': sub_counties,
+        'selected_county': plot.county,
+        'selected_subcounty': plot.subcounty,
+        'verification_status': verification_status,
+        'pending_tasks': pending_tasks,
     })
 
 
@@ -862,8 +1437,21 @@ def staff_dashboard(request):
                 }
             )
             if created:
-                logger.info(f"Created missing verification status for plot {plot.id}")
-                pending_plots += 1
+                logger.info(f"✅ Verification status created for plot {plot.id}")
+                
+                # AUTO-CREATE VERIFICATION TASKS
+                try:
+                    from .verification_service import VerificationService
+                    from .notification_service import NotificationService
+                    
+                    tasks_created = VerificationService.create_verification_tasks(plot)
+                    logger.info(f"✅ Created verification tasks for plot {plot.id}: {tasks_created}")
+                    
+                    # Notify admins about new plot
+                    NotificationService.notify_plot_submitted(plot)
+                    
+                except Exception as task_error:
+                    logger.error(f"Error creating verification tasks: {str(task_error)}", exc_info=True)
             else:
                 # If it exists but wasn't in the queryset, count it
                 stage = verification.current_stage
@@ -1278,33 +1866,150 @@ def verification_dashboard(request):
 
 @login_required
 def review_plot(request, plot_id):
-    """Admin plot review"""
+    """Admin plot review with notifications"""
     if not request.user.is_staff:
+        messages.error(request, "You don't have permission to access this page.")
         return redirect('listings:home')
 
-    plot = get_object_or_404(Plot, id=plot_id)
+    plot = get_object_or_404(Plot.objects.select_related(
+        'agent__user', 
+        'landowner__user'
+    ), id=plot_id)
     
     # Get or create verification status using VerificationStatus model
     content_type = ContentType.objects.get_for_model(Plot)
     verification, created = VerificationStatus.objects.get_or_create(
         content_type=content_type,
         object_id=plot.id,
-        defaults={'current_stage': 'document_uploaded', 'document_uploaded_at': timezone.now()}
+        defaults={
+            'current_stage': 'document_uploaded', 
+            'document_uploaded_at': timezone.now()
+        }
     )
 
+    # Get pending tasks for this plot
+    pending_tasks = VerificationTask.objects.filter(
+        plot=plot,
+        status__in=['pending', 'in_progress']
+    ).count()
+
     if request.method == 'POST':
+        action = request.POST.get('action')
+        
+        # Handle different review actions
+        if action in ['approve', 'reject', 'request_changes']:
+            notes = request.POST.get('notes', '')
+            
+            if action == 'approve':
+                verification.current_stage = 'approved'
+                verification.approved_at = timezone.now()
+                verification.stage_details['approved_by'] = request.user.username
+                verification.stage_details['approval_notes'] = notes
+                
+                # Log audit
+                log_audit(request, 'verify_plot', object_type='Plot', object_id=plot.id, 
+                         extra={'plot_id': plot.id, 'action': 'approve'})
+                
+                # Notify plot owner
+                try:
+                    from .notification_service import NotificationService
+                    plot_owner = plot.agent.user if plot.agent else plot.landowner.user
+                    NotificationService.create_notification(
+                        user=plot_owner,
+                        notification_type='plot_approved',
+                        title=f"Plot Approved: {plot.title}",
+                        message=f"Your plot '{plot.title}' has been approved and is now live.",
+                        plot=plot
+                    )
+                except Exception as e:
+                    logger.error(f"Error sending approval notification: {str(e)}")
+                
+                messages.success(request, f"✅ Plot '{plot.title}' has been approved!")
+                
+            elif action == 'reject':
+                if not notes:
+                    messages.error(request, "Please provide a reason for rejection.")
+                    return redirect('listings:review_plot', plot_id=plot.id)
+                
+                verification.current_stage = 'rejected'
+                verification.rejected_at = timezone.now()
+                verification.stage_details['rejected_by'] = request.user.username
+                verification.stage_details['rejection_reason'] = notes
+                
+                # Log audit
+                log_audit(request, 'reject_plot', object_type='Plot', object_id=plot.id,
+                         extra={'plot_id': plot.id, 'action': 'reject', 'reason': notes})
+                
+                # Notify plot owner
+                try:
+                    from .notification_service import NotificationService
+                    plot_owner = plot.agent.user if plot.agent else plot.landowner.user
+                    NotificationService.create_notification(
+                        user=plot_owner,
+                        notification_type='plot_rejected',
+                        title=f"Plot Update: {plot.title}",
+                        message=f"Your plot '{plot.title}' has been reviewed. Reason: {notes}",
+                        plot=plot
+                    )
+                except Exception as e:
+                    logger.error(f"Error sending rejection notification: {str(e)}")
+                
+                messages.warning(request, f"❌ Plot '{plot.title}' has been rejected.")
+                
+            elif action == 'request_changes':
+                if not notes:
+                    messages.error(request, "Please specify what changes are needed.")
+                    return redirect('listings:review_plot', plot_id=plot.id)
+                
+                verification.current_stage = 'document_uploaded'  # Back to pending
+                verification.stage_details['change_requests'] = notes
+                verification.stage_details['requested_by'] = request.user.username
+                
+                # Log audit
+                log_audit(request, 'request_changes', object_type='Plot', object_id=plot.id,
+                         extra={'plot_id': plot.id, 'action': 'request_changes'})
+                
+                # Notify plot owner
+                try:
+                    from .notification_service import NotificationService
+                    NotificationService.notify_changes_requested(plot, request.user, notes)
+                except Exception as e:
+                    logger.error(f"Error sending change request notification: {str(e)}")
+                
+                messages.info(request, f"✏️ Changes requested for '{plot.title}'")
+            
+            verification.save()
+            
+            # Create verification log entry
+            VerificationLog.objects.create(
+                plot=plot,
+                verified_by=request.user,
+                verification_type=action,
+                comment=notes
+            )
+            
+            return redirect('listings:verification_queue')
+        
+        # Handle form submissions for detailed verification
         vform = PlotVerificationStatusForm(request.POST, instance=verification)
         sform = TitleSearchResultForm(request.POST, request.FILES,
                                      instance=getattr(plot, 'search_result', None))
+        
         if vform.is_valid() and sform.is_valid():
             if sform.instance:
                 sform.save()
             vform.save()
+            
             verification.refresh_from_db()
+            
+            # Log status changes
             if verification.current_stage == 'approved':
-                log_audit(request, 'verify_plot', object_type='Plot', object_id=plot.id, extra={'plot_id': plot.id})
+                log_audit(request, 'verify_plot', object_type='Plot', object_id=plot.id, 
+                         extra={'plot_id': plot.id})
             elif verification.current_stage == 'rejected':
-                log_audit(request, 'reject_plot', object_type='Plot', object_id=plot.id, extra={'plot_id': plot.id})
+                log_audit(request, 'reject_plot', object_type='Plot', object_id=plot.id, 
+                         extra={'plot_id': plot.id})
+            
             messages.success(request, f"Plot verification status updated to {verification.get_current_stage_display()}.")
             return redirect('listings:verification_dashboard')
         else:
@@ -1314,14 +2019,31 @@ def review_plot(request, plot_id):
         sform = TitleSearchResultForm(instance=getattr(plot, 'search_result', None))
 
     docs = plot.verification_docs.all()
-    return render(request, 'listings/review_plot.html', {
+    
+    # Get verification history
+    verification_logs = VerificationLog.objects.filter(
+        plot=plot
+    ).select_related('verified_by').order_by('-created_at')[:10]
+    
+    # Get task summary
+    task_stats = {
+        'total': VerificationTask.objects.filter(plot=plot).count(),
+        'pending': VerificationTask.objects.filter(plot=plot, status='pending').count(),
+        'in_progress': VerificationTask.objects.filter(plot=plot, status='in_progress').count(),
+        'completed': VerificationTask.objects.filter(plot=plot, status='completed').count(),
+    }
+    
+    return render(request, 'listings/admin/review_plot.html', {
         'plot': plot,
         'docs': docs,
         'vform': vform,
         'sform': sform,
         'verification': verification,
+        'verification_logs': verification_logs,
+        'task_stats': task_stats,
+        'pending_tasks': pending_tasks,
+        'page_title': f'Review Plot: {plot.title}'
     })
-
 
 # ============ MESSAGING ============
 @login_required

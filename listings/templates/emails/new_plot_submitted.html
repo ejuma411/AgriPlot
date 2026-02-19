@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #069132 0%, #047a29 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #069132;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .details {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>New Plot Submitted</h1>
+    </div>
+    
+    <div class="content">
+        <h2>Hello {{ user.get_full_name|default:user.username }},</h2>
+        
+        <p>A new plot has been submitted for verification:</p>
+        
+        <div class="details">
+            <h3>{{ plot.title }}</h3>
+            <p><strong>Location:</strong> {{ plot.county|default:plot.location }}</p>
+            <p><strong>Area:</strong> {{ plot.area }} acres</p>
+            <p><strong>Price:</strong> KES {{ plot.price|floatformat:0|intcomma }}</p>
+            <p><strong>Submitted by:</strong> 
+                {% if plot.agent %}
+                    {{ plot.agent.user.get_full_name|default:plot.agent.user.username }} (Agent)
+                {% else %}
+                    {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }} (Landowner)
+                {% endif %}
+            </p>
+            <p><strong>Submitted at:</strong> {{ plot.created_at|date:"F j, Y H:i" }}</p>
+        </div>
+        
+        <p>Please review this plot and assign verification tasks.</p>
+        
+        <div style="text-align: center;">
+            <a href="{{ review_url }}" class="button">Review Plot</a>
+        </div>
+        
+        <p>Best regards,<br>AgriPlot Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>© {% now "Y" %} AgriPlot Connect. All rights reserved.</p>
+    </div>
+</body>
+</html>

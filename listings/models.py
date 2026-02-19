@@ -229,7 +229,11 @@ class Plot(models.Model):
         ('none', 'No Fencing'),
         ('live', 'Live Fence'),
     ]
-    
+
+    # Location
+    county = models.CharField(max_length=100, blank=True, null=True)
+    subcounty = models.CharField(max_length=100, blank=True, null=True)
+
     # Ownership
     landowner = models.ForeignKey(LandownerProfile, on_delete=models.CASCADE, null=True, blank=True)
     agent = models.ForeignKey(Agent, on_delete=models.CASCADE, null=True, blank=True)
@@ -901,3 +905,74 @@ class DocumentVerification(models.Model):
 
     def __str__(self):
         return f"{self.user.username} — {self.get_document_type_display()} ({self.approved})"
+
+# NOTIFICATION/EMAILING
+# listings/models.py - Add these models
+
+class Notification(models.Model):
+    """System notifications for users"""
+    
+    NOTIFICATION_TYPES = [
+        ('task_assigned', 'Task Assigned'),
+        ('task_completed', 'Task Completed'),
+        ('plot_approved', 'Plot Approved'),
+        ('plot_rejected', ' Plot Rejected'),
+        ('changes_requested', 'Changes Requested'),
+        ('document_uploaded', 'Document Uploaded'),
+        ('verification_started', 'Verification Started'),
+        ('verification_completed', 'Verification Completed'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
+    notification_type = models.CharField(max_length=50, choices=NOTIFICATION_TYPES)
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
+    task = models.ForeignKey(VerificationTask, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
+    
+    is_read = models.BooleanField(default=False)
+    is_email_sent = models.BooleanField(default=False)
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    read_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', '-created_at']),
+            models.Index(fields=['user', 'is_read']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.notification_type} - {self.created_at}"
+    
+    def mark_as_read(self):
+        """Mark notification as read"""
+        self.is_read = True
+        self.read_at = timezone.now()
+        self.save()
+
+
+class EmailLog(models.Model):
+    """Track all emails sent by the system"""
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('sent', 'Sent'),
+        ('failed', 'Failed'),
+    ]
+    
+    recipient = models.EmailField()
+    subject = models.CharField(max_length=500)
+    template = models.CharField(max_length=100)
+    context = models.JSONField(default=dict)
+    
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    error_message = models.TextField(blank=True)
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']

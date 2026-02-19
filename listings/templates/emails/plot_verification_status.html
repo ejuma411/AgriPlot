@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #069132 0%, #047a29 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 10px 10px 0 0;
+        }
+        .content {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 0 0 10px 10px;
+        }
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 24px;
+            margin: 20px 0;
+        }
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            font-size: 24px;
+            margin: 20px 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #069132;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .details {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Plot Verification Update</h1>
+    </div>
+    
+    <div class="content">
+        <h2>Hello {{ user.get_full_name|default:user.username }},</h2>
+        
+        {% if status == 'approved' %}
+        <div class="status-approved">
+            <i class="fas fa-check-circle"></i>
+            <h2>✅ Your Plot Has Been Approved!</h2>
+        </div>
+        <p>Congratulations! Your plot "{{ plot.title }}" has been verified and is now live on our marketplace.</p>
+        {% else %}
+        <div class="status-rejected">
+            <i class="fas fa-times-circle"></i>
+            <h2>❌ Plot Verification Update</h2>
+        </div>
+        <p>Your plot "{{ plot.title }}" has been reviewed by our verification team.</p>
+        {% endif %}
+        
+        <div class="details">
+            <h3>Verification Details:</h3>
+            <p><strong>Plot:</strong> {{ plot.title }}</p>
+            <p><strong>Location:</strong> {{ plot.county|default:plot.location }}</p>
+            <p><strong>Reviewed by:</strong> {{ completed_by.get_full_name|default:completed_by.username }}</p>
+            {% if task.notes %}
+            <p><strong>Review Notes:</strong> {{ task.notes }}</p>
+            {% endif %}
+        </div>
+        
+        {% if status == 'approved' %}
+        <p>Your plot is now visible to potential buyers. You can view it and respond to inquiries through your dashboard.</p>
+        <div style="text-align: center;">
+            <a href="{{ plot_url }}" class="button">View Your Plot</a>
+        </div>
+        {% else %}
+        <p>Please review the feedback and make the necessary changes to resubmit your plot for verification.</p>
+        <div style="text-align: center;">
+            <a href="{{ plot_url }}" class="button">Review Feedback</a>
+        </div>
+        {% endif %}
+        
+        <p>Thank you for using AgriPlot Connect!</p>
+        
+        <p>Best regards,<br>AgriPlot Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>© {% now "Y" %} AgriPlot Connect. All rights reserved.</p>
+    </div>
+</body>
+</html>

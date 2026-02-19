@@ -1,0 +1,162 @@
+{% extends "listings/admin/base_admin.html" %}
+{% load static %}
+
+{% block title %}Verification Queue - AgriPlot Admin{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="page-header-title">
+            <h1><i class="fas fa-list me-2"></i>Verification Queue</h1>
+            <p class="page-header-subtitle">All plots pending verification</p>
+        </div>
+        <div class="page-header-actions">
+            <a href="{% url 'listings:verification_dashboard' %}" class="btn">
+                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Tabs -->
+    <div class="admin-tabs">
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item">
+                <a href="?filter=all" class="nav-link {% if current_filter == 'all' %}active{% endif %}">
+                    <i class="fas fa-list"></i> All
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="?filter=pending" class="nav-link {% if current_filter == 'pending' %}active{% endif %}">
+                    <i class="fas fa-clock"></i> Pending
+                    {% if stats.pending_review %}<span class="badge bg-danger">{{ stats.pending_review }}</span>{% endif %}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="?filter=in_progress" class="nav-link {% if current_filter == 'in_progress' %}active{% endif %}">
+                    <i class="fas fa-sync-alt"></i> In Progress
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="?filter=approved" class="nav-link {% if current_filter == 'approved' %}active{% endif %}">
+                    <i class="fas fa-check-circle"></i> Approved
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="?filter=rejected" class="nav-link {% if current_filter == 'rejected' %}active{% endif %}">
+                    <i class="fas fa-times-circle"></i> Rejected
+                </a>
+            </li>
+        </ul>
+    </div>
+</div>
+
+<!-- Queue Table -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-tasks me-2"></i>
+            {% if current_filter == 'all' %}All Plots
+            {% elif current_filter == 'pending' %}Pending Review
+            {% elif current_filter == 'in_progress' %}In Progress
+            {% elif current_filter == 'approved' %}Approved Plots
+            {% elif current_filter == 'rejected' %}Rejected Plots
+            {% endif %}
+        </h5>
+        <span class="badge bg-primary">{{ plots|length }} total</span>
+    </div>
+    <div class="admin-card-body">
+        {% if plots %}
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Location</th>
+                        <th>Seller</th>
+                        <th>Submitted</th>
+                        <th>Status</th>
+                        <th>Documents</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for plot in plots %}
+                    <tr>
+                        <td><strong>#{{ plot.id }}</strong></td>
+                        <td>
+                            <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank">
+                                {{ plot.title|truncatechars:30 }}
+                            </a>
+                        </td>
+                        <td>{{ plot.county|default:plot.location|truncatechars:20 }}</td>
+                        <td>
+                            {% if plot.agent and plot.agent.user %}
+                                {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
+                            {% elif plot.landowner and plot.landowner.user %}
+                                {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}
+                            {% else %}
+                                <span class="text-muted">Unknown</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>{{ plot.created_at|date:"M d, Y" }}</small><br>
+                            <small class="text-muted">{{ plot.created_at|timesince }} ago</small>
+                        </td>
+                        <td>
+                            {% if plot.verification_status %}
+                                <span class="badge 
+                                    {% if plot.verification_status.current_stage == 'approved' %}bg-success
+                                    {% elif plot.verification_status.current_stage == 'rejected' %}bg-danger
+                                    {% elif plot.verification_status.current_stage == 'document_uploaded' %}bg-warning
+                                    {% else %}bg-info{% endif %}">
+                                    {{ plot.verification_status.get_current_stage_display }}
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary">No Status</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if plot.title_deed %}bg-success{% else %}bg-danger{% endif %}" 
+                                  title="{% if plot.title_deed %}Title Deed Uploaded{% else %}Missing Title Deed{% endif %}">
+                                <i class="fas fa-file-contract"></i>
+                            </span>
+                            <span class="badge {% if plot.official_search %}bg-success{% else %}bg-danger{% endif %}"
+                                  title="{% if plot.official_search %}Official Search Uploaded{% else %}Missing Official Search{% endif %}">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            <span class="badge {% if plot.landowner_id_doc %}bg-success{% else %}bg-danger{% endif %}"
+                                  title="{% if plot.landowner_id_doc %}ID Uploaded{% else %}Missing ID{% endif %}">
+                                <i class="fas fa-id-card"></i>
+                            </span>
+                            <span class="badge {% if plot.kra_pin %}bg-success{% else %}bg-danger{% endif %}"
+                                  title="{% if plot.kra_pin %}KRA PIN Uploaded{% else %}Missing KRA PIN{% endif %}">
+                                <i class="fas fa-file-invoice"></i>
+                            </span>
+                        </td>
+                        <td>
+                            <div class="btn-group" style="gap: 0.25rem;">
+                                <a href="{% url 'listings:review_plot' plot.id %}" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-search"></i>
+                                </a>
+                                <a href="{% url 'listings:verification_history' plot.id %}" class="btn btn-sm btn-info">
+                                    <i class="fas fa-history"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+            <h5>No Plots Found</h5>
+            <p class="text-muted">No plots match the current filter.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
