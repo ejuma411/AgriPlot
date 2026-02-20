@@ -244,4 +244,4 @@ docs/_build/
 .vscode/
 *.code-workspace
 
-# End of https://www.toptal.com/developers/gitignore/api/django,python,pycharm,venv,vscode,dotenv
+# End of https://www.toptal.com/developers/gitignore/api/django,python,pycharm,venv,vscode,dotenv.env
