@@ -534,9 +534,16 @@ class VerificationStatus(models.Model):
     def progress_percentage(self):
         """Calculate progress percentage based on current stage"""
         stages = [stage[0] for stage in self.STAGES]
-        if self.current_stage in stages:
+        
+        if self.current_stage == 'approved':
+            return 100
+        elif self.current_stage == 'rejected':
+            return 100  # Also show 100% for rejected (completed)
+        elif self.current_stage in stages:
             index = stages.index(self.current_stage)
-            return int((index + 1) / len(stages) * 100)
+            # Calculate percentage: (index + 1) / total_stages * 100
+            total_stages = len(stages)
+            return int((index + 1) / total_stages * 100)
         return 0
     
     @property
@@ -976,3 +983,151 @@ class EmailLog(models.Model):
     
     class Meta:
         ordering = ['-created_at']
+
+class ExtensionOfficer(models.Model):
+    """Extension Officer role for agricultural verification"""
+    
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='extension_officer')
+    
+    # Professional Details
+    employee_id = models.CharField(max_length=50, unique=True, help_text="Government/Institution employee ID")
+    designation = models.CharField(max_length=100, help_text="e.g., Agricultural Officer, Livestock Officer")
+    department = models.CharField(max_length=100, default="Ministry of Agriculture")
+    station = models.CharField(max_length=200, help_text="Assigned location/office")
+    
+    # Qualifications
+    qualifications = models.TextField(help_text="Academic and professional qualifications")
+    specializations = models.CharField(max_length=300, blank=True, help_text="e.g., Crop Science, Soil Science")
+    years_of_experience = models.IntegerField(default=0)
+    
+    # Contact
+    phone = models.CharField(max_length=20)
+    office_address = models.TextField(blank=True)
+    
+    # Verification jurisdiction
+    assigned_counties = models.JSONField(default=list, help_text="List of counties they can verify")
+    max_daily_tasks = models.IntegerField(default=5, help_text="Maximum tasks per day")
+    
+    # Status
+    is_active = models.BooleanField(default=True)
+    verified = models.BooleanField(default=False)
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_officers')
+    verified_at = models.DateTimeField(null=True, blank=True)
+    
+    # Performance metrics
+    total_tasks_completed = models.IntegerField(default=0)
+    average_rating = models.FloatField(default=0.0)
+    response_time_avg = models.FloatField(default=0, help_text="Average response time in hours")
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['station']),
+            models.Index(fields=['is_active']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.designation} ({self.station})"
+    
+    @property
+    def current_workload(self):
+        """Get current number of assigned tasks"""
+        from .models import VerificationTask
+        return VerificationTask.objects.filter(
+            assigned_to=self.user,
+            status='in_progress'
+        ).count()
+    
+    @property
+    def can_accept_tasks(self):
+        """Check if officer can accept more tasks"""
+        return self.current_workload < self.max_daily_tasks and self.is_active
+
+
+class ExtensionReport(models.Model):
+    """Reports submitted by Extension Officers after site visits"""
+    
+    task = models.OneToOneField('VerificationTask', on_delete=models.CASCADE, related_name='extension_report')
+    officer = models.ForeignKey(ExtensionOfficer, on_delete=models.CASCADE, related_name='reports')
+    plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='extension_reports')
+    
+    # Visit details
+    visit_date = models.DateTimeField()
+    weather_conditions = models.CharField(max_length=100, blank=True)
+    
+    # Soil assessment
+    soil_ph_verified = models.FloatField(null=True, blank=True)
+    soil_texture = models.CharField(max_length=50, choices=[
+        ('sandy', 'Sandy'),
+        ('loamy', 'Loamy'),
+        ('clay', 'Clay'),
+        ('silty', 'Silty'),
+        ('peaty', 'Peaty'),
+    ], blank=True)
+    soil_depth = models.CharField(max_length=50, blank=True, help_text="e.g., Deep (>50cm), Medium (25-50cm), Shallow (<25cm)")
+    soil_drainage = models.CharField(max_length=50, choices=[
+        ('excellent', 'Excellent'),
+        ('good', 'Good'),
+        ('moderate', 'Moderate'),
+        ('poor', 'Poor'),
+    ], blank=True)
+    
+    # Crop assessment
+    existing_crops = models.TextField(blank=True, help_text="Crops currently growing")
+    crop_health = models.CharField(max_length=50, choices=[
+        ('excellent', 'Excellent'),
+        ('good', 'Good'),
+        ('fair', 'Fair'),
+        ('poor', 'Poor'),
+    ], blank=True)
+    pest_issues = models.TextField(blank=True)
+    disease_issues = models.TextField(blank=True)
+    
+    # Water assessment
+    water_source_verified = models.CharField(max_length=100, blank=True)
+    water_quality = models.CharField(max_length=50, choices=[
+        ('excellent', 'Excellent'),
+        ('good', 'Good'),
+        ('fair', 'Fair'),
+        ('poor', 'Poor'),
+    ], blank=True)
+    irrigation_system = models.CharField(max_length=100, blank=True)
+    
+    # Photos
+    site_photos = models.JSONField(default=list, help_text="List of photo URLs")
+    
+    # Recommendations
+    recommended_crops = models.TextField(blank=True)
+    improvement_suggestions = models.TextField(blank=True)
+    
+    # FIXED: Increased max_length to 25
+    overall_suitability = models.CharField(max_length=25, choices=[
+        ('highly_suitable', 'Highly Suitable'),
+        ('moderately_suitable', 'Moderately Suitable'),
+        ('marginally_suitable', 'Marginally Suitable'),
+        ('not_suitable', 'Not Suitable'),
+    ])
+    
+    # FIXED: Increased max_length to 25
+    recommendation = models.CharField(max_length=25, choices=[
+        ('approve', 'Approve'),
+        ('approve_with_conditions', 'Approve with Conditions'),
+        ('reject', 'Reject'),
+        ('further_review', 'Further Review Required'),
+    ])
+    
+    comments = models.TextField()
+    
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['visit_date']),
+            models.Index(fields=['officer', '-submitted_at']),
+        ]
+    
+    def __str__(self):
+        return f"Extension Report for {self.plot.title} by {self.officer}"   

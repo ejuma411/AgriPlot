@@ -25,96 +25,66 @@
         <div class="stat-icon"><i class="fas fa-clock"></i></div>
         <div class="stat-value">{{ task_stats.pending|default:0 }}</div>
         <div class="stat-label">Pending Tasks</div>
-        <div class="stat-trend">
-            <span>Awaiting assignment</span>
-        </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-sync-alt"></i></div>
         <div class="stat-value">{{ task_stats.in_progress|default:0 }}</div>
         <div class="stat-label">In Progress</div>
-        <div class="stat-trend">
-            <span>Currently being worked on</span>
-        </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
         <div class="stat-value">{{ task_stats.completed_today|default:0 }}</div>
         <div class="stat-label">Completed Today</div>
-        <div class="stat-trend">
-            <span class="trend-up"><i class="fas fa-arrow-up"></i> Tasks finished</span>
-        </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
         <div class="stat-value">{{ task_stats.overdue|default:0 }}</div>
         <div class="stat-label">Overdue</div>
-        <div class="stat-trend">
-            <span class="trend-down">Taking > 2 days</span>
-        </div>
     </div>
 </div>
 
-<!-- Tasks by Type & Staff Workload -->
-<div class="row">
-    <div class="col-md-6 mb-4">
+<!-- Extension Officers Summary -->
+<div class="row mb-4">
+    <div class="col-12">
         <div class="admin-card">
             <div class="admin-card-header">
                 <h5 class="admin-card-title">
-                    <i class="fas fa-chart-pie me-2"></i>Pending Tasks by Type
+                    <i class="fas fa-user-graduate me-2"></i>Available Extension Officers
                 </h5>
             </div>
             <div class="admin-card-body">
-                <div class="task-type-list">
-                    {% for type, count in task_stats.by_type.items %}
-                        <div class="task-stat-item">
-                            <span class="task-stat-label">
-                                {% if type == 'document_review' %}
-                                    <i class="fas fa-file-alt me-2 text-info"></i>Document Review
-                                {% elif type == 'extension_review' %}
-                                    <i class="fas fa-leaf me-2 text-success"></i>Extension Review
-                                {% elif type == 'surveyor_inspection' %}
-                                    <i class="fas fa-ruler me-2 text-warning"></i>Surveyor Inspection
-                                {% endif %}
-                            </span>
-                            <span class="task-stat-value">{{ count }}</span>
-                        </div>
-                    {% empty %}
-                        <p class="text-muted text-center">No pending tasks</p>
-                    {% endfor %}
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-6 mb-4">
-        <div class="admin-card">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-users me-2"></i>Staff Workload
-                </h5>
-            </div>
-            <div class="admin-card-body">
-                <div class="workload-list">
-                    {% for staff in workload %}
-                        <div class="task-stat-item">
-                            <div class="staff-info">
-                                <strong>{{ staff.user.get_full_name|default:staff.user.username }}</strong>
-                                <small class="text-muted d-block">{{ staff.total_assigned }} total assigned</small>
+                <div class="row">
+                    {% for officer in extension_officers %}
+                    <div class="col-md-4 mb-3">
+                        <div class="officer-card">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="officer-avatar me-2">
+                                    {{ officer.user.get_full_name|default:officer.user.username|first|upper }}
+                                </div>
+                                <div>
+                                    <strong>{{ officer.user.get_full_name|default:officer.user.username }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ officer.designation }}</small>
+                                </div>
                             </div>
-                            <div class="staff-stats">
-                                <span class="badge bg-warning me-1">{{ staff.pending }} active</span>
-                                <span class="badge bg-success">{{ staff.completed_today }} today</span>
+                            <div class="small">
+                                <div><i class="fas fa-map-marker-alt me-1"></i> Station: {{ officer.station }}</div>
+                                <div><i class="fas fa-globe me-1"></i> Counties: {{ officer.assigned_counties|join:", " }}</div>
+                                <div><i class="fas fa-tasks me-1"></i> Workload: {{ officer.current_workload }}/{{ officer.max_daily_tasks }}</div>
                             </div>
                         </div>
+                    </div>
                     {% empty %}
-                        <p class="text-muted text-center">No staff members found</p>
+                    <div class="col-12">
+                        <p class="text-muted text-center">No active extension officers found.</p>
+                    </div>
                     {% endfor %}
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 
 <!-- Pending Tasks Queue -->
 <div class="admin-card mb-4">
@@ -154,13 +124,21 @@
                                 {{ task.plot.title|truncatechars:30 }}
                             </a>
                         </td>
-                        <td>{{ task.plot.county|default:task.plot.location|truncatechars:20 }}</td>
+                        <td>
+                            {% if task.plot.county %}
+                                {{ task.plot.county }}
+                                {% if task.plot.subcounty %} - {{ task.plot.subcounty }}{% endif %}
+                            {% else %}
+                                {{ task.plot.location|truncatechars:20 }}
+                            {% endif %}
+                        </td>
                         <td>{{ task.assigned_at|timesince }} ago</td>
                         <td>
                             <button class="btn btn-sm btn-success assign-btn" 
                                     data-task-id="{{ task.id }}"
-                                    data-bs-toggle="modal" 
-                                    data-bs-target="#assignModal">
+                                    data-task-type="{{ task.get_verification_type_display }}"
+                                    data-plot-title="{{ task.plot.title }}"
+                                    data-plot-county="{{ task.plot.county }}">
                                 <i class="fas fa-user-plus me-1"></i> Assign
                             </button>
                         </td>
@@ -237,124 +215,512 @@
     </div>
 </div>
 
-<!-- Assign Modal -->
-<div class="modal fade" id="assignModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Assign Task</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<!-- Custom Modal (No Bootstrap dependency) -->
+<div id="customModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 9999; overflow: auto;">
+    <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px;">
+        <div style="background: white; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideDown 0.3s ease;">
+            
+            <!-- Modal Header -->
+            <div style="background: linear-gradient(135deg, #069132 0%, #047a29 100%); color: white; padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+                <h5 style="margin: 0; font-size: 1.25rem; font-weight: 600;">
+                    <i class="fas fa-user-plus me-2"></i>Assign Extension Task
+                </h5>
+                <button type="button" onclick="closeCustomModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
             </div>
-            <div class="modal-body">
-                <form id="assignForm">
+            
+            <!-- Modal Body -->
+            <div style="padding: 1.5rem;">
+                <div id="customTaskInfo" style="background: #e8f5e9; border-left: 4px solid #069132; padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px; display: none;">
+                    <p style="margin: 0 0 0.5rem 0;"><strong>Task:</strong> <span id="customTaskType"></span></p>
+                    <p style="margin: 0 0 0.5rem 0;"><strong>Plot:</strong> <span id="customPlotTitle"></span></p>
+                    <p style="margin: 0;"><strong>County:</strong> <span id="customPlotCounty"></span></p>
+                </div>
+                
+                <form id="customAssignForm">
                     {% csrf_token %}
-                    <input type="hidden" name="task_id" id="taskIdInput">
+                    <input type="hidden" name="task_id" id="customTaskIdInput">
                     
-                    <div class="mb-3">
-                        <label for="staffSelect" class="form-label">Select Staff Member</label>
-                        <select class="form-select" id="staffSelect" required>
-                            <option value="">Choose...</option>
-                            {% for user in staff_users %}
-                                <option value="{{ user.id }}">
-                                    {{ user.get_full_name|default:user.username }}
-                                    {% if user.email %} - {{ user.email }}{% endif %}
+                    <div style="margin-bottom: 1.5rem;">
+                        <label for="customStaffSelect" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333;">
+                            <i class="fas fa-user-graduate me-1"></i> Select Extension Officer
+                        </label>
+                        <select id="customStaffSelect" required style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; background: white;">
+                            <option value="">-- Choose an Extension Officer --</option>
+                            {% for officer in extension_officers %}
+                                <option value="{{ officer.user.id }}" 
+                                        data-counties="{{ officer.assigned_counties|join:',' }}"
+                                        data-station="{{ officer.station }}">
+                                    {{ officer.user.get_full_name|default:officer.user.username }}
+                                    {% if officer.station %} - {{ officer.station }}{% endif %}
+                                    ({{ officer.assigned_counties|length }} counties)
                                 </option>
                             {% endfor %}
                         </select>
+                        <small style="display: block; margin-top: 0.5rem; color: #6c757d;">
+                            <i class="fas fa-info-circle me-1"></i> Only showing verified, active extension officers
+                        </small>
+                    </div>
+
+                    <!-- Officer Details (shown when selected) -->
+                    <div id="officerDetails" style="display: none; background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+                        <h6 style="margin: 0 0 0.5rem 0; font-weight: 600;">Officer Details:</h6>
+                        <p style="margin: 0 0 0.25rem 0;"><strong>Station:</strong> <span id="officerStation"></span></p>
+                        <p style="margin: 0;"><strong>Assigned Counties:</strong> <span id="officerCounties"></span></p>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-success" id="confirmAssignBtn">
-                    <i class="fas fa-check me-1"></i> Assign Task
+            
+            <!-- Modal Footer -->
+            <div style="padding: 1rem 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end; gap: 0.75rem;">
+                <button type="button" onclick="closeCustomModal()" style="padding: 0.6rem 1.2rem; border: 2px solid #6c757d; background: white; color: #6c757d; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
+                    Cancel
+                </button>
+                <button type="button" onclick="assignTask()" style="padding: 0.6rem 1.2rem; background: #069132; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-check"></i> Assign to Officer
                 </button>
             </div>
         </div>
     </div>
 </div>
 
+<!-- Loading Spinner -->
+<div id="customLoadingSpinner" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+        <div class="spinner-border text-success" style="width: 3rem; height: 3rem; margin-bottom: 1rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <h6 style="margin: 0; color: #333; font-size: 1rem;">Assigning task...</h6>
+    </div>
+</div>
+
 <style>
-    .task-type-list, .workload-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
+    @keyframes slideDown {
+        from {
+            transform: translateY(-30px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    .btn-success {
+        background: #069132;
+        color: white;
+        border: none;
+    }
+    
+    .btn-success:hover {
+        background: #047a29;
+    }
+    
+    /* Ensure modal is above everything */
+    #customModal {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
 
-    .task-stat-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.75rem;
+    .officer-card {
         background: var(--light);
-        border-radius: 6px;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+        transition: all 0.3s ease;
     }
 
-    .staff-info {
-        flex: 1;
+    .officer-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-color: var(--primary);
     }
 
-    .staff-stats {
+    .officer-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: white;
         display: flex;
-        gap: 0.25rem;
-    }
-
-    .btn-group {
-        display: flex;
-        gap: 0.25rem;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
     }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle assign button clicks
-    const assignBtns = document.querySelectorAll('.assign-btn');
-    const taskIdInput = document.getElementById('taskIdInput');
-    const staffSelect = document.getElementById('staffSelect');
-    const confirmBtn = document.getElementById('confirmAssignBtn');
+// Simple modal functions - no Bootstrap dependencies
+let currentTaskId = null;
+let currentPlotCounty = null;
+
+function openCustomModal(taskId, taskType, plotTitle, plotCounty) {
+    console.log('Opening modal for task:', taskId, 'County:', plotCounty);
     
-    assignBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const taskId = this.dataset.taskId;
-            taskIdInput.value = taskId;
-        });
-    });
+    // Store current task ID and county
+    currentTaskId = taskId;
+    currentPlotCounty = plotCounty;
     
-    // Handle assignment confirmation
-    confirmBtn.addEventListener('click', function() {
-        const taskId = taskIdInput.value;
-        const userId = staffSelect.value;
-        
-        if (!userId) {
-            alert('Please select a staff member');
-            return;
-        }
-        
-        fetch('{% url "listings:ajax_assign_task" %}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: JSON.stringify({
-                task_id: taskId,
-                user_id: userId
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload();
+    // Set values
+    document.getElementById('customTaskIdInput').value = taskId;
+    document.getElementById('customTaskType').textContent = taskType || 'Extension Review';
+    document.getElementById('customPlotTitle').textContent = plotTitle || 'Unknown Plot';
+    document.getElementById('customPlotCounty').textContent = plotCounty || 'Unknown County';
+    
+    // Show task info
+    document.getElementById('customTaskInfo').style.display = 'block';
+    
+    // Reset and filter officers
+    const select = document.getElementById('customStaffSelect');
+    select.value = '';
+    document.getElementById('officerDetails').style.display = 'none';
+    
+    // Highlight officers that cover this county
+    Array.from(select.options).forEach(option => {
+        if (option.value) {
+            const counties = option.dataset.counties ? option.dataset.counties.split(',') : [];
+            if (counties.includes(plotCounty)) {
+                option.style.fontWeight = 'bold';
+                option.style.backgroundColor = '#e8f5e9';
             } else {
-                alert('Error: ' + data.message);
+                option.style.fontWeight = 'normal';
+                option.style.backgroundColor = '';
             }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred');
-        });
+        }
     });
+    
+    // Show modal
+    document.getElementById('customModal').style.display = 'block';
+    
+    // Prevent body scrolling
+    document.body.style.overflow = 'hidden';
+}
+
+// Function to handle task assignment
+function assignTask() {
+    const taskId = document.getElementById('customTaskIdInput').value;
+    const userId = document.getElementById('customStaffSelect').value;
+    
+    console.log('Assigning task:', taskId, 'to user:', userId);
+    
+    if (!taskId) {
+        alert('Error: No task selected');
+        return;
+    }
+    
+    if (!userId) {
+        alert('Please select an extension officer');
+        return;
+    }
+    
+    // Show loading spinner
+    document.getElementById('customLoadingSpinner').style.display = 'flex';
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Send AJAX request
+    fetch('{% url "listings:ajax_assign_task" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            task_id: taskId,
+            user_id: userId
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response:', data);
+        
+        // Hide loading spinner
+        document.getElementById('customLoadingSpinner').style.display = 'none';
+        
+        if (data.success) {
+            // Close modal
+            closeCustomModal();
+            
+            // Show success message
+            alert(data.message || 'Task assigned successfully!');
+            
+            // Reload page to show updated data
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('customLoadingSpinner').style.display = 'none';
+        alert('An error occurred while assigning the task. Please check the console for details.');
+    });
+}
+
+function closeCustomModal() {
+    console.log('Closing modal');
+    
+    // Hide modal
+    document.getElementById('customModal').style.display = 'none';
+    
+    // Hide task info
+    document.getElementById('customTaskInfo').style.display = 'none';
+    
+    // Reset
+    document.getElementById('customTaskIdInput').value = '';
+    document.getElementById('officerDetails').style.display = 'none';
+    currentTaskId = null;
+    currentPlotCounty = null;
+    
+    // Restore body scrolling
+    document.body.style.overflow = 'auto';
+}
+
+// Show officer details when selected
+document.getElementById('customStaffSelect').addEventListener('change', function(e) {
+    const selected = this.options[this.selectedIndex];
+    
+    if (selected.value) {
+        const station = selected.dataset.station || 'Not specified';
+        const counties = selected.dataset.counties || '';
+        
+        document.getElementById('officerStation').textContent = station;
+        document.getElementById('officerCounties').textContent = counties.replace(/,/g, ', ');
+        document.getElementById('officerDetails').style.display = 'block';
+        
+        // Check if officer covers this county
+        const countyList = counties.split(',');
+        if (!countyList.includes(currentPlotCounty)) {
+            // Show warning but don't prevent assignment
+            const warning = document.createElement('div');
+            warning.className = 'alert alert-warning';
+            warning.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> This officer does not cover ' + currentPlotCounty;
+            
+            // Remove old warning if exists
+            const oldWarning = document.getElementById('countyWarning');
+            if (oldWarning) oldWarning.remove();
+            
+            warning.id = 'countyWarning';
+            document.getElementById('officerDetails').appendChild(warning);
+        } else {
+            const oldWarning = document.getElementById('countyWarning');
+            if (oldWarning) oldWarning.remove();
+        }
+    } else {
+        document.getElementById('officerDetails').style.display = 'none';
+    }
+});
+
+// Update the assign button click handler
+document.querySelectorAll('.assign-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const taskId = this.dataset.taskId;
+        const taskType = this.dataset.taskType;
+        const plotTitle = this.dataset.plotTitle;
+        const plotCounty = this.dataset.plotCounty || 'Unknown';  // Add this data attribute
+        
+        openCustomModal(taskId, taskType, plotTitle, plotCounty);
+    });
+});
+
+
+function openCustomModal(taskId, taskType, plotTitle, plotCounty) {
+    console.log('Opening modal for task:', taskId, 'County:', plotCounty);
+    
+    // Store current task ID and county
+    currentTaskId = taskId;
+    currentPlotCounty = plotCounty;
+    
+    // Set values
+    document.getElementById('customTaskIdInput').value = taskId;
+    document.getElementById('customTaskType').textContent = taskType || 'Extension Review';
+    document.getElementById('customPlotTitle').textContent = plotTitle || 'Unknown Plot';
+    document.getElementById('customPlotCounty').textContent = plotCounty || 'Unknown County';
+    
+    // Show task info
+    document.getElementById('customTaskInfo').style.display = 'block';
+    
+    // Reset and filter officers
+    const select = document.getElementById('customStaffSelect');
+    select.value = '';
+    document.getElementById('officerDetails').style.display = 'none';
+    
+    // Highlight officers that cover this county
+    Array.from(select.options).forEach(option => {
+        if (option.value) {
+            const counties = option.dataset.counties ? option.dataset.counties.split(',') : [];
+            if (counties.includes(plotCounty)) {
+                option.style.fontWeight = 'bold';
+                option.style.backgroundColor = '#e8f5e9';
+            } else {
+                option.style.fontWeight = 'normal';
+                option.style.backgroundColor = '';
+            }
+        }
+    });
+    
+    // Show modal
+    document.getElementById('customModal').style.display = 'block';
+    
+    // Prevent body scrolling
+    document.body.style.overflow = 'hidden';
+}
+
+function closeCustomModal() {
+    console.log('Closing modal');
+    
+    // Hide modal
+    document.getElementById('customModal').style.display = 'none';
+    
+    // Hide task info
+    document.getElementById('customTaskInfo').style.display = 'none';
+    
+    // Reset
+    document.getElementById('customTaskIdInput').value = '';
+    document.getElementById('officerDetails').style.display = 'none';
+    currentTaskId = null;
+    currentPlotCounty = null;
+    
+    // Restore body scrolling
+    document.body.style.overflow = 'auto';
+}
+
+// Show officer details when selected
+document.getElementById('customStaffSelect').addEventListener('change', function(e) {
+    const selected = this.options[this.selectedIndex];
+    
+    if (selected.value) {
+        const station = selected.dataset.station || 'Not specified';
+        const counties = selected.dataset.counties || '';
+        
+        document.getElementById('officerStation').textContent = station;
+        document.getElementById('officerCounties').textContent = counties.replace(/,/g, ', ');
+        document.getElementById('officerDetails').style.display = 'block';
+        
+        // Check if officer covers this county
+        const countyList = counties.split(',');
+        if (!countyList.includes(currentPlotCounty)) {
+            // Show warning but don't prevent assignment
+            const warning = document.createElement('div');
+            warning.className = 'alert alert-warning';
+            warning.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> This officer does not cover ' + currentPlotCounty;
+            
+            // Remove old warning if exists
+            const oldWarning = document.getElementById('countyWarning');
+            if (oldWarning) oldWarning.remove();
+            
+            warning.id = 'countyWarning';
+            document.getElementById('officerDetails').appendChild(warning);
+        } else {
+            const oldWarning = document.getElementById('countyWarning');
+            if (oldWarning) oldWarning.remove();
+        }
+    } else {
+        document.getElementById('officerDetails').style.display = 'none';
+    }
+});
+
+// Function to handle task assignment - THIS WAS MISSING
+function assignTask() {
+    const taskId = document.getElementById('customTaskIdInput').value;
+    const userId = document.getElementById('customStaffSelect').value;
+    
+    console.log('Assigning task:', taskId, 'to user:', userId);
+    
+    if (!taskId) {
+        alert('Error: No task selected');
+        return;
+    }
+    
+    if (!userId) {
+        alert('Please select an extension officer');
+        return;
+    }
+    
+    // Show loading spinner
+    document.getElementById('customLoadingSpinner').style.display = 'flex';
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // Send AJAX request
+    fetch('{% url "listings:ajax_assign_task" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+            task_id: taskId,
+            user_id: userId
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response:', data);
+        
+        // Hide loading spinner
+        document.getElementById('customLoadingSpinner').style.display = 'none';
+        
+        if (data.success) {
+            // Close modal
+            closeCustomModal();
+            
+            // Show success message
+            alert(data.message || 'Task assigned successfully!');
+            
+            // Reload page to show updated data
+            location.reload();
+        } else {
+            alert('Error: ' + (data.message || 'Unknown error'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('customLoadingSpinner').style.display = 'none';
+        alert('An error occurred while assigning the task. Please check the console for details.');
+    });
+}
+
+// Update the assign button click handler
+document.querySelectorAll('.assign-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const taskId = this.dataset.taskId;
+        const taskType = this.dataset.taskType;
+        const plotTitle = this.dataset.plotTitle;
+        const plotCounty = this.dataset.plotCounty || 'Unknown';
+        
+        openCustomModal(taskId, taskType, plotTitle, plotCounty);
+    });
+});
+
+// Close modal when clicking outside
+document.getElementById('customModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeCustomModal();
+    }
+});
+
+// Handle escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('customModal').style.display === 'block') {
+        closeCustomModal();
+    }
 });
 </script>
 {% endblock %}

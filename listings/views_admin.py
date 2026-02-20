@@ -1,12 +1,21 @@
 # listings/views_admin.py
-
+import json
+import logging
+import traceback
+from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib import messages
+from django.http import JsonResponse
 from django.utils import timezone
-from django.db.models import Count, Q
 from django.contrib.contenttypes.models import ContentType
-from .models import *
+from django.contrib.auth.models import User
+from django.db.models import Q
+from .models import Plot, VerificationStatus, VerificationTask, VerificationLog, ExtensionOfficer
+from .verification_service import VerificationService
+from .utils import log_audit
+
+# Add this logger definition
+logger = logging.getLogger(__name__)
 
 @staff_member_required
 def verification_dashboard(request):
@@ -265,7 +274,7 @@ from django.http import JsonResponse
 def task_assignment(request):
     """View for managing task assignments"""
     
-    # Get all pending tasks - use assigned_at instead of created_at
+    # Get all pending tasks
     pending_tasks = VerificationTask.objects.filter(
         status='pending'
     ).select_related('plot', 'plot__agent__user', 'plot__landowner__user').order_by('assigned_at')
@@ -275,17 +284,47 @@ def task_assignment(request):
         status='in_progress'
     ).select_related('plot', 'assigned_to').order_by('-assigned_at')
     
-    # Get staff users for assignment dropdown
-    staff_users = User.objects.filter(is_staff=True, is_active=True)
+    # Get EXTENSION OFFICERS instead of all staff
+    from .models import ExtensionOfficer
+    extension_officers = ExtensionOfficer.objects.filter(
+        is_active=True,
+        verified=True
+    ).select_related('user')
     
     # Get workload statistics
-    workload = VerificationService.get_staff_workload()
+    workload = []
+    for officer in extension_officers:
+        pending = VerificationTask.objects.filter(
+            assigned_to=officer.user,
+            status='in_progress'
+        ).count()
+        
+        completed_today = VerificationTask.objects.filter(
+            assigned_to=officer.user,
+            status='completed',
+            completed_at__date=timezone.now().date()
+        ).count()
+        
+        total_assigned = VerificationTask.objects.filter(
+            assigned_to=officer.user
+        ).count()
+        
+        workload.append({
+            'user': officer.user,
+            'officer': officer,
+            'pending': pending,
+            'completed_today': completed_today,
+            'total_assigned': total_assigned,
+            'station': officer.station,
+            'assigned_counties': officer.assigned_counties
+        })
+    
     task_stats = VerificationService.get_task_statistics()
     
     context = {
         'pending_tasks': pending_tasks,
         'in_progress_tasks': in_progress_tasks,
-        'staff_users': staff_users,
+        'extension_officers': extension_officers,  # Pass only extension officers
         'workload': workload,
         'task_stats': task_stats,
         'page_title': 'Task Assignment'
@@ -297,40 +336,61 @@ def task_assignment(request):
 def ajax_assign_task(request):
     """AJAX endpoint for task assignment"""
     if request.method == 'POST':
-        import json
-        data = json.loads(request.body)
-        task_id = data.get('task_id')
-        user_id = data.get('user_id')
-        
         try:
-            assigned_to = User.objects.get(id=user_id)
+            import json
+            data = json.loads(request.body)
+            task_id = data.get('task_id')
+            user_id = data.get('user_id')
+            
+            # Now logger is defined
+            logger.info(f"AJAX assign task - Task ID: {task_id}, User ID: {user_id}, Request by: {request.user.username}")
+            
+            if not task_id or not user_id:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Task ID and User ID are required'
+                }, status=400)
+            
+            try:
+                assigned_to = User.objects.get(id=user_id, is_staff=True)
+            except User.DoesNotExist:
+                logger.error(f"User {user_id} not found or not staff")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Selected staff member not found'
+                }, status=404)
+            
+            # Assign the task
+            from .verification_service import VerificationService
             task = VerificationService.assign_task(task_id, assigned_to, request.user)
             
             if task:
+                logger.info(f"Task {task_id} assigned successfully to {assigned_to.username}")
                 return JsonResponse({
                     'success': True,
-                    'message': f'Task assigned to {assigned_to.username}'
+                    'message': f'Task assigned to {assigned_to.get_full_name()|default:assigned_to.username}'
                 })
             else:
+                logger.error(f"Task {task_id} not found or could not be assigned")
                 return JsonResponse({
                     'success': False,
-                    'message': 'Task not found'
+                    'message': 'Task not found or could not be assigned'
                 }, status=404)
                 
-        except User.DoesNotExist:
+        except json.JSONDecodeError:
+            logger.error("Invalid JSON in request body")
             return JsonResponse({
                 'success': False,
-                'message': 'User not found'
-            }, status=404)
+                'message': 'Invalid request format'
+            }, status=400)
         except Exception as e:
+            logger.error(f"Error in ajax_assign_task: {str(e)}", exc_info=True)
             return JsonResponse({
                 'success': False,
                 'message': str(e)
             }, status=500)
     
-    return JsonResponse({'success': False, 'message': 'Invalid method'}, status=405)
-
-
+    return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
 @staff_member_required
 def my_tasks(request):
     """View for staff to see their assigned tasks"""

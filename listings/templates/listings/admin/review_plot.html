@@ -372,47 +372,227 @@
             <div class="admin-card-body">
                 {% if verification %}
                     <div class="status-timeline">
-                        <div class="timeline-item {% if verification.current_stage == 'document_uploaded' %}active{% endif %}">
+                        <!-- Stage 1: Documents Uploaded -->
+                        <div class="timeline-item {% if verification.current_stage == 'document_uploaded' or verification.progress_percentage >= 14 %}active{% endif %} 
+                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
                             <div class="timeline-dot"></div>
                             <div class="timeline-content">
-                                <strong>Documents Uploaded</strong>
+                                <strong>1. Documents Uploaded</strong>
                                 <small>{{ verification.document_uploaded_at|date:"M d, Y"|default:"Pending" }}</small>
+                                {% if verification.progress_percentage >= 14 %}
+                                    <span class="badge bg-success float-end">✓</span>
+                                {% endif %}
                             </div>
                         </div>
-                        <div class="timeline-item {% if verification.current_stage == 'api_verification_started' %}active{% endif %}">
+                        
+                        <!-- Stage 2: API Verification Started -->
+                        <div class="timeline-item {% if verification.current_stage == 'api_verification_started' or verification.progress_percentage >= 28 %}active{% endif %}
+                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
                             <div class="timeline-dot"></div>
                             <div class="timeline-content">
-                                <strong>API Verification</strong>
+                                <strong>2. API Verification Started</strong>
                                 <small>{{ verification.api_started_at|date:"M d, Y"|default:"Pending" }}</small>
+                                {% if verification.progress_percentage >= 28 %}
+                                    <span class="badge bg-success float-end">✓</span>
+                                {% endif %}
                             </div>
                         </div>
-                        <div class="timeline-item {% if verification.current_stage == 'admin_review' %}active{% endif %}">
+                        
+                        <!-- Stage 3: Title Search Completed -->
+                        <div class="timeline-item {% if verification.current_stage == 'title_search_completed' or verification.progress_percentage >= 42 %}active{% endif %}
+                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
                             <div class="timeline-dot"></div>
                             <div class="timeline-content">
-                                <strong>Admin Review</strong>
+                                <strong>3. Title Search Completed</strong>
+                                <small>{{ verification.title_search_at|date:"M d, Y"|default:"Pending" }}</small>
+                                {% if verification.progress_percentage >= 42 %}
+                                    <span class="badge bg-success float-end">✓</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 4: Owner Verified -->
+                        <div class="timeline-item {% if verification.current_stage == 'owner_verified' or verification.progress_percentage >= 57 %}active{% endif %}
+                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <strong>4. Owner Identity Verified</strong>
+                                <small>{{ verification.owner_verified_at|date:"M d, Y"|default:"Pending" }}</small>
+                                {% if verification.progress_percentage >= 57 %}
+                                    <span class="badge bg-success float-end">✓</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 5: Encumbrance Check -->
+                        <div class="timeline-item {% if verification.current_stage == 'encumbrance_check' or verification.progress_percentage >= 71 %}active{% endif %}
+                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <strong>5. Encumbrance Check</strong>
+                                <small>{{ verification.encumbrance_check_at|date:"M d, Y"|default:"Pending" }}</small>
+                                {% if verification.progress_percentage >= 71 %}
+                                    <span class="badge bg-success float-end">✓</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 6: Physical Location Verified -->
+                        <div class="timeline-item {% if verification.current_stage == 'physical_location_verified' or verification.progress_percentage >= 85 %}active{% endif %}
+                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <strong>6. Physical Location Verified</strong>
+                                <small>{{ verification.physical_location_verified_at|date:"M d, Y"|default:"Pending" }}</small>
+                                {% if verification.progress_percentage >= 85 %}
+                                    <span class="badge bg-success float-end">✓</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Stage 7: Admin Review -->
+                        <div class="timeline-item {% if verification.current_stage == 'admin_review' or verification.progress_percentage >= 92 %}active{% endif %}
+                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <strong>7. Admin Review</strong>
                                 <small>{{ verification.admin_review_at|date:"M d, Y"|default:"Pending" }}</small>
+                                {% if verification.progress_percentage >= 92 %}
+                                    <span class="badge bg-success float-end">✓</span>
+                                {% endif %}
                             </div>
                         </div>
-                        <div class="timeline-item {% if verification.current_stage == 'approved' %}active completed{% endif %}">
+                        
+                        <!-- Stage 8: Approved -->
+                        <div class="timeline-item {% if verification.current_stage == 'approved' %}active completed{% endif %}
+                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
                             <div class="timeline-dot"></div>
                             <div class="timeline-content">
-                                <strong>Approved</strong>
+                                <strong>8. Approved</strong>
                                 <small>{{ verification.approved_at|date:"M d, Y"|default:"Pending" }}</small>
+                                {% if verification.progress_percentage >= 100 %}
+                                    <span class="badge bg-success float-end">✓</span>
+                                {% endif %}
                             </div>
                         </div>
+                        
+                        <!-- Stage: Rejected (if applicable) -->
+                        {% if verification.current_stage == 'rejected' %}
+                        <div class="timeline-item active completed" style="margin-top: 10px;">
+                            <div class="timeline-dot" style="background: var(--danger);"></div>
+                            <div class="timeline-content">
+                                <strong class="text-danger">❌ Rejected</strong>
+                                <small>{{ verification.rejected_at|date:"M d, Y"|default:"Rejected" }}</small>
+                                {% if verification.stage_details.rejection_reason %}
+                                    <p class="text-muted small mt-1">{{ verification.stage_details.rejection_reason|truncatechars:50 }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
                     </div>
                     
-                    <div class="progress mt-3">
-                        <div class="progress-bar" role="progressbar" style="width: {{ verification.progress_percentage }}%;" 
-                             aria-valuenow="{{ verification.progress_percentage }}" aria-valuemin="0" aria-valuemax="100">
-                            {{ verification.progress_percentage }}%
+                    <!-- Progress Bar with Percentage -->
+                    <div class="mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <strong>Overall Progress:</strong>
+                            <strong class="{% if verification.progress_percentage >= 100 %}text-success
+                                        {% elif verification.current_stage == 'rejected' %}text-danger
+                                        {% endif %}">
+                                {% if verification.current_stage == 'rejected' %}
+                                    Rejected
+                                {% else %}
+                                    {{ verification.progress_percentage }}%
+                                {% endif %}
+                            </strong>
                         </div>
+                        
+                        {% if verification.current_stage != 'rejected' %}
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar 
+                                {% if verification.progress_percentage >= 100 %}bg-success
+                                {% elif verification.progress_percentage >= 75 %}bg-info
+                                {% elif verification.progress_percentage >= 50 %}bg-warning
+                                {% else %}bg-danger{% endif %}" 
+                                role="progressbar" 
+                                style="width: {{ verification.progress_percentage }}%;" 
+                                aria-valuenow="{{ verification.progress_percentage }}" 
+                                aria-valuemin="0" 
+                                aria-valuemax="100">
+                                {% if verification.progress_percentage >= 100 %}
+                                    <i class="fas fa-check-circle me-1"></i> COMPLETE
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-danger" role="progressbar" style="width: 100%;">
+                                <i class="fas fa-times-circle me-1"></i> REJECTED
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Stage Details -->
+                        {% if verification.stage_details %}
+                        <div class="mt-3">
+                            <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#stageDetails">
+                                <i class="fas fa-info-circle me-1"></i> View Stage Details
+                            </button>
+                            <div class="collapse mt-2" id="stageDetails">
+                                <div class="card card-body p-2 bg-light">
+                                    <pre class="small mb-0" style="white-space: pre-wrap;">{{ verification.stage_details|pprint }}</pre>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Completion Message -->
+                        {% if verification.progress_percentage >= 100 %}
+                            <div class="alert alert-success mt-3 mb-0">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <strong>Verification Complete!</strong> This plot has been fully verified and approved.
+                            </div>
+                        {% elif verification.current_stage == 'rejected' %}
+                            <div class="alert alert-danger mt-3 mb-0">
+                                <i class="fas fa-times-circle me-2"></i>
+                                <strong>Verification Rejected</strong> This plot did not pass verification.
+                                {% if verification.stage_details.rejection_reason %}
+                                    <p class="mt-1 mb-0 small">{{ verification.stage_details.rejection_reason }}</p>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     </div>
                 {% else %}
                     <p class="text-muted">No verification status found.</p>
                 {% endif %}
             </div>
         </div>
+
+        <!-- API Data Card (if available) -->
+        {% if verification and verification.api_responses %}
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-cloud me-2"></i>API Data
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                {% if verification.search_reference %}
+                <p><strong>Search Reference:</strong> {{ verification.search_reference }}</p>
+                {% endif %}
+                {% if verification.search_fee_paid %}
+                <p><strong>Search Fee:</strong> KES {{ verification.search_fee_paid }}</p>
+                {% endif %}
+                <button class="btn btn-sm btn-outline-info w-100" type="button" data-bs-toggle="collapse" data-bs-target="#apiResponses">
+                    <i class="fas fa-code me-1"></i> View API Responses
+                </button>
+                <div class="collapse mt-2" id="apiResponses">
+                    <div class="card card-body p-2 bg-light">
+                        <pre class="small mb-0" style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ verification.api_responses|pprint }}</pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
 
         <!-- Review Actions Card -->
         <div class="admin-card mb-4">
@@ -428,7 +608,7 @@
                     <div class="mb-3">
                         <label for="notes" class="form-label">Review Notes</label>
                         <textarea class="form-control" id="notes" name="notes" rows="4" 
-                                  placeholder="Enter your observations, concerns, or approval notes..."></textarea>
+                                placeholder="Enter your observations, concerns, or approval notes..."></textarea>
                     </div>
 
                     <div class="d-grid gap-2">
@@ -469,6 +649,10 @@
                                     <i class="fas fa-times-circle text-danger"></i>
                                 {% elif log.verification_type == 'change_request' %}
                                     <i class="fas fa-edit text-warning"></i>
+                                {% elif log.verification_type == 'assignment' %}
+                                    <i class="fas fa-user-plus text-info"></i>
+                                {% elif log.verification_type == 'system' %}
+                                    <i class="fas fa-cog text-secondary"></i>
                                 {% else %}
                                     <i class="fas fa-info-circle text-info"></i>
                                 {% endif %}
@@ -477,7 +661,7 @@
                                 <strong>{{ log.get_verification_type_display }}</strong>
                                 <p class="mb-0">{{ log.comment|truncatechars:50 }}</p>
                                 <small class="text-muted">
-                                    by {% if log.verified_by %}{{ log.verified_by.username }}{% else %}System{% endif %} 
+                                    by {% if log.verified_by %}{{ log.verified_by.get_full_name|default:log.verified_by.username }}{% else %}System{% endif %} 
                                     {{ log.created_at|timesince }} ago
                                 </small>
                             </div>

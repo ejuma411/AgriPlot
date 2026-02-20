@@ -2,8 +2,8 @@
 
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
-from .models import VerificationTask, VerificationLog, Plot
-from .notification_service import NotificationService
+from .models import *
+from .notification_service import *
 import logging
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,9 @@ class VerificationService:
     
     @staticmethod
     def assign_task(task_id, assigned_to_user, assigned_by):
-        """Assign a verification task to a specific staff member"""
+        """
+        Assign a verification task to a specific staff member
+        """
         try:
             task = VerificationTask.objects.get(id=task_id)
             task.assigned_to = assigned_to_user
@@ -80,8 +82,12 @@ class VerificationService:
             task.assigned_at = timezone.now()
             task.save()
             
-            # Send notification
-            NotificationService.notify_task_assigned(task, assigned_by)
+            # Send notification if available
+            try:
+                from .notification_service import NotificationService
+                NotificationService.notify_task_assigned(task, assigned_by)
+            except ImportError:
+                logger.warning("NotificationService not available")
             
             # Log the assignment
             VerificationLog.objects.create(
@@ -97,10 +103,46 @@ class VerificationService:
         except VerificationTask.DoesNotExist:
             logger.error(f"Task {task_id} not found")
             return None
+        
+    @staticmethod
+    def assign_extension_task(task_id, assigned_by):
+        """Auto-assign extension task to available officer"""
+        from .models import ExtensionOfficer
+        
+        task = VerificationTask.objects.get(id=task_id)
+        plot = task.plot
+        
+        # Find available extension officer for this county
+        available_officers = ExtensionOfficer.objects.filter(
+            is_active=True,
+            assigned_counties__contains=[plot.county],
+            verified=True
+        )
+        
+        # Find officer with lowest workload
+        best_officer = None
+        lowest_workload = float('inf')
+        
+        for officer in available_officers:
+            workload = VerificationTask.objects.filter(
+                assigned_to=officer.user,
+                status='in_progress'
+            ).count()
+            
+            if workload < officer.max_daily_tasks and workload < lowest_workload:
+                lowest_workload = workload
+                best_officer = officer.user
+        
+        if best_officer:
+            return VerificationService.assign_task(task_id, best_officer, assigned_by)
+        
+        return None
     
     @staticmethod
     def complete_task(task_id, completed_by, notes="", approved=None):
-        """Mark a verification task as completed"""
+        """
+        Mark a verification task as completed
+        """
         try:
             task = VerificationTask.objects.get(id=task_id)
             task.status = 'completed'
@@ -109,8 +151,12 @@ class VerificationService:
             task.approved = approved
             task.save()
             
-            # Send notification
-            NotificationService.notify_task_completed(task, completed_by)
+            # Send notification if available
+            try:
+                from .notification_service import NotificationService
+                NotificationService.notify_task_completed(task, completed_by)
+            except ImportError:
+                logger.warning("NotificationService not available")
             
             # Log the completion
             status = "approved" if approved else "rejected" if approved is False else "completed"
@@ -131,7 +177,7 @@ class VerificationService:
         except VerificationTask.DoesNotExist:
             logger.error(f"Task {task_id} not found")
             return None
-        
+    
     @staticmethod
     def check_plot_verification_completion(plot):
         """
@@ -145,7 +191,10 @@ class VerificationService:
         if pending_tasks == 0:
             # All tasks completed - update verification status
             content_type = ContentType.objects.get_for_model(Plot)
-            verification = plot.verification.first()
+            verification = VerificationStatus.objects.filter(
+                content_type=content_type,
+                object_id=plot.id
+            ).first()
             
             if verification:
                 verification.current_stage = 'approved'
@@ -169,7 +218,6 @@ class VerificationService:
         Get workload statistics for all staff members
         """
         from django.contrib.auth.models import User
-        from django.utils import timezone
         
         staff_users = User.objects.filter(is_staff=True)
         
@@ -198,34 +246,60 @@ class VerificationService:
             })
         
         return workload
-        @staticmethod
-        def get_task_statistics():
-            """
-            Get overall task statistics for dashboard
-            """
-            from django.utils import timezone
-            from datetime import timedelta
-            
-            stats = {
-                'pending': VerificationTask.objects.filter(status='pending').count(),
-                'in_progress': VerificationTask.objects.filter(status='in_progress').count(),
-                'completed_today': VerificationTask.objects.filter(
-                    status='completed',
-                    completed_at__date=timezone.now().date()
-                ).count(),
-                'overdue': VerificationTask.objects.filter(
-                    status='in_progress',
-                    assigned_at__lt=timezone.now() - timedelta(days=2)
-                ).count(),
+    
+    @staticmethod
+    def get_task_statistics():
+        """
+        Get overall task statistics for dashboard
+        """
+        from django.utils import timezone
+        from datetime import timedelta
+        
+        stats = {
+            'pending': VerificationTask.objects.filter(status='pending').count(),
+            'in_progress': VerificationTask.objects.filter(status='in_progress').count(),
+            'completed_today': VerificationTask.objects.filter(
+                status='completed',
+                completed_at__date=timezone.now().date()
+            ).count(),
+            'overdue': VerificationTask.objects.filter(
+                status='in_progress',
+                assigned_at__lt=timezone.now() - timedelta(days=2)
+            ).count(),
+        }
+        
+        # Tasks by type
+        stats['by_type'] = {}
+        for task_type, _ in VerificationTask.TASK_TYPE_CHOICES:
+            stats['by_type'][task_type] = VerificationTask.objects.filter(
+                verification_type=task_type,
+                status='pending'
+            ).count()
+        
+        return stats
+    
+    @staticmethod
+    def get_plot_verification_status(plot):
+        """
+        Get detailed verification status for a specific plot
+        """
+        content_type = ContentType.objects.get_for_model(Plot)
+        verification = VerificationStatus.objects.filter(
+            content_type=content_type,
+            object_id=plot.id
+        ).first()
+        
+        tasks = VerificationTask.objects.filter(plot=plot)
+        
+        return {
+            'verification': verification,
+            'total_tasks': tasks.count(),
+            'pending_tasks': tasks.filter(status='pending').count(),
+            'in_progress_tasks': tasks.filter(status='in_progress').count(),
+            'completed_tasks': tasks.filter(status='completed').count(),
+            'tasks_by_type': {
+                'document_review': tasks.filter(verification_type='document_review').first(),
+                'extension_review': tasks.filter(verification_type='extension_review').first(),
+                'surveyor_inspection': tasks.filter(verification_type='surveyor_inspection').first(),
             }
-            
-            # Tasks by type
-            stats['by_type'] = {}
-            for task_type, _ in VerificationTask.TASK_TYPE_CHOICES:
-                stats['by_type'][task_type] = VerificationTask.objects.filter(
-                    verification_type=task_type,
-                    status='pending'
-                ).count()
-            
-            return stats
-
+        }

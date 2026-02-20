@@ -931,3 +931,65 @@ class LandownerStep4Form(forms.Form):
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         error_messages={'required': 'You must agree to the privacy policy.'}
     )
+
+# listings/forms.py - Add these forms
+
+class ExtensionOfficerProfileForm(forms.ModelForm):
+    """Form for creating/editing extension officer profile"""
+    
+    class Meta:
+        model = ExtensionOfficer
+        fields = ['employee_id', 'designation', 'department', 'station',
+                 'qualifications', 'specializations', 'years_of_experience',
+                 'phone', 'office_address', 'assigned_counties', 'max_daily_tasks']
+        widgets = {
+            'assigned_counties': forms.SelectMultiple(attrs={'class': 'form-control'}),
+            'qualifications': forms.Textarea(attrs={'rows': 3}),
+            'specializations': forms.TextInput(attrs={'class': 'form-control'}),
+            'office_address': forms.Textarea(attrs={'rows': 2}),
+        }
+
+class MultipleFileInput(forms.ClearableFileInput):
+    """Custom widget that supports multiple file uploads"""
+    allow_multiple_selected = True
+
+class MultipleFileField(forms.FileField):
+    """Custom field that handles multiple file uploads"""
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        single_file_clean = super().clean
+        if isinstance(data, (list, tuple)):
+            result = [single_file_clean(d, initial) for d in data]
+        else:
+            result = [single_file_clean(data, initial)]
+        return result
+
+class ExtensionReportForm(forms.ModelForm):
+    """Form for submitting extension review reports"""
+    
+    site_photos = MultipleFileField(
+        required=False,
+        help_text="Upload photos from the site visit (you can select multiple files)"
+    )
+    
+    class Meta:
+        model = ExtensionReport
+        exclude = ['task', 'officer', 'plot', 'submitted_at', 'site_photos']
+        widgets = {
+            'visit_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'existing_crops': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'pest_issues': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'disease_issues': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'recommended_crops': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'improvement_suggestions': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'comments': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'soil_texture': forms.Select(attrs={'class': 'form-control'}),
+            'soil_drainage': forms.Select(attrs={'class': 'form-control'}),
+            'crop_health': forms.Select(attrs={'class': 'form-control'}),
+            'water_quality': forms.Select(attrs={'class': 'form-control'}),
+            'overall_suitability': forms.Select(attrs={'class': 'form-control'}),
+            'recommendation': forms.Select(attrs={'class': 'form-control'}),
+        }
