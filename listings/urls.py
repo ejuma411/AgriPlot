@@ -1,10 +1,10 @@
-from django.urls import path
-from . import views
+from django.urls import path, include
 from .views import LandownerWizard
 from django.views.generic import TemplateView
 from django.contrib.auth.views import LogoutView
 from django.views.generic.base import RedirectView # For backward compatibility redirects
-from . import views_admin
+from . import views, views_admin, views_extension
+
 
 app_name = 'listings'
 
@@ -88,4 +88,11 @@ urlpatterns = [
     path('notifications/', views_admin.get_notifications, name='get_notifications'),
     path('notifications/mark/<int:notification_id>/', views_admin.mark_notification_read, name='mark_notification_read'),
     path('notifications/mark-all/', views_admin.mark_all_notifications_read, name='mark_all_notifications_read'),
+
+    # In urls.py
+    path('extension/', include([
+        path('', views_extension.extension_dashboard, name='extension_dashboard'),
+        path('review/<int:task_id>/', views_extension.conduct_extension_review, name='conduct_extension_review'),
+        path('report/<int:report_id>/', views_extension.view_extension_report, name='view_extension_report'),
+    ])),
 ]
