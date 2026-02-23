@@ -3,7 +3,7 @@ from .views import LandownerWizard
 from django.views.generic import TemplateView
 from django.contrib.auth.views import LogoutView
 from django.views.generic.base import RedirectView # For backward compatibility redirects
-from . import views, views_admin, views_extension
+from . import views, views_admin, views_extension, views_test
 
 
 app_name = 'listings'
@@ -40,8 +40,11 @@ urlpatterns = [
     path('register/agent/', views.register_agent, name='register_agent'),
    
     # ============ Dashboard ============
-    path('dashboard/', views.staff_dashboard, name='staff_dashboard'),
-    path('dashboard/plots/', views.my_plots, name='my_plots'),
+    # Dashboard router (main entry point after login)
+    path('dashboard/', views.dashboard_router, name='dashboard_router'),
+    
+    # Staff dashboard (for agents/landowners)
+    path('staff-dashboard/', views.staff_dashboard, name='staff_dashboard'),path('dashboard/plots/', views.my_plots, name='my_plots'),
     path('dashboard/plot/<int:plot_id>/verification/', views.plot_verification_detail, name='plot_verification_detail'),
     path('dashboard/interests/', views.buyer_interests, name='buyer_interests'),
     path('dashboard/interest/<int:interest_id>/update/', views.update_interest_status, name='update_interest_status'),
@@ -95,4 +98,11 @@ urlpatterns = [
         path('review/<int:task_id>/', views_extension.conduct_extension_review, name='conduct_extension_review'),
         path('report/<int:report_id>/', views_extension.view_extension_report, name='view_extension_report'),
     ])),
+
+    # Analytics URLs
+    path('analytics/', views_admin.analytics_dashboard, name='analytics_dashboard'),
+    path('analytics/export/', views_admin.export_report, name='export_report'),
+
+    # Test endpoints (remove in production)
+    path('test/ardhisasa/<int:plot_id>/', views_test.test_ardhisasa, name='test_ardhisasa'),
 ]

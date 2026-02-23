@@ -24,6 +24,7 @@ from django.utils import timezone
 import json
 from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from .utils import log_audit
+from django.contrib.contenttypes.models import ContentType
 
 logger = logging.getLogger(__name__)
 
@@ -1374,179 +1375,136 @@ def upload_verification_doc(request, plot_id):
 # ============ DASHBOARD VIEWS ============
 @login_required
 def staff_dashboard(request):
-    """Main dashboard for landowners and agents"""
-    context = {}
+    """Dashboard for agents/landowners with optional staff features"""
     
-    # Check user type
-    is_landowner = hasattr(request.user, 'landownerprofile')
+    # Start timing for performance monitoring
+    import time
+    start_time = time.time()
+    
+    logger.info(f"=== STAFF DASHBOARD STARTED === User: {request.user.username}")
+    
+    # Determine user type
     is_agent = hasattr(request.user, 'agent')
+    is_landowner = hasattr(request.user, 'landownerprofile')
+    is_staff = request.user.is_staff
+    is_extension = hasattr(request.user, 'extension_officer')
     
-    if not (is_landowner or is_agent):
-        messages.error(request, "You need to be a landowner or agent to access this dashboard.")
-        return redirect('listings:home')
-    
-    # Get user's plots
-    plots = Plot.objects.none()
-    if is_agent:
-        plots = Plot.objects.filter(agent=request.user.agent)
-        logger.info(f"Agent {request.user.username} has {plots.count()} plots")
-    elif is_landowner:
-        plots = Plot.objects.filter(landowner=request.user.landownerprofile)
-        logger.info(f"Landowner {request.user.username} has {plots.count()} plots")
-    
-    # Debug: Print all plots and their verification status
-    for plot in plots:
-        if hasattr(plot, 'verification') and plot.verification:
-            logger.info(f"Plot {plot.id}: {plot.title} - Status: {plot.verification.current_stage}")
-        else:
-            logger.warning(f"Plot {plot.id}: {plot.title} - No verification status found")
-    
-    # Plot statistics using VerificationStatus
-    total_plots = plots.count()
-    
-    # Count by verification stage
-    verified_plots = 0
-    in_review_plots = 0
-    pending_plots = 0
-    rejected_plots = 0
-    other_plots = 0
-    
-    for plot in plots:
-        if hasattr(plot, 'verification') and plot.verification:
-            stage = plot.verification.current_stage
-            if stage == 'approved':
-                verified_plots += 1
-            elif stage == 'admin_review':
-                in_review_plots += 1
-            elif stage == 'pending':
-                pending_plots += 1
-            elif stage == 'rejected':
-                rejected_plots += 1
-            else:
-                other_plots += 1
-                logger.info(f"Plot {plot.id} has other stage: {stage}")
-        else:
-            # Create verification status for plots that don't have it
-            content_type = ContentType.objects.get_for_model(Plot)
-            verification, created = VerificationStatus.objects.get_or_create(
-                content_type=content_type,
-                object_id=plot.id,
-                defaults={
-                    'current_stage': 'pending',
-                    'document_uploaded_at': timezone.now()
-                }
-            )
-            if created:
-                logger.info(f"✅ Verification status created for plot {plot.id}")
-                
-                # AUTO-CREATE VERIFICATION TASKS
-                try:
-                    from .verification_service import VerificationService
-                    from .notification_service import NotificationService
-                    
-                    tasks_created = VerificationService.create_verification_tasks(plot)
-                    logger.info(f"✅ Created verification tasks for plot {plot.id}: {tasks_created}")
-                    
-                    # Notify admins about new plot
-                    NotificationService.notify_plot_submitted(plot)
-                    
-                except Exception as task_error:
-                    logger.error(f"Error creating verification tasks: {str(task_error)}", exc_info=True)
-            else:
-                # If it exists but wasn't in the queryset, count it
-                stage = verification.current_stage
-                if stage == 'approved':
-                    verified_plots += 1
-                elif stage == 'admin_review':
-                    in_review_plots += 1
-                elif stage == 'pending':
-                    pending_plots += 1
-                elif stage == 'rejected':
-                    rejected_plots += 1
-    
-    # Calculate percentages
-    if total_plots > 0:
-        verified_percentage = (verified_plots / total_plots) * 100
-        in_review_percentage = (in_review_plots / total_plots) * 100
-        pending_percentage = (pending_plots / total_plots) * 100
-        rejected_percentage = (rejected_plots / total_plots) * 100
-    else:
-        verified_percentage = in_review_percentage = pending_percentage = rejected_percentage = 0
-    
-    # Log the counts for debugging
-    logger.info(f"Dashboard counts - Total: {total_plots}, Verified: {verified_plots}, "
-                f"In Review: {in_review_plots}, Pending: {pending_plots}, Rejected: {rejected_plots}")
-    
-    # Recent activities
-    recent_interests = UserInterest.objects.filter(plot__in=plots).order_by('-created_at')[:5]
-    
-    # Calculate buyer interest percentage
-    buyer_interest_percentage = (recent_interests.count() / total_plots * 100) if total_plots > 0 else 0
-    
-    # Plot status breakdown
-    plot_status_data = {
-        'Verified': verified_plots,
-        'In Review': in_review_plots,
-        'Pending': pending_plots,
-        'Rejected': rejected_plots,
+    # Get base context
+    context = {
+        'is_agent': is_agent,
+        'is_landowner': is_landowner,
+        'profile_type': "Agent" if is_agent else "Landowner",
+        'profile': request.user.agent if is_agent else request.user.landownerprofile if is_landowner else None,
     }
     
-    # Get user's verification status
-    verification_data = None
-    if is_landowner:
-        content_type = ContentType.objects.get_for_model(LandownerProfile)
+    # Get user's plots
+    if is_agent:
+        plots = Plot.objects.filter(agent=request.user.agent)
+    elif is_landowner:
+        plots = Plot.objects.filter(landowner=request.user.landownerprofile)
+    else:
+        plots = Plot.objects.none()
+    
+    # Get content type for Plot
+    plot_content_type = ContentType.objects.get_for_model(Plot)
+    
+    # Calculate metrics by querying VerificationStatus directly
+    total_plots = plots.count()
+    
+    # Get plot IDs for this user
+    plot_ids = plots.values_list('id', flat=True)
+    
+    verification_map = {}
+    if plot_ids:
+        statuses = VerificationStatus.objects.filter(
+            content_type=plot_content_type,
+            object_id__in=plot_ids
+        )
+        for status in statuses:
+            verification_map[status.object_id] = status
+
+    # Attach to plots
+    for plot in plots:
+        plot.verification_status = verification_map.get(plot.id)
+
+    # Get verification statuses for these plots
+    verification_statuses = VerificationStatus.objects.filter(
+        content_type=plot_content_type,
+        object_id__in=plot_ids
+    )
+    
+    # Count by status
+    verified_plots = verification_statuses.filter(current_stage='approved').count()
+    in_review_plots = verification_statuses.filter(current_stage='admin_review').count()
+    pending_plots = verification_statuses.filter(current_stage='document_uploaded').count()
+    rejected_plots = verification_statuses.filter(current_stage='rejected').count()
+    
+    # Get user's verification status (for their account)
+    if is_agent:
         verification = VerificationStatus.objects.filter(
-            content_type=content_type,
-            object_id=request.user.landownerprofile.id
-        ).first()
-    elif is_agent:
-        content_type = ContentType.objects.get_for_model(Agent)
-        verification = VerificationStatus.objects.filter(
-            content_type=content_type,
+            content_type=ContentType.objects.get_for_model(Agent),
             object_id=request.user.agent.id
         ).first()
-    
-    if verification:
-        verification_data = {
-            'current_stage': verification.current_stage,
-            'stage_display': verification.get_current_stage_display(),
-            'document_uploaded_at': verification.document_uploaded_at,
-            'admin_review_at': verification.admin_review_at,
-            'approved_at': verification.approved_at,
-            'search_reference': verification.search_reference,
-            'progress': verification.progress_percentage,
-            'estimated_completion': verification.estimated_completion
-        }
+    elif is_landowner:
+        verification = VerificationStatus.objects.filter(
+            content_type=ContentType.objects.get_for_model(LandownerProfile),
+            object_id=request.user.landownerprofile.id
+        ).first()
+    else:
+        verification = None
     
     context.update({
-        'is_landowner': is_landowner,
-        'is_agent': is_agent,
         'total_plots': total_plots,
         'verified_plots': verified_plots,
         'in_review_plots': in_review_plots,
         'pending_plots': pending_plots,
         'rejected_plots': rejected_plots,
-        'other_plots': other_plots,
-        'verified_percentage': verified_percentage,
-        'in_review_percentage': in_review_percentage,
-        'pending_percentage': pending_percentage,
-        'rejected_percentage': rejected_percentage,
-        'buyer_interest_percentage': buyer_interest_percentage,
-        'recent_interests': recent_interests,
-        'plot_status_data': plot_status_data,
-        'plots': plots.order_by('-created_at')[:5],
-        'verification': verification_data
+        'verified_percentage': (verified_plots / total_plots * 100) if total_plots > 0 else 0,
+        'in_review_percentage': (in_review_plots / total_plots * 100) if total_plots > 0 else 0,
+        'pending_percentage': (pending_plots / total_plots * 100) if total_plots > 0 else 0,
+        'rejected_percentage': (rejected_plots / total_plots * 100) if total_plots > 0 else 0,
+        'plots': plots.order_by('-created_at')[:6],
+        'recent_interests': UserInterest.objects.filter(plot__in=plots).order_by('-created_at')[:5],
+        'verification': verification,
+        'recent_interests_count': recent_interests.count(),
     })
     
-    # Add profile info
-    if is_landowner:
-        context['profile'] = request.user.landownerprofile
-        context['profile_type'] = 'Landowner'
-    elif is_agent:
-        context['profile'] = request.user.agent
-        context['profile_type'] = 'Agent'
+    # Add staff-specific data if user is staff
+    if is_staff:
+        # Staff stats
+        context['stats'] = {
+            'pending_review': VerificationStatus.objects.filter(
+                content_type=plot_content_type,
+                current_stage='document_uploaded'
+            ).count(),
+        }
+        
+        # Task stats
+        context['task_stats'] = {
+            'pending': VerificationTask.objects.filter(status='pending').count(),
+        }
+        
+        # My tasks count
+        context['my_tasks_count'] = VerificationTask.objects.filter(
+            assigned_to=request.user,
+            status='in_progress'
+        ).count()
+    
+    # Add extension officer data
+    if is_extension:
+        context['extension_tasks_count'] = VerificationTask.objects.filter(
+            assigned_to=request.user,
+            status='in_progress',
+            verification_type='extension_review'
+        ).count()
+    
+    # Calculate processing time
+    processing_time = time.time() - start_time
+    logger.info(f"Dashboard loaded in {processing_time:.2f} seconds")
+    logger.info(f"=== STAFF DASHBOARD ENDED === User: {request.user.username}")
     
     return render(request, 'listings/dashboard/staff_dashboard.html', context)
+
 
 @login_required
 def my_plots(request):
@@ -2394,3 +2352,37 @@ def admin_approve_verification(request, verification_id):
         'api_responses': verification.api_responses,
         'stage_details': verification.stage_details
     })
+
+
+# listings/views.py
+
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect, render
+from django.contrib import messages
+
+@login_required
+def dashboard_router(request):
+    """
+    Route users to their appropriate dashboard based on role
+    """
+    user = request.user
+    
+    # Check if user is staff/admin
+    if user.is_staff:
+        return redirect('listings:verification_dashboard')
+    
+    # Check if user is extension officer
+    if hasattr(user, 'extension_officer'):
+        return redirect('listings:extension_dashboard')
+    
+    # Check if user is agent or landowner
+    if hasattr(user, 'agent') or hasattr(user, 'landownerprofile'):
+        return redirect('listings:staff_dashboard')
+    
+    # Check if user is buyer (has profile with role='buyer')
+    if hasattr(user, 'profile') and user.profile.role == 'buyer':
+        return redirect('listings:home')  # Buyer goes to marketplace
+    
+    # Default fallback
+    return redirect('listings:home')
+

@@ -786,34 +786,25 @@ class PlotForm(forms.ModelForm):
     def save(self, commit=True):
         plot = super().save(commit=False)
         
-        # Ensure county and subcounty are set
-        if self.cleaned_data.get('county'):
-            plot.county = self.cleaned_data['county']
-        if self.cleaned_data.get('subcounty'):
-            plot.subcounty = self.cleaned_data['subcounty']
-        
-        # Set owner if provided
-        if hasattr(self, 'owner') and self.owner:
-            if isinstance(self.owner, Agent):
-                plot.agent = self.owner
-            elif isinstance(self.owner, LandownerProfile):
-                plot.landowner = self.owner
-        
-        # Set legacy price field (required on Plot): prefer sale_price, else lease yearly, else lease monthly*12, else 0
-        if self.cleaned_data.get('sale_price'):
-            plot.price = self.cleaned_data['sale_price']
-        elif self.cleaned_data.get('lease_price_yearly'):
-            plot.price = self.cleaned_data['lease_price_yearly']
-        elif self.cleaned_data.get('lease_price_monthly'):
-            plot.price = self.cleaned_data['lease_price_monthly'] * 12
-        else:
-            plot.price = Decimal('0')
+        # Check if documents were uploaded
+        docs_uploaded = []
+        for field in ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin']:
+            if field in self.changed_data:
+                docs_uploaded.append(field)
         
         if commit:
             plot.save()
+            
+            # If documents were uploaded, log it
+            if docs_uploaded:
+                VerificationLog.objects.create(
+                    plot=plot,
+                    verified_by=None,  # System action
+                    verification_type='document_upload',
+                    comment=f"Documents uploaded: {', '.join(docs_uploaded)}"
+                )
         
-        return plot   
-
+        return plot
 
 # ============ VERIFICATION FORMS ============
 class VerificationDocumentForm(forms.ModelForm):

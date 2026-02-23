@@ -10,7 +10,7 @@ load_dotenv()
 
 # Authentication URLs
 LOGIN_URL = '/login/'
-LOGIN_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/dashboard/'  # This sends users to the dashboard router
 LOGOUT_REDIRECT_URL = '/'
 
 # =============================================================================

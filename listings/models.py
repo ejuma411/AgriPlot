@@ -355,7 +355,7 @@ class Plot(models.Model):
     # Additional metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    is_published = models.BooleanField(default=False)
     class Meta:
         indexes = [
             models.Index(fields=['-created_at']),
@@ -521,6 +521,13 @@ class VerificationStatus(models.Model):
             self.is_complete = True
         
         self.save()
+
+    # In VerificationStatus, add method to trigger API check
+    def trigger_ardhisasa_check(self):
+        """Call Ardhisasa API to verify title"""
+        if self.current_stage == 'document_uploaded':
+            self.update_stage('api_verification_started')
+        
     
     def add_api_response(self, response_data):
         """Store API response for audit trail"""
@@ -725,7 +732,7 @@ class PlotReaction(models.Model):
 
 
 # -----------------------------
-# Audit Log (Q8 - ZTA/CIA)
+# Audit Log (ZTA/CIA)
 # -----------------------------
 class AuditLog(models.Model):
     """Log sensitive actions for compliance and security (who did what when)."""
@@ -769,7 +776,7 @@ class AuditLog(models.Model):
 
 
 # -----------------------------
-# Pricing - Comparables & Suggestions (Q6)
+# Pricing - Comparables & Suggestions 
 # -----------------------------
 class PriceComparable(models.Model):
     """Market comparable sales for pricing suggestions."""
@@ -817,7 +824,7 @@ class PricingSuggestion(models.Model):
 
 
 # -----------------------------
-# Verification Task & Log (Q5)
+# Verification Task & Log
 # -----------------------------
 class VerificationTask(models.Model):
     """Assign verification tasks to staff (document review, extension review, surveyor)."""
@@ -874,7 +881,7 @@ class VerificationLog(models.Model):
 
 
 # -----------------------------
-# Document Verification (Q7 - impersonation prevention)
+# Document Verification (impersonation prevention)
 # -----------------------------
 class DocumentVerification(models.Model):
     """Per-document verification checks (readability, name match, approval)."""
@@ -906,6 +913,22 @@ class DocumentVerification(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @classmethod
+    def verify_document(cls, plot, doc_type, reviewer, approved, notes):
+        verification = cls.objects.create(
+            user=plot.agent.user if plot.agent else plot.landowner.user,
+            document_type=doc_type,
+            document_file=getattr(plot, doc_type),
+            is_readable=True,
+            name_matches_user=approved,
+            all_names_match=approved,
+            verified_by=reviewer,
+            verified_at=timezone.now(),
+            verification_notes=notes,
+            approved=approved
+        )
+        return verification
+
     class Meta:
         ordering = ['-created_at']
         unique_together = [['user', 'document_type']]
@@ -914,7 +937,6 @@ class DocumentVerification(models.Model):
         return f"{self.user.username} — {self.get_document_type_display()} ({self.approved})"
 
 # NOTIFICATION/EMAILING
-# listings/models.py - Add these models
 
 class Notification(models.Model):
     """System notifications for users"""
@@ -1131,3 +1153,4 @@ class ExtensionReport(models.Model):
     
     def __str__(self):
         return f"Extension Report for {self.plot.title} by {self.officer}"   
+

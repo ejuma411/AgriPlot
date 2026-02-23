@@ -52,7 +52,7 @@ def extension_dashboard(request):
         'page_title': 'Extension Officer Dashboard'
     }
     
-    return render(request, 'listings/extension/dashboard.html', context)
+    return render(request, 'listings/admin/my_tasks.html', context)
 
 
 @login_required
@@ -81,19 +81,9 @@ def conduct_extension_review(request, task_id):
             report.task = task
             report.officer = request.user.extension_officer
             report.plot = plot
-            
-            # Handle photo uploads
-            photos = request.FILES.getlist('site_photos')
-            photo_urls = []
-            for photo in photos:
-                # Save photo logic here
-                photo_urls.append(photo.name)  # Simplified
-            report.site_photos = photo_urls
-            
-            report.submitted_at = timezone.now()
             report.save()
             
-            # Complete the task
+            # Complete the task with the officer's recommendation
             approved = report.recommendation in ['approve', 'approve_with_conditions']
             VerificationService.complete_task(
                 task_id=task.id,
@@ -102,7 +92,7 @@ def conduct_extension_review(request, task_id):
                 approved=approved
             )
             
-            messages.success(request, "Extension review submitted successfully!")
+            messages.success(request, "Extension review submitted!")
             return redirect('listings:extension_dashboard')
     else:
         form = ExtensionReportForm()

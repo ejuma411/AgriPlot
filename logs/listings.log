@@ -15,3 +15,73 @@ Traceback (most recent call last):
   File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/conf/__init__.py", line 83, in __getattr__
     val = getattr(_wrapped, name)
 AttributeError: 'Settings' object has no attribute 'SITE_URL'
+INFO | 2026-02-20 10:05:54 | listings.views | views | staff_dashboard | 1395 | Landowner Wamalwa has 0 plots
+INFO | 2026-02-20 10:05:54 | listings.views | views | staff_dashboard | 1477 | Dashboard counts - Total: 0, Verified: 0, In Review: 0, Pending: 0, Rejected: 0
+INFO | 2026-02-20 10:09:49 | listings.views | views | staff_dashboard | 1395 | Landowner Wamalwa has 0 plots
+INFO | 2026-02-20 10:09:49 | listings.views | views | staff_dashboard | 1477 | Dashboard counts - Total: 0, Verified: 0, In Review: 0, Pending: 0, Rejected: 0
+INFO | 2026-02-20 10:19:27 | listings.views | views | staff_dashboard | 1384 | === STAFF DASHBOARD STARTED === User: Wamalwa
+INFO | 2026-02-20 10:19:27 | listings.views | views | staff_dashboard | 1502 | Dashboard loaded in 0.02 seconds
+INFO | 2026-02-20 10:19:27 | listings.views | views | staff_dashboard | 1503 | === STAFF DASHBOARD ENDED === User: Wamalwa
+INFO | 2026-02-20 10:20:19 | listings.views | views | staff_dashboard | 1384 | === STAFF DASHBOARD STARTED === User: Wamalwa
+INFO | 2026-02-20 10:20:19 | listings.views | views | staff_dashboard | 1502 | Dashboard loaded in 0.03 seconds
+INFO | 2026-02-20 10:20:19 | listings.views | views | staff_dashboard | 1503 | === STAFF DASHBOARD ENDED === User: Wamalwa
+ERROR | 2026-02-23 08:20:24 | listings.management.commands.send_task_reminders | send_task_reminders | handle | 83 | Failed to send task reminder: name 'timesince' is not defined
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/management/commands/send_task_reminders.py", line 58, in handle
+    message=f"Task for plot '{task.plot.title}' assigned {task.assigned_at|timesince} ago. Please complete soon.",
+                                                                           ^^^^^^^^^
+NameError: name 'timesince' is not defined. Did you mean: 'timezone'?
+ERROR | 2026-02-23 08:20:24 | listings.management.commands.send_task_reminders | send_task_reminders | handle | 83 | Failed to send task reminder: name 'timesince' is not defined
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/management/commands/send_task_reminders.py", line 58, in handle
+    message=f"Task for plot '{task.plot.title}' assigned {task.assigned_at|timesince} ago. Please complete soon.",
+                                                                           ^^^^^^^^^
+NameError: name 'timesince' is not defined. Did you mean: 'timezone'?
+INFO | 2026-02-23 08:21:35 | listings.notification_service | notification_service | create_notification | 29 | Notification created for user 19: task_reminder
+INFO | 2026-02-23 08:21:35 | listings.notification_service | notification_service | create_notification | 29 | Notification created for user 2: task_reminder
+INFO | 2026-02-23 08:21:35 | listings.notification_service | notification_service | create_notification | 29 | Notification created for user 19: task_reminder
+INFO | 2026-02-23 08:21:35 | listings.notification_service | notification_service | create_notification | 29 | Notification created for user 2: task_reminder
+INFO | 2026-02-23 08:49:36 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:49:37 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:49:37 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:49:38 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:51:29 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:51:29 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 9999
+INFO | 2026-02-23 08:51:30 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:51:30 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 9999
+INFO | 2026-02-23 08:51:30 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:51:30 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 9999
+INFO | 2026-02-23 08:53:02 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:53:24 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:53:27 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:53:27 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 9999
+INFO | 2026-02-23 08:53:27 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:53:27 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 9999
+INFO | 2026-02-23 08:53:28 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:53:28 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 9999
+INFO | 2026-02-23 08:56:56 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:56:56 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 9
+INFO | 2026-02-23 08:56:56 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 51 | Searching title: TEST/9/2024
+ERROR | 2026-02-23 08:56:57 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 142 | Ardhisasa verification error: name 'time' is not defined
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/services/ardhisasa_integration.py", line 77, in verify_plot_title
+    ownership_result = self.client.verify_ownership(
+        title_number,
+        owner_id,
+        owner_name
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/listings/services/mock_ardhisasa.py", line 45, in verify_ownership
+    time.sleep(1)
+    ^^^^
+NameError: name 'time' is not defined. Did you forget to import 'time'?
+ERROR | 2026-02-23 08:56:58 | listings.services.ardhisasa_integration | ardhisasa_integration | _handle_error | 181 | Ardhisasa verification failed for plot 9: name 'time' is not defined
+INFO | 2026-02-23 08:56:58 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:57:53 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:57:53 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 9
+INFO | 2026-02-23 08:57:53 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 51 | Searching title: TEST/9/2024
+INFO | 2026-02-23 08:57:57 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 130 | Ardhisasa verification successful for plot 9
+INFO | 2026-02-23 08:57:58 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:58:34 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 08:58:34 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 10
+INFO | 2026-02-23 08:58:34 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 51 | Searching title: TEST/10/2024
+INFO | 2026-02-23 08:58:38 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 130 | Ardhisasa verification successful for plot 10

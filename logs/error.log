@@ -152,3 +152,277 @@ Traceback (most recent call last):
 AttributeError: 'Settings' object has no attribute 'SITE_URL'
 ERROR | 2026-02-20 09:30:10 | django.request | log | 253 | Internal Server Error: /verify/tasks/ajax/assign/
 ERROR | 2026-02-20 09:30:10 | django.server | basehttp | 213 | "POST /verify/tasks/ajax/assign/ HTTP/1.1" 500 78
+ERROR | 2026-02-20 09:56:08 | django.request | log | 253 | Internal Server Error: /analytics/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_admin.py", line 493, in analytics_dashboard
+    overview = AnalyticsService.get_verification_overview(days)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/analytics_service.py", line 26, in get_verification_overview
+    plots_verified = Plot.objects.filter(
+                     ~~~~~~~~~~~~~~~~~~~^
+        verification_status__approved_at__range=[start_date, end_date]
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ).count()
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1495, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1513, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1523, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'verification_status' into field. Choices are: agent, agent_id, area, building_description, buyer_interests, climate_zone, contact_requests, county, created_at, crop_suitability, electricity_meter, elevation_meters, extension_reports, fencing, has_buildings, has_electricity, has_road_access, has_water, id, is_protected_area, kra_pin, land_type, land_use_description, landowner, landowner_id, landowner_id_doc, latitude, lease_duration, lease_price_monthly, lease_price_yearly, lease_terms, listing_type, location, longitude, notifications, official_search, ph_level, price, price_per_acre, pricing_suggestions, reactions, road_distance_km, road_type, sale_price, search_result, soil_report, soil_reports, soil_type, special_features, subcounty, title, title_deed, updated_at, verification, verification_docs, verification_logs, verification_tasks, water_source
+ERROR | 2026-02-20 09:56:08 | django.server | basehttp | 213 | "GET /analytics/ HTTP/1.1" 500 146641
+ERROR | 2026-02-20 09:56:22 | django.request | log | 253 | Internal Server Error: /analytics/export/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_admin.py", line 530, in export_report
+    timeline = AnalyticsService.get_verification_timeline(days)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/analytics_service.py", line 121, in get_verification_timeline
+    verified = Plot.objects.filter(
+               ~~~~~~~~~~~~~~~~~~~^
+        verification_status__approved_at__range=[current_date, next_date]
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ).count()
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1495, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1513, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1523, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'verification_status' into field. Choices are: agent, agent_id, area, building_description, buyer_interests, climate_zone, contact_requests, county, created_at, crop_suitability, electricity_meter, elevation_meters, extension_reports, fencing, has_buildings, has_electricity, has_road_access, has_water, id, is_protected_area, kra_pin, land_type, land_use_description, landowner, landowner_id, landowner_id_doc, latitude, lease_duration, lease_price_monthly, lease_price_yearly, lease_terms, listing_type, location, longitude, notifications, official_search, ph_level, price, price_per_acre, pricing_suggestions, reactions, road_distance_km, road_type, sale_price, search_result, soil_report, soil_reports, soil_type, special_features, subcounty, title, title_deed, updated_at, verification, verification_docs, verification_logs, verification_tasks, water_source
+ERROR | 2026-02-20 09:56:22 | django.server | basehttp | 213 | "GET /analytics/export/?type=verification&days=30 HTTP/1.1" 500 149521
+ERROR | 2026-02-20 09:59:05 | django.request | log | 253 | Internal Server Error: /analytics/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_admin.py", line 497, in analytics_dashboard
+    county_stats = AnalyticsService.get_county_statistics()
+  File "/home/createch/Documents/PROJECT/agriplot/listings/analytics_service.py", line 219, in get_county_statistics
+    ).count()
+      ~~~~~^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 606, in count
+    return self.query.get_count(using=self.db)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 644, in get_count
+    return obj.get_aggregation(using, {"__count": Count("*")})["__count"]
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 626, in get_aggregation
+    result = compiler.execute_sql(SINGLE)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/compiler.py", line 1610, in execute_sql
+    sql, params = self.as_sql()
+                  ~~~~~~~~~~~^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/compiler.py", line 794, in as_sql
+    self.compile(self.where) if self.where is not None else ("", [])
+    ~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/compiler.py", line 577, in compile
+    sql, params = node.as_sql(self, self.connection)
+                  ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/where.py", line 151, in as_sql
+    sql, params = compiler.compile(child)
+                  ~~~~~~~~~~~~~~~~^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/compiler.py", line 577, in compile
+    sql, params = node.as_sql(self, self.connection)
+                  ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/fields/json.py", line 170, in as_sql
+    raise NotSupportedError(
+        "contains lookup is not supported on this database backend."
+    )
+django.db.utils.NotSupportedError: contains lookup is not supported on this database backend.
+ERROR | 2026-02-20 09:59:05 | django.server | basehttp | 213 | "GET /analytics/ HTTP/1.1" 500 145357
+ERROR | 2026-02-20 10:09:54 | django.request | log | 253 | Internal Server Error: /extension/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_extension.py", line 55, in extension_dashboard
+    return render(request, 'listings/extension/dashboard.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 19, in get_template
+    raise TemplateDoesNotExist(template_name, chain=chain)
+django.template.exceptions.TemplateDoesNotExist: listings/extension/dashboard.html
+ERROR | 2026-02-20 10:09:54 | django.server | basehttp | 213 | "GET /extension/ HTTP/1.1" 500 108328
+ERROR | 2026-02-20 10:13:38 | django.request | log | 253 | Internal Server Error: /dashboard/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 1402, in staff_dashboard
+    verified_plots = plots.filter(verification_status__current_stage='approved').count()
+                     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1495, in filter
+    return self._filter_or_exclude(False, args, kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1513, in _filter_or_exclude
+    clone._filter_or_exclude_inplace(negate, args, kwargs)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1523, in _filter_or_exclude_inplace
+    self._query.add_q(Q(*args, **kwargs))
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1646, in add_q
+    clause, _ = self._add_q(q_object, can_reuse)
+                ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1678, in _add_q
+    child_clause, needed_inner = self.build_filter(
+                                 ~~~~~~~~~~~~~~~~~^
+        child,
+        ^^^^^^
+    ...<7 lines>...
+        update_join_types=update_join_types,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1526, in build_filter
+    lookups, parts, reffed_expression = self.solve_lookup_type(arg, summarize)
+                                        ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1333, in solve_lookup_type
+    _, field, _, lookup_parts = self.names_to_path(lookup_splitted, self.get_meta())
+                                ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/query.py", line 1806, in names_to_path
+    raise FieldError(
+    ...<2 lines>...
+    )
+django.core.exceptions.FieldError: Cannot resolve keyword 'verification_status' into field. Choices are: agent, agent_id, area, building_description, buyer_interests, climate_zone, contact_requests, county, created_at, crop_suitability, electricity_meter, elevation_meters, extension_reports, fencing, has_buildings, has_electricity, has_road_access, has_water, id, is_protected_area, kra_pin, land_type, land_use_description, landowner, landowner_id, landowner_id_doc, latitude, lease_duration, lease_price_monthly, lease_price_yearly, lease_terms, listing_type, location, longitude, notifications, official_search, ph_level, price, price_per_acre, pricing_suggestions, reactions, road_distance_km, road_type, sale_price, search_result, soil_report, soil_reports, soil_type, special_features, subcounty, title, title_deed, updated_at, verification, verification_docs, verification_logs, verification_tasks, water_source
+ERROR | 2026-02-20 10:13:38 | django.server | basehttp | 213 | "GET /dashboard/ HTTP/1.1" 500 137535
+ERROR | 2026-02-20 10:19:27 | django.request | log | 253 | Internal Server Error: /dashboard/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 1505, in staff_dashboard
+    return render(request, 'dashboard/staff_dashboard.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 19, in get_template
+    raise TemplateDoesNotExist(template_name, chain=chain)
+django.template.exceptions.TemplateDoesNotExist: dashboard/staff_dashboard.html
+ERROR | 2026-02-20 10:19:27 | django.server | basehttp | 213 | "GET /dashboard/ HTTP/1.1" 500 111590
+ERROR | 2026-02-20 10:20:28 | django.request | log | 253 | Internal Server Error: /extension/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_extension.py", line 55, in extension_dashboard
+    return render(request, 'listings/extension/dashboard.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 19, in get_template
+    raise TemplateDoesNotExist(template_name, chain=chain)
+django.template.exceptions.TemplateDoesNotExist: listings/extension/dashboard.html
+ERROR | 2026-02-20 10:20:28 | django.server | basehttp | 213 | "GET /extension/ HTTP/1.1" 500 108328
+ERROR | 2026-02-23 08:20:24 | listings.management.commands.send_task_reminders | send_task_reminders | 83 | Failed to send task reminder: name 'timesince' is not defined
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/management/commands/send_task_reminders.py", line 58, in handle
+    message=f"Task for plot '{task.plot.title}' assigned {task.assigned_at|timesince} ago. Please complete soon.",
+                                                                           ^^^^^^^^^
+NameError: name 'timesince' is not defined. Did you mean: 'timezone'?
+ERROR | 2026-02-23 08:20:24 | listings.management.commands.send_task_reminders | send_task_reminders | 83 | Failed to send task reminder: name 'timesince' is not defined
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/management/commands/send_task_reminders.py", line 58, in handle
+    message=f"Task for plot '{task.plot.title}' assigned {task.assigned_at|timesince} ago. Please complete soon.",
+                                                                           ^^^^^^^^^
+NameError: name 'timesince' is not defined. Did you mean: 'timezone'?
+ERROR | 2026-02-23 08:56:57 | listings.services.ardhisasa_integration | ardhisasa_integration | 142 | Ardhisasa verification error: name 'time' is not defined
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/services/ardhisasa_integration.py", line 77, in verify_plot_title
+    ownership_result = self.client.verify_ownership(
+        title_number,
+        owner_id,
+        owner_name
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/listings/services/mock_ardhisasa.py", line 45, in verify_ownership
+    time.sleep(1)
+    ^^^^
+NameError: name 'time' is not defined. Did you forget to import 'time'?
+ERROR | 2026-02-23 08:56:58 | listings.services.ardhisasa_integration | ardhisasa_integration | 181 | Ardhisasa verification failed for plot 9: name 'time' is not defined

@@ -259,3 +259,29 @@ class NotificationService:
             is_read=True,
             read_at=timezone.now()
         )
+
+@staticmethod
+def notify_account_verified(user, verified_by):
+    """Send notification when account is verified"""
+    title = "Account Verified! 🎉"
+    message = f"Your account has been verified by {verified_by.get_full_name()}. You can now list plots."
+    
+    NotificationService.create_notification(
+        user=user,
+        notification_type='account_verified',
+        title=title,
+        message=message
+    )
+    
+    context = {
+        'user': user,
+        'verified_by': verified_by,
+        'login_url': settings.SITE_URL + reverse('listings:staff_dashboard')
+    }
+    
+    NotificationService.send_email(
+        recipient=user.email,
+        subject=title,
+        template='account_verified',
+        context=context
+    )

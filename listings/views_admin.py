@@ -10,12 +10,23 @@ from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
 from django.db.models import Q
-from .models import Plot, VerificationStatus, VerificationTask, VerificationLog, ExtensionOfficer
+from .models import *
 from .verification_service import VerificationService
 from .utils import log_audit
 
 # Add this logger definition
 logger = logging.getLogger(__name__)
+
+# For extension officer views, create a custom decorator
+from django.core.exceptions import PermissionDenied
+
+def extension_officer_required(view_func):
+    """Decorator to require extension officer status"""
+    def _wrapped_view(request, *args, **kwargs):
+        if not hasattr(request.user, 'extension_officer'):
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view
 
 @staff_member_required
 def verification_dashboard(request):
@@ -391,6 +402,7 @@ def ajax_assign_task(request):
             }, status=500)
     
     return JsonResponse({'success': False, 'message': 'Method not allowed'}, status=405)
+
 @staff_member_required
 def my_tasks(request):
     """View for staff to see their assigned tasks"""
@@ -478,3 +490,85 @@ def mark_all_notifications_read(request):
     """Mark all notifications as read"""
     count = NotificationService.mark_all_as_read(request.user)
     return JsonResponse({'success': True, 'count': count})
+
+from .analytics_service import AnalyticsService
+
+@staff_member_required
+def analytics_dashboard(request):
+    """Main analytics dashboard"""
+    
+    # Get date range from request
+    days = int(request.GET.get('days', 30))
+    
+    # Get analytics data
+    overview = AnalyticsService.get_verification_overview(days)
+    officer_performance = AnalyticsService.get_officer_performance(days)
+    timeline = AnalyticsService.get_verification_timeline(days)
+    task_breakdown = AnalyticsService.get_task_breakdown()
+    county_stats = AnalyticsService.get_county_statistics()
+    system_health = AnalyticsService.get_system_health()
+    
+    # Convert timeline to JSON for Chart.js
+    import json
+    timeline_json = json.dumps(timeline)
+    
+    context = {
+        'overview': overview,
+        'officer_performance': officer_performance,
+        'timeline': timeline,
+        'timeline_json': timeline_json,
+        'task_breakdown': task_breakdown,
+        'county_stats': county_stats,
+        'system_health': system_health,
+        'days': days,
+        'page_title': 'Analytics Dashboard'
+    }
+    
+    return render(request, 'listings/admin/analytics_dashboard.html', context)
+
+@staff_member_required
+def export_report(request):
+    """Export verification report as CSV"""
+    import csv
+    from django.http import HttpResponse
+    
+    report_type = request.GET.get('type', 'verification')
+    days = int(request.GET.get('days', 30))
+    
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="agriplot_{report_type}_report.csv"'
+    
+    writer = csv.writer(response)
+    
+    if report_type == 'verification':
+        writer.writerow(['Date', 'Plots Submitted', 'Plots Verified', 'Verification Rate'])
+        timeline = AnalyticsService.get_verification_timeline(days)
+        for day in timeline:
+            rate = round((day['verified'] / day['submitted'] * 100), 2) if day['submitted'] > 0 else 0
+            writer.writerow([day['date'], day['submitted'], day['verified'], f"{rate}%"])
+    
+    elif report_type == 'officers':
+        writer.writerow(['Officer', 'Station', 'Tasks Completed', 'Avg Rating', 'Avg Response (hrs)', 'Utilization %'])
+        performance = AnalyticsService.get_officer_performance(days)
+        for p in performance:
+            writer.writerow([
+                p['officer'].user.get_full_name() or p['officer'].user.username,
+                p['officer'].station,
+                p['tasks_completed'],
+                p['avg_rating'],
+                p['avg_response_hours'],
+                p['utilization']
+            ])
+    
+    elif report_type == 'counties':
+        writer.writerow(['County', 'Total Plots', 'Verified', 'Verification Rate', 'Assigned Officers'])
+        for stat in AnalyticsService.get_county_statistics():
+            writer.writerow([
+                stat['county'],
+                stat['total_plots'],
+                stat['verified_plots'],
+                f"{stat['verification_rate']}%",
+                stat['assigned_officers']
+            ])
+    
+    return response

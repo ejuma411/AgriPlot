@@ -8,3 +8,156 @@ INFO | 2026-02-20 09:31:07 | django.utils.autoreload | autoreload | 265 | /home/
 INFO | 2026-02-20 09:31:08 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
 INFO | 2026-02-20 09:32:02 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
 INFO | 2026-02-20 09:32:03 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 09:53:12 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_admin.py changed, reloading.
+INFO | 2026-02-20 09:53:13 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 09:53:28 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_admin.py changed, reloading.
+INFO | 2026-02-20 09:53:29 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 09:53:52 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_admin.py changed, reloading.
+INFO | 2026-02-20 09:53:52 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 09:54:50 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-20 09:54:51 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 09:57:33 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/analytics_service.py changed, reloading.
+INFO | 2026-02-20 09:57:34 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 09:58:04 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_admin.py changed, reloading.
+INFO | 2026-02-20 09:58:04 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:01:27 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/analytics_service.py changed, reloading.
+INFO | 2026-02-20 10:01:28 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:01:36 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/analytics_service.py changed, reloading.
+INFO | 2026-02-20 10:01:36 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:11:07 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:11:08 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:11:10 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:11:11 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:12:33 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_admin.py changed, reloading.
+INFO | 2026-02-20 10:12:34 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:12:35 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_admin.py changed, reloading.
+INFO | 2026-02-20 10:12:36 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:14:38 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:14:38 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:14:46 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:14:47 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:17:27 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:17:28 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:17:56 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:17:56 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:18:11 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:18:12 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:18:48 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:18:48 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:19:07 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:19:08 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:19:11 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:19:12 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:19:18 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:19:19 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:19:23 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:19:23 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:20:15 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-20 10:20:16 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:21:28 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_extension.py changed, reloading.
+INFO | 2026-02-20 10:21:28 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-20 10:23:03 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_extension.py changed, reloading.
+INFO | 2026-02-20 10:23:03 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:04:56 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:08:58 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:08:58 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:09:24 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:09:24 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:09:40 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:09:40 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:10:11 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:10:12 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:10:31 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:10:32 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:10:42 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:10:43 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:16:11 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/notification_service.py changed, reloading.
+INFO | 2026-02-23 08:16:12 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:16:16 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/notification_service.py changed, reloading.
+INFO | 2026-02-23 08:16:17 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:16:21 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/notification_service.py changed, reloading.
+INFO | 2026-02-23 08:16:22 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:16:44 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:16:45 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:16:46 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:16:47 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:16:48 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:16:49 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:16:54 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:16:54 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:31:13 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:31:14 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:31:30 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:31:30 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:31:38 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:31:38 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:32:02 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:32:02 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:32:16 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:32:16 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:32:19 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:32:19 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:32:25 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:32:26 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:33:27 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_extension.py changed, reloading.
+INFO | 2026-02-23 08:33:28 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:33:33 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_extension.py changed, reloading.
+INFO | 2026-02-23 08:33:33 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:33:39 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views_extension.py changed, reloading.
+INFO | 2026-02-23 08:33:40 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:35:46 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/forms.py changed, reloading.
+INFO | 2026-02-23 08:35:47 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:35:52 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/forms.py changed, reloading.
+INFO | 2026-02-23 08:35:52 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:38:58 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:38:58 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:39:54 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:39:55 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:39:57 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:39:58 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:41:08 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:41:09 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:41:16 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:41:17 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:41:35 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:41:35 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:41:39 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/models.py changed, reloading.
+INFO | 2026-02-23 08:41:39 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:44:44 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:44:45 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:44:49 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/verification_service.py changed, reloading.
+INFO | 2026-02-23 08:44:49 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:45:23 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-23 08:45:23 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:45:41 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-23 08:45:41 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:45:43 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-23 08:45:44 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:48:37 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-23 08:48:38 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 08:57:44 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/services/mock_ardhisasa.py changed, reloading.
+INFO | 2026-02-23 08:57:44 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:07:11 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-23 09:07:12 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:07:14 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-23 09:07:15 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:07:19 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-23 09:07:20 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:07:22 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-23 09:07:23 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:08:42 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-23 09:08:43 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:08:56 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-23 09:08:57 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:09:14 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-23 09:09:15 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:09:58 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-23 09:09:58 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:10:20 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/urls.py changed, reloading.
+INFO | 2026-02-23 09:10:20 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:11:59 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-23 09:12:00 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:12:01 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/agriplot/settings.py changed, reloading.
+INFO | 2026-02-23 09:12:02 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader
+INFO | 2026-02-23 09:12:56 | django.utils.autoreload | autoreload | 265 | /home/createch/Documents/PROJECT/agriplot/listings/views.py changed, reloading.
+INFO | 2026-02-23 09:12:57 | django.utils.autoreload | autoreload | 667 | Watching for file changes with StatReloader

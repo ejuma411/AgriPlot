@@ -292,7 +292,7 @@
         <!-- Navigation Menu -->
         <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto gap-0 gap-lg-2">
-                <!-- Home Link -->
+                <!-- Home Link - Always visible -->
                 <li class="nav-item">
                     <a class="nav-link" href="{% url 'listings:home' %}">
                         <i class="fas fa-home me-1"></i> Home
@@ -301,43 +301,106 @@
 
                 <!-- Authenticated User Menu -->
                 {% if user.is_authenticated %}
-                    <!-- Broker/Seller Menu -->
-                    {% if user.profile.is_broker or user.profile.is_seller %}
+                    <!-- Dashboard Link - Routes to appropriate dashboard -->
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'listings:dashboard_router' %}">
+                            <i class="fas fa-chart-line me-1"></i> Dashboard
+                            {% if user.is_staff and stats.pending_review %}
+                                <span class="badge bg-danger ms-1">{{ stats.pending_review }}</span>
+                            {% elif user.extension_officer and extension_tasks_count %}
+                                <span class="badge bg-success ms-1">{{ extension_tasks_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+
+                    <!-- Role-specific quick links -->
+                    {% if user.is_staff %}
+                        <!-- Staff/Admin Quick Links -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-chart-line me-1"></i> Dashboard
+                            <a class="nav-link dropdown-toggle" href="#" id="staffDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-shield-alt me-1"></i> Admin
                             </a>
-                            <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                                <li><a class="dropdown-item" href="{% url 'listings:staff_dashboard' %}"><i class="fas fa-home me-2"></i>Overview</a></li>
-                                <li><a class="dropdown-item" href="{% url 'listings:my_plots' %}"><i class="fas fa-list me-2"></i>My Plots</a></li>
-                                <li><a class="dropdown-item" href="{% url 'listings:add_plot' %}"><i class="fas fa-plus-circle me-2"></i>Add Plot</a></li>
-                                <li><a class="dropdown-item" href="{% url 'listings:buyer_interests' %}"><i class="fas fa-envelope me-2"></i>Messages</a></li>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'listings:verification_queue' %}">
+                                    <i class="fas fa-list me-2"></i>Verification Queue
+                                    {% if stats.pending_review %}<span class="badge bg-danger">{{ stats.pending_review }}</span>{% endif %}
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'listings:task_assignment' %}">
+                                    <i class="fas fa-tasks me-2"></i>Task Assignment
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'listings:my_tasks' %}">
+                                    <i class="fas fa-user-check me-2"></i>My Tasks
+                                    {% if my_tasks_count %}<span class="badge bg-success">{{ my_tasks_count }}</span>{% endif %}
+                                </a></li>
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'listings:profile_management' %}"><i class="fas fa-user-circle me-2"></i>Profile</a></li>
+                                <li><a class="dropdown-item" href="{% url 'listings:analytics_dashboard' %}">
+                                    <i class="fas fa-chart-line me-2"></i>Analytics
+                                </a></li>
                             </ul>
                         </li>
                     {% endif %}
 
-                    <!-- Buyer Menu -->
-                    {% if user.profile.is_buyer %}
+                    {% if user.extension_officer %}
+                        <!-- Extension Officer Quick Links -->
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'listings:home' %}">
-                                <i class="fas fa-search me-1"></i> Browse Plots
+                            <a class="nav-link" href="{% url 'listings:extension_dashboard' %}">
+                                <i class="fas fa-leaf me-1"></i> Extension
+                                {% if extension_tasks_count %}
+                                    <span class="badge bg-success">{{ extension_tasks_count }}</span>
+                                {% endif %}
                             </a>
                         </li>
                     {% endif %}
 
-                    <!-- User Profile Dropdown -->
+                    {% if user.agent or user.landownerprofile %}
+                        <!-- Agent/Landowner Quick Links -->
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="sellerDropdown" role="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-store me-1"></i> My Listings
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="{% url 'listings:my_plots' %}">
+                                    <i class="fas fa-list me-2"></i>My Plots
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'listings:add_plot' %}">
+                                    <i class="fas fa-plus-circle me-2"></i>Add New Plot
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'listings:buyer_interests' %}">
+                                    <i class="fas fa-envelope me-2"></i>Messages
+                                    {% if recent_interests_count %}<span class="badge bg-warning">{{ recent_interests_count }}</span>{% endif %}
+                                </a></li>
+                            </ul>
+                        </li>
+                    {% endif %}
+
+                    {% if user.profile.role == 'buyer' %}
+                        <!-- Buyer Quick Links -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'listings:home' %}?interested=true">
+                                <i class="fas fa-heart me-1"></i> Saved Plots
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    <!-- User Profile Dropdown (always last) -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user-circle me-1"></i>
                             <span class="d-none d-md-inline">{{ user.get_full_name|default:user.username }}</span>
                             <span class="d-md-none">Account</span>
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
-                            <li><a class="dropdown-item" href="{% url 'listings:profile_management' %}"><i class="fas fa-user me-2"></i>Profile</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Settings</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-life-ring me-2"></i>Help & Support</a></li>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{% url 'listings:profile_management' %}">
+                                <i class="fas fa-user me-2"></i>Profile
+                            </a></li>
+                            <li><a class="dropdown-item" href="#">
+                                <i class="fas fa-cog me-2"></i>Settings
+                            </a></li>
+                            {% if user.is_staff %}
+                            <li><a class="dropdown-item" href="{% url 'admin:index' %}">
+                                <i class="fas fa-terminal me-2"></i>Django Admin
+                            </a></li>
+                            {% endif %}
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="post" action="{% url 'listings:logout' %}" class="d-inline w-100">

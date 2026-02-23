@@ -11,65 +11,42 @@ logger = logging.getLogger(__name__)
 class VerificationService:
     """Service layer for verification business logic"""
     
+
     @staticmethod
     def create_verification_tasks(plot):
-        """
-        Create all necessary verification tasks when a plot is submitted
-        """
-        content_type = ContentType.objects.get_for_model(Plot)
-        
+        """Create verification tasks based on plot type"""
         tasks_created = []
         
-        # Task 1: Document Review (always required)
+        # Always create document review task
         doc_task, created = VerificationTask.objects.get_or_create(
             plot=plot,
             verification_type='document_review',
-            defaults={
-                'status': 'pending',
-                'assigned_at': timezone.now()
-            }
+            defaults={'status': 'pending'}
         )
         if created:
             tasks_created.append('document_review')
-            logger.info(f"Created document review task for plot {plot.id}")
         
-        # Task 2: Extension Officer Review (for agricultural land)
+        # Create extension review for agricultural land
         if plot.land_type == 'agricultural':
             ext_task, created = VerificationTask.objects.get_or_create(
                 plot=plot,
                 verification_type='extension_review',
-                defaults={
-                    'status': 'pending',
-                    'assigned_at': timezone.now()
-                }
+                defaults={'status': 'pending'}
             )
             if created:
                 tasks_created.append('extension_review')
-                logger.info(f"Created extension review task for plot {plot.id}")
         
-        # Task 3: Surveyor Inspection (for large plots or complex cases)
-        if plot.area > 50:  # Example: plots > 50 acres need surveyor
+        # Create surveyor inspection for large plots (>50 acres)
+        if plot.area > 50:
             survey_task, created = VerificationTask.objects.get_or_create(
                 plot=plot,
                 verification_type='surveyor_inspection',
-                defaults={
-                    'status': 'pending',
-                    'assigned_at': timezone.now()
-                }
+                defaults={'status': 'pending'}
             )
             if created:
                 tasks_created.append('surveyor_inspection')
-                logger.info(f"Created surveyor inspection task for plot {plot.id}")
-        
-        # Log the creation
-        VerificationLog.objects.create(
-            plot=plot,
-            verification_type='system',
-            comment=f"Created verification tasks: {', '.join(tasks_created)}"
-        )
         
         return tasks_created
-    
     @staticmethod
     def assign_task(task_id, assigned_to_user, assigned_by):
         """
@@ -140,43 +117,45 @@ class VerificationService:
     
     @staticmethod
     def complete_task(task_id, completed_by, notes="", approved=None):
-        """
-        Mark a verification task as completed
-        """
-        try:
-            task = VerificationTask.objects.get(id=task_id)
-            task.status = 'completed'
-            task.completed_at = timezone.now()
-            task.notes = notes
-            task.approved = approved
-            task.save()
-            
-            # Send notification if available
-            try:
-                from .notification_service import NotificationService
-                NotificationService.notify_task_completed(task, completed_by)
-            except ImportError:
-                logger.warning("NotificationService not available")
-            
-            # Log the completion
-            status = "approved" if approved else "rejected" if approved is False else "completed"
-            VerificationLog.objects.create(
-                plot=task.plot,
-                verified_by=completed_by,
-                verification_type=task.verification_type,
-                comment=f"Task completed: {status}. Notes: {notes}"
+        task = VerificationTask.objects.get(id=task_id)
+        task.status = 'completed'
+        task.completed_at = timezone.now()
+        task.notes = notes
+        task.approved = approved
+        task.save()
+        
+        # Check if all tasks are done
+        all_completed = VerificationService.check_plot_completion(task.plot)
+        
+        if all_completed:
+            # Update VerificationStatus
+            content_type = ContentType.objects.get_for_model(Plot)
+            verification = VerificationStatus.objects.get(
+                content_type=content_type,
+                object_id=task.plot.id
             )
             
-            logger.info(f"Task {task_id} completed by {completed_by.username}")
+            # Check if any tasks were rejected
+            has_rejections = VerificationTask.objects.filter(
+                plot=task.plot,
+                approved=False
+            ).exists()
             
-            # Check if all tasks are completed
-            VerificationService.check_plot_verification_completion(task.plot)
-            
-            return task
-            
-        except VerificationTask.DoesNotExist:
-            logger.error(f"Task {task_id} not found")
-            return None
+            if has_rejections:
+                verification.update_stage('rejected', {
+                    'rejection_reason': 'One or more verification tasks were rejected',
+                    'completed_by': completed_by.username
+                })
+            else:
+                verification.update_stage('approved', {
+                    'approved_by': completed_by.username,
+                    'completed_at': timezone.now().isoformat()
+                })
+                
+                # Plot is now verified! 🎉
+                # You could add a 'is_verified' field to Plot model or just use verification status
+        
+        return task
     
     @staticmethod
     def check_plot_verification_completion(plot):
@@ -303,3 +282,89 @@ class VerificationService:
                 'surveyor_inspection': tasks.filter(verification_type='surveyor_inspection').first(),
             }
         }
+
+@staticmethod
+def check_plot_verification_completion(plot):
+    """Check if all tasks are completed and publish plot if approved"""
+    pending_tasks = VerificationTask.objects.filter(
+        plot=plot,
+        status__in=['pending', 'in_progress']
+    ).count()
+    
+    if pending_tasks == 0:
+        # All tasks completed
+        content_type = ContentType.objects.get_for_model(Plot)
+        verification = VerificationStatus.objects.filter(
+            content_type=content_type,
+            object_id=plot.id
+        ).first()
+        
+        if verification:
+            # Check if all tasks were approved
+            rejected_tasks = VerificationTask.objects.filter(
+                plot=plot,
+                approved=False
+            ).exists()
+            
+            if rejected_tasks:
+                verification.current_stage = 'rejected'
+                verification.save()
+                # Notify user of rejection
+            else:
+                verification.current_stage = 'approved'
+                verification.approved_at = timezone.now()
+                verification.save()
+                
+                # AUTO-PUBLISH PLOT
+                plot.is_published = True  # Add this field if needed
+                plot.save()
+                
+                # Notify user
+                from .notification_service import NotificationService
+                plot_owner = plot.agent.user if plot.agent else plot.landowner.user
+                NotificationService.create_notification(
+                    user=plot_owner,
+                    notification_type='plot_approved',
+                    title=f"Your Plot is Live! 🎉",
+                    message=f"Your plot '{plot.title}' has been verified and is now visible to buyers.",
+                    plot=plot
+                )
+                
+                logger.info(f"Plot {plot.id} approved and published")
+                return True
+    
+    return False
+
+
+from .services.ardhisasa_integration import ArdhisasaService
+
+@staticmethod
+def initiate_ardhisasa_verification(plot_id):
+    """Start Ardhisasa verification for a plot"""
+    from .models import Plot
+    
+    plot = Plot.objects.get(id=plot_id)
+    service = ArdhisasaService(use_mock=True)  # Use mock for development
+    
+    # Run verification (consider using Celery for async)
+    result = service.verify_plot_title(plot)
+    
+    if result['success']:
+        # Update verification status
+        content_type = ContentType.objects.get_for_model(Plot)
+        verification = VerificationStatus.objects.get(
+            content_type=content_type,
+            object_id=plot.id
+        )
+        verification.update_stage('title_search_completed')
+        
+        # Notify admins
+        NotificationService.create_notification(
+            user=None,  # System notification
+            notification_type='verification_completed',
+            title=f"Title Search Complete for {plot.title}",
+            message=f"Ardhisasa verification completed successfully",
+            plot=plot
+        )
+    
+    return result

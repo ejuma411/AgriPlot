@@ -34,6 +34,77 @@
                 <i class="fas fa-user-circle"></i>
                 <span>Profile</span>
             </a>
+            
+            <!-- ============ STAFF/ADMIN SECTION ============ -->
+            {% if request.user.is_staff %}
+            <div class="nav-section-divider">
+                <hr class="my-2">
+                <p class="nav-section-title">Verification Management</p>
+            </div>
+            
+            <a href="{% url 'listings:verification_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'verification_dashboard' %}active{% endif %}">
+                <i class="fas fa-check-circle"></i>
+                <span>Verification Dashboard</span>
+                {% with pending_count=stats.pending_review|default:0 %}
+                    {% if pending_count > 0 %}
+                    <span class="nav-badge">{{ pending_count }}</span>
+                    {% endif %}
+                {% endwith %}
+            </a>
+            
+            <a href="{% url 'listings:verification_queue' %}" class="nav-item {% if request.resolver_match.url_name == 'verification_queue' %}active{% endif %}">
+                <i class="fas fa-list"></i>
+                <span>Verification Queue</span>
+                {% if stats and stats.pending_review %}
+                    {% if stats.pending_review > 0 %}
+                    <span class="nav-badge">{{ stats.pending_review }}</span>
+                    {% endif %}
+                {% endif %}
+            </a>
+            
+            <a href="{% url 'listings:task_assignment' %}" class="nav-item {% if request.resolver_match.url_name == 'task_assignment' %}active{% endif %}">
+                <i class="fas fa-tasks"></i>
+                <span>Task Assignment</span>
+                {% if task_stats and task_stats.pending %}
+                    {% if task_stats.pending > 0 %}
+                    <span class="nav-badge">{{ task_stats.pending }}</span>
+                    {% endif %}
+                {% endif %}
+            </a>
+            
+            <a href="{% url 'listings:my_tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'my_tasks' %}active{% endif %}">
+                <i class="fas fa-user-check"></i>
+                <span>My Tasks</span>
+                {% if my_tasks_count %}
+                    {% if my_tasks_count > 0 %}
+                    <span class="nav-badge">{{ my_tasks_count }}</span>
+                    {% endif %}
+                {% endif %}
+            </a>
+            
+            <a href="{% url 'listings:analytics_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'analytics_dashboard' %}active{% endif %}">
+                <i class="fas fa-chart-line"></i>
+                <span>Analytics</span>
+            </a>
+            {% endif %}
+            
+            <!-- Extension Officer Section -->
+            {% if request.user.extension_officer %}
+            <div class="nav-section-divider">
+                <hr class="my-2">
+                <p class="nav-section-title">Extension Officer</p>
+            </div>
+            
+            <a href="{% url 'listings:extension_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'extension_dashboard' %}active{% endif %}">
+                <i class="fas fa-leaf"></i>
+                <span>Extension Dashboard</span>
+                {% if extension_tasks_count %}
+                    {% if extension_tasks_count > 0 %}
+                    <span class="nav-badge">{{ extension_tasks_count }}</span>
+                    {% endif %}
+                {% endif %}
+            </a>
+            {% endif %}
         </nav>
         
         <div class="sidebar-footer">
@@ -310,7 +381,7 @@
                                 {% for plot in plots %}
                                 <div class="plot-card">
                                     <div class="plot-header">
-                                        {% with status=plot.verification.current_stage|default:'none' %}
+                                        {% with status=plot.verification_status.current_stage|default:'none' %}
                                         <span class="plot-status-badge status-{{ status }}">
                                             {% if status == 'approved' %}
                                                 <i class="fas fa-check"></i> Verified
@@ -1232,6 +1303,39 @@
             padding: 1rem;
         }
     }
+
+    /* Nav Section Divider */
+.nav-section-divider {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.nav-section-divider hr {
+    margin: 0.5rem 1.5rem;
+    border-color: var(--gray-300);
+    opacity: 0.5;
+}
+
+.nav-section-title {
+    padding: 0 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--gray-600);
+    font-weight: 600;
+}
+
+/* Nav Badge for staff section */
+.nav-badge {
+    margin-left: auto;
+    background: var(--danger);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: 30px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
 </style>
 </div>
 

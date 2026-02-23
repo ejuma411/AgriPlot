@@ -1231,6 +1231,20 @@
                 </a>
             </div>
 
+            <!-- Reports Section -->
+            <div class="nav-section">
+                <div class="nav-section-title">Reports</div>
+                <a href="{% url 'listings:analytics_dashboard' %}" 
+                class="nav-item {% if request.resolver_match.url_name == 'analytics_dashboard' %}active{% endif %}">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analytics</span>
+                </a>
+                <a href="{% url 'listings:export_report' %}?type=verification&days=30" class="nav-item">
+                    <i class="fas fa-download"></i>
+                    <span>Export Data</span>
+                </a>
+            </div>
+
             <!-- Management -->
             <div class="nav-section">
                 <div class="nav-section-title">Management</div>
