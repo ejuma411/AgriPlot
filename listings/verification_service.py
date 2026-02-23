@@ -12,12 +12,19 @@ class VerificationService:
     """Service layer for verification business logic"""
     
 
+    # In verification_service.py, add or update:
+
+    from .services.ardhisasa_integration import ArdhisasaService
+
     @staticmethod
     def create_verification_tasks(plot):
-        """Create verification tasks based on plot type"""
+        """Create all necessary verification tasks when a plot is submitted"""
+        from .models import VerificationTask, VerificationLog, VerificationStatus
+        from django.contrib.contenttypes.models import ContentType
+        
         tasks_created = []
         
-        # Always create document review task
+        # Task 1: Document Review (always required)
         doc_task, created = VerificationTask.objects.get_or_create(
             plot=plot,
             verification_type='document_review',
@@ -26,7 +33,7 @@ class VerificationService:
         if created:
             tasks_created.append('document_review')
         
-        # Create extension review for agricultural land
+        # Task 2: Extension Officer Review (for agricultural land)
         if plot.land_type == 'agricultural':
             ext_task, created = VerificationTask.objects.get_or_create(
                 plot=plot,
@@ -35,8 +42,10 @@ class VerificationService:
             )
             if created:
                 tasks_created.append('extension_review')
+                # Auto-assign to available extension officer
+                VerificationService.assign_extension_task(ext_task.id)
         
-        # Create surveyor inspection for large plots (>50 acres)
+        # Task 3: Surveyor Inspection (for large plots)
         if plot.area > 50:
             survey_task, created = VerificationTask.objects.get_or_create(
                 plot=plot,
@@ -46,7 +55,28 @@ class VerificationService:
             if created:
                 tasks_created.append('surveyor_inspection')
         
+        # AUTOMATICALLY START ARDHISASA VERIFICATION
+        content_type = ContentType.objects.get_for_model(Plot)
+        verification = VerificationStatus.objects.filter(
+            content_type=content_type,
+            object_id=plot.id
+        ).first()
+        
+        if verification:
+            # Update stage to start API verification
+            verification.update_stage('api_verification_started')
+            logger.info(f"🚀 Automatically started Ardhisasa verification for plot {plot.id}")
+        
+        # Log the creation
+        VerificationLog.objects.create(
+            plot=plot,
+            verification_type='system',
+            comment=f"Created verification tasks: {', '.join(tasks_created)}. Ardhisasa verification started."
+        )
+        
         return tasks_created
+    
+
     @staticmethod
     def assign_task(task_id, assigned_to_user, assigned_by):
         """

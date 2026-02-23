@@ -508,6 +508,10 @@ class VerificationStatus(models.Model):
     
     def update_stage(self, stage, details=None):
         """Update to next stage with timestamp"""
+        # Store original values
+        original_stage = self.current_stage
+        
+        # Update the instance
         self.current_stage = stage
         if details:
             self.stage_details[stage] = details
@@ -520,8 +524,10 @@ class VerificationStatus(models.Model):
         if stage == 'approved':
             self.is_complete = True
         
+        # Use update() to bypass signals if we're in a recursive situation
+        # But for now, just save normally
         self.save()
-
+        
     # In VerificationStatus, add method to trigger API check
     def trigger_ardhisasa_check(self):
         """Call Ardhisasa API to verify title"""

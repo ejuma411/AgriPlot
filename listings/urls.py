@@ -105,4 +105,5 @@ urlpatterns = [
 
     # Test endpoints (remove in production)
     path('test/ardhisasa/<int:plot_id>/', views_test.test_ardhisasa, name='test_ardhisasa'),
+    path('plot/<int:plot_id>/trigger-ardhisasa/', views_admin.trigger_ardhisasa, name='trigger_ardhisasa'),
 ]

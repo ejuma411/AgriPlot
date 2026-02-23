@@ -174,6 +174,57 @@
                 </table>
             </div>
         </div>
+        
+        <!-- Title Search Results Card (if available) -->
+        {% if plot.search_result %}
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-search me-2"></i>Title Search Results
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <table class="details-table">
+                    <tr>
+                        <th>Platform:</th>
+                        <td>{{ plot.search_result.search_platform|title }}</td>
+                    </tr>
+                    <tr>
+                        <th>Owner:</th>
+                        <td>{{ plot.search_result.official_owner }}</td>
+                    </tr>
+                    <tr>
+                        <th>Parcel Number:</th>
+                        <td>{{ plot.search_result.parcel_number }}</td>
+                    </tr>
+                    <tr>
+                        <th>Search Date:</th>
+                        <td>{{ plot.search_result.search_date|date:"M d, Y" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Verified:</th>
+                        <td>
+                            {% if plot.search_result.verified %}
+                                <span class="badge bg-success">Yes</span>
+                            {% else %}
+                                <span class="badge bg-danger">No</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+                {% if plot.search_result.notes %}
+                <div class="mt-2 p-2 bg-light rounded">
+                    <small>{{ plot.search_result.notes }}</small>
+                </div>
+                {% endif %}
+                {% if plot.search_result.raw_response_file %}
+                <a href="{{ plot.search_result.raw_response_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                    <i class="fas fa-download me-1"></i> Download Raw Response
+                </a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Middle Column: Document Viewer -->
@@ -408,6 +459,9 @@
                                 {% if verification.progress_percentage >= 42 %}
                                     <span class="badge bg-success float-end">✓</span>
                                 {% endif %}
+                                {% if verification.search_reference %}
+                                    <small class="text-muted d-block">Ref: {{ verification.search_reference }}</small>
+                                {% endif %}
                             </div>
                         </div>
                         
@@ -567,12 +621,58 @@
             </div>
         </div>
 
+        <!-- Ardhisasa API Action Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-cloud me-2"></i>Ardhisasa Integration
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                {% if verification and verification.current_stage == 'document_uploaded' or verification.current_stage == 'api_verification_started' %}
+                    <div class="mb-3">
+                        {% if verification.current_stage == 'api_verification_started' %}
+                            <div class="alert alert-info mb-3">
+                                <i class="fas fa-sync-alt fa-spin me-2"></i>
+                                Verification in progress...
+                            </div>
+                        {% endif %}
+                        <button type="button" class="btn btn-info w-100 mb-2" onclick="triggerArdhisasa()">
+                            <i class="fas fa-cloud-upload-alt me-2"></i> Run Ardhisasa Check
+                        </button>
+                        <small class="text-muted d-block">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Automatically verifies title with Ardhisasa (mock)
+                        </small>
+                    </div>
+                {% elif verification.current_stage == 'title_search_completed' %}
+                    <div class="alert alert-success mb-3">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Title verification completed
+                    </div>
+                    {% if verification.search_reference %}
+                        <p class="mb-1"><strong>Ref:</strong> {{ verification.search_reference }}</p>
+                    {% endif %}
+                {% elif verification.current_stage|lower in 'approved,rejected' %}
+                    <div class="alert alert-secondary mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Title verification already processed
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning mb-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Documents must be uploaded first
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
         <!-- API Data Card (if available) -->
         {% if verification and verification.api_responses %}
         <div class="admin-card mb-4">
             <div class="admin-card-header">
                 <h5 class="admin-card-title">
-                    <i class="fas fa-cloud me-2"></i>API Data
+                    <i class="fas fa-cloud me-2"></i>API Response Data
                 </h5>
             </div>
             <div class="admin-card-body">
@@ -583,7 +683,7 @@
                 <p><strong>Search Fee:</strong> KES {{ verification.search_fee_paid }}</p>
                 {% endif %}
                 <button class="btn btn-sm btn-outline-info w-100" type="button" data-bs-toggle="collapse" data-bs-target="#apiResponses">
-                    <i class="fas fa-code me-1"></i> View API Responses
+                    <i class="fas fa-code me-1"></i> View Raw API Responses
                 </button>
                 <div class="collapse mt-2" id="apiResponses">
                     <div class="card card-body p-2 bg-light">
@@ -653,6 +753,8 @@
                                     <i class="fas fa-user-plus text-info"></i>
                                 {% elif log.verification_type == 'system' %}
                                     <i class="fas fa-cog text-secondary"></i>
+                                {% elif log.verification_type == 'api_verification' %}
+                                    <i class="fas fa-cloud text-primary"></i>
                                 {% else %}
                                     <i class="fas fa-info-circle text-info"></i>
                                 {% endif %}
@@ -682,7 +784,9 @@
     </div>
 </div>
 
+<!-- Include the existing styles here (they remain the same) -->
 <style>
+    /* All your existing styles remain exactly the same */
     .details-table {
         width: 100%;
     }
@@ -826,7 +930,7 @@
 
     .activity-content {
         flex: 1;
-        min-width: 0; /* Prevents text overflow issues */
+        min-width: 0;
     }
 
     .activity-content p {
@@ -855,7 +959,6 @@
     }
 
     @media (max-width: 768px) {
-        /* Typography adjustments */
         .page-header-title h1 {
             font-size: 1.5rem;
         }
@@ -864,7 +967,6 @@
             font-size: 0.9rem;
         }
         
-        /* Card adjustments */
         .admin-card-header {
             padding: 1rem;
         }
@@ -877,7 +979,6 @@
             font-size: 1rem;
         }
         
-        /* Table adjustments */
         .details-table th,
         .details-table td {
             padding: 0.35rem 0;
@@ -888,7 +989,6 @@
             width: 35%;
         }
         
-        /* Document tabs - horizontal scroll on mobile */
         .nav-pills {
             flex-wrap: nowrap;
             overflow-x: auto;
@@ -913,12 +1013,10 @@
             padding: 0.4rem 0.8rem;
         }
         
-        /* Document viewer */
         .document-viewer-container iframe {
             height: 400px;
         }
         
-        /* Timeline adjustments */
         .status-timeline {
             padding-left: 25px;
         }
@@ -935,7 +1033,6 @@
             font-size: 0.8rem;
         }
         
-        /* Activity list */
         .activity-item {
             padding: 0.75rem;
         }
@@ -950,7 +1047,6 @@
             font-size: 0.85rem;
         }
         
-        /* Button adjustments */
         .btn-lg {
             padding: 0.75rem;
             font-size: 0.95rem;
@@ -963,7 +1059,6 @@
     }
 
     @media (max-width: 576px) {
-        /* Extra small devices */
         .page-header {
             padding: 1.5rem 1rem;
         }
@@ -992,7 +1087,6 @@
             height: 300px;
         }
         
-        /* Stack seller badges on mobile */
         .seller-type {
             display: flex;
             flex-wrap: wrap;
@@ -1003,7 +1097,6 @@
             font-size: 0.7rem;
         }
         
-        /* Timeline further adjustments */
         .timeline-dot {
             left: -22px;
             width: 10px;
@@ -1014,12 +1107,10 @@
             font-size: 0.85rem;
         }
         
-        /* Review actions */
         .d-grid.gap-2 {
             gap: 0.5rem !important;
         }
         
-        /* Modal adjustments */
         .modal-dialog {
             margin: 0.5rem;
         }
@@ -1029,7 +1120,6 @@
         }
     }
 
-    /* Landscape mode on phones */
     @media (max-height: 500px) and (orientation: landscape) {
         .document-viewer-container iframe {
             height: 250px;
@@ -1040,7 +1130,6 @@
         }
     }
 
-    /* Tablet landscape */
     @media (min-width: 769px) and (max-width: 1024px) {
         .details-table th {
             width: 35%;
@@ -1052,7 +1141,6 @@
         }
     }
 
-    /* Print styles */
     @media print {
         .page-header-actions,
         .btn,
@@ -1072,7 +1160,6 @@
         }
     }
 
-    /* Touch-friendly improvements */
     @media (hover: none) and (pointer: coarse) {
         .btn, 
         .nav-link,
@@ -1090,11 +1177,10 @@
         input, 
         select, 
         textarea {
-            font-size: 16px !important; /* Prevents zoom on iOS */
+            font-size: 16px !important;
         }
     }
 
-    /* Smooth transitions */
     .admin-card,
     .btn,
     .nav-link,
@@ -1102,25 +1188,19 @@
         transition: all 0.3s ease;
     }
 
-    /* Loading states */
     .btn:disabled {
         opacity: 0.65;
         cursor: not-allowed;
     }
 
-    /* Focus states for accessibility */
     .btn:focus,
     .nav-link:focus,
     .form-control:focus {
         outline: none;
         box-shadow: 0 0 0 3px rgba(6, 145, 50, 0.25);
     }
-
-    /* Dark mode support (optional) */
-    @media (prefers-color-scheme: dark) {
-        /* Add dark mode styles if needed */
-    }
 </style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Add warning if notes are empty for rejection
@@ -1142,5 +1222,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// Ardhisasa trigger function
+function triggerArdhisasa() {
+    if (!confirm('Start Ardhisasa title verification for this plot? This may take a few moments.')) {
+        return;
+    }
+    
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-sync-alt fa-spin me-2"></i> Processing...';
+    btn.disabled = true;
+    
+    fetch('{% url "listings:trigger_ardhisasa" plot.id %}', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Ardhisasa verification started successfully! The page will reload to show results.');
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.error);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to start verification. Please try again.');
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
 </script>
 {% endblock %}

@@ -17,6 +17,57 @@ from .utils import log_audit
 # Add this logger definition
 logger = logging.getLogger(__name__)
 
+# Add this to views_admin.py - somewhere after your other imports
+
+@staff_member_required
+def trigger_ardhisasa(request, plot_id):
+    """Manually trigger Ardhisasa verification for a plot (runs directly, no Celery)"""
+    from django.http import JsonResponse
+    from django.contrib.contenttypes.models import ContentType
+    from .models import Plot, VerificationStatus
+    from .services.ardhisasa_integration import ArdhisasaService
+    
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Method not allowed'}, status=405)
+    
+    try:
+        plot = Plot.objects.get(id=plot_id)
+    except Plot.DoesNotExist:
+        return JsonResponse({'success': False, 'error': 'Plot not found'}, status=404)
+    
+    # Get verification status
+    content_type = ContentType.objects.get_for_model(Plot)
+    verification, created = VerificationStatus.objects.get_or_create(
+        content_type=content_type,
+        object_id=plot.id
+    )
+    
+    # Update stage to start API verification
+    verification.update_stage('api_verification_started')
+    
+    # Run directly (no Celery)
+    service = ArdhisasaService(use_mock=True)
+    result = service.verify_plot_title(plot)
+    
+    if result.get('success'):
+        verification.update_stage('title_search_completed', {
+            'search_reference': result.get('search_data', {}).get('search_reference'),
+            'title_number': result.get('search_data', {}).get('title_number'),
+            'parcel_number': result.get('search_data', {}).get('parcel_number'),
+            'owner_name': result.get('search_data', {}).get('owner_name')
+        })
+        return JsonResponse({
+            'success': True, 
+            'message': 'Ardhisasa verification completed',
+            'data': result.get('search_data')
+        })
+    else:
+        return JsonResponse({
+            'success': False, 
+            'error': result.get('error', 'Unknown error occurred')
+        })
+        
+                
 # For extension officer views, create a custom decorator
 from django.core.exceptions import PermissionDenied
 
