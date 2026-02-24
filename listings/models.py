@@ -687,7 +687,13 @@ class ContactRequest(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contact_requests')
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='contact_requests')
-    agent = models.ForeignKey(Agent, on_delete=models.CASCADE, related_name='contact_requests')
+    agent = models.ForeignKey(
+        Agent,
+        on_delete=models.CASCADE,
+        related_name='contact_requests',
+        null=True,
+        blank=True
+    )
     request_type = models.CharField(max_length=20, choices=REQUEST_TYPES)
     message = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -707,7 +713,13 @@ class ContactRequest(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.user.username} → {self.agent.user.username} ({self.request_type})"
+        if self.agent:
+            recipient = self.agent.user.username
+        elif self.plot.landowner:
+            recipient = self.plot.landowner.user.username
+        else:
+            recipient = "plot-owner"
+        return f"{self.user.username} → {recipient} ({self.request_type})"
 
 
 # -----------------------------
@@ -1159,4 +1171,3 @@ class ExtensionReport(models.Model):
     
     def __str__(self):
         return f"Extension Report for {self.plot.title} by {self.officer}"   
-

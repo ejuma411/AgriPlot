@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Analytics{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Listing Analytics</h2>
+
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Total Plots</h6>
+                    <h4 class="mb-0">{{ total_plots }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Total Interests</h6>
+                    <h4 class="mb-0">{{ total_interests }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Average Price</h6>
+                    <h4 class="mb-0">KES {{ avg_price|floatformat:0 }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="text-muted">Average Area</h6>
+                    <h4 class="mb-0">{{ avg_area|floatformat:1 }} ac</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Listing Types</h5>
+            <ul class="mb-0">
+                {% for label, count in listing_type_stats.items %}
+                <li>{{ label }}: {{ count }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Top Locations</h5>
+            {% if location_stats %}
+            <ul class="mb-0">
+                {% for item in location_stats %}
+                <li>{{ item.location }} ({{ item.count }})</li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-muted mb-0">No location data available yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

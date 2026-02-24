@@ -1,10 +1,12 @@
 from django.db.models.signals import post_save
+from django.db import transaction
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from .models import *
 from .services.ardhisasa_service import ArdhisasaVerificationService
 from django.contrib.contenttypes.models import ContentType
 import threading
+import sys
 
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
@@ -27,13 +29,18 @@ def start_verification(sender, instance, created, **kwargs):
             document_uploaded_at=timezone.now()
         )
         
-        # Start API verification in background thread
+        # Avoid async DB activity during tests (sqlite lock contention).
+        if 'test' in sys.argv:
+            return
+
+        # Start API verification in background thread after DB commit.
         def run_verification():
             service = ArdhisasaVerificationService(verification)
             service.start_verification()
-        
-        thread = threading.Thread(target=run_verification)
-        thread.start()
+
+        transaction.on_commit(
+            lambda: threading.Thread(target=run_verification, daemon=True).start()
+        )
 
 
 
@@ -125,5 +132,4 @@ def trigger_ardhisasa_verification(sender, instance, created, **kwargs):
         finally:
             # Always remove from processing set
             _processing_verification.discard(verification_id)
-
 

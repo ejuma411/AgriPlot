@@ -14,9 +14,7 @@ staticfiles/
 static_root/
 collect_static/
 
-# Django migrations
-**/migrations/*.py
-!**/migrations/__init__.py
+# Keep Django migrations versioned
 
 # Django secrets
 .secret

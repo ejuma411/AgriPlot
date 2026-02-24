@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Extension Report - {{ plot.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="mb-0">Extension Report</h2>
+        <a href="{% url 'listings:extension_dashboard' %}" class="btn btn-outline-secondary">Back</a>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <h5 class="card-title mb-3">{{ plot.title }}</h5>
+            <p class="mb-1"><strong>Officer:</strong> {{ report.officer.user.get_full_name|default:report.officer.user.username }}</p>
+            <p class="mb-1"><strong>Visit Date:</strong> {{ report.visit_date|date:"Y-m-d H:i" }}</p>
+            <p class="mb-0"><strong>Recommendation:</strong> {{ report.get_recommendation_display }}</p>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <h6 class="mb-3">Summary</h6>
+            <p class="mb-2"><strong>Overall Suitability:</strong> {{ report.get_overall_suitability_display }}</p>
+            <p class="mb-2"><strong>Recommended Crops:</strong> {{ report.recommended_crops|default:"-" }}</p>
+            <p class="mb-2"><strong>Improvements:</strong> {{ report.improvement_suggestions|default:"-" }}</p>
+            <p class="mb-0"><strong>Comments:</strong> {{ report.comments|default:"-" }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

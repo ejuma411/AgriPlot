@@ -2,6 +2,7 @@
 
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
+from django.db.utils import NotSupportedError
 from .models import *
 from .notification_service import *
 import logging
@@ -17,7 +18,7 @@ class VerificationService:
     from .services.ardhisasa_integration import ArdhisasaService
 
     @staticmethod
-    def create_verification_tasks(plot):
+    def create_verification_tasks(plot, initiated_by=None):
         """Create all necessary verification tasks when a plot is submitted"""
         from .models import VerificationTask, VerificationLog, VerificationStatus
         from django.contrib.contenttypes.models import ContentType
@@ -43,7 +44,7 @@ class VerificationService:
             if created:
                 tasks_created.append('extension_review')
                 # Auto-assign to available extension officer
-                VerificationService.assign_extension_task(ext_task.id)
+                VerificationService.assign_extension_task(ext_task.id, assigned_by=initiated_by)
         
         # Task 3: Surveyor Inspection (for large plots)
         if plot.area > 50:
@@ -78,7 +79,7 @@ class VerificationService:
     
 
     @staticmethod
-    def assign_task(task_id, assigned_to_user, assigned_by):
+    def assign_task(task_id, assigned_to_user, assigned_by=None):
         """
         Assign a verification task to a specific staff member
         """
@@ -89,12 +90,13 @@ class VerificationService:
             task.assigned_at = timezone.now()
             task.save()
             
-            # Send notification if available
-            try:
-                from .notification_service import NotificationService
-                NotificationService.notify_task_assigned(task, assigned_by)
-            except ImportError:
-                logger.warning("NotificationService not available")
+            # Send notification if we have an assigner context.
+            if assigned_by is not None:
+                try:
+                    from .notification_service import NotificationService
+                    NotificationService.notify_task_assigned(task, assigned_by)
+                except Exception as exc:
+                    logger.warning(f"Task assignment notification skipped: {exc}")
             
             # Log the assignment
             VerificationLog.objects.create(
@@ -112,19 +114,33 @@ class VerificationService:
             return None
         
     @staticmethod
-    def assign_extension_task(task_id, assigned_by):
+    def assign_extension_task(task_id, assigned_by=None):
         """Auto-assign extension task to available officer"""
         from .models import ExtensionOfficer
         
         task = VerificationTask.objects.get(id=task_id)
         plot = task.plot
+
+        if not plot.county:
+            return None
         
-        # Find available extension officer for this county
-        available_officers = ExtensionOfficer.objects.filter(
+        # Find available extension officers for this county.
+        available_officers_qs = ExtensionOfficer.objects.filter(
             is_active=True,
             assigned_counties__contains=[plot.county],
             verified=True
         )
+        try:
+            available_officers = list(available_officers_qs)
+        except NotSupportedError:
+            # SQLite does not support JSON contains lookups in this form.
+            available_officers = [
+                officer for officer in ExtensionOfficer.objects.filter(
+                    is_active=True,
+                    verified=True
+                )
+                if plot.county in (officer.assigned_counties or [])
+            ]
         
         # Find officer with lowest workload
         best_officer = None
@@ -141,10 +157,21 @@ class VerificationService:
                 best_officer = officer.user
         
         if best_officer:
-            return VerificationService.assign_task(task_id, best_officer, assigned_by)
+            effective_assigner = assigned_by or best_officer
+            return VerificationService.assign_task(task_id, best_officer, effective_assigner)
         
         return None
     
+    @staticmethod
+    def check_plot_completion(plot):
+        """
+        Return True when a plot has no pending/in-progress verification tasks.
+        """
+        return not VerificationTask.objects.filter(
+            plot=plot,
+            status__in=['pending', 'in_progress']
+        ).exists()
+
     @staticmethod
     def complete_task(task_id, completed_by, notes="", approved=None):
         task = VerificationTask.objects.get(id=task_id)
@@ -313,88 +340,22 @@ class VerificationService:
             }
         }
 
-@staticmethod
-def check_plot_verification_completion(plot):
-    """Check if all tasks are completed and publish plot if approved"""
-    pending_tasks = VerificationTask.objects.filter(
-        plot=plot,
-        status__in=['pending', 'in_progress']
-    ).count()
-    
-    if pending_tasks == 0:
-        # All tasks completed
-        content_type = ContentType.objects.get_for_model(Plot)
-        verification = VerificationStatus.objects.filter(
-            content_type=content_type,
-            object_id=plot.id
-        ).first()
-        
-        if verification:
-            # Check if all tasks were approved
-            rejected_tasks = VerificationTask.objects.filter(
-                plot=plot,
-                approved=False
-            ).exists()
-            
-            if rejected_tasks:
-                verification.current_stage = 'rejected'
-                verification.save()
-                # Notify user of rejection
-            else:
-                verification.current_stage = 'approved'
-                verification.approved_at = timezone.now()
-                verification.save()
-                
-                # AUTO-PUBLISH PLOT
-                plot.is_published = True  # Add this field if needed
-                plot.save()
-                
-                # Notify user
-                from .notification_service import NotificationService
-                plot_owner = plot.agent.user if plot.agent else plot.landowner.user
-                NotificationService.create_notification(
-                    user=plot_owner,
-                    notification_type='plot_approved',
-                    title=f"Your Plot is Live! 🎉",
-                    message=f"Your plot '{plot.title}' has been verified and is now visible to buyers.",
-                    plot=plot
-                )
-                
-                logger.info(f"Plot {plot.id} approved and published")
-                return True
-    
-    return False
+    @staticmethod
+    def initiate_ardhisasa_verification(plot_id):
+        """Start Ardhisasa verification for a plot."""
+        from .services.ardhisasa_integration import ArdhisasaService
 
+        plot = Plot.objects.get(id=plot_id)
+        service = ArdhisasaService(use_mock=True)
+        result = service.verify_plot_title(plot)
 
-from .services.ardhisasa_integration import ArdhisasaService
+        if result.get('success'):
+            content_type = ContentType.objects.get_for_model(Plot)
+            verification = VerificationStatus.objects.filter(
+                content_type=content_type,
+                object_id=plot.id
+            ).first()
+            if verification:
+                verification.update_stage('title_search_completed')
 
-@staticmethod
-def initiate_ardhisasa_verification(plot_id):
-    """Start Ardhisasa verification for a plot"""
-    from .models import Plot
-    
-    plot = Plot.objects.get(id=plot_id)
-    service = ArdhisasaService(use_mock=True)  # Use mock for development
-    
-    # Run verification (consider using Celery for async)
-    result = service.verify_plot_title(plot)
-    
-    if result['success']:
-        # Update verification status
-        content_type = ContentType.objects.get_for_model(Plot)
-        verification = VerificationStatus.objects.get(
-            content_type=content_type,
-            object_id=plot.id
-        )
-        verification.update_stage('title_search_completed')
-        
-        # Notify admins
-        NotificationService.create_notification(
-            user=None,  # System notification
-            notification_type='verification_completed',
-            title=f"Title Search Complete for {plot.title}",
-            message=f"Ardhisasa verification completed successfully",
-            plot=plot
-        )
-    
-    return result
+        return result

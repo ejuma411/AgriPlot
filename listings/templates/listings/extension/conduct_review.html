@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Extension Review - {{ plot.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-3">Extension Review</h2>
+    <p class="text-muted mb-4">Task: {{ task.get_verification_type_display }} | Plot: {{ plot.title }}</p>
+
+    <form method="POST" enctype="multipart/form-data" class="card shadow-sm">
+        <div class="card-body">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+            {% endif %}
+
+            <div class="row">
+                {% for field in form %}
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ field.errors }}</small>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="card-footer bg-white">
+            <button type="submit" class="btn btn-success">Submit Review</button>
+            <a href="{% url 'listings:extension_dashboard' %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -10481,3 +10481,176 @@ Traceback (most recent call last):
            ~~~~~~~~~~~~^^^^^^^^
 RecursionError: maximum recursion depth exceeded
 ERROR | 2026-02-23 11:50:27 | django.server | basehttp | 213 | "POST /plot/9/trigger-ardhisasa/ HTTP/1.1" 500 5030869
+ERROR | 2026-02-23 18:19:28 | django.security.DisallowedHost | log | 253 | Invalid HTTP_HOST header: 'testserver'. You may need to add 'testserver' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/deprecation.py", line 119, in __call__
+    response = self.process_request(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/middleware/common.py", line 48, in process_request
+    host = request.get_host()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/http/request.py", line 202, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'testserver'. You may need to add 'testserver' to ALLOWED_HOSTS.
+ERROR | 2026-02-23 18:19:28 | django.security.DisallowedHost | log | 253 | Invalid HTTP_HOST header: 'testserver'. You may need to add 'testserver' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/deprecation.py", line 119, in __call__
+    response = self.process_request(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/middleware/common.py", line 48, in process_request
+    host = request.get_host()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/http/request.py", line 202, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'testserver'. You may need to add 'testserver' to ALLOWED_HOSTS.
+ERROR | 2026-02-23 18:19:28 | django.security.DisallowedHost | log | 253 | Invalid HTTP_HOST header: 'testserver'. You may need to add 'testserver' to ALLOWED_HOSTS.
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/deprecation.py", line 119, in __call__
+    response = self.process_request(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/middleware/common.py", line 48, in process_request
+    host = request.get_host()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/http/request.py", line 202, in get_host
+    raise DisallowedHost(msg)
+django.core.exceptions.DisallowedHost: Invalid HTTP_HOST header: 'testserver'. You may need to add 'testserver' to ALLOWED_HOSTS.
+ERROR | 2026-02-23 18:28:36 | django.request | log | 253 | Internal Server Error: /extension/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_extension.py", line 55, in extension_dashboard
+    return render(request, 'listings/admin/my_tasks.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'logout' not found. 'logout' is not a valid view function or pattern name.
+ERROR | 2026-02-23 18:28:36 | django.server | basehttp | 213 | "GET /extension/ HTTP/1.1" 500 215284
+ERROR | 2026-02-23 18:29:04 | django.request | log | 253 | Internal Server Error: /extension/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/decorators.py", line 59, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_extension.py", line 55, in extension_dashboard
+    return render(request, 'listings/admin/my_tasks.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'logout' not found. 'logout' is not a valid view function or pattern name.
+ERROR | 2026-02-23 18:29:04 | django.server | basehttp | 213 | "GET /extension/ HTTP/1.1" 500 215284

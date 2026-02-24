@@ -1,0 +1,32 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>Approve Verification</h1>
+
+<p><strong>Target:</strong> {{ verification.content_object }}</p>
+<p><strong>Current Stage:</strong> {{ verification.get_current_stage_display }}</p>
+
+{% if api_responses %}
+<h2>API Responses</h2>
+<pre style="white-space: pre-wrap;">{{ api_responses|pprint }}</pre>
+{% endif %}
+
+{% if stage_details %}
+<h2>Stage Details</h2>
+<pre style="white-space: pre-wrap;">{{ stage_details|pprint }}</pre>
+{% endif %}
+
+<form method="post" style="margin-top: 1rem;">
+    {% csrf_token %}
+    <div style="margin-bottom: 1rem;">
+        <label for="id_notes"><strong>Notes</strong></label><br>
+        <textarea id="id_notes" name="notes" rows="4" cols="80"></textarea>
+    </div>
+    <div style="margin-bottom: 1rem;">
+        <label for="id_rejection_reason"><strong>Rejection Reason</strong> (required when rejecting)</label><br>
+        <textarea id="id_rejection_reason" name="rejection_reason" rows="3" cols="80"></textarea>
+    </div>
+    <button type="submit" name="action" value="approve" class="default">Approve</button>
+    <button type="submit" name="action" value="reject">Reject</button>
+</form>
+{% endblock %}

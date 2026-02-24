@@ -6,6 +6,7 @@ Configured for development with structured logging.
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from django.core.management.utils import get_random_secret_key
 load_dotenv() 
 
 # Authentication URLs
@@ -24,11 +25,29 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY SETTINGS
 # =============================================================================
 
-SECRET_KEY = "django-insecure-lej7c!(e^gslp%rblu7%b0gny9vdd2v#2175qw29^q2*$0$u=i"
+def _env_bool(name, default=False):
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
-DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+def _env_csv(name, default=""):
+    raw = os.environ.get(name, default)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+DEBUG = _env_bool("DJANGO_DEBUG", default=False)
+
+# Prefer environment-provided secret; keep a runtime-only fallback for local runs.
+SECRET_KEY = (
+    os.environ.get("DJANGO_SECRET_KEY")
+    or os.environ.get("SECRET_KEY")
+    or get_random_secret_key()
+)
+
+# Never use wildcard hosts. Override via DJANGO_ALLOWED_HOSTS in deployed envs.
+ALLOWED_HOSTS = _env_csv("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1,testserver")
 
 
 # =============================================================================
@@ -66,7 +85,6 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-
 
 # =============================================================================
 # URL & WSGI CONFIG
@@ -108,6 +126,11 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
 DEFAULT_FROM_EMAIL = 'AgriPlot Connect <ejuma411@gmail.com>'
+SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")
+
+# External integration settings
+ARDHISASA_API_URL = os.environ.get("ARDHISASA_API_URL", "")
+ARDHISASA_API_KEY = os.environ.get("ARDHISASA_API_KEY", "")
 
 # =============================================================================
 # DATABASE CONFIGURATION

@@ -18,6 +18,11 @@ class NotificationService:
     def create_notification(user, notification_type, title, message, plot=None, task=None):
         """Create an in-app notification"""
         try:
+            if user is None:
+                logger.warning(
+                    f"Skipping notification '{notification_type}' because user is None"
+                )
+                return None
             notification = Notification.objects.create(
                 user=user,
                 notification_type=notification_type,
@@ -113,11 +118,12 @@ class NotificationService:
         
         # Notification for assigner (optional)
         if assigned_by != task.assigned_to:
+            assignee_name = task.assigned_to.get_full_name() or task.assigned_to.username
             NotificationService.create_notification(
                 user=assigned_by,
                 notification_type='task_assigned',
                 title=f"Task Assigned: {task.get_verification_type_display()}",
-                message=f"Task assigned to {task.assigned_to.get_full_name()|default:task.assigned_to.username} for plot '{task.plot.title}'",
+                message=f"Task assigned to {assignee_name} for plot '{task.plot.title}'",
                 plot=task.plot,
                 task=task
             )
@@ -131,7 +137,8 @@ class NotificationService:
         
         # Notification for task creator/admin
         title = f"Task Completed: {task.get_verification_type_display()}"
-        message = f"Task completed by {completed_by.get_full_name()|default:completed_by.username} for plot '{task.plot.title}'"
+        completed_by_name = completed_by.get_full_name() or completed_by.username
+        message = f"Task completed by {completed_by_name} for plot '{task.plot.title}'"
         
         # Notify all admins
         admins = User.objects.filter(is_staff=True)

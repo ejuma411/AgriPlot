@@ -4,7 +4,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
 from .models import *
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from .location_utils import validate_kenyan_location, get_subcounties_for_county
 
 # Get logger for this module
@@ -255,7 +255,7 @@ class AgentUpgradeForm(BaseUpgradeForm):
 # ============ PLOT FORMS ============
 # forms.py
 import os
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from django import forms
 from .models import Plot, Agent, LandownerProfile
 from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES

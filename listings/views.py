@@ -15,12 +15,13 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db.models import Q, Count, Avg
 from django.db.models.functions import TruncMonth
 from django.http import Http404, JsonResponse, HttpResponse
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404, resolve_url
 from django.template.loader import render_to_string
-from django.core.exceptions import ValidationError
+from django.core.exceptions import DisallowedHost, ValidationError
 from decimal import Decimal
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 import json
 from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from .utils import log_audit
@@ -112,7 +113,7 @@ class LandownerWizard(SessionWizardView):
             if auth_user:
                 login(self.request, auth_user)
                 messages.success(self.request, "Landowner account created successfully! Please wait for verification.")
-                return redirect('listings:dashboard')
+                return redirect('listings:dashboard_router')
             
         except Exception as e:
             messages.error(self.request, f"Error creating account: {str(e)}")
@@ -125,6 +126,22 @@ class LandownerWizard(SessionWizardView):
 def custom_logout(request):
     logout(request)
     return redirect('listings:home')
+
+
+def _safe_next_url(request, fallback='listings:home'):
+    """Allow only local redirects from ?next=..."""
+    next_url = request.GET.get("next") or request.POST.get("next")
+    try:
+        current_host = request.get_host()
+    except DisallowedHost:
+        return resolve_url(fallback)
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={current_host},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return resolve_url(fallback)
 
 
 def register_choice(request):
@@ -179,7 +196,7 @@ def register_buyer(request):
 
 def register_landowner(request):
     """Handle landowner registration with document upload"""
-    next_url = request.GET.get("next", "/")
+    next_url = _safe_next_url(request)
 
     if request.method == "POST":
         form = LandownerRegistrationForm(request.POST, request.FILES)
@@ -251,7 +268,7 @@ def register_landowner(request):
 
 def register_agent(request):
     """Handle agent registration with professional documents"""
-    next_url = request.GET.get("next", "/")
+    next_url = _safe_next_url(request)
 
     if request.method == "POST":
         form = AgentRegistrationForm(request.POST, request.FILES)
@@ -1053,7 +1070,10 @@ def edit_plot(request, id):
         existing_tasks = VerificationTask.objects.filter(plot=plot).count()
         if existing_tasks == 0:
             logger.info(f"No verification tasks found for plot {plot.id}, creating them...")
-            tasks_created = VerificationService.create_verification_tasks(plot)
+            tasks_created = VerificationService.create_verification_tasks(
+                plot,
+                initiated_by=request.user
+            )
             logger.info(f"Created missing verification tasks for plot {plot.id}: {tasks_created}")
     except Exception as e:
         logger.error(f"Error checking/creating tasks for edit: {str(e)}", exc_info=True)
@@ -1452,6 +1472,10 @@ def staff_dashboard(request):
         ).first()
     else:
         verification = None
+
+    recent_interests = list(
+        UserInterest.objects.filter(plot__in=plots).order_by('-created_at')[:5]
+    )
     
     context.update({
         'total_plots': total_plots,
@@ -1464,9 +1488,9 @@ def staff_dashboard(request):
         'pending_percentage': (pending_plots / total_plots * 100) if total_plots > 0 else 0,
         'rejected_percentage': (rejected_plots / total_plots * 100) if total_plots > 0 else 0,
         'plots': plots.order_by('-created_at')[:6],
-        'recent_interests': UserInterest.objects.filter(plot__in=plots).order_by('-created_at')[:5],
+        'recent_interests': recent_interests,
         'verification': verification,
-        'recent_interests_count': recent_interests.count(),
+        'recent_interests_count': len(recent_interests),
     })
     
     # Add staff-specific data if user is staff
@@ -1524,7 +1548,8 @@ def my_plots(request):
     # Filtering
     status_filter = request.GET.get('status', 'all')
     if status_filter != 'all':
-        plots = plots.filter(verification__current_stage=status_filter)
+        verification_stage = 'document_uploaded' if status_filter == 'pending' else status_filter
+        plots = plots.filter(verification__current_stage=verification_stage)
     
     # Search
     search_query = request.GET.get('search', '')
@@ -1544,7 +1569,7 @@ def my_plots(request):
         'all': plots.count(),
         'approved': plots.filter(verification__current_stage='approved').count(),
         'admin_review': plots.filter(verification__current_stage='admin_review').count(),
-        'pending': plots.filter(verification__current_stage='pending').count(),
+        'pending': plots.filter(verification__current_stage='document_uploaded').count(),
         'rejected': plots.filter(verification__current_stage='rejected').count(),
     }
     
@@ -1579,7 +1604,7 @@ def plot_verification_detail(request, plot_id):
         content_type=ContentType.objects.get_for_model(Plot),
         object_id=plot.id,
         defaults={
-            'current_stage': 'pending',
+            'current_stage': 'document_uploaded',
             'document_uploaded_at': timezone.now()
         }
     )
@@ -1600,6 +1625,7 @@ def plot_verification_detail(request, plot_id):
     context = {
         'plot': plot,
         'verification': verification,  # ✅ Pass the verification object
+        'verification_status': verification,
         'has_title_deed': has_title_deed,
         'has_official_search': has_official_search,
         'has_landowner_id': has_landowner_id,
@@ -1796,30 +1822,10 @@ def dashboard_analytics(request):
 # ============ VERIFICATION ADMIN ============
 @login_required
 def verification_dashboard(request):
-    """Admin verification dashboard"""
+    """Legacy entrypoint; canonical dashboard lives in views_admin."""
     if not request.user.is_staff:
         return redirect('listings:home')
-
-    pending = VerificationStatus.objects.filter(current_stage='pending')
-    in_review = VerificationStatus.objects.filter(current_stage='admin_review')
-    recent_verified = VerificationStatus.objects.filter(
-        current_stage='approved', 
-        approved_at__isnull=False
-    ).order_by('-approved_at')[:10]
-    
-    stats = {
-        'total_pending': pending.count(),
-        'total_in_review': in_review.count(),
-        'total_verified': VerificationStatus.objects.filter(current_stage='approved').count(),
-        'total_rejected': VerificationStatus.objects.filter(current_stage='rejected').count(),
-    }
-    
-    return render(request, 'listings/verification_dashboard.html', {
-        'pending': pending,
-        'in_review': in_review,
-        'recent_verified': recent_verified,
-        'stats': stats,
-    })
+    return redirect('listings:verification_dashboard')
 
 
 @login_required
@@ -2291,18 +2297,33 @@ def verification_progress(request):
             }
     
     # Get plot verifications
-    if hasattr(request.user, 'agent') or hasattr(request.user, 'landownerprofile'):
-        plots = Plot.objects.filter(
-            Q(agent=request.user.agent) | Q(landowner=request.user.landownerprofile)
-        )
-        
+    plot_filter = Q()
+    if hasattr(request.user, 'agent'):
+        plot_filter |= Q(agent=request.user.agent)
+    if hasattr(request.user, 'landownerprofile'):
+        plot_filter |= Q(landowner=request.user.landownerprofile)
+
+    if plot_filter:
+        plots = Plot.objects.filter(plot_filter).distinct()
+        plot_ids = list(plots.values_list('id', flat=True))
+        plot_verification_map = {}
+
+        if plot_ids:
+            plot_content_type = ContentType.objects.get_for_model(Plot)
+            statuses = VerificationStatus.objects.filter(
+                content_type=plot_content_type,
+                object_id__in=plot_ids
+            )
+            plot_verification_map = {status.object_id: status for status in statuses}
+
         for plot in plots:
-            if hasattr(plot, 'verification'):
+            verification = plot_verification_map.get(plot.id)
+            if verification:
                 context['plot_verifications'].append({
                     'plot': plot,
-                    'stage': plot.verification.get_current_stage_display(),
-                    'progress': plot.verification.progress_percentage,
-                    'submitted_at': plot.verification.document_uploaded_at
+                    'stage': verification.get_current_stage_display(),
+                    'progress': verification.progress_percentage,
+                    'submitted_at': verification.document_uploaded_at
                 })
     
     return render(request, 'listings/verification_progress.html', context)
@@ -2385,4 +2406,3 @@ def dashboard_router(request):
     
     # Default fallback
     return redirect('listings:home')
-

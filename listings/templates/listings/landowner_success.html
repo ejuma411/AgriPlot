@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Landowner Registration Complete{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="card shadow-sm">
+        <div class="card-body p-4 p-md-5">
+            <h2 class="mb-3 text-success">
+                <i class="fas fa-check-circle me-2"></i>Registration Submitted
+            </h2>
+            <p class="mb-3">
+                Your landowner account has been created. Our team will review your documents and notify you after verification.
+            </p>
+            <p class="text-muted mb-4">
+                You can still explore listings while verification is in progress.
+            </p>
+            <a href="{% url 'listings:dashboard_router' %}" class="btn btn-success me-2">Go to Dashboard</a>
+            <a href="{% url 'listings:home' %}" class="btn btn-outline-secondary">Back to Marketplace</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

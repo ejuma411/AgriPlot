@@ -78,7 +78,7 @@
                     <span class="badge bg-success fs-6 px-3 py-2">
                         <i class="fas fa-check-circle me-1"></i>VERIFIED
                     </span>
-                {% elif verification_status.current_stage == 'pending' %}
+                {% elif verification_status.current_stage == 'document_uploaded' %}
                     <span class="badge bg-warning fs-6 px-3 py-2">
                         <i class="fas fa-clock me-1"></i>PENDING REVIEW
                     </span>
@@ -131,7 +131,7 @@
                             <p><strong>Status:</strong> 
                                 {% if verification_status.current_stage == 'approved' %}
                                     <span class="text-success">✓ VERIFIED</span>
-                                {% elif verification_status.current_stage == 'pending' %}
+                                {% elif verification_status.current_stage == 'document_uploaded' %}
                                     <span class="text-warning">⏳ PENDING</span>
                                 {% elif verification_status.current_stage == 'admin_review' %}
                                     <span class="text-info">⟳ IN REVIEW</span>

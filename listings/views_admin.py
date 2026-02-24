@@ -428,9 +428,10 @@ def ajax_assign_task(request):
             
             if task:
                 logger.info(f"Task {task_id} assigned successfully to {assigned_to.username}")
+                assignee_name = assigned_to.get_full_name() or assigned_to.username
                 return JsonResponse({
                     'success': True,
-                    'message': f'Task assigned to {assigned_to.get_full_name()|default:assigned_to.username}'
+                    'message': f"Task assigned to {assignee_name}"
                 })
             else:
                 logger.error(f"Task {task_id} not found or could not be assigned")

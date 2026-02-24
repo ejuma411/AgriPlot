@@ -17,7 +17,7 @@ def test_ardhisasa(request, plot_id):
     if request.headers.get('Accept') == 'application/json':
         return JsonResponse(result)
     
-    return render(request, 'listings/test/ardhisasa_result.html', {
+    return render(request, 'test/ardhisasa_result.html', {
         'plot': plot,
         'result': result
     })

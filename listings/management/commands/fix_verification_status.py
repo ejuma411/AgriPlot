@@ -26,7 +26,7 @@ class Command(BaseCommand):
                 VerificationStatus.objects.create(
                     content_type=content_type,
                     object_id=plot.id,
-                    current_stage='pending',
+                    current_stage='document_uploaded',
                     document_uploaded_at=timezone.now()
                 )
                 fixed_count += 1

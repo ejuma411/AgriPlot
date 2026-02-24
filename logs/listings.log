@@ -1445,3 +1445,49 @@ INFO | 2026-02-23 12:13:03 | listings.views | views | add_plot | 963 | Prepared 
 INFO | 2026-02-23 12:13:03 | listings.views | views | add_plot | 970 | Total request processing time: 0.01 seconds
 INFO | 2026-02-23 12:13:03 | listings.views | views | add_plot | 971 | === PLOT CREATION ENDED ===
 
+INFO | 2026-02-23 17:31:05 | listings.views | views | staff_dashboard | 1384 | === STAFF DASHBOARD STARTED === User: juma
+INFO | 2026-02-23 17:53:33 | listings.views | views | staff_dashboard | 1400 | === STAFF DASHBOARD STARTED === User: juma
+INFO | 2026-02-23 17:53:33 | listings.views | views | staff_dashboard | 1523 | Dashboard loaded in 0.04 seconds
+INFO | 2026-02-23 17:53:33 | listings.views | views | staff_dashboard | 1524 | === STAFF DASHBOARD ENDED === User: juma
+INFO | 2026-02-23 17:54:15 | listings.signals | signals | trigger_ardhisasa_verification | 91 | Plot 9 moved to API verification stage
+INFO | 2026-02-23 17:54:15 | listings.signals | signals | trigger_ardhisasa_verification | 99 | Running Ardhisasa verification directly for plot 9
+INFO | 2026-02-23 17:54:15 | listings.services.ardhisasa_integration | ardhisasa_integration | __init__ | 19 | Using MOCK Ardhisasa API for testing
+INFO | 2026-02-23 17:54:15 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 31 | Starting Ardhisasa verification for plot 9
+INFO | 2026-02-23 17:54:15 | listings.services.ardhisasa_integration | ardhisasa_integration | verify_plot_title | 57 | Searching title: TEST/9/2024
+INFO | 2026-02-23 17:54:16 | listings.signals | signals | trigger_ardhisasa_verification | 118 | ✅ Ardhisasa verification completed for plot 9
+INFO | 2026-02-23 17:54:16 | listings.verification_service | verification_service | create_verification_tasks | 69 | 🚀 Automatically started Ardhisasa verification for plot 9
+INFO | 2026-02-23 17:55:42 | listings.views | views | staff_dashboard | 1404 | === STAFF DASHBOARD STARTED === User: agent_user
+INFO | 2026-02-23 17:55:42 | listings.views | views | staff_dashboard | 1527 | Dashboard loaded in 0.02 seconds
+INFO | 2026-02-23 17:55:42 | listings.views | views | staff_dashboard | 1528 | === STAFF DASHBOARD ENDED === User: agent_user
+INFO | 2026-02-23 17:56:56 | listings.views | views | staff_dashboard | 1404 | === STAFF DASHBOARD STARTED === User: agent_user
+INFO | 2026-02-23 17:56:56 | listings.views | views | staff_dashboard | 1527 | Dashboard loaded in 0.01 seconds
+INFO | 2026-02-23 17:56:56 | listings.views | views | staff_dashboard | 1528 | === STAFF DASHBOARD ENDED === User: agent_user
+INFO | 2026-02-23 18:05:50 | listings.views | views | staff_dashboard | 1404 | === STAFF DASHBOARD STARTED === User: juma
+INFO | 2026-02-23 18:05:50 | listings.views | views | staff_dashboard | 1527 | Dashboard loaded in 0.03 seconds
+INFO | 2026-02-23 18:05:50 | listings.views | views | staff_dashboard | 1528 | === STAFF DASHBOARD ENDED === User: juma
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 719 | === PLOT CREATION STARTED ===
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 720 | User: juma (ID: 17)
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 721 | IP Address: 127.0.0.1
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 722 | User Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 728 | User type - Agent: True, Landowner: False
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 959 | Processing GET request for plot creation form
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 975 | Empty form initialized for GET request
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 980 | Prepared subcounties data for 47 counties
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 987 | Total request processing time: 0.00 seconds
+INFO | 2026-02-23 18:06:12 | listings.views | views | add_plot | 988 | === PLOT CREATION ENDED ===
+
+INFO | 2026-02-23 18:10:27 | listings.views | views | staff_dashboard | 1404 | === STAFF DASHBOARD STARTED === User: agent_user
+INFO | 2026-02-23 18:10:27 | listings.views | views | staff_dashboard | 1527 | Dashboard loaded in 0.01 seconds
+INFO | 2026-02-23 18:10:27 | listings.views | views | staff_dashboard | 1528 | === STAFF DASHBOARD ENDED === User: agent_user
+INFO | 2026-02-23 18:19:19 | listings.views | views | staff_dashboard | 1404 | === STAFF DASHBOARD STARTED === User: agent_user
+INFO | 2026-02-23 18:19:19 | listings.views | views | staff_dashboard | 1527 | Dashboard loaded in 0.01 seconds
+INFO | 2026-02-23 18:19:19 | listings.views | views | staff_dashboard | 1528 | === STAFF DASHBOARD ENDED === User: agent_user
+INFO | 2026-02-23 18:19:59 | listings.views | views | staff_dashboard | 1404 | === STAFF DASHBOARD STARTED === User: agent_user
+INFO | 2026-02-23 18:19:59 | listings.views | views | staff_dashboard | 1527 | Dashboard loaded in 0.01 seconds
+INFO | 2026-02-23 18:19:59 | listings.views | views | staff_dashboard | 1528 | === STAFF DASHBOARD ENDED === User: agent_user
+INFO | 2026-02-23 18:21:25 | listings.views | views | staff_dashboard | 1404 | === STAFF DASHBOARD STARTED === User: agent_user
+INFO | 2026-02-23 18:21:25 | listings.views | views | staff_dashboard | 1527 | Dashboard loaded in 0.02 seconds
+INFO | 2026-02-23 18:21:25 | listings.views | views | staff_dashboard | 1528 | === STAFF DASHBOARD ENDED === User: agent_user
+INFO | 2026-02-23 18:22:33 | listings.views | views | staff_dashboard | 1404 | === STAFF DASHBOARD STARTED === User: agent_user
+INFO | 2026-02-23 18:22:33 | listings.views | views | staff_dashboard | 1527 | Dashboard loaded in 0.01 seconds
+INFO | 2026-02-23 18:22:33 | listings.views | views | staff_dashboard | 1528 | === STAFF DASHBOARD ENDED === User: agent_user

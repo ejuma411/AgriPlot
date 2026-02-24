@@ -1,0 +1,47 @@
+{% extends "auth/auth_split.html" %}
+
+{% block info_panel %}
+<h1>Register as a Landowner</h1>
+<p>Create your AgriPlot landowner profile and submit verification documents.</p>
+
+<ul class="info-list">
+    <li>✔ List your plots for sale or lease</li>
+    <li>✔ Track verification progress</li>
+    <li>✔ Receive buyer inquiries directly</li>
+</ul>
+
+<h3>Required Documents</h3>
+<ul class="info-list">
+    <li>📄 National ID copy</li>
+    <li>🧾 KRA PIN certificate</li>
+</ul>
+{% endblock %}
+
+{% block form_panel %}
+<h2>Create Landowner Account</h2>
+
+<form method="POST" enctype="multipart/form-data">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="alert alert-danger">
+        {% for error in form.non_field_errors %}
+            {{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for field in form %}
+        <div class="form-group">
+            <label>{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}
+                <small class="text-muted d-block">{{ field.help_text }}</small>
+            {% endif %}
+            <small class="text-error">{{ field.errors }}</small>
+        </div>
+    {% endfor %}
+
+    <button class="btn-auth">Submit for Verification</button>
+</form>
+{% endblock %}
