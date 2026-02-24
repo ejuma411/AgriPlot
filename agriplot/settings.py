@@ -46,8 +46,36 @@ SECRET_KEY = (
     or get_random_secret_key()
 )
 
+# Africa's Talking SMS Configuration
+AT_USERNAME = os.environ.get('AT_USERNAME', 'sandbox')  # Use 'sandbox' for testing
+AT_API_KEY = os.environ.get('AT_API_KEY', 'your-api-key')
+AT_SENDER_ID = os.environ.get('AT_SENDER_ID', 'AgriPlot')  # Your approved sender ID
+AT_SANDBOX = True  # Set to False for production
+
 # Never use wildcard hosts. Override via DJANGO_ALLOWED_HOSTS in deployed envs.
 ALLOWED_HOSTS = _env_csv("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1,testserver")
+
+# Production security flags (Q8 - CIA/ZTA)
+SECURE_SSL_REDIRECT = _env_bool("DJANGO_SECURE_SSL_REDIRECT", default=False)
+SESSION_COOKIE_SECURE = _env_bool("DJANGO_SESSION_COOKIE_SECURE", default=False)
+CSRF_COOKIE_SECURE = _env_bool("DJANGO_CSRF_COOKIE_SECURE", default=False)
+SECURE_HSTS_SECONDS = int(os.environ.get("DJANGO_SECURE_HSTS_SECONDS", "0"))
+SECURE_HSTS_INCLUDE_SUBDOMAINS = _env_bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=False)
+SECURE_HSTS_PRELOAD = _env_bool("DJANGO_SECURE_HSTS_PRELOAD", default=False)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+# Production web security (HTTPS, secure cookies, HSTS)
+# Enable when not in debug mode or when explicitly requested
+# _secure_production = not DEBUG or _env_bool("SECURE_SSL_REDIRECT", default=False)
+# if _secure_production:
+#     SECURE_SSL_REDIRECT = True
+#     SESSION_COOKIE_SECURE = True
+#     CSRF_COOKIE_SECURE = True
+#     SECURE_HSTS_SECONDS = 31536000
+#     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+#     SECURE_HSTS_PRELOAD = True
+#     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # =============================================================================
@@ -131,6 +159,16 @@ SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")
 # External integration settings
 ARDHISASA_API_URL = os.environ.get("ARDHISASA_API_URL", "")
 ARDHISASA_API_KEY = os.environ.get("ARDHISASA_API_KEY", "")
+
+# Feature flags for security controls (Q7/Q8)
+REQUIRE_CONTACT_VERIFICATION = _env_bool("REQUIRE_CONTACT_VERIFICATION", default=False)
+REQUIRE_2FA_FOR_LISTING = _env_bool("REQUIRE_2FA_FOR_LISTING", default=False)
+REQUIRE_DOCUMENT_VERIFICATION = _env_bool("REQUIRE_DOCUMENT_VERIFICATION", default=False)
+PLOT_CREATE_RATE_LIMIT = int(os.environ.get("PLOT_CREATE_RATE_LIMIT", "0"))
+
+# OTP / verification settings
+OTP_PROVIDER = os.environ.get("OTP_PROVIDER", "email")  # email | sms | both
+USE_SMS_MOCK = _env_bool("USE_SMS_MOCK", default=True)
 
 # =============================================================================
 # DATABASE CONFIGURATION

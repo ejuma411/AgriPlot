@@ -18,18 +18,20 @@
                 <i class="fas fa-home"></i>
                 <span>Dashboard</span>
             </a>
-            <a href="{% url 'listings:my_plots' %}" class="nav-item">
-                <i class="fas fa-list"></i>
-                <span>My Plots</span>
-            </a>
-            <a href="{% url 'listings:add_plot' %}" class="nav-item">
-                <i class="fas fa-plus-circle"></i>
-                <span>Add New Plot</span>
-            </a>
-            <a href="{% url 'listings:buyer_interests' %}" class="nav-item">
-                <i class="fas fa-envelope"></i>
-                <span>Messages</span>
-            </a>
+            {% if is_agent or is_landowner %}
+                <a href="{% url 'listings:my_plots' %}" class="nav-item">
+                    <i class="fas fa-list"></i>
+                    <span>My Plots</span>
+                </a>
+                <a href="{% url 'listings:add_plot' %}" class="nav-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Add New Plot</span>
+                </a>
+                <a href="{% url 'listings:buyer_interests' %}" class="nav-item">
+                    <i class="fas fa-envelope"></i>
+                    <span>Messages</span>
+                </a>
+            {% endif %}
             <a href="{% url 'listings:profile_management' %}" class="nav-item active">
                 <i class="fas fa-user-circle"></i>
                 <span>Profile</span>
@@ -60,6 +62,77 @@
         <!-- Main Content Grid -->
         <div class="dashboard-content">
             <div class="content-left">
+                {% if role_requests %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-id-badge me-2"></i>My Role Requests
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Role</th>
+                                        <th>Status</th>
+                                        <th>Documents</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for req in role_requests %}
+                                        <tr>
+                                            <td>{{ req.role }}</td>
+                                            <td>
+                                                {% if req.verified %}
+                                                    <span class="badge bg-success">Approved</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning text-dark">Pending</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if req.docs and req.docs|length > 0 %}
+                                                    {% for doc in req.docs %}
+                                                        <div>
+                                                            <a href="{{ doc.url }}" target="_blank">{{ doc.label }}</a>
+                                                        </div>
+                                                    {% endfor %}
+                                                {% else %}
+                                                    <span class="text-muted">No documents</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-user-plus me-2"></i>Upgrade Your Role
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap gap-2">
+                            {% if not is_landowner %}
+                                <a class="btn btn-outline-success" href="{% url 'listings:register_landowner' %}">Apply as Landowner</a>
+                            {% endif %}
+                            {% if not is_agent %}
+                                <a class="btn btn-outline-warning" href="{% url 'listings:register_agent' %}">Apply as Agent</a>
+                            {% endif %}
+                            {% if not is_extension %}
+                                <a class="btn btn-outline-info" href="{% url 'listings:request_extension_officer' %}">Apply as Extension Officer</a>
+                            {% endif %}
+                            {% if not is_surveyor %}
+                                <a class="btn btn-outline-primary" href="{% url 'listings:request_land_surveyor' %}">Apply as Land Surveyor</a>
+                            {% endif %}
+                        </div>
+                        <p class="text-muted mt-2 mb-0">Applications are reviewed by admins. You can track status above.</p>
+                    </div>
+                </div>
                 <!-- Messages Display -->
                 {% if messages %}
                 <div class="mb-4">
@@ -88,6 +161,7 @@
                             <i class="fas fa-user me-2"></i>Personal Info
                         </button>
                     </li>
+                    {% if is_agent or is_landowner %}
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="business-tab" data-bs-toggle="tab" data-bs-target="#business-tab-pane" type="button" role="tab" aria-controls="business-tab-pane" aria-selected="false">
                             <i class="fas fa-briefcase me-2"></i>Business Details
@@ -98,6 +172,7 @@
                             <i class="fas fa-file-alt me-2"></i>Documents
                         </button>
                     </li>
+                    {% endif %}
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security-tab-pane" type="button" role="tab" aria-controls="security-tab-pane" aria-selected="false">
                             <i class="fas fa-lock me-2"></i>Security
@@ -215,6 +290,7 @@
                         </div>
                     </div>
 
+                    {% if is_agent or is_landowner %}
                     <!-- Business Details Tab -->
                     <div class="tab-pane fade" id="business-tab-pane" role="tabpanel" aria-labelledby="business-tab">
                         <div class="card">
@@ -432,6 +508,7 @@
                             </div>
                         </div>
                     </div>
+                    {% endif %}
 
                     <!-- Security Tab -->
                     <div class="tab-pane fade" id="security-tab-pane" role="tabpanel" aria-labelledby="security-tab">

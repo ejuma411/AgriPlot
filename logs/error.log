@@ -10654,3 +10654,630 @@ Traceback (most recent call last):
     raise NoReverseMatch(msg)
 django.urls.exceptions.NoReverseMatch: Reverse for 'logout' not found. 'logout' is not a valid view function or pattern name.
 ERROR | 2026-02-23 18:29:04 | django.server | basehttp | 213 | "GET /extension/ HTTP/1.1" 500 215284
+ERROR | 2026-02-24 07:13:54 | listings.services.sms_service | sms_service | 75 | SMS sending failed: 401 Client Error: Unauthorized for url: https://api.africastalking.com/version1/messaging/bulk
+ERROR | 2026-02-24 07:14:47 | listings.services.sms_service | sms_service | 75 | SMS sending failed: 401 Client Error: Unauthorized for url: https://api.africastalking.com/version1/messaging/bulk
+ERROR | 2026-02-24 07:17:14 | listings.services.sms_service | sms_service | 75 | SMS sending failed: 401 Client Error: Unauthorized for url: https://api.africastalking.com/version1/messaging/bulk
+ERROR | 2026-02-24 07:19:13 | listings.services.sms_service | sms_service | 75 | SMS sending failed: 401 Client Error: Unauthorized for url: https://api.africastalking.com/version1/messaging/bulk
+ERROR | 2026-02-24 07:21:32 | listings.services.sms_service | sms_service | 75 | SMS sending failed: 401 Client Error: Unauthorized for url: https://api.africastalking.com/version1/messaging/bulk
+ERROR | 2026-02-24 07:24:10 | listings.services.sms_service | sms_service | 75 | SMS sending failed: 401 Client Error: Unauthorized for url: https://api.africastalking.com/version1/messaging/bulk
+ERROR | 2026-02-24 15:26:27 | listings.views_otp | views_otp | 238 | Error completing registration: UNIQUE constraint failed: listings_profile.user_id
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/sqlite3/base.py", line 360, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: UNIQUE constraint failed: listings_profile.user_id
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_otp.py", line 153, in verify_otp
+    profile = Profile.objects.create(
+        user=user,
+    ...<3 lines>...
+        email_verified=(otp_provider in ("email", "both"))
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 665, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 902, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1008, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1169, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1210, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1873, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/compiler.py", line 1882, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/sqlite3/base.py", line 360, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+django.db.utils.IntegrityError: UNIQUE constraint failed: listings_profile.user_id
+ERROR | 2026-02-24 15:50:02 | listings.views_otp | views_otp | 243 | Error completing registration: UNIQUE constraint failed: listings_profile.user_id
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/sqlite3/base.py", line 360, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+sqlite3.IntegrityError: UNIQUE constraint failed: listings_profile.user_id
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_otp.py", line 153, in verify_otp
+    profile = Profile.objects.create(
+        user=user,
+    ...<3 lines>...
+        email_verified=(otp_provider in ("email", "both"))
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 665, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 902, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1008, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1169, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1210, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1873, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/compiler.py", line 1882, in execute_sql
+    cursor.execute(sql, params)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 122, in execute
+    return super().execute(sql, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 79, in execute
+    return self._execute_with_wrappers(
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~^
+        sql, params, many=False, executor=self._execute
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 92, in _execute_with_wrappers
+    return executor(sql, params, many, context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 100, in _execute
+    with self.db.wrap_database_errors:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/utils.py", line 91, in __exit__
+    raise dj_exc_value.with_traceback(traceback) from exc_value
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/utils.py", line 105, in _execute
+    return self.cursor.execute(sql, params)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/sqlite3/base.py", line 360, in execute
+    return super().execute(query, params)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+django.db.utils.IntegrityError: UNIQUE constraint failed: listings_profile.user_id
+ERROR | 2026-02-24 16:02:10 | listings.notification_service | notification_service | 78 | Error sending email: Object of type User is not JSON serializable
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/notification_service.py", line 51, in send_email
+    email_log = EmailLog.objects.create(
+        recipient=recipient,
+    ...<3 lines>...
+        status='pending'
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 665, in create
+    obj.save(force_insert=True, using=self.db)
+    ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 902, in save
+    self.save_base(
+    ~~~~~~~~~~~~~~^
+        using=using,
+        ^^^^^^^^^^^^
+    ...<2 lines>...
+        update_fields=update_fields,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1008, in save_base
+    updated = self._save_table(
+        raw,
+    ...<4 lines>...
+        update_fields,
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1169, in _save_table
+    results = self._do_insert(
+        cls._base_manager, using, fields, returning_fields, raw
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1210, in _do_insert
+    return manager._insert(
+           ~~~~~~~~~~~~~~~^
+        [self],
+        ^^^^^^^
+    ...<3 lines>...
+        raw=raw,
+        ^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/manager.py", line 87, in manager_method
+    return getattr(self.get_queryset(), name)(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/query.py", line 1873, in _insert
+    return query.get_compiler(using=using).execute_sql(returning_fields)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/compiler.py", line 1881, in execute_sql
+    for sql, params in self.as_sql():
+                       ~~~~~~~~~~~^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/compiler.py", line 1806, in as_sql
+    self.prepare_value(field, self.pre_save_val(field, obj))
+    ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/sql/compiler.py", line 1741, in prepare_value
+    return field.get_db_prep_save(value, connection=self.connection)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/fields/json.py", line 118, in get_db_prep_save
+    return super().get_db_prep_save(value, connection)
+           ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/fields/__init__.py", line 1012, in get_db_prep_save
+    return self.get_db_prep_value(value, connection=connection, prepared=False)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/fields/json.py", line 102, in get_db_prep_value
+    return connection.ops.adapt_json_value(value, self.encoder)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/backends/base/operations.py", line 598, in adapt_json_value
+    return json.dumps(value, cls=encoder)
+           ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.13/json/__init__.py", line 235, in dumps
+    return _default_encoder.encode(obj)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^
+  File "/usr/lib/python3.13/json/encoder.py", line 202, in encode
+    chunks = self.iterencode(o, _one_shot=True)
+  File "/usr/lib/python3.13/json/encoder.py", line 263, in iterencode
+    return _iterencode(o, 0)
+  File "/usr/lib/python3.13/json/encoder.py", line 182, in default
+    raise TypeError(f'Object of type {o.__class__.__name__} '
+                    f'is not JSON serializable')
+TypeError: Object of type User is not JSON serializable
+ERROR | 2026-02-24 16:25:17 | listings.views | views | 966 | Validation error while saving plot: {'price': ['This field cannot be null.']}
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 873, in add_plot
+    plot = plot_form.save()
+  File "/home/createch/Documents/PROJECT/agriplot/listings/forms.py", line 897, in save
+    plot.save()
+    ~~~~~~~~~^^
+  File "/home/createch/Documents/PROJECT/agriplot/listings/models.py", line 386, in save
+    self.full_clean()
+    ~~~~~~~~~~~~~~~^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/db/models/base.py", line 1679, in full_clean
+    raise ValidationError(errors)
+django.core.exceptions.ValidationError: {'price': ['This field cannot be null.']}
+ERROR | 2026-02-24 16:28:50 | django.request | log | 253 | Internal Server Error: /plot/11/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 892, in _resolve_lookup
+    raise TypeError
+TypeError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 903, in _resolve_lookup
+    current = getattr(current, bit)
+AttributeError: 'NoneType' object has no attribute 'user'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 909, in _resolve_lookup
+    current = current[int(bit)]
+                      ~~~^^^^^
+ValueError: invalid literal for int() with base 10: 'user'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 702, in plot_detail
+    return render(request, 'listings/details.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 159, in render
+    return compiled_parent._render(context)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 65, in render
+    result = block.nodelist.render(context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 327, in render
+    return nodelist.render(context)
+           ~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1077, in render
+    output = self.filter_expression.resolve(context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 744, in resolve
+    arg_vals.append(arg.resolve(context))
+                    ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 856, in resolve
+    value = self._resolve_lookup(context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 916, in _resolve_lookup
+    raise VariableDoesNotExist(
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )  # missing attribute
+    ^
+django.template.base.VariableDoesNotExist: Failed lookup for key [user] in None
+ERROR | 2026-02-24 16:28:50 | django.server | basehttp | 213 | "GET /plot/11/ HTTP/1.1" 500 226368
+ERROR | 2026-02-24 16:31:49 | django.request | log | 253 | Internal Server Error: /plot/11/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 511, in parse
+    compile_func = self.tags[command]
+                   ~~~~~~~~~^^^^^^^^^
+KeyError: 'else'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views.py", line 702, in plot_detail
+    return render(request, 'listings/details.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 15, in get_template
+    return engine.get_template(template_name)
+           ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 79, in get_template
+    return Template(self.engine.get_template(template_name), self)
+                    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/engine.py", line 177, in get_template
+    template, origin = self.find_template(template_name)
+                       ~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/engine.py", line 159, in find_template
+    template = loader.get_template(name, skip=skip)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loaders/cached.py", line 57, in get_template
+    template = super().get_template(template_name, skip)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loaders/base.py", line 28, in get_template
+    return Template(
+        contents,
+    ...<2 lines>...
+        self.engine,
+    )
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 155, in __init__
+    self.nodelist = self.compile_nodelist()
+                    ~~~~~~~~~~~~~~~~~~~~~^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 197, in compile_nodelist
+    nodelist = parser.parse()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 519, in parse
+    raise self.error(token, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 517, in parse
+    compiled_result = compile_func(self, token)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 299, in do_extends
+    nodelist = parser.parse()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 519, in parse
+    raise self.error(token, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 517, in parse
+    compiled_result = compile_func(self, token)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader_tags.py", line 234, in do_block
+    nodelist = parser.parse(("endblock",))
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 513, in parse
+    self.invalid_block_tag(token, command, parse_until)
+    ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 568, in invalid_block_tag
+    raise self.error(
+    ...<8 lines>...
+    )
+django.template.exceptions.TemplateSyntaxError: Invalid block tag on line 590: 'else', expected 'endblock'. Did you forget to register or load this tag?
+ERROR | 2026-02-24 16:31:49 | django.server | basehttp | 213 | "GET /plot/11/ HTTP/1.1" 500 236406
+ERROR | 2026-02-24 18:07:40 | django.request | log | 253 | Internal Server Error: /login/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 220, in _get_response
+    response = response.render()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'password_reset' not found. 'password_reset' is not a valid view function or pattern name.
+ERROR | 2026-02-24 18:07:40 | django.server | basehttp | 213 | "GET /login/ HTTP/1.1" 500 137273
+ERROR | 2026-02-24 18:14:11 | django.request | log | 253 | Internal Server Error: /password-reset/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 220, in _get_response
+    response = response.render()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'login' not found. 'login' is not a valid view function or pattern name.
+ERROR | 2026-02-24 18:14:11 | django.server | basehttp | 213 | "GET /password-reset/ HTTP/1.1" 500 136228
+ERROR | 2026-02-24 18:16:09 | django.request | log | 253 | Internal Server Error: /password-reset/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/views/generic/base.py", line 105, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 48, in _wrapper
+    return bound_method(*args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 192, in _view_wrapper
+    result = _process_exception(request, e)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/utils/decorators.py", line 190, in _view_wrapper
+    response = view_func(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/views.py", line 229, in dispatch
+    return super().dispatch(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/views/generic/base.py", line 144, in dispatch
+    return handler(request, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/views/generic/edit.py", line 151, in post
+    return self.form_valid(form)
+           ~~~~~~~~~~~~~~~^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_auth.py", line 25, in form_valid
+    return super().form_valid(form)
+           ~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/views.py", line 242, in form_valid
+    form.save(**opts)
+    ~~~~~~~~~^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/forms.py", line 498, in save
+    self.send_mail(
+    ~~~~~~~~~~~~~~^
+        subject_template_name,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        html_email_template_name=html_email_template_name,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/contrib/auth/forms.py", line 426, in send_mail
+    body = loader.render_to_string(email_template_name, context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 61, in render_to_string
+    template = get_template(template_name, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 19, in get_template
+    raise TemplateDoesNotExist(template_name, chain=chain)
+django.template.exceptions.TemplateDoesNotExist: auth/password_reset_email.html
+ERROR | 2026-02-24 18:16:09 | django.server | basehttp | 213 | "POST /password-reset/ HTTP/1.1" 500 159358
+ERROR | 2026-02-24 18:31:08 | django.request | log | 253 | Internal Server Error: /password-reset/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 220, in _get_response
+    response = response.render()
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/response.py", line 114, in render
+    self.content = self.rendered_content
+                   ^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/response.py", line 92, in rendered_content
+    return template.render(context, self._request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'login' not found. 'login' is not a valid view function or pattern name.
+ERROR | 2026-02-24 18:31:08 | django.server | basehttp | 213 | "GET /password-reset/ HTTP/1.1" 500 136392
+ERROR | 2026-02-24 18:31:46 | django.request | log | 253 | Internal Server Error: /password-reset/confirm/
+Traceback (most recent call last):
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/exception.py", line 55, in inner
+    response = get_response(request)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/core/handlers/base.py", line 197, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/listings/views_auth.py", line 133, in password_reset_confirm_request
+    return render(request, 'auth/password_reset_confirm_request.html', context)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/shortcuts.py", line 25, in render
+    content = loader.render_to_string(template_name, context, request, using=using)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/loader.py", line 62, in render_to_string
+    return template.render(context, request)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/backends/django.py", line 107, in render
+    return self.template.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 172, in render
+    return self._render(context)
+           ~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 164, in _render
+    return self.nodelist.render(context)
+           ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 1018, in render
+    return SafeString("".join([node.render_annotated(context) for node in self]))
+                               ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/base.py", line 979, in render_annotated
+    return self.render(context)
+           ~~~~~~~~~~~^^^^^^^^^
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/template/defaulttags.py", line 480, in render
+    url = reverse(view_name, args=args, kwargs=kwargs, current_app=current_app)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/base.py", line 98, in reverse
+    resolved_url = resolver._reverse_with_prefix(view, prefix, *args, **kwargs)
+  File "/home/createch/Documents/PROJECT/agriplot/env/lib/python3.13/site-packages/django/urls/resolvers.py", line 831, in _reverse_with_prefix
+    raise NoReverseMatch(msg)
+django.urls.exceptions.NoReverseMatch: Reverse for 'contact_support' not found. 'contact_support' is not a valid view function or pattern name.
+ERROR | 2026-02-24 18:31:46 | django.server | basehttp | 213 | "GET /password-reset/confirm/ HTTP/1.1" 500 140535
+ERROR | 2026-02-24 18:33:56 | listings.views_auth | views_auth | 113 | Error sending password reset email: auth/password_reset_email.html

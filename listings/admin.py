@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.conf import settings
 from .models import *
 from django.utils.html import format_html
 from django.utils import timezone
@@ -83,10 +84,29 @@ class ProfileAdmin(admin.ModelAdmin):
 # ----------------------------------------
 # LANDOWNER VERIFICATION (Focused on pending verifications)
 # ----------------------------------------
+class ApprovalStatusFilter(admin.SimpleListFilter):
+    title = 'Approval Status'
+    parameter_name = 'approval_status'
+
+    def lookups(self, request, model_admin):
+        return [
+            ('pending', 'Pending approvals'),
+            ('approved', 'Approved'),
+        ]
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == 'pending':
+            return queryset.filter(verified=False)
+        if value == 'approved':
+            return queryset.filter(verified=True)
+        return queryset
+
+
 @admin.register(LandownerProfile)
 class LandownerProfileAdmin(admin.ModelAdmin):
     list_display = ('user', 'submitted_on', 'has_id', 'has_kra', 'status')
-    list_filter = ('verified',)
+    list_filter = (ApprovalStatusFilter, 'verified')
     search_fields = ('user__username', 'user__email')
     
     fieldsets = (
@@ -122,12 +142,24 @@ class LandownerProfileAdmin(admin.ModelAdmin):
     
     def verify_selected(self, request, queryset):
         from django.utils import timezone
+        from .notification_service import NotificationService
         for obj in queryset:
             obj.verified = True
             obj.verified_at = timezone.now()
             obj.reviewed_by = request.user
             obj.rejection_reason = ''
             obj.save()
+            if obj.user.email:
+                NotificationService.send_email(
+                    recipient=obj.user.email,
+                    subject='Role Approved: Landowner',
+                    template='role_approved',
+                    context={
+                        'user': obj.user,
+                        'role': 'Landowner',
+                        'login_url': settings.SITE_URL + '/login/',
+                    }
+                )
         self.message_user(request, f"{queryset.count()} landowner(s) verified.")
     verify_selected.short_description = "Verify selected landowners"
 
@@ -138,7 +170,7 @@ class LandownerProfileAdmin(admin.ModelAdmin):
 @admin.register(Agent)
 class AgentAdmin(admin.ModelAdmin):
     list_display = ('user', 'submitted_on', 'license_number', 'has_license', 'status')
-    list_filter = ('verified',)
+    list_filter = (ApprovalStatusFilter, 'verified')
     search_fields = ('user__username', 'user__email', 'license_number')
     
     fieldsets = (
@@ -168,8 +200,25 @@ class AgentAdmin(admin.ModelAdmin):
     actions = ['verify_selected']
     
     def verify_selected(self, request, queryset):
-        updated = queryset.update(verified=True)
-        self.message_user(request, f"{updated} agent(s) verified.")
+        from django.utils import timezone
+        from .notification_service import NotificationService
+        count = 0
+        for obj in queryset:
+            obj.verified = True
+            obj.save()
+            count += 1
+            if obj.user.email:
+                NotificationService.send_email(
+                    recipient=obj.user.email,
+                    subject='Role Approved: Agent',
+                    template='role_approved',
+                    context={
+                        'user': obj.user,
+                        'role': 'Agent',
+                        'login_url': settings.SITE_URL + '/login/',
+                    }
+                )
+        self.message_user(request, f"{count} agent(s) verified.")
     verify_selected.short_description = "Verify selected agents"
 
 # ----------------------------------------
@@ -952,16 +1001,43 @@ class DocumentVerificationAdmin(admin.ModelAdmin):
     search_fields = ('user__username',)
 
 
+@admin.register(ImpersonationDetection)
+class ImpersonationDetectionAdmin(admin.ModelAdmin):
+    list_display = ('user', 'alert_type', 'severity', 'resolved', 'created_at')
+    list_filter = ('severity', 'resolved', 'alert_type')
+    search_fields = ('user__username', 'description')
+
+
+@admin.register(PhoneEmailVerification)
+class PhoneEmailVerificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'phone_verified', 'email_verified', 'phone_number', 'email', 'updated_at')
+    list_filter = ('phone_verified', 'email_verified')
+    search_fields = ('user__username', 'phone_number', 'email')
+
+
+@admin.register(DocumentHash)
+class DocumentHashAdmin(admin.ModelAdmin):
+    list_display = ('file_name', 'file_hash', 'uploaded_by', 'uploaded_at')
+    search_fields = ('file_name', 'file_hash')
+
+
+@admin.register(EmailOTP)
+class EmailOTPAdmin(admin.ModelAdmin):
+    list_display = ('email', 'otp', 'purpose', 'is_verified', 'expires_at', 'created_at')
+    list_filter = ('purpose', 'is_verified')
+    search_fields = ('email',)
+
+
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils.html import format_html
-from .models import ExtensionOfficer, ExtensionReport
+from .models import ExtensionOfficer, ExtensionReport, LandSurveyor, SurveyorReport, EmailOTP
 
 @admin.register(ExtensionOfficer)
 class ExtensionOfficerAdmin(admin.ModelAdmin):
     list_display = ('user_info', 'designation', 'station', 'assigned_counties_display', 'workload_display', 'status_display', 'verified')
-    list_filter = ('is_active', 'verified', 'designation', 'station', 'department')
+    list_filter = (ApprovalStatusFilter, 'is_active', 'verified', 'designation', 'station', 'department')
     search_fields = ('user__username', 'user__email', 'user__first_name', 'user__last_name', 'employee_id', 'phone')
     readonly_fields = ('total_tasks_completed', 'average_rating', 'response_time_avg', 'created_at', 'updated_at')
     
@@ -1028,8 +1104,26 @@ class ExtensionOfficerAdmin(admin.ModelAdmin):
     actions = ['verify_officers', 'activate_officers', 'deactivate_officers']
     
     def verify_officers(self, request, queryset):
-        queryset.update(verified=True, verified_by=request.user, verified_at=timezone.now())
-        self.message_user(request, f"{queryset.count()} officer(s) verified.")
+        from .notification_service import NotificationService
+        count = 0
+        for obj in queryset:
+            obj.verified = True
+            obj.verified_by = request.user
+            obj.verified_at = timezone.now()
+            obj.save()
+            count += 1
+            if obj.user.email:
+                NotificationService.send_email(
+                    recipient=obj.user.email,
+                    subject='Role Approved: Extension Officer',
+                    template='role_approved',
+                    context={
+                        'user': obj.user,
+                        'role': 'Extension Officer',
+                        'login_url': settings.SITE_URL + '/login/',
+                    }
+                )
+        self.message_user(request, f"{count} officer(s) verified.")
     verify_officers.short_description = "Verify selected officers"
     
     def activate_officers(self, request, queryset):
@@ -1050,6 +1144,122 @@ class ExtensionReportAdmin(admin.ModelAdmin):
     search_fields = ('plot__title', 'officer__user__username', 'comments')
     readonly_fields = ('submitted_at',)
     
+    def plot_link(self, obj):
+        url = reverse('admin:listings_plot_change', args=[obj.plot.id])
+        return format_html('<a href="{}">{}</a>', url, obj.plot.title)
+    plot_link.short_description = 'Plot'
+
+
+@admin.register(LandSurveyor)
+class LandSurveyorAdmin(admin.ModelAdmin):
+    list_display = ('user_info', 'designation', 'station', 'assigned_counties_display', 'workload_display', 'status_display', 'verified')
+    list_filter = (ApprovalStatusFilter, 'is_active', 'verified', 'station')
+    search_fields = ('user__username', 'user__email', 'user__first_name', 'user__last_name', 'license_number', 'phone')
+    readonly_fields = ('total_tasks_completed', 'average_rating', 'response_time_avg', 'created_at', 'updated_at')
+
+    fieldsets = (
+        ('User Account', {
+            'fields': ('user', 'license_number')
+        }),
+        ('Professional Details', {
+            'fields': ('designation', 'station', 'qualifications', 'years_of_experience')
+        }),
+        ('Contact Information', {
+            'fields': ('phone', 'office_address')
+        }),
+        ('Assignment & Workload', {
+            'fields': ('assigned_counties', 'max_daily_tasks', 'is_active')
+        }),
+        ('Verification Status', {
+            'fields': ('verified', 'verified_by', 'verified_at')
+        }),
+        ('Performance Metrics', {
+            'fields': ('total_tasks_completed', 'average_rating', 'response_time_avg'),
+            'classes': ('collapse',)
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def user_info(self, obj):
+        return format_html(
+            '<strong>{}</strong><br><small>{}</small>',
+            obj.user.get_full_name() or obj.user.username,
+            obj.user.email
+        )
+    user_info.short_description = 'Surveyor'
+
+    def assigned_counties_display(self, obj):
+        if not obj.assigned_counties:
+            return "None"
+        return ", ".join(obj.assigned_counties[:3]) + ("..." if len(obj.assigned_counties) > 3 else "")
+    assigned_counties_display.short_description = 'Counties'
+
+    def workload_display(self, obj):
+        current = obj.current_workload
+        max_tasks = obj.max_daily_tasks
+        percentage = (current / max_tasks * 100) if max_tasks > 0 else 0
+
+        color = "green" if percentage < 50 else "orange" if percentage < 80 else "red"
+        return format_html(
+            '<span style="color: {};">{}/{} tasks</span>',
+            color, current, max_tasks
+        )
+    workload_display.short_description = 'Workload'
+
+    def status_display(self, obj):
+        if not obj.is_active:
+            return format_html('<span style="color: red;">Inactive</span>')
+        if not obj.verified:
+            return format_html('<span style="color: orange;">Unverified</span>')
+        return format_html('<span style="color: green;">Active</span>')
+    status_display.short_description = 'Status'
+
+    actions = ['verify_surveyors', 'activate_surveyors', 'deactivate_surveyors']
+
+    def verify_surveyors(self, request, queryset):
+        from .notification_service import NotificationService
+        count = 0
+        for obj in queryset:
+            obj.verified = True
+            obj.verified_by = request.user
+            obj.verified_at = timezone.now()
+            obj.save()
+            count += 1
+            if obj.user.email:
+                NotificationService.send_email(
+                    recipient=obj.user.email,
+                    subject='Role Approved: Land Surveyor',
+                    template='role_approved',
+                    context={
+                        'user': obj.user,
+                        'role': 'Land Surveyor',
+                        'login_url': settings.SITE_URL + '/login/',
+                    }
+                )
+        self.message_user(request, f"{count} surveyor(s) verified.")
+    verify_surveyors.short_description = "Verify selected surveyors"
+
+    def activate_surveyors(self, request, queryset):
+        queryset.update(is_active=True)
+        self.message_user(request, f"{queryset.count()} surveyor(s) activated.")
+    activate_surveyors.short_description = "Activate selected surveyors"
+
+    def deactivate_surveyors(self, request, queryset):
+        queryset.update(is_active=False)
+        self.message_user(request, f"{queryset.count()} surveyor(s) deactivated.")
+    deactivate_surveyors.short_description = "Deactivate selected surveyors"
+
+
+@admin.register(SurveyorReport)
+class SurveyorReportAdmin(admin.ModelAdmin):
+    list_display = ('id', 'plot_link', 'surveyor', 'visit_date', 'recommendation', 'submitted_at')
+    list_filter = ('recommendation', 'visit_date', 'submitted_at')
+    search_fields = ('plot__title', 'surveyor__user__username', 'notes')
+    readonly_fields = ('submitted_at',)
+
     def plot_link(self, obj):
         url = reverse('admin:listings_plot_change', args=[obj.plot.id])
         return format_html('<a href="{}">{}</a>', url, obj.plot.title)

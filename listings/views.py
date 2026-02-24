@@ -1,20 +1,18 @@
-from datetime import date
+from datetime import date, timedelta
 import logging
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.views import LoginView
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.files.storage import FileSystemStorage, default_storage
-from django.core.files.base import ContentFile
-from django.core.mail import send_mail, EmailMessage
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from django.core.mail import send_mail
+from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
 from django.db.models.functions import TruncMonth
-from django.http import Http404, JsonResponse, HttpResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import render, redirect, get_object_or_404, resolve_url
 from django.template.loader import render_to_string
 from django.core.exceptions import DisallowedHost, ValidationError
@@ -23,6 +21,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 import json
+import os
+import uuid
 from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from .utils import log_audit
 from django.contrib.contenttypes.models import ContentType
@@ -73,48 +73,19 @@ class LandownerWizard(SessionWizardView):
     def get_template_names(self):
         return [TEMPLATES[self.steps.current]]
 
+    def dispatch(self, request, *args, **kwargs):
+        # Enforce Q1: users must be basic users first
+        if not request.user.is_authenticated:
+            messages.info(request, "Please register as a basic user first, then upgrade to landowner.")
+            return redirect('listings:register_buyer')
+        # Use upgrade flow instead of creating a new user here
+        return redirect('listings:register_landowner_simple')
+
     def done(self, form_list, **kwargs):
         """Process all wizard forms and create landowner"""
-        form_data = {form.prefix: form.cleaned_data for form in form_list}
-        
         try:
-            # Extract data from forms
-            personal_data = form_data.get('personal', {})
-            documents_data = form_data.get('documents', {})
-            
-            # Create user
-            user = User.objects.create_user(
-                username=personal_data.get('username'),
-                email=personal_data.get('email'),
-                password=personal_data.get('password1'),
-                first_name=personal_data.get('first_name'),
-                last_name=personal_data.get('last_name')
-            )
-            
-            # Create profile
-            Profile.objects.create(
-                user=user,
-                role='landowner'
-            )
-            
-            # Create landowner profile
-            LandownerProfile.objects.create(
-                user=user,
-                national_id=documents_data.get('national_id'),
-                kra_pin=documents_data.get('kra_pin'),
-                verified=False
-            )
-            
-            # Auto login
-            auth_user = authenticate(
-                username=personal_data.get('username'),
-                password=personal_data.get('password1')
-            )
-            if auth_user:
-                login(self.request, auth_user)
-                messages.success(self.request, "Landowner account created successfully! Please wait for verification.")
-                return redirect('listings:dashboard_router')
-            
+            messages.info(self.request, "Use the landowner upgrade form to continue.")
+            return redirect('listings:register_landowner_simple')
         except Exception as e:
             messages.error(self.request, f"Error creating account: {str(e)}")
             return redirect('listings:register_choice')
@@ -144,208 +115,241 @@ def _safe_next_url(request, fallback='listings:home'):
     return resolve_url(fallback)
 
 
-def register_choice(request):
-    """Display registration choice page"""
-    return render(request, "auth/register_choice.html")
+def _store_registration_files(files, field_names):
+    """Persist uploaded files temporarily and return storage paths."""
+    stored = {}
+    for field in field_names:
+        upload = files.get(field)
+        if not upload:
+            continue
+        filename = f"registration_uploads/{uuid.uuid4().hex}_{upload.name}"
+        stored[field] = default_storage.save(filename, upload)
+    return stored
+
+
 
 
 class CustomLoginView(LoginView):
     template_name = "auth/login.html"
 
+def register_choice(request):
+    """Registration entrypoint: only buyer registration is allowed."""
+    return redirect('listings:register_buyer')
+
 
 def register_buyer(request):
-    """Handle buyer registration"""
-    if request.method == "POST":
-        form = UserCreationForm(request.POST)
-        if form.is_valid():
-            try:
-                user = form.save()
-                
-                # Check if profile already exists
-                profile, created = Profile.objects.get_or_create(
-                    user=user,
-                    defaults={
-                        'role': 'buyer',
-                        'phone': '',
-                        'address': ''
-                    }
-                )
-                
-                if created:
-                    logger.info(f"✅ New buyer profile created for {user.username}")
-                else:
-                    logger.info(f"ℹ️ Existing profile updated for {user.username}")
-                    profile.role = 'buyer'
-                    profile.save()
-                
-                messages.success(request, "Account created successfully! You can now log in.")
-                return redirect('login')
-                
-            except Exception as e:
-                messages.error(request, f"Error creating account: {str(e)}")
-                logger.error(f"Buyer registration error: {str(e)}")
-    else:
-        form = UserCreationForm()
-    
-    context = {
-        'form': form,
-        'role': 'Buyer'
-    }
-    return render(request, 'auth/register_buyer.html', context)
+    role = request.GET.get('role')
+    if request.method == "GET" and role:
+        role = role.strip().lower()
+        if role == 'landowner':
+            return redirect('listings:register_landowner')
+        if role == 'agent':
+            return redirect('listings:register_agent')
+        if role in ('extension', 'extension_officer'):
+            if request.user.is_authenticated:
+                return redirect('listings:request_extension_officer')
+            request.session['reg_target_role'] = 'extension_officer'
+        if role in ('surveyor', 'land_surveyor'):
+            if request.user.is_authenticated:
+                return redirect('listings:request_land_surveyor')
+            request.session['reg_target_role'] = 'land_surveyor'
 
+    if request.method == "POST":
+        form = BuyerRegistrationForm(request.POST)
+        if form.is_valid():
+            # Store registration data in session
+            request.session['reg_data'] = {
+                'username': form.cleaned_data['username'],
+                'email': form.cleaned_data['email'],
+                'first_name': form.cleaned_data['first_name'],
+                'last_name': form.cleaned_data['last_name'],
+                'password': form.cleaned_data['password1'],
+                'role': 'buyer',
+                'phone': form.cleaned_data['phone']
+            }
+            request.session['reg_phone'] = form.cleaned_data['phone']
+            
+            # Redirect to OTP verification
+            from .views_otp import send_otp_verification
+            return send_otp_verification(request)
+    else:
+        form = BuyerRegistrationForm()
+    
+    return render(request, "auth/register_buyer.html", {"form": form})
 
 def register_landowner(request):
-    """Handle landowner registration with document upload"""
-    next_url = _safe_next_url(request)
+    """Register as landowner (new user) or upgrade (existing user)."""
+    if not request.user.is_authenticated:
+        if request.method == "POST":
+            form = LandownerRegistrationForm(request.POST, request.FILES)
+            if form.is_valid():
+                request.session['reg_data'] = {
+                    'username': form.cleaned_data['username'],
+                    'email': form.cleaned_data['email'],
+                    'first_name': form.cleaned_data['first_name'],
+                    'last_name': form.cleaned_data['last_name'],
+                    'password': form.cleaned_data['password1'],
+                    'role': 'landowner',
+                    'phone': form.cleaned_data['phone'],
+                }
+                request.session['reg_phone'] = form.cleaned_data['phone']
+                request.session['reg_files'] = _store_registration_files(
+                    request.FILES,
+                    ['national_id', 'kra_pin', 'title_deed', 'land_search', 'lcb_consent']
+                )
+                from .views_otp import send_otp_verification
+                return send_otp_verification(request)
+        else:
+            form = LandownerRegistrationForm()
+        return render(request, "auth/register_landowner.html", {"form": form})
 
+    landowner_profile = LandownerProfile.objects.filter(user=request.user).first()
     if request.method == "POST":
-        form = LandownerRegistrationForm(request.POST, request.FILES)
+        form = LandownerUpgradeForm(request.POST, request.FILES, instance=landowner_profile)
         if form.is_valid():
             try:
-                # Create user
-                user = form.save(commit=False)
-                user.first_name = form.cleaned_data["first_name"]
-                user.last_name = form.cleaned_data["last_name"]
-                user.email = form.cleaned_data["email"]
-                user.save()
-
-                # Get phone from form
-                phone = form.cleaned_data.get("phone", "")
-
-                # Create or update Profile with role and contact info
-                profile, created = Profile.objects.get_or_create(
-                    user=user,
-                    defaults={
-                        'role': 'landowner',
-                        'phone': phone
-                    }
-                )
-                
-                if not created:
-                    profile.role = 'landowner'
-                    profile.phone = phone
-                    profile.save()
-
-                # Create or update LandownerProfile with uploaded files
-                landowner_profile, created = LandownerProfile.objects.get_or_create(
-                    user=user,
-                    defaults={
-                        'national_id': form.cleaned_data.get("national_id"),
-                        'kra_pin': form.cleaned_data.get("kra_pin"),
-                        'verified': False
-                    }
-                )
-                
-                if not created:
-                    landowner_profile.national_id = form.cleaned_data.get("national_id")
-                    landowner_profile.kra_pin = form.cleaned_data.get("kra_pin")
-                    landowner_profile.verified = False
-                    landowner_profile.save()
-
-                logger.info(f"✅ Landowner registered/updated: {user.username}")
-
-                # Auto login
-                auth_user = authenticate(
-                    username=form.cleaned_data["username"],
-                    password=form.cleaned_data["password1"]
-                )
-                if auth_user:
-                    login(request, auth_user)
-                    messages.success(request, "Landowner account created successfully! Please wait for verification.")
-                    return redirect(next_url)
-                else:
-                    messages.error(request, "Authentication failed. Please try logging in.")
-                    return redirect('login')
-                    
+                profile, _ = Profile.objects.get_or_create(user=request.user)
+                profile.role = 'landowner'
+                profile.save()
+                form.save(user=request.user)
+                messages.success(request, "Landowner documents submitted. Please wait for verification.")
+                return redirect(_safe_next_url(request))
             except Exception as e:
-                messages.error(request, f"Error creating account: {str(e)}")
-                logger.error(f"Landowner registration error: {str(e)}")
+                messages.error(request, "Error submitting landowner details.")
+                logger.error(f"Landowner upgrade error: {str(e)}")
     else:
-        form = LandownerRegistrationForm()
+        form = LandownerUpgradeForm(instance=landowner_profile)
 
     return render(request, "auth/register_landowner.html", {"form": form})
 
 
 def register_agent(request):
-    """Handle agent registration with professional documents"""
-    next_url = _safe_next_url(request)
+    """Register as agent (new user) or upgrade (existing user)."""
+    if not request.user.is_authenticated:
+        if request.method == "POST":
+            form = AgentRegistrationForm(request.POST, request.FILES)
+            if form.is_valid():
+                request.session['reg_data'] = {
+                    'username': form.cleaned_data['username'],
+                    'email': form.cleaned_data['email'],
+                    'first_name': form.cleaned_data['first_name'],
+                    'last_name': form.cleaned_data['last_name'],
+                    'password': form.cleaned_data['password1'],
+                    'role': 'agent',
+                    'phone': form.cleaned_data['phone'],
+                    'id_number': form.cleaned_data['id_number'],
+                    'license_number': form.cleaned_data['license_number'],
+                }
+                request.session['reg_phone'] = form.cleaned_data['phone']
+                request.session['reg_files'] = _store_registration_files(
+                    request.FILES,
+                    ['license_doc', 'kra_pin', 'practicing_certificate', 'good_conduct', 'professional_indemnity']
+                )
+                from .views_otp import send_otp_verification
+                return send_otp_verification(request)
+        else:
+            form = AgentRegistrationForm()
+        return render(request, "auth/register_agent.html", {"form": form})
 
+    agent_profile = Agent.objects.filter(user=request.user).first()
     if request.method == "POST":
-        form = AgentRegistrationForm(request.POST, request.FILES)
+        form = AgentUpgradeForm(request.POST, request.FILES, instance=agent_profile)
         if form.is_valid():
             try:
-                # Create user
-                user = form.save(commit=False)
-                user.first_name = form.cleaned_data["first_name"]
-                user.last_name = form.cleaned_data["last_name"]
-                user.email = form.cleaned_data["email"]
-                user.save()
-
-                # Get phone from form
-                phone = form.cleaned_data["phone"]
-
-                # Create or update Profile with role and contact info
-                profile, created = Profile.objects.get_or_create(
-                    user=user,
-                    defaults={
-                        'role': 'agent',
-                        'phone': phone
-                    }
-                )
-                
-                if not created:
-                    profile.role = 'agent'
-                    profile.phone = phone
-                    profile.save()
-
-                # Create or update Agent with all professional fields
-                agent, created = Agent.objects.get_or_create(
-                    user=user,
-                    defaults={
-                        'phone': phone,
-                        'id_number': form.cleaned_data["id_number"],
-                        'license_number': form.cleaned_data["license_number"],
-                        'license_doc': form.cleaned_data.get("license_doc"),
-                        'kra_pin': form.cleaned_data.get("kra_pin"),
-                        'practicing_certificate': form.cleaned_data.get("practicing_certificate"),
-                        'good_conduct': form.cleaned_data.get("good_conduct"),
-                        'professional_indemnity': form.cleaned_data.get("professional_indemnity"),
-                        'verified': False
-                    }
-                )
-                
-                if not created:
-                    agent.phone = phone
-                    agent.id_number = form.cleaned_data["id_number"]
-                    agent.license_number = form.cleaned_data["license_number"]
-                    if form.cleaned_data.get("license_doc"):
-                        agent.license_doc = form.cleaned_data["license_doc"]
-                    if form.cleaned_data.get("kra_pin"):
-                        agent.kra_pin = form.cleaned_data["kra_pin"]
-                    agent.save()
-
-                logger.info(f"✅ Agent registered/updated: {user.username}")
-
-                # Auto login
-                auth_user = authenticate(
-                    username=form.cleaned_data["username"],
-                    password=form.cleaned_data["password1"]
-                )
-                if auth_user:
-                    login(request, auth_user)
-                    messages.success(request, "Agent account created successfully! Please wait for verification.")
-                    return redirect(next_url)
-                else:
-                    messages.error(request, "Authentication failed. Please try logging in.")
-                    return redirect('listings:login')
-                    
+                profile, _ = Profile.objects.get_or_create(user=request.user)
+                profile.role = 'agent'
+                profile.save()
+                form.save(user=request.user)
+                messages.success(request, "Agent documents submitted. Please wait for verification.")
+                return redirect(_safe_next_url(request))
             except Exception as e:
-                messages.error(request, f"Error creating account: {str(e)}")
-                logger.error(f"Agent registration error: {str(e)}")
+                messages.error(request, "Error submitting agent details.")
+                logger.error(f"Agent upgrade error: {str(e)}")
     else:
-        form = AgentRegistrationForm()
+        form = AgentUpgradeForm(instance=agent_profile)
 
     return render(request, "auth/register_agent.html", {"form": form})
+
+
+def register_landowner_simple(request):
+    """Backward-compatibility alias for the landowner registration path."""
+    return redirect('listings:register_landowner')
+
+
+@login_required
+def request_extension_officer(request):
+    """Allow a user to request extension officer role (pending approval)"""
+    try:
+        existing = request.user.extension_officer
+        messages.info(request, "You already have an extension officer profile.")
+        return redirect('listings:extension_dashboard')
+    except ExtensionOfficer.DoesNotExist:
+        existing = None
+
+    if request.method == "POST":
+        form = ExtensionOfficerProfileForm(request.POST, instance=existing)
+        if form.is_valid():
+            profile = form.save(commit=False)
+            profile.user = request.user
+            profile.verified = False
+            profile.is_active = False
+            profile.save()
+            messages.success(request, "Request submitted. An admin will review your details.")
+            return redirect('listings:profile_management')
+    else:
+        form = ExtensionOfficerProfileForm(instance=existing)
+
+    context = {
+        "form": form,
+        "role_label": "Extension Officer",
+        "requirements": [
+            "Official employee ID",
+            "Designation and department",
+            "Station/assigned office",
+            "Qualifications and specializations",
+            "Phone and office address",
+            "Assigned counties and max daily tasks",
+        ],
+    }
+    return render(request, "listings/request_role.html", context)
+
+
+@login_required
+def request_land_surveyor(request):
+    """Allow a user to request land surveyor role (pending approval)"""
+    try:
+        existing = request.user.land_surveyor
+        messages.info(request, "You already have a land surveyor profile.")
+        return redirect('listings:surveyor_dashboard')
+    except LandSurveyor.DoesNotExist:
+        existing = None
+
+    if request.method == "POST":
+        form = LandSurveyorProfileForm(request.POST, instance=existing)
+        if form.is_valid():
+            profile = form.save(commit=False)
+            profile.user = request.user
+            profile.verified = False
+            profile.is_active = False
+            profile.save()
+            messages.success(request, "Request submitted. An admin will review your details.")
+            return redirect('listings:profile_management')
+    else:
+        form = LandSurveyorProfileForm(instance=existing)
+
+    context = {
+        "form": form,
+        "role_label": "Land Surveyor",
+        "requirements": [
+            "Professional license number",
+            "Designation and station",
+            "Qualifications and experience",
+            "Phone and office address",
+            "Assigned counties and max daily tasks",
+        ],
+    }
+    return render(request, "listings/request_role.html", context)
+
 
 # ============ PUBLIC PAGES ============
 def home(request):
@@ -651,6 +655,11 @@ def plot_detail(request, id):
             is_owner = True
         elif hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile:
             is_owner = True
+
+    # Non-owners can only view approved listings
+    if not is_owner and not request.user.is_staff:
+        if not verification or verification.current_stage != 'approved':
+            raise Http404
     
     # Get similar plots based on location, soil type, and price
     similar_plots = Plot.objects.filter(
@@ -675,10 +684,14 @@ def plot_detail(request, id):
         delta = 0.02
         map_bbox = f"{float(plot.longitude) - delta},{float(plot.latitude) - delta},{float(plot.longitude) + delta},{float(plot.latitude) + delta}"
     
+    # Restrict document access - only owner or staff can view/download
+    can_view_documents = is_owner or (request.user.is_authenticated and request.user.is_staff)
+    
     context = {
         'plot': plot,
         'verification': verification,
         'is_owner': is_owner,
+        'can_view_documents': can_view_documents,
         'similar_plots': similar_plots,
         'map_bbox': map_bbox,
         'today': date.today().strftime('%Y-%m-%d'),
@@ -747,6 +760,53 @@ def add_plot(request):
         logger.error(f"Profile access error for user {request.user.username}: {str(e)}")
         messages.error(request, "Error accessing your profile. Please contact support.")
         return redirect("listings:home")
+
+    # Q7/Q8: Contact verification and 2FA enforcement (feature-flagged)
+    profile = getattr(request.user, 'profile', None)
+    if settings.REQUIRE_CONTACT_VERIFICATION:
+        phone_verified = bool(getattr(profile, 'phone_verified', False))
+        email_verified = bool(getattr(profile, 'email_verified', False))
+        contact_verification = getattr(request.user, 'contact_verification', None)
+        if contact_verification:
+            phone_verified = phone_verified or contact_verification.phone_verified
+            email_verified = email_verified or contact_verification.email_verified
+        otp_provider = getattr(settings, "OTP_PROVIDER", "email")
+        if otp_provider == "email" and not email_verified:
+            messages.error(request, "Verify your email before listing a plot.")
+            return redirect("listings:profile_management")
+        if otp_provider in ("sms", "both") and not (phone_verified and email_verified):
+            messages.error(request, "Verify your phone and email before listing a plot.")
+            return redirect("listings:profile_management")
+
+    if settings.REQUIRE_2FA_FOR_LISTING:
+        if not profile or not getattr(profile, 'has_2fa_enabled', False):
+            messages.error(request, "Enable 2FA before listing a plot.")
+            return redirect("listings:profile_management")
+
+    if settings.REQUIRE_DOCUMENT_VERIFICATION:
+        from .models import DocumentVerification
+        required_docs = {'national_id', 'kra_pin', 'title_deed'}
+        approved_docs = set(
+            DocumentVerification.objects.filter(
+                user=request.user,
+                approved=True
+            ).values_list('document_type', flat=True)
+        )
+        if not required_docs.issubset(approved_docs):
+            messages.error(request, "Your identity documents must be verified before listing.")
+            return redirect("listings:verification_progress")
+
+    # Q8: rate limit plot creation (per-hour)
+    if request.method == "POST" and settings.PLOT_CREATE_RATE_LIMIT:
+        from django.core.cache import cache
+        from django.utils import timezone as _tz
+        bucket = _tz.now().strftime("%Y%m%d%H")
+        key = f"plot_create:{request.user.id}:{bucket}"
+        current = cache.get(key, 0)
+        if current >= settings.PLOT_CREATE_RATE_LIMIT:
+            messages.error(request, "Rate limit exceeded. Try again later.")
+            return redirect("listings:add_plot")
+        cache.set(key, current + 1, timeout=60 * 60)
 
     # Initialize selected values for county/subcounty
     selected_county = None
@@ -866,10 +926,27 @@ def add_plot(request):
                         logger.info(f"✅ Verification status created for plot {plot.id}")
                         logger.info(f"Verification ID: {verification.id}")
                         logger.info(f"Current stage: {verification.current_stage}")
+                        # Q5: Create verification tasks (document review, extension, surveyor) at submission
+                        try:
+                            from .verification_service import VerificationService
+                            tasks_created = VerificationService.create_verification_tasks(
+                                plot, initiated_by=request.user
+                            )
+                            logger.info(f"Created verification tasks for plot {plot.id}: {tasks_created}")
+                        except Exception as task_err:
+                            logger.warning(f"Verification task creation failed for plot {plot.id}: {task_err}")
                     else:
                         logger.info(f"ℹ️ Verification status already exists for plot {plot.id}")
                         logger.info(f"Existing verification stage: {verification.current_stage}")
-                        
+
+                    # Q6: Generate a pricing suggestion for sale listings
+                    if plot.listing_type in ['sale', 'both']:
+                        try:
+                            from .utils import suggest_price
+                            suggest_price(plot)
+                        except Exception as price_err:
+                            logger.warning(f"Pricing suggestion failed for plot {plot.id}: {price_err}")
+
                 except Exception as e:
                     logger.error(f"Error creating verification status: {str(e)}", exc_info=True)
                     # Don't fail the whole request, just log the error
@@ -885,7 +962,7 @@ def add_plot(request):
             except ValidationError as e:
                 error_msg = f"Validation error while saving plot: {str(e)}"
                 logger.error(error_msg, exc_info=True)
-                messages.error(request, f"Validation error: {str(e)}")
+                messages.error(request, "Please correct the errors and try again.")
                 
             except IntegrityError as e:
                 error_msg = f"Database integrity error: {str(e)}"
@@ -1230,7 +1307,7 @@ def edit_plot(request, id):
             except ValidationError as e:
                 error_msg = f"Validation error while saving plot: {str(e)}"
                 logger.error(error_msg, exc_info=True)
-                messages.error(request, f"Validation error: {str(e)}")
+                messages.error(request, "Please correct the errors and try again.")
                 
             except IntegrityError as e:
                 error_msg = f"Database integrity error: {str(e)}"
@@ -1362,6 +1439,47 @@ REQUIRED_DOC_TYPES = [
 
 
 @login_required
+def serve_plot_document(request, plot_id, doc_type):
+    """Serve plot document only to owner or staff (Q7/Q8 confidentiality)."""
+    from django.http import FileResponse
+    from django.views.static import was_modified_since
+    import mimetypes
+
+    plot = get_object_or_404(Plot, id=plot_id)
+    is_owner = (
+        (hasattr(request.user, 'agent') and plot.agent == request.user.agent) or
+        (hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile)
+    )
+    if not (is_owner or request.user.is_staff):
+        from django.http import HttpResponseForbidden
+        return HttpResponseForbidden("You don't have permission to view this document.")
+
+    doc_field_map = {
+        'title_deed': 'title_deed',
+        'soil_report': 'soil_report',
+        'official_search': 'official_search',
+        'landowner_id_doc': 'landowner_id_doc',
+        'kra_pin': 'kra_pin',
+    }
+    if doc_type not in doc_field_map:
+        raise Http404("Invalid document type")
+    field_name = doc_field_map[doc_type]
+    doc_file = getattr(plot, field_name, None)
+    if not doc_file:
+        raise Http404("Document not found")
+
+    try:
+        response = FileResponse(doc_file.open('rb'), as_attachment=False)
+        fn = doc_file.name.split('/')[-1] if doc_file.name else 'document'
+        content_type, _ = mimetypes.guess_type(fn)
+        response['Content-Type'] = content_type or 'application/octet-stream'
+        response['Cache-Control'] = 'no-store, no-cache, must-revalidate, private'
+        return response
+    except (ValueError, OSError):
+        raise Http404("File not found")
+
+
+@login_required
 def upload_verification_doc(request, plot_id):
     """Upload verification document for existing plot"""
     plot = get_object_or_404(Plot, id=plot_id)
@@ -1408,6 +1526,15 @@ def staff_dashboard(request):
     is_landowner = hasattr(request.user, 'landownerprofile')
     is_staff = request.user.is_staff
     is_extension = hasattr(request.user, 'extension_officer')
+    is_surveyor = hasattr(request.user, 'land_surveyor')
+
+    if is_extension:
+        return redirect('listings:extension_dashboard')
+    if is_surveyor:
+        return redirect('listings:surveyor_dashboard')
+    if not (is_agent or is_landowner or is_staff):
+        messages.error(request, "You don't have access to this dashboard.")
+        return redirect('listings:home')
     
     # Get base context
     context = {
@@ -1722,36 +1849,110 @@ def update_interest_status(request, interest_id):
 
 @login_required
 def profile_management(request):
-    """Manage landowner/agent profile"""
-    is_landowner = hasattr(request.user, 'landownerprofile')
-    is_agent = hasattr(request.user, 'agent')
-    
-    if not (is_landowner or is_agent):
-        messages.error(request, "You need to be a landowner or agent.")
-        return redirect('listings:home')
-    
+    """Manage profile and show role requests"""
+    user = request.user
+    is_landowner = hasattr(user, 'landownerprofile')
+    is_agent = hasattr(user, 'agent')
+    is_extension = hasattr(user, 'extension_officer')
+    is_surveyor = hasattr(user, 'land_surveyor')
+
     if request.method == 'POST':
         phone = request.POST.get('phone', '')
-        
         if is_agent:
-            agent = request.user.agent
+            agent = user.agent
             agent.phone = phone
             agent.save()
             messages.success(request, "Profile updated successfully.")
-        elif is_landowner:
-            # Landowner profile updates
-            pass
-    
+
+    profile_type = "Buyer"
+    if is_agent:
+        profile_type = "Agent"
+    elif is_landowner:
+        profile_type = "Landowner"
+    elif is_extension:
+        profile_type = "Extension Officer"
+    elif is_surveyor:
+        profile_type = "Land Surveyor"
+
+    profile = None
+    if is_landowner:
+        profile = user.landownerprofile
+    elif is_agent:
+        profile = user.agent
+    else:
+        profile, _ = Profile.objects.get_or_create(user=user)
+
+    def _doc(label, filefield):
+        if not filefield:
+            return None
+        return {
+            'label': label,
+            'name': filefield.name.split('/')[-1] if filefield.name else label,
+            'url': filefield.url,
+        }
+
+    role_requests = []
+
+    if hasattr(user, 'agent'):
+        agent = user.agent
+        docs = list(filter(None, [
+            _doc('License Document', agent.license_doc),
+            _doc('KRA PIN', agent.kra_pin),
+            _doc('Practicing Certificate', agent.practicing_certificate),
+            _doc('Good Conduct', agent.good_conduct),
+            _doc('Professional Indemnity', agent.professional_indemnity),
+        ]))
+        role_requests.append({
+            'role': 'Agent',
+            'verified': agent.verified,
+            'is_active': True,
+            'docs': docs,
+        })
+
+    if hasattr(user, 'landownerprofile'):
+        landowner = user.landownerprofile
+        docs = list(filter(None, [
+            _doc('National ID', landowner.national_id),
+            _doc('KRA PIN', landowner.kra_pin),
+            _doc('Title Deed', landowner.title_deed),
+            _doc('Land Search', landowner.land_search),
+            _doc('LCB Consent', landowner.lcb_consent),
+        ]))
+        role_requests.append({
+            'role': 'Landowner',
+            'verified': landowner.verified,
+            'is_active': True,
+            'docs': docs,
+        })
+
+    if hasattr(user, 'extension_officer'):
+        officer = user.extension_officer
+        role_requests.append({
+            'role': 'Extension Officer',
+            'verified': officer.verified,
+            'is_active': officer.is_active,
+            'docs': [],
+        })
+
+    if hasattr(user, 'land_surveyor'):
+        surveyor = user.land_surveyor
+        role_requests.append({
+            'role': 'Land Surveyor',
+            'verified': surveyor.verified,
+            'is_active': surveyor.is_active,
+            'docs': [],
+        })
+
     context = {
         'is_landowner': is_landowner,
         'is_agent': is_agent,
+        'is_extension': is_extension,
+        'is_surveyor': is_surveyor,
+        'profile': profile,
+        'profile_type': profile_type,
+        'role_requests': role_requests,
     }
-    
-    if is_landowner:
-        context['profile'] = request.user.landownerprofile
-    elif is_agent:
-        context['profile'] = request.user.agent
-    
+
     return render(request, 'listings/dashboard/profile_management.html', context)
 
 
@@ -2395,6 +2596,10 @@ def dashboard_router(request):
     # Check if user is extension officer
     if hasattr(user, 'extension_officer'):
         return redirect('listings:extension_dashboard')
+
+    # Check if user is land surveyor
+    if hasattr(user, 'land_surveyor'):
+        return redirect('listings:surveyor_dashboard')
     
     # Check if user is agent or landowner
     if hasattr(user, 'agent') or hasattr(user, 'landownerprofile'):
@@ -2406,3 +2611,42 @@ def dashboard_router(request):
     
     # Default fallback
     return redirect('listings:home')
+
+# listings/views.py
+
+from .services.sms_service import AfricaTalkingService
+import random
+
+def generate_otp():
+    return str(random.randint(100000, 999999))
+
+@login_required
+def verify_phone(request):
+    """Send OTP to user's phone"""
+    if request.method == 'POST':
+        phone = request.POST.get('phone')
+        otp = generate_otp()
+        
+        # Store OTP in session or database
+        request.session['phone_otp'] = otp
+        request.session['phone_otp_expiry'] = (timezone.now() + timedelta(minutes=10)).isoformat()
+        
+        # Send SMS
+        sms = AfricaTalkingService()
+        result = sms.send_otp(phone, otp)
+        
+        if result['success']:
+            messages.success(request, "OTP sent to your phone")
+            return redirect('listings:confirm_otp')
+        else:
+            messages.error(request, f"Failed to send OTP: {result['error']}")
+    
+    return render(request, 'listings/verify_phone.html')
+
+
+def contact_support(request):
+    """Simple contact support page"""
+    return render(request, 'listings/contact_support.html', {
+        'support_email': 'support@agriplot.com',
+        'support_phone': '+254 700 000 000'
+    })

@@ -6,6 +6,8 @@ from django.utils.html import strip_tags
 from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
+
+from listings.services.sms_service import AfricaTalkingService
 from .models import Notification, EmailLog, User, Plot, VerificationTask
 import logging
 
@@ -87,10 +89,17 @@ class NotificationService:
     def notify_task_assigned(task, assigned_by):
         """Send notifications when a task is assigned"""
         
-        # Notification for assignee
-        title = f"New Task: {task.get_verification_type_display()}"
-        message = f"You have been assigned to {task.get_verification_type_display()} for plot '{task.plot.title}'"
+        # Guard clause - check if task and assigned_to exist
+        if not task or not task.assigned_to:
+            logger.error(f"Cannot send task assignment notification: task or assignee missing")
+            return
         
+        # Notification for assignee
+        task_type_display = task.get_verification_type_display()
+        title = f"New Task: {task_type_display}"
+        message = f"You have been assigned to {task_type_display} for plot '{task.plot.title}'"
+        
+        # Create in-app notification
         NotificationService.create_notification(
             user=task.assigned_to,
             notification_type='task_assigned',
@@ -100,34 +109,88 @@ class NotificationService:
             task=task
         )
         
-        # Send email to assignee
-        context = {
-            'user': task.assigned_to,
-            'task': task,
-            'plot': task.plot,
-            'assigned_by': assigned_by,
-            'login_url': settings.SITE_URL + reverse('listings:my_tasks')
-        }
+        # Send email to assignee (if email exists)
+        if task.assigned_to.email:
+            try:
+                context = {
+                    'user': task.assigned_to,
+                    'task': task,
+                    'plot': task.plot,
+                    'assigned_by': assigned_by,
+                    'login_url': settings.SITE_URL + reverse('listings:my_tasks'),
+                    'site_name': 'AgriPlot Connect',
+                    'task_type': task_type_display,
+                    'assigned_at': timezone.now().strftime("%Y-%m-%d %H:%M")
+                }
+                
+                NotificationService.send_email(
+                    recipient=task.assigned_to.email,
+                    subject=title,
+                    template='task_assigned',
+                    context=context
+                )
+            except Exception as e:
+                logger.error(f"Failed to send task assignment email: {str(e)}")
+
+        # In notify_task_assigned method, add:
+        if task.assigned_to.profile and task.assigned_to.profile.phone:
+            sms = AfricaTalkingService()
+            sms.send_task_assigned(
+                task.assigned_to.profile.phone,
+                task.assigned_to.get_full_name() or task.assigned_to.username,
+                task.plot.title
+            )
         
-        NotificationService.send_email(
-            recipient=task.assigned_to.email,
-            subject=title,
-            template='task_assigned',
-            context=context
-        )
+        # Send SMS if phone number available (optional)
+        if hasattr(task.assigned_to, 'profile') and task.assigned_to.profile.phone:
+            try:
+                from .services.sms_service import AfricaTalkingService
+                sms = AfricaTalkingService()
+                sms.send_task_assigned(
+                    task.assigned_to.profile.phone,
+                    task.assigned_to.get_full_name() or task.assigned_to.username,
+                    task.plot.title
+                )
+            except Exception as e:
+                logger.error(f"Failed to send task assignment SMS: {str(e)}")
         
         # Notification for assigner (optional)
-        if assigned_by != task.assigned_to:
+        if assigned_by and assigned_by != task.assigned_to:
             assignee_name = task.assigned_to.get_full_name() or task.assigned_to.username
             NotificationService.create_notification(
                 user=assigned_by,
                 notification_type='task_assigned',
-                title=f"Task Assigned: {task.get_verification_type_display()}",
+                title=f"Task Assigned: {task_type_display}",
                 message=f"Task assigned to {assignee_name} for plot '{task.plot.title}'",
                 plot=task.plot,
                 task=task
             )
-    
+            
+            # Also email the assigner if they want confirmation
+            if assigned_by.email:
+                try:
+                    context = {
+                        'user': assigned_by,
+                        'task': task,
+                        'plot': task.plot,
+                        'assignee': task.assigned_to,
+                        'task_type': task_type_display,
+                        'assigned_at': timezone.now().strftime("%Y-%m-%d %H:%M"),
+                        'login_url': settings.SITE_URL + reverse('listings:task_assignment')
+                    }
+                    
+                    NotificationService.send_email(
+                        recipient=assigned_by.email,
+                        subject=f"Task Assigned: {task_type_display}",
+                        template='task_assigned_confirmation',
+                        context=context
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send assignment confirmation email: {str(e)}")
+        
+        logger.info(f"Task assignment notifications sent for task {task.id} to {task.assigned_to.username}")
+
+    from .services.sms_service import AfricaTalkingService   
     @staticmethod
     def notify_task_completed(task, completed_by):
         """Send notifications when a task is completed"""
@@ -182,6 +245,18 @@ class NotificationService:
                 template='plot_verification_status',
                 context=context
             )
+        
+        # Add SMS notification
+            try:
+                sms = AfricaTalkingService()
+                if task.assigned_to.phone:  # Assuming user has phone field
+                    sms.send_task_assigned(
+                        task.assigned_to.phone,
+                        task.assigned_to.get_full_name() or task.assigned_to.username,
+                        task.plot.title
+                    )
+            except Exception as e:
+                logger.error(f"SMS failed: {e}")
     
     @staticmethod
     def notify_plot_submitted(plot):

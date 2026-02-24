@@ -605,8 +605,8 @@
                         <i class="fas fa-eye me-2"></i>View Details
                     </a>
 
-                    {% if plot.broker and plot.broker.phone %}
-                    <a href="https://wa.me/{{ plot.broker.phone|cut:'+'|cut:' '|cut:'-' }}?text=Hi%2C%20I'm%20interested%20in%20{{ plot.title|urlencode }}"
+                    {% if plot.agent and plot.agent.phone %}
+                    <a href="https://wa.me/{{ plot.agent.phone|cut:'+'|cut:' '|cut:'-' }}?text=Hi%2C%20I'm%20interested%20in%20{{ plot.title|urlencode }}"
                     class="btn-contact"
                     target="_blank"
                     rel="noopener">

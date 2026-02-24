@@ -66,3 +66,153 @@ body.auth-body {
 .role-card:hover {
     transform: translateY(-5px);
 }
+
+/* Add to your existing auth.css */
+
+/* Confirmation Page Styles */
+.confirmation-card {
+    background: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    border: 1px solid #e9ecef;
+}
+
+.email-display {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    margin-bottom: 1.5rem;
+    border: 2px dashed #069132;
+}
+
+.email-display i {
+    font-size: 2rem;
+    color: #069132;
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.email-display span {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    background: white;
+    padding: 0.5rem 1rem;
+    border-radius: 30px;
+    display: inline-block;
+}
+
+.warning-message {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.warning-message i {
+    font-size: 1.5rem;
+    color: #856404;
+}
+
+.warning-message p {
+    margin: 0;
+    color: #856404;
+}
+
+.button-group {
+    display: flex;
+    gap: 1rem;
+    flex-direction: column;
+}
+
+.btn-confirm, .btn-cancel {
+    padding: 1rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    transition: all 0.3s ease;
+}
+
+.btn-confirm {
+    background: #069132;
+    color: white;
+}
+
+.btn-confirm:hover {
+    background: #047a29;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(6, 145, 50, 0.3);
+}
+
+.btn-cancel {
+    background: white;
+    color: #dc3545;
+    border: 2px solid #dc3545;
+}
+
+.btn-cancel:hover {
+    background: #dc3545;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(220, 53, 69, 0.3);
+}
+
+.security-footer {
+    margin-top: 2rem;
+    text-align: center;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    color: #666;
+}
+
+.security-footer i {
+    margin-right: 0.5rem;
+    color: #069132;
+}
+
+.tip-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.tip-item:last-child {
+    border-bottom: none;
+}
+
+.tip-item i {
+    color: #ffc107;
+    font-size: 1.2rem;
+}
+
+.form-hint {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #6c757d;
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+    .button-group {
+        flex-direction: row;
+    }
+    
+    .btn-confirm, .btn-cancel {
+        flex: 1;
+    }
+}

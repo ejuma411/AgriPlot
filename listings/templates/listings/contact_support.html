@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Contact Support - AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-headset me-2"></i>Contact Support
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-life-ring fa-4x text-success mb-3"></i>
+                        <h5>How can we help you?</h5>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-envelope fa-3x text-success mb-3"></i>
+                                    <h6>Email Support</h6>
+                                    <p class="text-muted">{{ support_email }}</p>
+                                    <a href="mailto:{{ support_email }}" class="btn btn-outline-success btn-sm">
+                                        Send Email
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-phone-alt fa-3x text-success mb-3"></i>
+                                    <h6>Phone Support</h6>
+                                    <p class="text-muted">{{ support_phone }}</p>
+                                    <a href="tel:{{ support_phone }}" class="btn btn-outline-success btn-sm">
+                                        Call Now
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="text-center">
+                        <h6>Frequently Asked Questions</h6>
+                        <div class="list-group mt-3">
+                            <a href="#" class="list-group-item list-group-item-action">
+                                How do I reset my password?
+                            </a>
+                            <a href="#" class="list-group-item list-group-item-action">
+                                I didn't receive the reset email
+                            </a>
+                            <a href="#" class="list-group-item list-group-item-action">
+                                My account is locked
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

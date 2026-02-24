@@ -57,7 +57,7 @@
                 <li>✔ Receive buyer inquiries directly</li>
             </ul>
             <div class="role-footer">
-                <a href="{% url 'listings:register_landowner' %}" class="role-btn">
+                <a href="{% url 'listings:register_buyer' %}?role=landowner" class="role-btn">
                     Continue as Landowner
                 </a>
             </div>
@@ -79,7 +79,7 @@
                 <li>✔ Build professional credibility</li>
             </ul>
             <div class="role-footer">
-                <a href="{% url 'listings:register_agent' %}" class="role-btn">
+                <a href="{% url 'listings:register_buyer' %}?role=agent" class="role-btn">
                     Continue as Agent
                 </a>
             </div>
@@ -101,12 +101,73 @@
                 <li>✔ Compare soil & crop data</li>
             </ul>
             <div class="role-footer">
-                <a href="{% url 'listings:register_buyer' %}" class="role-btn">
+                <a href="{% url 'listings:register_buyer' %}?role=buyer" class="role-btn">
                     Continue as Buyer
                 </a>
             </div>
         </div>
 
+    </div>
+
+    <div class="role-header mt-5">
+        <h2>Verification Roles</h2>
+        <p>Apply to support land verification as a professional reviewer</p>
+    </div>
+
+    <div class="role-grid">
+        <!-- EXTENSION OFFICER -->
+        <div class="role-card extension">
+            <div class="role-icon">
+                <i class="fas fa-seedling"></i>
+            </div>
+            <h3>Extension Officer</h3>
+            <p class="role-desc">
+                Review agricultural suitability, soil, and crop potential.
+            </p>
+            <ul class="role-features">
+                <li>✔ Requires official employee ID</li>
+                <li>✔ Qualifications and assigned counties</li>
+                <li>✔ Admin approval required</li>
+            </ul>
+            <div class="role-footer">
+                {% if request.user.is_authenticated %}
+                    <a href="{% url 'listings:register_buyer' %}?role=extension_officer" class="role-btn">
+                        Request Extension Role
+                    </a>
+                {% else %}
+                    <a href="{% url 'listings:register_buyer' %}?role=extension_officer" class="role-btn">
+                        Register First
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- LAND SURVEYOR -->
+        <div class="role-card surveyor">
+            <div class="role-icon">
+                <i class="fas fa-map-marked-alt"></i>
+            </div>
+            <h3>Land Surveyor</h3>
+            <p class="role-desc">
+                Verify boundaries, GPS coordinates, and site inspections.
+            </p>
+            <ul class="role-features">
+                <li>✔ Professional license required</li>
+                <li>✔ Qualifications and station</li>
+                <li>✔ Admin approval required</li>
+            </ul>
+            <div class="role-footer">
+                {% if request.user.is_authenticated %}
+                    <a href="{% url 'listings:register_buyer' %}?role=land_surveyor" class="role-btn">
+                        Request Surveyor Role
+                    </a>
+                {% else %}
+                    <a href="{% url 'listings:register_buyer' %}?role=land_surveyor" class="role-btn">
+                        Register First
+                    </a>
+                {% endif %}
+            </div>
+        </div>
     </div>
 
     <div class="role-footer-note">
@@ -198,6 +259,22 @@
     
     .role-card.buyer .role-icon i {
         color: #17a2b8;
+    }
+
+    .role-card.extension {
+        border-top: 4px solid #20c997;
+    }
+
+    .role-card.surveyor {
+        border-top: 4px solid #6f42c1;
+    }
+
+    .role-card.extension .role-icon i {
+        color: #20c997;
+    }
+
+    .role-card.surveyor .role-icon i {
+        color: #6f42c1;
     }
     
     .role-footer-note {

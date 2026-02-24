@@ -55,6 +55,8 @@ class VerificationService:
             )
             if created:
                 tasks_created.append('surveyor_inspection')
+                # Auto-assign to available land surveyor
+                VerificationService.assign_surveyor_task(survey_task.id, assigned_by=initiated_by)
         
         # AUTOMATICALLY START ARDHISASA VERIFICATION
         content_type = ContentType.objects.get_for_model(Plot)
@@ -79,39 +81,26 @@ class VerificationService:
     
 
     @staticmethod
-    def assign_task(task_id, assigned_to_user, assigned_by=None):
-        """
-        Assign a verification task to a specific staff member
-        """
+    def assign_task(task_id, assigned_to_user, assigned_by):
+        task = VerificationTask.objects.get(id=task_id)
+        task.assigned_to = assigned_to_user
+        task.status = 'in_progress'
+        task.assigned_at = timezone.now()
+        task.save()
+        
+        # Send SMS notification
         try:
-            task = VerificationTask.objects.get(id=task_id)
-            task.assigned_to = assigned_to_user
-            task.status = 'in_progress'
-            task.assigned_at = timezone.now()
-            task.save()
-            
-            # Send notification if we have an assigner context.
-            if assigned_by is not None:
-                try:
-                    from .notification_service import NotificationService
-                    NotificationService.notify_task_assigned(task, assigned_by)
-                except Exception as exc:
-                    logger.warning(f"Task assignment notification skipped: {exc}")
-            
-            # Log the assignment
-            VerificationLog.objects.create(
-                plot=task.plot,
-                verified_by=assigned_by,
-                verification_type='assignment',
-                comment=f"Task '{task.get_verification_type_display()}' assigned to {assigned_to_user.username}"
-            )
-            
-            logger.info(f"Task {task_id} assigned to {assigned_to_user.username}")
-            return task
-            
-        except VerificationTask.DoesNotExist:
-            logger.error(f"Task {task_id} not found")
-            return None
+            if assigned_to_user.profile and assigned_to_user.profile.phone:
+                sms = AfricaTalkingService()
+                sms.send_task_assigned(
+                    phone_number=assigned_to_user.profile.phone,
+                    officer_name=assigned_to_user.get_full_name() or assigned_to_user.username,
+                    plot_title=task.plot.title
+                )
+        except Exception as e:
+            logger.error(f"SMS failed: {e}")
+        
+        return task
         
     @staticmethod
     def assign_extension_task(task_id, assigned_by=None):
@@ -160,6 +149,52 @@ class VerificationService:
             effective_assigner = assigned_by or best_officer
             return VerificationService.assign_task(task_id, best_officer, effective_assigner)
         
+        return None
+
+    @staticmethod
+    def assign_surveyor_task(task_id, assigned_by=None):
+        """Auto-assign surveyor task to available land surveyor"""
+        from .models import LandSurveyor
+
+        task = VerificationTask.objects.get(id=task_id)
+        plot = task.plot
+
+        if not plot.county:
+            return None
+
+        available_surveyors_qs = LandSurveyor.objects.filter(
+            is_active=True,
+            assigned_counties__contains=[plot.county],
+            verified=True
+        )
+        try:
+            available_surveyors = list(available_surveyors_qs)
+        except NotSupportedError:
+            available_surveyors = [
+                surveyor for surveyor in LandSurveyor.objects.filter(
+                    is_active=True,
+                    verified=True
+                )
+                if plot.county in (surveyor.assigned_counties or [])
+            ]
+
+        best_surveyor = None
+        lowest_workload = float('inf')
+
+        for surveyor in available_surveyors:
+            workload = VerificationTask.objects.filter(
+                assigned_to=surveyor.user,
+                status='in_progress'
+            ).count()
+
+            if workload < surveyor.max_daily_tasks and workload < lowest_workload:
+                lowest_workload = workload
+                best_surveyor = surveyor.user
+
+        if best_surveyor:
+            effective_assigner = assigned_by or best_surveyor
+            return VerificationService.assign_task(task_id, best_surveyor, effective_assigner)
+
         return None
     
     @staticmethod

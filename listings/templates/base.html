@@ -352,6 +352,15 @@
                         </li>
                     {% endif %}
 
+                    {% if user.land_surveyor %}
+                        <!-- Land Surveyor Quick Links -->
+                        <li class="nav-item">
+                            <a class="nav-link" href="{% url 'listings:surveyor_dashboard' %}">
+                                <i class="fas fa-map-marked-alt me-1"></i> Surveyor
+                            </a>
+                        </li>
+                    {% endif %}
+
                     {% if user.agent or user.landownerprofile %}
                         <!-- Agent/Landowner Quick Links -->
                         <li class="nav-item dropdown">
@@ -421,7 +430,7 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link btn btn-primary text-white px-3" href="{% url 'listings:register_choice' %}">
+                        <a class="nav-link btn btn-primary text-white px-3" href="{% url 'listings:register_buyer' %}">
                             <i class="fas fa-user-plus me-1"></i> Register
                         </a>
                     </li>

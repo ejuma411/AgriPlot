@@ -2,10 +2,10 @@ from django.urls import include, path
 from django.views.generic import TemplateView
 from django.contrib.auth.views import LogoutView
 from django.views.generic.base import RedirectView
-
+from . import views_otp
 from .views import LandownerWizard
 from . import views, views_admin, views_extension, views_test
-
+from . import views_auth
 
 app_name = "listings"
 
@@ -18,6 +18,7 @@ urlpatterns = [
     # Plot management
     path("add-plot/", views.add_plot, name="add_plot"),
     path("plot/<int:id>/edit/", views.edit_plot, name="edit_plot"),
+    path("plot/<int:plot_id>/document/<str:doc_type>/", views.serve_plot_document, name="serve_plot_document"),
     path("plot/<int:plot_id>/upload-document/", views.upload_verification_doc, name="upload_verification_doc"),
 
     # Authentication
@@ -26,7 +27,7 @@ urlpatterns = [
     # Registration
     path("register-choice/", views.register_choice, name="register_choice"),
     path("register/buyer/", views.register_buyer, name="register_buyer"),
-    path("register/landowner/simple/", views.register_landowner, name="register_landowner_simple"),
+    path("register/landowner/simple/", views.register_landowner_simple, name="register_landowner_simple"),
     path("register/landowner/", LandownerWizard.as_view(views.FORMS), name="register_landowner"),
     path(
         "register/landowner/success/",
@@ -34,7 +35,30 @@ urlpatterns = [
         name="landowner_success",
     ),
     path("register/agent/", views.register_agent, name="register_agent"),
+    path("request/extension-officer/", views.request_extension_officer, name="request_extension_officer"),
+    path("request/land-surveyor/", views.request_land_surveyor, name="request_land_surveyor"),
 
+    # Password Reset URLs
+    path('password-reset/', 
+         views_auth.CustomPasswordResetView.as_view(), 
+         name='password_reset'),
+    
+    path('password-reset/confirm/', 
+         views_auth.password_reset_confirm_request, 
+         name='password_reset_confirm_request'),
+    
+    path('password-reset/done/', 
+         views_auth.CustomPasswordResetDoneView.as_view(), 
+         name='password_reset_done'),
+    
+    path('password-reset/<uidb64>/<token>/', 
+         views_auth.CustomPasswordResetConfirmView.as_view(), 
+         name='password_reset_confirm'),
+    
+    path('password-reset/complete/', 
+         views_auth.CustomPasswordResetCompleteView.as_view(), 
+         name='password_reset_complete'),
+    
     # Dashboard
     path("dashboard/", views.dashboard_router, name="dashboard_router"),
     path("staff-dashboard/", views.staff_dashboard, name="staff_dashboard"),
@@ -90,6 +114,18 @@ urlpatterns = [
         ),
     ),
 
+    # Land surveyor routes
+    path(
+        "surveyors/",
+        include(
+            [
+                path("", views_extension.surveyor_dashboard, name="surveyor_dashboard"),
+                path("review/<int:task_id>/", views_extension.conduct_surveyor_inspection, name="conduct_surveyor_inspection"),
+                path("report/<int:report_id>/", views_extension.view_surveyor_report, name="view_surveyor_report"),
+            ]
+        ),
+    ),
+
     # Analytics
     path("analytics/", views_admin.analytics_dashboard, name="analytics_dashboard"),
     path("analytics/export/", views_admin.export_report, name="export_report"),
@@ -101,4 +137,11 @@ urlpatterns = [
     # Test endpoints (remove in production)
     path("test/ardhisasa/<int:plot_id>/", views_test.test_ardhisasa, name="test_ardhisasa"),
     path("plot/<int:plot_id>/trigger-ardhisasa/", views_admin.trigger_ardhisasa, name="trigger_ardhisasa"),
+
+    # OTP Verification URLs
+    path('send-otp/', views_otp.send_otp_verification, name='send_otp'),
+    path('verify-otp/', views_otp.verify_otp, name='verify_otp'),
+    path('resend-otp/', views_otp.resend_otp, name='resend_otp'),
+    
+    path('contact-support/', views.contact_support, name='contact_support'),
 ]

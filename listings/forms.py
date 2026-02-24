@@ -1,5 +1,6 @@
 import logging
 import os
+import hashlib
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
@@ -10,6 +11,24 @@ from .location_utils import validate_kenyan_location, get_subcounties_for_county
 # Get logger for this module
 logger = logging.getLogger(__name__)
 validation_logger = logging.getLogger('listings.validation')
+
+ALLOWED_DOC_EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png'}
+MAX_UPLOAD_MB = 10
+
+def _validate_upload(field_name, file_obj):
+    if not file_obj:
+        return
+    max_size = MAX_UPLOAD_MB * 1024 * 1024
+    if hasattr(file_obj, 'size') and file_obj.size > max_size:
+        raise forms.ValidationError(
+            f"{field_name} must be less than {MAX_UPLOAD_MB}MB."
+        )
+    if hasattr(file_obj, 'name'):
+        ext = os.path.splitext(file_obj.name)[1].lower()
+        if ext not in ALLOWED_DOC_EXTENSIONS:
+            raise forms.ValidationError(
+                f"{field_name} must be a PDF or image file."
+            )
 
 # ============ CUSTOM FORM WIDGETS ============
 class MultipleFileInput(forms.ClearableFileInput):
@@ -35,17 +54,37 @@ class BaseUserRegistrationForm(UserCreationForm):
     email = forms.EmailField(required=True)
     first_name = forms.CharField(max_length=50, required=True)
     last_name = forms.CharField(max_length=50, required=True)
+    phone = forms.CharField(
+        max_length=15,
+        required=True,
+        help_text="Phone number for verification (e.g., +254718810503)",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control', 
+            'placeholder': '+254718810503'
+        })
+    )
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'password1', 'password2']
+        fields = ['username', 'email', 'first_name', 'last_name', 'phone', 'password1', 'password2']
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Add Bootstrap classes to all fields
         for field_name, field in self.fields.items():
             field.widget.attrs.update({'class': 'form-control'})
-
+        
+        # Add phone validation
+        self.fields['phone'].validators.append(self.validate_phone)
+    
+    def validate_phone(self, value):
+        """Basic phone number validation"""
+        import re
+        pattern = r'^\+?254\d{9}$|^0\d{9}$'
+        if not re.match(pattern, value):
+            raise forms.ValidationError(
+                "Enter a valid Kenyan phone number (e.g., 0712345678 or +254712345678)"
+            )
 
 class BuyerRegistrationForm(BaseUserRegistrationForm):
     """Simple buyer registration form"""
@@ -54,12 +93,7 @@ class BuyerRegistrationForm(BaseUserRegistrationForm):
 
 class LandownerRegistrationForm(BaseUserRegistrationForm):
     """Landowner registration with document uploads"""
-    phone = forms.CharField(
-        max_length=15,
-        required=True,
-        help_text="Phone number for contact",
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., 0712345678'})
-    )
+
     national_id = forms.FileField(
         required=True,
         help_text="Upload a copy of your national ID",
@@ -70,15 +104,35 @@ class LandownerRegistrationForm(BaseUserRegistrationForm):
         help_text="Upload a copy of your KRA PIN",
         widget=forms.FileInput(attrs={'class': 'form-control'})
     )
+    title_deed = forms.FileField(
+        required=True,
+        help_text="Upload land title deed",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    land_search = forms.FileField(
+        required=True,
+        help_text="Upload official land search certificate",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    lcb_consent = forms.FileField(
+        required=False,
+        help_text="Optional: Upload LCB consent if applicable",
+        widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        _validate_upload("National ID", cleaned.get('national_id'))
+        _validate_upload("KRA PIN", cleaned.get('kra_pin'))
+        _validate_upload("Title Deed", cleaned.get('title_deed'))
+        _validate_upload("Land Search", cleaned.get('land_search'))
+        _validate_upload("LCB Consent", cleaned.get('lcb_consent'))
+        return cleaned
 
 
 class AgentRegistrationForm(BaseUserRegistrationForm):
     """Agent registration with professional details"""
-    phone = forms.CharField(
-        max_length=20,
-        required=True,
-        widget=forms.TextInput(attrs={'class': 'form-control'})
-    )
+    
     id_number = forms.CharField(
         max_length=20,
         required=True,
@@ -111,10 +165,19 @@ class AgentRegistrationForm(BaseUserRegistrationForm):
         widget=forms.FileInput(attrs={'class': 'form-control'})
     )
     license_doc = forms.FileField(
-        required=False,
+        required=True,
         widget=forms.FileInput(attrs={'class': 'form-control'}),
-        help_text="Optional: Upload license certificate"
+        help_text="Upload license certificate"
     )
+
+    def clean(self):
+        cleaned = super().clean()
+        _validate_upload("KRA PIN", cleaned.get('kra_pin'))
+        _validate_upload("License Document", cleaned.get('license_doc'))
+        _validate_upload("Practicing Certificate", cleaned.get('practicing_certificate'))
+        _validate_upload("Good Conduct", cleaned.get('good_conduct'))
+        _validate_upload("Professional Indemnity", cleaned.get('professional_indemnity'))
+        return cleaned
 
 
 # ============ ROLE UPGRADE FORMS ============
@@ -156,15 +219,15 @@ class LandownerUpgradeForm(BaseUpgradeForm):
         super().__init__(*args, **kwargs)
         self.fields['national_id'].required = True
         self.fields['kra_pin'].required = True
-        self.fields['title_deed'].required = False
-        self.fields['land_search'].required = False
+        self.fields['title_deed'].required = True
+        self.fields['land_search'].required = True
         self.fields['lcb_consent'].required = False
         
         # Add help texts
         self.fields['national_id'].help_text = "Upload your national ID (required)"
         self.fields['kra_pin'].help_text = "Upload your KRA PIN certificate (required)"
-        self.fields['title_deed'].help_text = "Optional: Land title deed for verification"
-        self.fields['land_search'].help_text = "Optional: Official land search certificate (ARDHI/Ardhisasa)"
+        self.fields['title_deed'].help_text = "Land title deed for verification (required)"
+        self.fields['land_search'].help_text = "Official land search certificate (required)"
         self.fields['lcb_consent'].help_text = "Optional: Upload LCB consent if applicable"
     
     def save(self, user=None, commit=True):
@@ -175,6 +238,15 @@ class LandownerUpgradeForm(BaseUpgradeForm):
         if commit:
             instance.save()
         return instance
+
+    def clean(self):
+        cleaned = super().clean()
+        _validate_upload("National ID", cleaned.get('national_id'))
+        _validate_upload("KRA PIN", cleaned.get('kra_pin'))
+        _validate_upload("Title Deed", cleaned.get('title_deed'))
+        _validate_upload("Land Search", cleaned.get('land_search'))
+        _validate_upload("LCB Consent", cleaned.get('lcb_consent'))
+        return cleaned
 
 
 class AgentUpgradeForm(BaseUpgradeForm):
@@ -221,14 +293,34 @@ class AgentUpgradeForm(BaseUpgradeForm):
         super().__init__(*args, **kwargs)
         self.fields['phone'].required = True
         self.fields['license_number'].required = True
-        self.fields['license_doc'].required = False
+        self.fields['license_doc'].required = True
         
         # Reorder fields
         self.order_fields([
             'username', 'email', 'phone', 'id_number', 'license_number',
-            'license_doc', 'kra_pin', 'practicing_certificate', 
+            'license_doc', 'kra_pin', 'practicing_certificate',
             'good_conduct', 'professional_indemnity'
         ])
+
+    def clean(self):
+        cleaned_data = super().clean()
+        # Validate document uploads (Q7: robust server-side validation)
+        doc_fields = [
+            ('kra_pin', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
+            ('practicing_certificate', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
+            ('good_conduct', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
+            ('professional_indemnity', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
+            ('license_doc', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
+        ]
+        for field_name, max_mb, allowed_ext in doc_fields:
+            f = cleaned_data.get(field_name)
+            if f:
+                if f.size > max_mb * 1024 * 1024:
+                    self.add_error(field_name, f"File must be under {max_mb}MB.")
+                ext = os.path.splitext(getattr(f, 'name', ''))[1].lower()
+                if ext and ext not in allowed_ext:
+                    self.add_error(field_name, "Allowed: PDF, JPG, PNG.")
+        return cleaned_data
     
     def save(self, user=None, commit=True):
         instance = super().save(commit=False)
@@ -250,6 +342,15 @@ class AgentUpgradeForm(BaseUpgradeForm):
         if commit:
             instance.save()
         return instance
+
+    def clean(self):
+        cleaned = super().clean()
+        _validate_upload("KRA PIN", cleaned.get('kra_pin'))
+        _validate_upload("License Document", cleaned.get('license_doc'))
+        _validate_upload("Practicing Certificate", cleaned.get('practicing_certificate'))
+        _validate_upload("Good Conduct", cleaned.get('good_conduct'))
+        _validate_upload("Professional Indemnity", cleaned.get('professional_indemnity'))
+        return cleaned
 
 
 # ============ PLOT FORMS ============
@@ -785,6 +886,13 @@ class PlotForm(forms.ModelForm):
 
     def save(self, commit=True):
         plot = super().save(commit=False)
+        # Ensure price is set from derived values if not explicitly provided
+        if not plot.price:
+            derived_price = self.cleaned_data.get('price')
+            if not derived_price:
+                derived_price = self.cleaned_data.get('sale_price') or self.cleaned_data.get('lease_price_yearly') or self.cleaned_data.get('lease_price_monthly')
+            if derived_price:
+                plot.price = derived_price
         
         # Check if documents were uploaded
         docs_uploaded = []
@@ -803,6 +911,29 @@ class PlotForm(forms.ModelForm):
                     verification_type='document_upload',
                     comment=f"Documents uploaded: {', '.join(docs_uploaded)}"
                 )
+                # Q8: store document hashes for integrity checks
+                from .models import DocumentHash
+                for field in docs_uploaded:
+                    file_obj = getattr(plot, field, None)
+                    if not file_obj:
+                        continue
+                    try:
+                        file_obj.open('rb')
+                        digest = hashlib.sha256(file_obj.read()).hexdigest()
+                        DocumentHash.objects.get_or_create(
+                            file_hash=digest,
+                            defaults={
+                                'file_name': file_obj.name or field,
+                                'uploaded_by': getattr(plot, 'agent', None).user if plot.agent else (
+                                    plot.landowner.user if plot.landowner else None
+                                ),
+                            }
+                        )
+                    finally:
+                        try:
+                            file_obj.close()
+                        except Exception:
+                            pass
         
         return plot
 
@@ -820,6 +951,29 @@ class VerificationDocumentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['doc_type'].choices = VerificationDocument.DOC_TYPE_CHOICES
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        if commit:
+            instance.save()
+            try:
+                from .models import DocumentHash
+                if instance.file:
+                    instance.file.open('rb')
+                    digest = hashlib.sha256(instance.file.read()).hexdigest()
+                    DocumentHash.objects.get_or_create(
+                        file_hash=digest,
+                        defaults={
+                            'file_name': instance.file.name or instance.doc_type,
+                            'uploaded_by': instance.uploaded_by,
+                        }
+                    )
+            finally:
+                try:
+                    instance.file.close()
+                except Exception:
+                    pass
+        return instance
 
 
 class TitleSearchResultForm(forms.ModelForm):
@@ -927,6 +1081,14 @@ class LandownerStep4Form(forms.Form):
 
 class ExtensionOfficerProfileForm(forms.ModelForm):
     """Form for creating/editing extension officer profile"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .kenya_data import KENYA_COUNTIES
+        self.fields['assigned_counties'].choices = [(c, c) for c in KENYA_COUNTIES]
+        for field in self.fields.values():
+            if not isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.setdefault('class', 'form-control')
     
     class Meta:
         model = ExtensionOfficer
@@ -937,6 +1099,28 @@ class ExtensionOfficerProfileForm(forms.ModelForm):
             'assigned_counties': forms.SelectMultiple(attrs={'class': 'form-control'}),
             'qualifications': forms.Textarea(attrs={'rows': 3}),
             'specializations': forms.TextInput(attrs={'class': 'form-control'}),
+            'office_address': forms.Textarea(attrs={'rows': 2}),
+        }
+
+
+class LandSurveyorProfileForm(forms.ModelForm):
+    """Form for requesting land surveyor role"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .kenya_data import KENYA_COUNTIES
+        self.fields['assigned_counties'].choices = [(c, c) for c in KENYA_COUNTIES]
+        for field in self.fields.values():
+            if not isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs.setdefault('class', 'form-control')
+
+    class Meta:
+        model = LandSurveyor
+        fields = ['license_number', 'designation', 'station', 'qualifications', 'years_of_experience',
+                 'phone', 'office_address', 'assigned_counties', 'max_daily_tasks']
+        widgets = {
+            'assigned_counties': forms.SelectMultiple(attrs={'class': 'form-control'}),
+            'qualifications': forms.Textarea(attrs={'rows': 3}),
             'office_address': forms.Textarea(attrs={'rows': 2}),
         }
 
@@ -984,3 +1168,48 @@ class ExtensionReportForm(forms.ModelForm):
             'overall_suitability': forms.Select(attrs={'class': 'form-control'}),
             'recommendation': forms.Select(attrs={'class': 'form-control'}),
         }
+
+
+class SurveyorReportForm(forms.ModelForm):
+    """Form for submitting land surveyor inspection reports"""
+    class Meta:
+        model = SurveyorReport
+        exclude = ['task', 'surveyor', 'plot', 'submitted_at']
+        widgets = {
+            'visit_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
+            'gps_latitude': forms.NumberInput(attrs={'class': 'form-control'}),
+            'gps_longitude': forms.NumberInput(attrs={'class': 'form-control'}),
+            'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'recommendation': forms.Select(attrs={'class': 'form-control'}),
+        }
+
+
+# Add to forms.py
+
+class OTPVerificationForm(forms.Form):
+    """Form for OTP verification"""
+    otp = forms.CharField(
+        max_length=6,
+        min_length=6,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control form-control-lg text-center',
+            'placeholder': '000000',
+            'autocomplete': 'off'
+        }),
+        help_text="Enter the 6-digit code sent to your phone"
+    )
+    
+    def clean_otp(self):
+        otp = self.cleaned_data.get('otp')
+        if not otp.isdigit():
+            raise forms.ValidationError("OTP must contain only numbers")
+        return otp
+
+
+class PhoneResendForm(forms.Form):
+    """Simple form for resending OTP"""
+    phone = forms.CharField(
+        max_length=15,
+        widget=forms.HiddenInput()
+    )

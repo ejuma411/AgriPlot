@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Verify OTP - AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>Verify Your Account
+                    </h4>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                    
+                    <p class="text-muted">
+                        {% if channel == 'email' %}
+                            We've sent a verification code to your email address.
+                        {% elif channel == 'sms' %}
+                            We've sent a verification code to <strong>{{ phone }}</strong>
+                        {% else %}
+                            We've sent a verification code to your email and/or phone.
+                        {% endif %}
+                    </p>
+                    
+                    <form method="post" action="{% url 'listings:verify_otp' %}">
+                        {% csrf_token %}
+                        
+                        <div class="mb-4">
+                            {{ form.otp.label_tag }}
+                            {{ form.otp }}
+                            {% if form.otp.errors %}
+                                <div class="text-danger small">{{ form.otp.errors }}</div>
+                            {% endif %}
+                            <small class="text-muted">Code expires in 10 minutes</small>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-success w-100 py-2">
+                            <i class="fas fa-check me-2"></i>Verify & Complete Registration
+                        </button>
+                    </form>
+                    
+                    <hr>
+                    
+                    <form method="post" action="{% url 'listings:resend_otp' %}" class="text-center">
+                        {% csrf_token %}
+                        <input type="hidden" name="phone" value="{{ phone }}">
+                        <p class="mb-2">Didn't receive the code?</p>
+                        <button type="submit" class="btn btn-link">
+                            <i class="fas fa-redo-alt me-1"></i>Resend Code
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    border: none;
+    border-radius: 15px;
+}
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+input[type="text"] {
+    font-size: 2rem;
+    letter-spacing: 5px;
+}
+</style>
+{% endblock %}

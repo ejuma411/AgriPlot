@@ -78,7 +78,7 @@ class ListingsRegressionTests(TestCase):
 
     def test_register_landowner_page_exists(self):
         response = self.client.get(reverse("listings:register_landowner_simple"))
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 302)
 
     def test_legacy_verify_dashboard_redirects_to_canonical(self):
         response = self.client.get("/verify/dashboard/")

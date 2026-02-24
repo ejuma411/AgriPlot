@@ -18,6 +18,7 @@
                 <i class="fas fa-home"></i>
                 <span>Dashboard</span>
             </a>
+            {% if is_agent or is_landowner %}
             <a href="{% url 'listings:my_plots' %}" class="nav-item">
                 <i class="fas fa-list"></i>
                 <span>My Plots</span>
@@ -30,6 +31,7 @@
                 <i class="fas fa-envelope"></i>
                 <span>Messages ({{ recent_interests|length }})</span>
             </a>
+            {% endif %}
             <a href="{% url 'listings:profile_management' %}" class="nav-item">
                 <i class="fas fa-user-circle"></i>
                 <span>Profile</span>
@@ -103,6 +105,18 @@
                     <span class="nav-badge">{{ extension_tasks_count }}</span>
                     {% endif %}
                 {% endif %}
+            </a>
+            {% endif %}
+
+            {% if request.user.land_surveyor %}
+            <div class="nav-section-divider">
+                <hr class="my-2">
+                <p class="nav-section-title">Land Surveyor</p>
+            </div>
+
+            <a href="{% url 'listings:surveyor_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'surveyor_dashboard' %}active{% endif %}">
+                <i class="fas fa-map-marked-alt"></i>
+                <span>Surveyor Dashboard</span>
             </a>
             {% endif %}
         </nav>

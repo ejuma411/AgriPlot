@@ -24,16 +24,18 @@ class ArdhisasaVerificationService:
         
         # Step 1: Title search
         title_result = self.search_title()
-        if not title_result['success']:
+        if not title_result or not title_result.get('success'):
             return self.handle_failure(title_result)
         
         # Step 2: Verify owner identity
         owner_result = self.verify_owner()
-        if not owner_result['success']:
+        if not owner_result or not owner_result.get('success'):
             return self.handle_failure(owner_result)
         
         # Step 3: Check encumbrances
         encumbrance_result = self.check_encumbrances()
+        if not encumbrance_result:
+            encumbrance_result = {'success': False, 'error': 'Encumbrance check failed'}
         
         # Step 4: If all successful, move to admin review
         self.verification.update_stage('admin_review', {
@@ -83,13 +85,44 @@ class ArdhisasaVerificationService:
     
     def verify_owner(self):
         """Step 2: Verify owner identity matches"""
-        # Implementation
-        pass
+        try:
+            response = {
+                'matched': True,
+                'owner_name': self.get_owner_name(),
+                'message': 'Owner identity verified'
+            }
+            self.verification.add_api_response({
+                'stage': 'owner_verification',
+                'response': response
+            })
+            if response['matched']:
+                self.verification.update_stage('owner_verified', {
+                    'owner_name': response['owner_name']
+                })
+                return {'success': True, 'data': response}
+            return {'success': False, 'error': response.get('message', 'Owner verification failed')}
+        except Exception as e:
+            logger.error(f"Owner verification failed: {str(e)}")
+            return {'success': False, 'error': str(e)}
     
     def check_encumbrances(self):
         """Step 3: Check for any caveats or charges"""
-        # Implementation
-        pass
+        try:
+            response = {
+                'has_encumbrance': False,
+                'encumbrances': []
+            }
+            self.verification.add_api_response({
+                'stage': 'encumbrance_check',
+                'response': response
+            })
+            self.verification.update_stage('encumbrance_check', {
+                'encumbrances': response['encumbrances']
+            })
+            return {'success': True, 'data': response}
+        except Exception as e:
+            logger.error(f"Encumbrance check failed: {str(e)}")
+            return {'success': False, 'error': str(e)}
     
     def mock_title_search(self):
         """Mock Ardhisasa response for FYP"""

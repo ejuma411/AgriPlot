@@ -12,7 +12,10 @@ from django.contrib.contenttypes.fields import GenericRelation
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phone = models.CharField(max_length=20, blank=True, default="")
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    phone_verified = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
+    has_2fa_enabled = models.BooleanField(default=False)
     address = models.TextField(blank=True, default="")
     
     ROLE_CHOICES = [
@@ -502,6 +505,9 @@ class VerificationStatus(models.Model):
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [['content_type', 'object_id']]
     
     def __str__(self):
         return f"Verification for {self.content_object} - {self.get_current_stage_display()}"
@@ -954,6 +960,70 @@ class DocumentVerification(models.Model):
     def __str__(self):
         return f"{self.user.username} — {self.get_document_type_display()} ({self.approved})"
 
+# -----------------------------
+# Impersonation Detection (Q7)
+# -----------------------------
+class ImpersonationDetection(models.Model):
+    ALERT_TYPES = [
+        ('duplicate_id', 'Same ID multiple accounts'),
+        ('name_mismatch', 'Name mismatch across documents'),
+        ('rapid_listings', 'Too many listings too quickly'),
+        ('geographic_mismatch', 'Listings far apart'),
+        ('content_similarity', 'Listing description copied'),
+    ]
+    SEVERITY_CHOICES = [
+        ('low', 'Low Risk'),
+        ('medium', 'Medium Risk'),
+        ('high', 'High Risk - Block'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='impersonation_alerts')
+    alert_type = models.CharField(max_length=50, choices=ALERT_TYPES)
+    severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default='low')
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['severity', '-created_at'])]
+
+    def __str__(self):
+        return f"{self.user_id} — {self.alert_type} ({self.severity})"
+
+# -----------------------------
+# Phone/Email Verification (Q7)
+# -----------------------------
+class PhoneEmailVerification(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='contact_verification')
+    phone_number = models.CharField(max_length=20, blank=True, default="")
+    email = models.EmailField(blank=True, default="")
+    phone_verified = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
+    phone_verification_code = models.CharField(max_length=10, blank=True, default="")
+    email_verification_code = models.CharField(max_length=10, blank=True, default="")
+    phone_verified_at = models.DateTimeField(null=True, blank=True)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user_id} — phone:{self.phone_verified} email:{self.email_verified}"
+
+# -----------------------------
+# Document Hashing (Q8 Integrity)
+# -----------------------------
+class DocumentHash(models.Model):
+    file_hash = models.CharField(max_length=64, unique=True)
+    file_name = models.CharField(max_length=255, blank=True, default="")
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.file_name} — {self.file_hash[:10]}"
+
 # NOTIFICATION/EMAILING
 
 class Notification(models.Model):
@@ -1171,3 +1241,145 @@ class ExtensionReport(models.Model):
     
     def __str__(self):
         return f"Extension Report for {self.plot.title} by {self.officer}"   
+
+
+# -----------------------------
+# Land Surveyor Role (Q5)
+# -----------------------------
+class LandSurveyor(models.Model):
+    """Land Surveyor role for boundary/GPS verification"""
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='land_surveyor')
+
+    # Professional Details
+    license_number = models.CharField(max_length=100, unique=True)
+    designation = models.CharField(max_length=100, help_text="e.g., Licensed Land Surveyor")
+    station = models.CharField(max_length=200, help_text="Assigned location/office")
+    qualifications = models.TextField(help_text="Academic and professional qualifications")
+    years_of_experience = models.IntegerField(default=0)
+
+    # Contact
+    phone = models.CharField(max_length=20)
+    office_address = models.TextField(blank=True)
+
+    # Verification jurisdiction
+    assigned_counties = models.JSONField(default=list, help_text="List of counties they can verify")
+    max_daily_tasks = models.IntegerField(default=5, help_text="Maximum tasks per day")
+
+    # Status
+    is_active = models.BooleanField(default=True)
+    verified = models.BooleanField(default=False)
+    verified_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='verified_surveyors')
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    # Performance metrics
+    total_tasks_completed = models.IntegerField(default=0)
+    average_rating = models.FloatField(default=0.0)
+    response_time_avg = models.FloatField(default=0, help_text="Average response time in hours")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['station']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.designation} ({self.station})"
+
+    @property
+    def current_workload(self):
+        from .models import VerificationTask
+        return VerificationTask.objects.filter(
+            assigned_to=self.user,
+            status='in_progress'
+        ).count()
+
+    @property
+    def can_accept_tasks(self):
+        return self.current_workload < self.max_daily_tasks and self.is_active
+
+
+class SurveyorReport(models.Model):
+    """Reports submitted by Land Surveyors after site inspections"""
+
+    task = models.OneToOneField('VerificationTask', on_delete=models.CASCADE, related_name='surveyor_report')
+    surveyor = models.ForeignKey(LandSurveyor, on_delete=models.CASCADE, related_name='reports')
+    plot = models.ForeignKey('Plot', on_delete=models.CASCADE, related_name='surveyor_reports')
+
+    visit_date = models.DateTimeField()
+    gps_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    gps_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    boundary_confirmed = models.BooleanField(default=False)
+    acreage_confirmed = models.BooleanField(default=False)
+    encumbrances_found = models.BooleanField(default=False)
+    notes = models.TextField(blank=True)
+
+    recommendation = models.CharField(max_length=25, choices=[
+        ('approve', 'Approve'),
+        ('approve_with_conditions', 'Approve with Conditions'),
+        ('reject', 'Reject'),
+        ('further_review', 'Further Review Required'),
+    ])
+
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['visit_date']),
+            models.Index(fields=['surveyor', '-submitted_at']),
+        ]
+
+    def __str__(self):
+        return f"Surveyor Report for {self.plot.title} by {self.surveyor}"
+
+# listings/models.py - Add if not present
+
+class PhoneOTP(models.Model):
+    """Store OTP for phone verification"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    phone = models.CharField(max_length=20)
+    otp = models.CharField(max_length=6)
+    purpose = models.CharField(max_length=20, choices=[
+        ('registration', 'Registration'),
+        ('login', 'Login'),
+        ('verification', 'Verification')
+    ])
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    
+    class Meta:
+        indexes = [
+            models.Index(fields=['phone', 'otp', 'expires_at']),
+        ]
+    
+    def is_valid(self):
+        return not self.is_verified and timezone.now() < self.expires_at
+
+
+class EmailOTP(models.Model):
+    """Store OTP for email verification"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    email = models.EmailField()
+    otp = models.CharField(max_length=6)
+    purpose = models.CharField(max_length=20, choices=[
+        ('registration', 'Registration'),
+        ('login', 'Login'),
+        ('verification', 'Verification')
+    ])
+    is_verified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['email', 'otp', 'expires_at']),
+        ]
+
+    def is_valid(self):
+        return not self.is_verified and timezone.now() < self.expires_at
+    
+    
