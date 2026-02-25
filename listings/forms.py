@@ -1086,9 +1086,15 @@ class ExtensionOfficerProfileForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         from .kenya_data import KENYA_COUNTIES
         self.fields['assigned_counties'].choices = [(c, c) for c in KENYA_COUNTIES]
+        self.fields['assigned_counties'].required = True
+        self.fields['assigned_counties'].help_text = "Select one or more counties you can verify."
+        self.fields['max_daily_tasks'].required = True
+        self.fields['years_of_experience'].required = True
         for field in self.fields.values():
             if not isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs.setdefault('class', 'form-control')
+            if field.required:
+                field.widget.attrs['required'] = 'required'
     
     class Meta:
         model = ExtensionOfficer
@@ -1096,10 +1102,12 @@ class ExtensionOfficerProfileForm(forms.ModelForm):
                  'qualifications', 'specializations', 'years_of_experience',
                  'phone', 'office_address', 'assigned_counties', 'max_daily_tasks']
         widgets = {
-            'assigned_counties': forms.SelectMultiple(attrs={'class': 'form-control'}),
-            'qualifications': forms.Textarea(attrs={'rows': 3}),
+            'assigned_counties': forms.CheckboxSelectMultiple(),
+            'qualifications': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'specializations': forms.TextInput(attrs={'class': 'form-control'}),
-            'office_address': forms.Textarea(attrs={'rows': 2}),
+            'office_address': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'years_of_experience': forms.NumberInput(attrs={'min': 0, 'class': 'form-control'}),
+            'max_daily_tasks': forms.NumberInput(attrs={'min': 1, 'class': 'form-control'}),
         }
 
 
@@ -1110,18 +1118,26 @@ class LandSurveyorProfileForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         from .kenya_data import KENYA_COUNTIES
         self.fields['assigned_counties'].choices = [(c, c) for c in KENYA_COUNTIES]
+        self.fields['assigned_counties'].required = True
+        self.fields['assigned_counties'].help_text = "Select one or more counties you can verify."
+        self.fields['max_daily_tasks'].required = True
+        self.fields['years_of_experience'].required = True
         for field in self.fields.values():
             if not isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs.setdefault('class', 'form-control')
+            if field.required:
+                field.widget.attrs['required'] = 'required'
 
     class Meta:
         model = LandSurveyor
         fields = ['license_number', 'designation', 'station', 'qualifications', 'years_of_experience',
                  'phone', 'office_address', 'assigned_counties', 'max_daily_tasks']
         widgets = {
-            'assigned_counties': forms.SelectMultiple(attrs={'class': 'form-control'}),
-            'qualifications': forms.Textarea(attrs={'rows': 3}),
-            'office_address': forms.Textarea(attrs={'rows': 2}),
+            'assigned_counties': forms.CheckboxSelectMultiple(),
+            'qualifications': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'office_address': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'years_of_experience': forms.NumberInput(attrs={'min': 0, 'class': 'form-control'}),
+            'max_daily_tasks': forms.NumberInput(attrs={'min': 1, 'class': 'form-control'}),
         }
 
 class MultipleFileInput(forms.ClearableFileInput):

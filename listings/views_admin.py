@@ -76,6 +76,8 @@ from django.core.exceptions import PermissionDenied
 def extension_officer_required(view_func):
     """Decorator to require extension officer status"""
     def _wrapped_view(request, *args, **kwargs):
+        if request.user.is_superuser:
+            return view_func(request, *args, **kwargs)
         if not hasattr(request.user, 'extension_officer'):
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
@@ -437,13 +439,25 @@ def ajax_assign_task(request):
                 }, status=400)
             
             try:
-                assigned_to = User.objects.get(id=user_id, is_staff=True)
+                assigned_to = User.objects.get(id=user_id)
             except User.DoesNotExist:
-                logger.error(f"User {user_id} not found or not staff")
+                logger.error(f"User {user_id} not found")
                 return JsonResponse({
                     'success': False,
-                    'message': 'Selected staff member not found'
+                    'message': 'Selected user not found'
                 }, status=404)
+
+            is_eligible = (
+                assigned_to.is_staff
+                or hasattr(assigned_to, 'extension_officer')
+                or hasattr(assigned_to, 'land_surveyor')
+            )
+            if not is_eligible:
+                logger.error(f"User {user_id} not eligible for task assignment")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Selected user is not eligible for assignment'
+                }, status=400)
             
             # Assign the task
             from .verification_service import VerificationService

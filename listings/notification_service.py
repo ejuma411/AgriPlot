@@ -10,11 +10,29 @@ from django.utils import timezone
 from listings.services.sms_service import AfricaTalkingService
 from .models import Notification, EmailLog, User, Plot, VerificationTask
 import logging
+from django.db import models
 
 logger = logging.getLogger(__name__)
 
 class NotificationService:
     """Service for handling notifications and emails"""
+
+    @staticmethod
+    def _json_safe(value):
+        """Convert common objects to JSON-serializable values for EmailLog.context."""
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        if isinstance(value, (list, tuple)):
+            return [NotificationService._json_safe(v) for v in value]
+        if isinstance(value, dict):
+            return {str(k): NotificationService._json_safe(v) for k, v in value.items()}
+        if isinstance(value, models.Model):
+            return {
+                "_model": value._meta.label,
+                "id": value.pk,
+                "str": str(value),
+            }
+        return str(value)
     
     @staticmethod
     def create_notification(user, notification_type, title, message, plot=None, task=None):
@@ -46,13 +64,14 @@ class NotificationService:
             # Render email content
             html_message = render_to_string(f'emails/{template}.html', context)
             plain_message = strip_tags(html_message)
+            safe_context = NotificationService._json_safe(context)
             
             # Create email log
             email_log = EmailLog.objects.create(
                 recipient=recipient,
                 subject=subject,
                 template=template,
-                context=context,
+                context=safe_context,
                 status='pending'
             )
             

@@ -127,6 +127,78 @@
                     <div class="card-body">
                         <form method="POST" enctype="multipart/form-data" id="plotForm" novalidate>
                             {% csrf_token %}
+
+                            {% if is_superuser %}
+                            <div class="form-section mb-5">
+                                <div class="section-header mb-4">
+                                    <h5 class="section-title d-flex align-items-center">
+                                        <span class="section-badge bg-dark">0</span>
+                                        <span>Owner Selection</span>
+                                    </h5>
+                                    <p class="section-subtitle text-muted mb-0">Choose the agent or landowner for this listing</p>
+                                </div>
+                                <div class="form-fields">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="id_owner_type" class="form-label required">
+                                                    <i class="fas fa-user-tag me-2"></i>Owner Type
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <select name="owner_type" id="id_owner_type" class="form-select" required>
+                                                    <option value="">-- Select Owner Type --</option>
+                                                    <option value="agent" {% if request.POST.owner_type == "agent" %}selected{% endif %}>Agent</option>
+                                                    <option value="landowner" {% if request.POST.owner_type == "landowner" %}selected{% endif %}>Landowner</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle"></i> Required for admin-created listings
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="id_owner_id" class="form-label required">
+                                                    <i class="fas fa-user me-2"></i>Owner
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <select name="owner_id" id="id_owner_id" class="form-select" required>
+                                                    <option value="">-- Select Owner --</option>
+                                                    {% if agents %}
+                                                    <optgroup label="Agents">
+                                                        {% for agent in agents %}
+                                                        <option value="{{ agent.id }}" {% if request.POST.owner_id == agent.id|stringformat:"s" %}selected{% endif %}>
+                                                            {{ agent.user.get_full_name|default:agent.user.username }} (Agent)
+                                                        </option>
+                                                        {% endfor %}
+                                                    </optgroup>
+                                                    {% endif %}
+                                                    {% if landowners %}
+                                                    <optgroup label="Landowners">
+                                                        {% for landowner in landowners %}
+                                                        <option value="{{ landowner.id }}" {% if request.POST.owner_id == landowner.id|stringformat:"s" %}selected{% endif %}>
+                                                            {{ landowner.user.get_full_name|default:landowner.user.username }} (Landowner)
+                                                        </option>
+                                                        {% endfor %}
+                                                    </optgroup>
+                                                    {% endif %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-info-circle"></i> Select the specific profile
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                             
                             <!-- Section 1: Basic Information -->
                             <div class="form-section mb-5">

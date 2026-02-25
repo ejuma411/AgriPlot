@@ -304,11 +304,17 @@
                     <!-- Dashboard Link - Routes to appropriate dashboard -->
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'listings:dashboard_router' %}">
-                            <i class="fas fa-chart-line me-1"></i> Dashboard
-                            {% if user.is_staff and stats.pending_review %}
-                                <span class="badge bg-danger ms-1">{{ stats.pending_review }}</span>
-                            {% elif user.extension_officer and extension_tasks_count %}
-                                <span class="badge bg-success ms-1">{{ extension_tasks_count }}</span>
+                            {% if not user.profile.role == 'buyer' %}
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'listings:dashboard_router' %}">
+                                    <i class="fas fa-chart-line me-1"></i> Dashboard
+                                    {% if user.is_staff and stats.pending_review %}
+                                        <span class="badge bg-danger ms-1">{{ stats.pending_review }}</span>
+                                    {% elif user.extension_officer and extension_tasks_count %}
+                                        <span class="badge bg-success ms-1">{{ extension_tasks_count }}</span>
+                                    {% endif %}
+                                </a>
+                            </li>
                             {% endif %}
                         </a>
                     </li>
@@ -340,7 +346,7 @@
                         </li>
                     {% endif %}
 
-                    {% if user.extension_officer %}
+                    {% if user.is_superuser or user.extension_officer %}
                         <!-- Extension Officer Quick Links -->
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'listings:extension_dashboard' %}">
@@ -352,7 +358,7 @@
                         </li>
                     {% endif %}
 
-                    {% if user.land_surveyor %}
+                    {% if user.is_superuser or user.land_surveyor %}
                         <!-- Land Surveyor Quick Links -->
                         <li class="nav-item">
                             <a class="nav-link" href="{% url 'listings:surveyor_dashboard' %}">
@@ -405,11 +411,7 @@
                             <li><a class="dropdown-item" href="#">
                                 <i class="fas fa-cog me-2"></i>Settings
                             </a></li>
-                            {% if user.is_staff %}
-                            <li><a class="dropdown-item" href="{% url 'admin:index' %}">
-                                <i class="fas fa-terminal me-2"></i>Django Admin
-                            </a></li>
-                            {% endif %}
+                            
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="post" action="{% url 'listings:logout' %}" class="d-inline w-100">

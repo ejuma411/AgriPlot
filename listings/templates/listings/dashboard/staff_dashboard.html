@@ -91,7 +91,7 @@
             {% endif %}
             
             <!-- Extension Officer Section -->
-            {% if request.user.extension_officer %}
+            {% if request.user.is_superuser or request.user.extension_officer %}
             <div class="nav-section-divider">
                 <hr class="my-2">
                 <p class="nav-section-title">Extension Officer</p>
@@ -108,7 +108,7 @@
             </a>
             {% endif %}
 
-            {% if request.user.land_surveyor %}
+            {% if request.user.is_superuser or request.user.land_surveyor %}
             <div class="nav-section-divider">
                 <hr class="my-2">
                 <p class="nav-section-title">Land Surveyor</p>

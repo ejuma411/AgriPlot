@@ -20,12 +20,59 @@
                         </ul>
                     </div>
 
-                    <form method="post" class="mt-3">
+                    <form method="post" class="mt-3" enctype="multipart/form-data">
                         {% csrf_token %}
-                        {{ form.as_p }}
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary">Submit Request</button>
-                            <a href="{% url 'listings:profile_management' %}" class="btn btn-outline-secondary">Cancel</a>
+                        
+                        {% for field in form %}
+                        <div class="mb-3">
+                            <label class="form-label {% if field.field.required %}required-field{% endif %}" for="{{ field.id_for_label }}">
+                                {{ field.label }}
+                                {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                            </label>
+                            
+                            {% if field.name == "assigned_counties" %}
+                                <!-- Custom rendering for county checkboxes -->
+                                <div class="border rounded p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
+                                    <div class="row g-2">
+                                        {% for choice in field.field.choices %}
+                                            <div class="col-md-4 col-sm-6">
+                                                <div class="form-check">
+                                                    <input type="checkbox" 
+                                                           name="{{ field.name }}" 
+                                                           value="{{ choice.0 }}" 
+                                                           id="id_{{ field.name }}_{{ forloop.counter }}"
+                                                           class="form-check-input"
+                                                           {% if choice.0 in field.value %}checked{% endif %}>
+                                                    <label class="form-check-label" for="id_{{ field.name }}_{{ forloop.counter }}">
+                                                        {{ choice.1 }}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <!-- Default field rendering -->
+                                {{ field }}
+                            {% endif %}
+                            
+                            {% if field.help_text %}
+                                <div class="form-text text-muted">{{ field.help_text }}</div>
+                            {% endif %}
+                            
+                            {% if field.errors %}
+                                <div class="text-danger small mt-1">
+                                    {% for error in field.errors %}
+                                        {{ error }}{% if not forloop.last %}<br>{% endif %}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="d-flex gap-2 mt-4">
+                            <button type="submit" class="btn btn-primary px-4">Submit Request</button>
+                            <a href="{% url 'listings:profile_management' %}" class="btn btn-outline-secondary px-4">Cancel</a>
                         </div>
                     </form>
                 </div>
@@ -33,4 +80,21 @@
         </div>
     </div>
 </section>
+
+<style>
+    .required-field:after {
+        color: #e32;
+        content: ' *';
+        display: inline;
+    }
+    
+    .form-check {
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-check-input:checked {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+</style>
 {% endblock %}

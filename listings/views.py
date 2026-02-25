@@ -657,7 +657,7 @@ def plot_detail(request, id):
             is_owner = True
 
     # Non-owners can only view approved listings
-    if not is_owner and not request.user.is_staff:
+    if not is_owner and not (request.user.is_staff or request.user.is_superuser):
         if not verification or verification.current_stage != 'approved':
             raise Http404
     
@@ -685,7 +685,9 @@ def plot_detail(request, id):
         map_bbox = f"{float(plot.longitude) - delta},{float(plot.latitude) - delta},{float(plot.longitude) + delta},{float(plot.latitude) + delta}"
     
     # Restrict document access - only owner or staff can view/download
-    can_view_documents = is_owner or (request.user.is_authenticated and request.user.is_staff)
+    can_view_documents = is_owner or (
+        request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
+    )
     
     context = {
         'plot': plot,
@@ -737,33 +739,35 @@ def add_plot(request):
     # Check if user is agent or landowner
     is_agent = hasattr(request.user, 'agent')
     is_landowner = hasattr(request.user, 'landownerprofile')
+    is_superuser = request.user.is_superuser
     
     logger.info(f"User type - Agent: {is_agent}, Landowner: {is_landowner}")
     
-    if not (is_agent or is_landowner):
+    if not (is_agent or is_landowner or is_superuser):
         logger.warning(f"User {request.user.username} attempted to add plot without proper profile")
         messages.error(request, "You must be a verified agent or landowner to list land.")
         return redirect("listings:register_choice")
     
     # Check verification status
-    try:
-        if is_agent and not request.user.agent.verified:
-            logger.warning(f"Unverified agent {request.user.username} attempted to add plot")
-            messages.error(request, "Your agent account needs to be verified before you can list plots.")
-            return redirect("listings:register_agent")
-        
-        if is_landowner and not request.user.landownerprofile.verified:
-            logger.warning(f"Unverified landowner {request.user.username} attempted to add plot")
-            messages.error(request, "Your landowner account needs to be verified before you can list plots.")
-            return redirect("listings:register_landowner")
-    except (Agent.DoesNotExist, LandownerProfile.DoesNotExist) as e:
-        logger.error(f"Profile access error for user {request.user.username}: {str(e)}")
-        messages.error(request, "Error accessing your profile. Please contact support.")
-        return redirect("listings:home")
+    if not is_superuser:
+        try:
+            if is_agent and not request.user.agent.verified:
+                logger.warning(f"Unverified agent {request.user.username} attempted to add plot")
+                messages.error(request, "Your agent account needs to be verified before you can list plots.")
+                return redirect("listings:register_agent")
+            
+            if is_landowner and not request.user.landownerprofile.verified:
+                logger.warning(f"Unverified landowner {request.user.username} attempted to add plot")
+                messages.error(request, "Your landowner account needs to be verified before you can list plots.")
+                return redirect("listings:register_landowner")
+        except (Agent.DoesNotExist, LandownerProfile.DoesNotExist) as e:
+            logger.error(f"Profile access error for user {request.user.username}: {str(e)}")
+            messages.error(request, "Error accessing your profile. Please contact support.")
+            return redirect("listings:home")
 
     # Q7/Q8: Contact verification and 2FA enforcement (feature-flagged)
     profile = getattr(request.user, 'profile', None)
-    if settings.REQUIRE_CONTACT_VERIFICATION:
+    if settings.REQUIRE_CONTACT_VERIFICATION and not is_superuser:
         phone_verified = bool(getattr(profile, 'phone_verified', False))
         email_verified = bool(getattr(profile, 'email_verified', False))
         contact_verification = getattr(request.user, 'contact_verification', None)
@@ -778,12 +782,12 @@ def add_plot(request):
             messages.error(request, "Verify your phone and email before listing a plot.")
             return redirect("listings:profile_management")
 
-    if settings.REQUIRE_2FA_FOR_LISTING:
+    if settings.REQUIRE_2FA_FOR_LISTING and not is_superuser:
         if not profile or not getattr(profile, 'has_2fa_enabled', False):
             messages.error(request, "Enable 2FA before listing a plot.")
             return redirect("listings:profile_management")
 
-    if settings.REQUIRE_DOCUMENT_VERIFICATION:
+    if settings.REQUIRE_DOCUMENT_VERIFICATION and not is_superuser:
         from .models import DocumentVerification
         required_docs = {'national_id', 'kra_pin', 'title_deed'}
         approved_docs = set(
@@ -797,7 +801,7 @@ def add_plot(request):
             return redirect("listings:verification_progress")
 
     # Q8: rate limit plot creation (per-hour)
-    if request.method == "POST" and settings.PLOT_CREATE_RATE_LIMIT:
+    if request.method == "POST" and settings.PLOT_CREATE_RATE_LIMIT and not is_superuser:
         from django.core.cache import cache
         from django.utils import timezone as _tz
         bucket = _tz.now().strftime("%Y%m%d%H")
@@ -843,14 +847,29 @@ def add_plot(request):
             elif is_landowner:
                 owner = request.user.landownerprofile
                 logger.info(f"Owner set as Landowner: {owner.id}")
+            elif is_superuser:
+                owner_type = request.POST.get("owner_type")
+                owner_id = request.POST.get("owner_id")
+                if owner_type == "agent":
+                    owner = Agent.objects.get(id=owner_id)
+                elif owner_type == "landowner":
+                    owner = LandownerProfile.objects.get(id=owner_id)
+                else:
+                    owner = None
         except Exception as e:
             logger.error(f"Error getting owner profile: {str(e)}", exc_info=True)
             messages.error(request, "Error accessing your profile. Please try again.")
             plot_form = PlotForm()
+            if is_superuser:
+                messages.error(request, "Select a valid owner (agent or landowner).")
         else:
             # Create form with POST data, FILES, and the owner
             try:
-                plot_form = PlotForm(request.POST, request.FILES, owner=owner)
+                if is_superuser and owner is None:
+                    messages.error(request, "Select a valid owner (agent or landowner) to create this plot.")
+                    plot_form = PlotForm(request.POST, request.FILES)
+                else:
+                    plot_form = PlotForm(request.POST, request.FILES, owner=owner)
                 logger.info("PlotForm initialized successfully")
             except Exception as e:
                 logger.error(f"Error initializing PlotForm: {str(e)}", exc_info=True)
@@ -1064,16 +1083,21 @@ def add_plot(request):
     logger.info(f"Total request processing time: {total_time:.2f} seconds")
     logger.info("=== PLOT CREATION ENDED ===\n")
 
+    agents = Agent.objects.select_related("user").all() if is_superuser else []
+    landowners = LandownerProfile.objects.select_related("user").all() if is_superuser else []
     return render(request, "listings/add_plot.html", {
         "form": plot_form,
         "is_agent": is_agent,
         "is_landowner": is_landowner,
-        "profile_type": "Agent" if is_agent else "Landowner",
+        "profile_type": "Administrator" if is_superuser else ("Agent" if is_agent else "Landowner"),
         "counties": KENYA_COUNTIES,
         "sub_counties_json": sub_counties_json,
         "selected_county": selected_county,
         "selected_subcounty": selected_subcounty,
         "sub_counties": sub_counties,
+        "is_superuser": is_superuser,
+        "agents": agents,
+        "landowners": landowners,
     })
 
 from django.http import JsonResponse
@@ -1450,7 +1474,7 @@ def serve_plot_document(request, plot_id, doc_type):
         (hasattr(request.user, 'agent') and plot.agent == request.user.agent) or
         (hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile)
     )
-    if not (is_owner or request.user.is_staff):
+    if not (is_owner or request.user.is_staff or request.user.is_superuser):
         from django.http import HttpResponseForbidden
         return HttpResponseForbidden("You don't have permission to view this document.")
 
@@ -1488,7 +1512,7 @@ def upload_verification_doc(request, plot_id):
     is_agent = hasattr(request.user, 'agent') and plot.agent == request.user.agent
     is_landowner = hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile
     
-    if not (is_agent or is_landowner):
+    if not (is_agent or is_landowner or request.user.is_superuser):
         messages.error(request, "You don't have permission to upload documents for this plot.")
         return redirect('listings:home')
 
@@ -1524,15 +1548,15 @@ def staff_dashboard(request):
     # Determine user type
     is_agent = hasattr(request.user, 'agent')
     is_landowner = hasattr(request.user, 'landownerprofile')
-    is_staff = request.user.is_staff
+    is_staff = request.user.is_staff or request.user.is_superuser
     is_extension = hasattr(request.user, 'extension_officer')
     is_surveyor = hasattr(request.user, 'land_surveyor')
 
-    if is_extension:
+    if is_extension and not request.user.is_superuser:
         return redirect('listings:extension_dashboard')
-    if is_surveyor:
+    if is_surveyor and not request.user.is_superuser:
         return redirect('listings:surveyor_dashboard')
-    if not (is_agent or is_landowner or is_staff):
+    if not (is_agent or is_landowner or is_staff or request.user.is_superuser):
         messages.error(request, "You don't have access to this dashboard.")
         return redirect('listings:home')
     
@@ -1549,6 +1573,8 @@ def staff_dashboard(request):
         plots = Plot.objects.filter(agent=request.user.agent)
     elif is_landowner:
         plots = Plot.objects.filter(landowner=request.user.landownerprofile)
+    elif request.user.is_superuser:
+        plots = Plot.objects.all()
     else:
         plots = Plot.objects.none()
     
@@ -1663,14 +1689,16 @@ def my_plots(request):
     is_agent = hasattr(request.user, 'agent')
     is_landowner = hasattr(request.user, 'landownerprofile')
     
-    if not (is_agent or is_landowner):
+    if not (is_agent or is_landowner or request.user.is_superuser):
         messages.error(request, "You need to be a landowner or agent to view plots.")
         return redirect('listings:home')
     
     if is_agent:
         plots = Plot.objects.filter(agent=request.user.agent)
-    else:
+    elif is_landowner:
         plots = Plot.objects.filter(landowner=request.user.landownerprofile)
+    else:
+        plots = Plot.objects.all()
     
     # Filtering
     status_filter = request.GET.get('status', 'all')
@@ -1722,7 +1750,7 @@ def plot_verification_detail(request, plot_id):
     is_agent = hasattr(request.user, 'agent') and plot.agent == request.user.agent
     is_landowner = hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile
     
-    if not (is_agent or is_landowner or request.user.is_staff):
+    if not (is_agent or is_landowner or request.user.is_staff or request.user.is_superuser):
         messages.error(request, "You don't have permission to view this plot.")
         return redirect('listings:home')
     
@@ -1827,7 +1855,7 @@ def update_interest_status(request, interest_id):
     is_agent = hasattr(request.user, 'agent') and interest.plot.agent == request.user.agent
     is_landowner = hasattr(request.user, 'landownerprofile') and interest.plot.landowner == request.user.landownerprofile
     
-    if not (is_agent or is_landowner):
+    if not (is_agent or is_landowner or request.user.is_superuser):
         messages.error(request, "You don't have permission to update this interest.")
         return redirect('listings:home')
     
@@ -2024,7 +2052,7 @@ def dashboard_analytics(request):
 @login_required
 def verification_dashboard(request):
     """Legacy entrypoint; canonical dashboard lives in views_admin."""
-    if not request.user.is_staff:
+    if not (request.user.is_staff or request.user.is_superuser):
         return redirect('listings:home')
     return redirect('listings:verification_dashboard')
 
@@ -2032,7 +2060,7 @@ def verification_dashboard(request):
 @login_required
 def review_plot(request, plot_id):
     """Admin plot review with notifications"""
-    if not request.user.is_staff:
+    if not (request.user.is_staff or request.user.is_superuser):
         messages.error(request, "You don't have permission to access this page.")
         return redirect('listings:home')
 
@@ -2590,7 +2618,7 @@ def dashboard_router(request):
     user = request.user
     
     # Check if user is staff/admin
-    if user.is_staff:
+    if user.is_superuser or user.is_staff:
         return redirect('listings:verification_dashboard')
     
     # Check if user is extension officer
