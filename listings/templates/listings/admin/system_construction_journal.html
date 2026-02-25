@@ -1,0 +1,76 @@
+{% extends "listings/admin/base_admin.html" %}
+{% load static %}
+
+{% block title %}System Construction Journal - AgriPlot Admin{% endblock %}
+
+{% block admin_content %}
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="page-header-title">
+            <h1><i class="fas fa-clipboard-list me-2"></i>System Construction Journal</h1>
+            {% comment %} <p class="page-header-subtitle">Admin-only progress log for system construction</p> {% endcomment %}
+        </div>
+        <div class="page-header-actions">
+            {% comment %} <span class="text-muted">Data file: <code>{{ data_file }}</code></span> {% endcomment %}
+        </div>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-history me-2" style="color: #0d6efd;"></i>
+            Journal Entries
+        </h5>
+        <div class="admin-card-actions">
+            <span class="text-muted">Updated in the JSON file</span>
+        </div>
+    </div>
+    <div class="admin-card-body">
+        {% comment %} <div class="alert alert-info mb-3">
+            Auto-log new entries from git commits and migrations with:
+            <code>python manage.py update_journal</code>
+        </div> {% endcomment %}
+        {% if entries %}
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Module / Feature</th>
+                        <th>Work Done</th>
+                        <th>Evidence</th>
+                        <th>Status</th>
+                        <th>Next Step</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        <td><strong>{{ entry.date }}</strong></td>
+                        <td>{{ entry.module }}</td>
+                        <td>{{ entry.work_done }}</td>
+                        <td>{{ entry.evidence }}</td>
+                        <td>
+                            {% if entry.status|lower == 'done' %}
+                                <span class="badge bg-success">Done</span>
+                            {% elif entry.status|lower == 'partial' %}
+                                <span class="badge bg-warning">Partial</span>
+                            {% elif entry.status|lower == 'started' %}
+                                <span class="badge bg-info">Started</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ entry.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ entry.next_step }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No journal entries found. Add entries to the JSON file to display them here.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

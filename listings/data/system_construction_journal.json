@@ -1,0 +1,82 @@
+[
+  {
+    "date": "2026-02-24",
+    "module": "Core data models",
+    "work_done": "Implemented Profile, Agent, LandownerProfile, Plot, SoilReport, ContactRequest, UserInterest, PlotReaction",
+    "evidence": "listings/models.py",
+    "status": "Done",
+    "next_step": "Finalize UI validations"
+  },
+  {
+    "date": "2026-02-24",
+    "module": "Registration & role upgrades",
+    "work_done": "Implemented buyer registration and upgrade flow for landowner/agent",
+    "evidence": "listings/views.py, listings/forms.py",
+    "status": "Done",
+    "next_step": "Enforce OTP in all upgrade flows"
+  },
+  {
+    "date": "2026-02-24",
+    "module": "Verification workflow (documents + stages)",
+    "work_done": "Added verification documents and workflow status tracking",
+    "evidence": "listings/models.py, listings/migrations/0018...0032",
+    "status": "Partial",
+    "next_step": "Complete admin review UI and task orchestration"
+  },
+  {
+    "date": "2026-02-24",
+    "module": "Extension officer verification",
+    "work_done": "Added extension officer model, reports, and tasks",
+    "evidence": "listings/models.py, listings/views_extension.py",
+    "status": "Partial",
+    "next_step": "Create officer dashboard and assignment workflow"
+  },
+  {
+    "date": "2026-02-24",
+    "module": "Land surveyor verification",
+    "work_done": "Added land surveyor model and reports",
+    "evidence": "listings/models.py",
+    "status": "Partial",
+    "next_step": "Implement inspection workflow UI"
+  },
+  {
+    "date": "2026-02-24",
+    "module": "OTP verification",
+    "work_done": "Added OTP models and settings",
+    "evidence": "listings/models.py, listings/views_otp.py, agriplot/settings.py",
+    "status": "Partial",
+    "next_step": "Enforce OTP gates across sensitive actions"
+  },
+  {
+    "date": "2026-02-24",
+    "module": "Notifications",
+    "work_done": "Added notification service scaffolding",
+    "evidence": "listings/notification_service.py",
+    "status": "Partial",
+    "next_step": "Connect full email/SMS triggers"
+  },
+  {
+    "date": "2026-02-24",
+    "module": "Analytics",
+    "work_done": "Implemented analytics service",
+    "evidence": "listings/analytics_service.py",
+    "status": "Partial",
+    "next_step": "Build dashboard UI and charts"
+  },
+  {
+    "date": "2026-02-24",
+    "module": "Ardhisasa integration",
+    "work_done": "Added integration scaffold and mocks",
+    "evidence": "listings/services/ardhisasa_integration.py",
+    "status": "Started",
+    "next_step": "Implement real API calls and error handling"
+  },
+  {
+    "date": "2026-02-25",
+    "module": "Admin routing",
+    "work_done": "Updated URLs for verification dashboards",
+    "evidence": "listings/urls.py",
+    "status": "Done",
+    "next_step": "Verify access control for staff roles"
+  }
+]

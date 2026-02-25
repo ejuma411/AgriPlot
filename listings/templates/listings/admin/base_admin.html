@@ -1252,6 +1252,11 @@
                     <i class="fas fa-map-marked-alt"></i>
                     <span>All Plots</span>
                 </a>
+                <a href="{% url 'listings:system_construction_journal' %}"
+                   class="nav-item {% if request.resolver_match.url_name == 'system_construction_journal' %}active{% endif %}">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>System Journal</span>
+                </a>
                 <a href="{% url 'admin:index' %}" class="nav-item">
                     <i class="fas fa-cog"></i>
                     <span>Django Admin</span>

@@ -2,10 +2,12 @@
 import json
 import logging
 import traceback
+from pathlib import Path
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse
+from django.conf import settings
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
@@ -189,6 +191,27 @@ def verification_queue(request):
     }
     
     return render(request, 'listings/admin/verification_queue.html', context)
+
+
+@staff_member_required
+def system_construction_journal(request):
+    """Admin-only system construction journal page."""
+    data_file = Path(settings.BASE_DIR) / "listings" / "data" / "system_construction_journal.json"
+    entries = []
+    if data_file.exists():
+        try:
+            entries = json.loads(data_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            messages.error(request, "Journal data file is not valid JSON.")
+    else:
+        messages.warning(request, "Journal data file is missing. Create it to display entries.")
+
+    context = {
+        "page_title": "System Construction Journal",
+        "entries": entries,
+        "data_file": str(data_file),
+    }
+    return render(request, "listings/admin/system_construction_journal.html", context)
 
 
 @staff_member_required

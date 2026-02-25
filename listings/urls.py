@@ -86,6 +86,7 @@ urlpatterns = [
     path("verify/verification/queue/", views_admin.verification_queue, name="verification_queue"),
     path("verify/verification/review/<int:plot_id>/", views_admin.review_plot, name="review_plot"),
     path("verify/verification/history/<int:plot_id>/", views_admin.plot_verification_history, name="verification_history"),
+    path("verify/system-construction/", views_admin.system_construction_journal, name="system_construction_journal"),
 
     # Legacy admin route compatibility
     path("verify/dashboard/", RedirectView.as_view(pattern_name="listings:verification_dashboard", permanent=True)),
