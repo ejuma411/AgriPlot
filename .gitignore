@@ -240,4 +240,7 @@ node_modules/
 package-lock.json
 yarn.lock
 
-# End of .gitignore
+# End of .gitignoremedia/
+*.sqlite3
+__pycache__/
+*.pyc
