@@ -14,7 +14,9 @@ staticfiles/
 static_root/
 collect_static/
 
-# Keep Django migrations versioned
+# Django migrations - keep the files but not the compiled versions
+**/migrations/*.pyc
+**/migrations/__pycache__/
 
 # Django secrets
 .secret
@@ -24,6 +26,7 @@ secrets.py
 .env.production
 .env.development
 .env.staging
+.env.example  # Keep example but not actual env files
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
@@ -80,53 +83,48 @@ cover/
 # Translations
 *.mo
 
-# Django stuff (already covered above)
-
-# Flask stuff (if you ever use it)
+### Flask ###
 instance/
 .webassets-cache
 
-# Scrapy stuff
+### Scrapy ###
 .scrapy
 
-# Sphinx documentation
+### Sphinx Documentation ###
 docs/_build/
+docs/_static/
+docs/_templates/
 
-# PyBuilder
+### PyBuilder ###
 .pybuilder/
 target/
 
-# Jupyter Notebook
+### Jupyter Notebook ###
 .ipynb_checkpoints
 
-# IPython
+### IPython ###
 profile_default/
 ipython_config.py
 
-# pyenv
+### pyenv ###
 .python-version
 
-# pipenv
+### pipenv ###
 Pipfile.lock
 
-# poetry
+### poetry ###
 poetry.lock
 pyproject.toml
 
-# pdm
+### pdm ###
 .pdm.toml
-
-# PEP 582
 __pypackages__/
 
-# Celery stuff
+### Celery ###
 celerybeat-schedule
 celerybeat.pid
 
-# SageMath parsed files
-*.sage.py
-
-# Environments
+### Environments ###
 .env
 .venv
 env/
@@ -136,52 +134,45 @@ env.bak/
 venv.bak/
 pythonenv*
 
-# Spyder project settings
+### Spyder ###
 .spyderproject
 .spyproject
 
-# Rope project settings
+### Rope ###
 .ropeproject
 
-# mkdocs documentation
-/site
-
-# mypy
+### mypy ###
 .mypy_cache/
 .dmypy.json
 dmypy.json
 
-# Pyre type checker
+### Pyre ###
 .pyre/
 
-# pytype static type analyzer
+### pytype ###
 .pytype/
 
-# pyright
+### pyright ###
 pyrightconfig.json
 
 ### PyCharm ###
-# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm
 .idea/
 *.iws
 /out/
+*.iml
 
-# VS Code
+### VS Code ###
 .vscode/
 *.code-workspace
 .history/
 
-### VSCode ###
-.vscode/*
+### VS Code (selective) ###
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-*.code-workspace
 
-### venv ###
-# Virtualenv
-# https://virtualenv.pypa.io/
+### Virtual Environment ###
 env/
 venv/
 ENV/
@@ -189,7 +180,7 @@ env.bak/
 venv.bak/
 
 ### Custom for AgriPlot ###
-# Uploaded files
+# Uploaded files by type
 media/documents/
 media/title_deeds/
 media/official_searches/
@@ -198,15 +189,20 @@ media/kra_pins/
 media/soil_reports/
 media/extension_photos/
 media/search_responses/
+media/agent_licenses/
+media/docs/
 
 # Logs
 logs/
 *.log
+!logs/.gitkeep  # Keep the directory but not the logs
 
 # Database backups
 *.backup
 *.sql
 *.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
 
 # OS generated files
 .DS_Store
@@ -220,26 +216,28 @@ Thumbs.db
 *.swo
 *~
 
-# IDE settings
-.vscode/
-.idea/
-*.sublime-*
-
 # Coverage reports
 htmlcov/
 .coverage
 .coverage.*
 *.cover
 
-# Sphinx documentation
-docs/_build/
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.orig
 
-# PyCharm
-.idea/
-*.iml
+# Celery Beat
+celerybeat-schedule.db
+celerybeat.pid
 
-# VS Code
-.vscode/
-*.code-workspace
+# Redis
+dump.rdb
 
-# End of https://www.toptal.com/developers/gitignore/api/django,python,pycharm,venv,vscode,dotenv.env
+# Node modules (if any frontend)
+node_modules/
+package-lock.json
+yarn.lock
+
+# End of .gitignore
