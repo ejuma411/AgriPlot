@@ -254,12 +254,28 @@ def review_plot(request, plot_id):
         notes = request.POST.get('notes', '')
         
         if action == 'approve':
+            missing_reports = VerificationService.has_required_reports(plot)
+            required_types = set(VerificationService.required_task_types(plot))
+            existing_types = set(
+                VerificationTask.objects.filter(plot=plot).values_list('verification_type', flat=True)
+            )
+            missing_types = list(required_types - existing_types)
+
+            if missing_types or missing_reports:
+                messages.error(
+                    request,
+                    f"Cannot approve. Missing tasks: {missing_types} | Missing reports: {missing_reports}"
+                )
+                return redirect('listings:review_plot', plot_id=plot.id)
             # Update verification status
             verification.current_stage = 'approved'
             verification.approved_at = timezone.now()
             verification.stage_details['approval_notes'] = notes
             verification.stage_details['approved_by'] = request.user.username
             verification.save()
+
+            plot.is_published = True
+            plot.save(update_fields=['is_published'])
             
             # Create log entry
             VerificationLog.objects.create(
@@ -268,6 +284,12 @@ def review_plot(request, plot_id):
                 verification_type='approval',
                 comment=f"Plot approved. Notes: {notes}"
             )
+
+            try:
+                from .notification_service import NotificationService
+                NotificationService.notify_plot_final_status(plot, 'approved', request.user, notes)
+            except Exception as e:
+                logger.error(f"Plot approval notification failed: {e}")
             
             messages.success(request, f"Plot '{plot.title}' has been approved!")
             return redirect('listings:verification_queue')
@@ -285,6 +307,12 @@ def review_plot(request, plot_id):
                 verification_type='rejection',
                 comment=f"Plot rejected. Reason: {notes}"
             )
+
+            try:
+                from .notification_service import NotificationService
+                NotificationService.notify_plot_final_status(plot, 'rejected', request.user, notes)
+            except Exception as e:
+                logger.error(f"Plot rejection notification failed: {e}")
             
             messages.warning(request, f"Plot '{plot.title}' has been rejected.")
             return redirect('listings:verification_queue')
@@ -360,6 +388,9 @@ from django.http import JsonResponse
 @staff_member_required
 def task_assignment(request):
     """View for managing task assignments"""
+    if not request.user.is_superuser:
+        messages.error(request, "You do not have permission to assign tasks.")
+        return redirect('listings:dashboard_router')
     
     # Get all pending tasks
     pending_tasks = VerificationTask.objects.filter(
@@ -428,6 +459,12 @@ def ajax_assign_task(request):
             data = json.loads(request.body)
             task_id = data.get('task_id')
             user_id = data.get('user_id')
+
+            if not request.user.is_superuser:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'You do not have permission to assign tasks'
+                }, status=403)
             
             # Now logger is defined
             logger.info(f"AJAX assign task - Task ID: {task_id}, User ID: {user_id}, Request by: {request.user.username}")
@@ -447,17 +484,38 @@ def ajax_assign_task(request):
                     'message': 'Selected user not found'
                 }, status=404)
 
-            is_eligible = (
-                assigned_to.is_staff
-                or hasattr(assigned_to, 'extension_officer')
-                or hasattr(assigned_to, 'land_surveyor')
-            )
-            if not is_eligible:
-                logger.error(f"User {user_id} not eligible for task assignment")
+            task = VerificationTask.objects.filter(id=task_id).first()
+            if not task:
+                logger.error(f"Task {task_id} not found")
                 return JsonResponse({
                     'success': False,
-                    'message': 'Selected user is not eligible for assignment'
-                }, status=400)
+                    'message': 'Task not found'
+                }, status=404)
+
+            if task.verification_type == 'extension_review':
+                is_eligible = assigned_to.is_superuser or hasattr(assigned_to, 'extension_officer')
+                if not is_eligible:
+                    logger.error(f"User {user_id} not eligible for extension task {task_id}")
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Selected user is not an Extension Officer'
+                    }, status=400)
+            elif task.verification_type == 'surveyor_inspection':
+                is_eligible = assigned_to.is_superuser or hasattr(assigned_to, 'land_surveyor')
+                if not is_eligible:
+                    logger.error(f"User {user_id} not eligible for surveyor task {task_id}")
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Selected user is not a Land Surveyor'
+                    }, status=400)
+            else:
+                # Document review or other staff tasks
+                if not assigned_to.is_staff and not assigned_to.is_superuser:
+                    logger.error(f"User {user_id} not eligible for staff task {task_id}")
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Selected user is not staff'
+                    }, status=400)
             
             # Assign the task
             from .verification_service import VerificationService
@@ -524,6 +582,24 @@ def complete_task_view(request, task_id):
     if request.method == 'POST':
         notes = request.POST.get('notes', '')
         approved = request.POST.get('approved') == 'true'
+
+        if task.verification_type == 'document_review':
+            from .models import DocumentVerification
+            checklist = {
+                'title_deed': bool(request.POST.get('check_title')),
+                'official_search': bool(request.POST.get('check_search')),
+                'national_id': bool(request.POST.get('check_id')),
+                'kra_pin': bool(request.POST.get('check_kra')),
+            }
+            for doc_type, checked in checklist.items():
+                DocumentVerification.verify_document(
+                    plot=task.plot,
+                    doc_type=doc_type,
+                    reviewer=request.user,
+                    approved=approved and checked,
+                    notes=notes,
+                    task=task
+                )
         
         task = VerificationService.complete_task(task_id, request.user, notes, approved)
         

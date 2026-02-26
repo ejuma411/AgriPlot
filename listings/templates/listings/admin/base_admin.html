@@ -1194,6 +1194,7 @@
             <!-- Main Navigation -->
             <div class="nav-section">
                 <div class="nav-section-title">Main</div>
+                {% if request.user.is_superuser %}
                 <a href="{% url 'listings:verification_dashboard' %}" 
                    class="nav-item {% if request.resolver_match.url_name == 'verification_dashboard' %}active{% endif %}">
                     <i class="fas fa-chart-pie"></i>
@@ -1209,6 +1210,8 @@
                         {% endif %}
                     {% endif %}
                 </a>
+                {% endif %}
+                {% if request.user.is_superuser %}
                 <a href="{% url 'listings:task_assignment' %}" 
                    class="nav-item {% if request.resolver_match.url_name == 'task_assignment' %}active{% endif %}">
                     <i class="fas fa-tasks"></i>
@@ -1219,6 +1222,7 @@
                         {% endif %}
                     {% endif %}
                 </a>
+                {% endif %}
                 <a href="{% url 'listings:my_tasks' %}" 
                    class="nav-item {% if request.resolver_match.url_name == 'my_tasks' %}active{% endif %}">
                     <i class="fas fa-user-check"></i>
@@ -1232,6 +1236,7 @@
             </div>
 
             <!-- Reports Section -->
+            {% if request.user.is_superuser %}
             <div class="nav-section">
                 <div class="nav-section-title">Reports</div>
                 <a href="{% url 'listings:analytics_dashboard' %}" 
@@ -1244,8 +1249,10 @@
                     <span>Export Data</span>
                 </a>
             </div>
+            {% endif %}
 
             <!-- Management -->
+            {% if request.user.is_superuser %}
             <div class="nav-section">
                 <div class="nav-section-title">Management</div>
                 <a href="{% url 'listings:my_plots' %}" class="nav-item">
@@ -1262,6 +1269,7 @@
                     <span>Django Admin</span>
                 </a>
             </div>
+            {% endif %}
 
             <!-- User Menu -->
             <div class="nav-section">

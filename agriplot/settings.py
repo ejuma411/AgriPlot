@@ -436,3 +436,135 @@ else:
 # Create a custom logger for form validation errors
 import logging
 validation_logger = logging.getLogger('listings.validation')
+
+# Jazzmin admin customization (categorical ordering)
+JAZZMIN_SETTINGS = {
+    "site_title": "AgriPlot Admin",
+    "site_header": "AgriPlot Administration",
+    "site_brand": "AgriPlot",
+    "order_with_respect_to": [
+        "auth",
+        "listings.Profile",
+        "listings.LandownerProfile",
+        "listings.LandSurveyor",
+        "listings.SurveyorReport",
+        "listings.Agent",
+        "listings.PhoneEmailVerification",
+        "listings.EmailOTP",
+        "listings.Plot",
+        "listings.ExtensionOfficer",
+        "listings.ExtensionReport",
+        "listings.MarketPriceBand",
+        "listings.ComparableSale",
+        "listings.ContactRequest",
+        "listings.UserInterest",
+        "listings.AuditLog",
+        "listings.DocumentVerification",
+        "listings.DocumentHash",
+        "listings.ImpersonationDetection",
+        "listings.VerificationStatus",
+        "listings.VerificationTask",
+        "listings.VerificationLog",
+    ],
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "listings.Profile": "fas fa-id-card",
+        "listings.LandownerProfile": "fas fa-user",
+        "listings.Agent": "fas fa-user-tie",
+        "listings.Plot": "fas fa-map-marked-alt",
+        "listings.VerificationStatus": "fas fa-check-circle",
+        "listings.VerificationTask": "fas fa-tasks",
+        "listings.VerificationLog": "fas fa-clipboard-list",
+        "listings.ExtensionOfficer": "fas fa-leaf",
+        "listings.ExtensionReport": "fas fa-file-alt",
+        "listings.LandSurveyor": "fas fa-ruler-combined",
+        "listings.SurveyorReport": "fas fa-file-signature",
+        "listings.MarketPriceBand": "fas fa-chart-line",
+        "listings.ComparableSale": "fas fa-balance-scale",
+        "listings.ContactRequest": "fas fa-envelope",
+        "listings.UserInterest": "fas fa-heart",
+        "listings.AuditLog": "fas fa-shield-alt",
+        "listings.DocumentVerification": "fas fa-file-contract",
+        "listings.ImpersonationDetection": "fas fa-user-secret",
+        "listings.PhoneEmailVerification": "fas fa-key",
+        "listings.DocumentHash": "fas fa-fingerprint",
+        "listings.EmailOTP": "fas fa-lock",
+    },
+    "navigation_expanded": True,
+    "custom_links": {
+        "listings": [
+            {
+                "name": "System Journal",
+                "url": "system_construction_journal",
+                "icon": "fas fa-clipboard-list",
+                "permissions": ["listings.view_verificationstatus"],
+            }
+        ]
+    },
+    "menu": [
+        {"app": "auth", "label": "Users & Auth", "icon": "fas fa-users-cog"},
+        {
+            "label": "Profiles & Roles",
+            "icon": "fas fa-id-card",
+            "models": [
+                "listings.Profile",
+                "listings.LandownerProfile",
+                "listings.Agent",
+                "listings.ExtensionOfficer",
+                "listings.LandSurveyor",
+            ],
+        },
+        {
+            "label": "Land & Listings",
+            "icon": "fas fa-map-marked-alt",
+            "models": [
+                "listings.Plot",
+                "listings.VerificationDocument",
+                "listings.TitleSearchResult",
+            ],
+        },
+        {
+            "label": "Verification & Tasks",
+            "icon": "fas fa-tasks",
+            "models": [
+                "listings.VerificationStatus",
+                "listings.VerificationTask",
+                "listings.VerificationLog",
+                "listings.ExtensionReport",
+                "listings.SurveyorReport",
+            ],
+        },
+        {
+            "label": "Pricing",
+            "icon": "fas fa-chart-line",
+            "models": [
+                "listings.MarketPriceBand",
+                "listings.ComparableSale",
+                "listings.PriceComparable",
+                "listings.PricingSuggestion",
+            ],
+        },
+        {
+            "label": "Engagement",
+            "icon": "fas fa-comments",
+            "models": [
+                "listings.ContactRequest",
+                "listings.UserInterest",
+                "listings.PlotReaction",
+            ],
+        },
+        {
+            "label": "Security & Audit",
+            "icon": "fas fa-shield-alt",
+            "models": [
+                "listings.AuditLog",
+                "listings.DocumentVerification",
+                "listings.ImpersonationDetection",
+                "listings.PhoneEmailVerification",
+                "listings.DocumentHash",
+                "listings.EmailOTP",
+            ],
+        },
+        {"app": "listings", "label": "Other Listings Models", "icon": "fas fa-layer-group"},
+    ],
+}

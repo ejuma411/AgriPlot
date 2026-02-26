@@ -9,7 +9,7 @@
     <div class="page-header-content">
         <div class="page-header-title">
             <h1><i class="fas fa-list me-2"></i>Verification Queue</h1>
-            <p class="page-header-subtitle">All plots pending verification</p>
+            <p class="page-header-subtitle">Track document review, extension reports, and surveyor inspections</p>
         </div>
         <div class="page-header-actions">
             <a href="{% url 'listings:verification_dashboard' %}" class="btn">
@@ -28,7 +28,7 @@
             </li>
             <li class="nav-item">
                 <a href="?filter=pending" class="nav-link {% if current_filter == 'pending' %}active{% endif %}">
-                    <i class="fas fa-clock"></i> Pending
+                    <i class="fas fa-clock"></i> Document Pending
                     {% if stats.pending_review %}<span class="badge bg-danger">{{ stats.pending_review }}</span>{% endif %}
                 </a>
             </li>
@@ -57,7 +57,7 @@
         <h5 class="admin-card-title">
             <i class="fas fa-tasks me-2"></i>
             {% if current_filter == 'all' %}All Plots
-            {% elif current_filter == 'pending' %}Pending Review
+            {% elif current_filter == 'pending' %}Document Review Pending
             {% elif current_filter == 'in_progress' %}In Progress
             {% elif current_filter == 'approved' %}Approved Plots
             {% elif current_filter == 'rejected' %}Rejected Plots

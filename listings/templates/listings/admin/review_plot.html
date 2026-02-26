@@ -150,6 +150,40 @@
             </div>
         </div>
 
+        <!-- Verification Activity (Recent) -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-history me-2"></i>Recent Activity
+                </h5>
+                <a href="{% url 'listings:verification_history' plot.id %}" class="btn btn-sm btn-outline-primary">
+                    Full History
+                </a>
+            </div>
+            <div class="admin-card-body">
+                {% if verification_logs %}
+                    <ul class="list-group">
+                        {% for log in verification_logs %}
+                        <li class="list-group-item">
+                            <div class="fw-bold">{{ log.verification_type|title }}</div>
+                            <div>{{ log.comment|default:"No comments provided." }}</div>
+                            <div class="small text-muted mt-1">
+                                {% if log.verified_by %}
+                                    {{ log.verified_by.get_full_name|default:log.verified_by.username }}
+                                {% else %}
+                                    System
+                                {% endif %}
+                                • {{ log.created_at|timesince }} ago
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted mb-0">No verification activity yet.</p>
+                {% endif %}
+            </div>
+        </div>
+
         <!-- Agricultural Details Card -->
         <div class="admin-card mb-4">
             <div class="admin-card-header">

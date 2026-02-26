@@ -90,7 +90,7 @@
             <p><strong>Plot:</strong> {{ plot.title }}</p>
             <p><strong>Location:</strong> {{ plot.county|default:plot.location }}</p>
             <p><strong>Reviewed by:</strong> {{ completed_by.get_full_name|default:completed_by.username }}</p>
-            {% if task.notes %}
+            {% if task and task.notes %}
             <p><strong>Review Notes:</strong> {{ task.notes }}</p>
             {% endif %}
         </div>

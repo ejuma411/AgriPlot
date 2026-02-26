@@ -505,6 +505,51 @@ class PlotForm(forms.ModelForm):
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         help_text="Specific lease conditions and restrictions"
     )
+    ownership_type = forms.ChoiceField(
+        choices=Plot._meta.get_field('ownership_type').choices,
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    tenure_details = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        help_text="Lease duration/expiry or tenure notes"
+    )
+    encumbrances = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    encumbrance_details = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2})
+    )
+    nearest_town = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    price_basis = forms.ChoiceField(
+        choices=Plot.PRICE_BASIS_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    valuation_report = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'})
+    )
+    price_notes = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
+        help_text="Optional notes on market trends or negotiation"
+    )
+    is_price_negotiable = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    lease_basis = forms.ChoiceField(
+        choices=Plot.PRICE_BASIS_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
     
     # Infrastructure fields
     has_water = forms.BooleanField(
@@ -574,15 +619,15 @@ class PlotForm(forms.ModelForm):
         model = Plot
         fields = [
             'title', 'county', 'subcounty', 'location', 'area', 'listing_type', 'land_type',
-            'land_use_description', 'sale_price', 'price_per_acre',
+            'land_use_description', 'nearest_town',
+            'ownership_type', 'tenure_details', 'encumbrances', 'encumbrance_details',
+            'sale_price', 'price_per_acre',
             'lease_price_monthly', 'lease_price_yearly', 'lease_duration', 'lease_terms',
-            'soil_type', 'ph_level', 'crop_suitability',
+            'price_basis', 'valuation_report', 'price_notes', 'is_price_negotiable', 'lease_basis', 'government_price_proof',
             'has_water', 'water_source', 'has_electricity', 'electricity_meter',
             'has_road_access', 'road_type', 'road_distance_km',
             'has_buildings', 'building_description', 'fencing',
-            'latitude', 'longitude',
-            'elevation_meters', 'climate_zone', 'is_protected_area', 'special_features',
-            'title_deed', 'soil_report', 'official_search',
+            'title_deed', 'official_search',
             'landowner_id_doc', 'kra_pin'
         ]
         widgets = {
@@ -596,22 +641,7 @@ class PlotForm(forms.ModelForm):
                 'min': '0',
                 'step': '0.1'
             }),
-            'ph_level': forms.NumberInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., 6.5',
-                'min': '0',
-                'max': '14',
-                'step': '0.1'
-            }),
-            'crop_suitability': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'e.g., Maize, Wheat, Beans'
-            }),
             'title_deed': forms.ClearableFileInput(attrs={
-                'class': 'form-control',
-                'accept': '.pdf,.jpg,.jpeg,.png'
-            }),
-            'soil_report': forms.ClearableFileInput(attrs={
                 'class': 'form-control',
                 'accept': '.pdf,.jpg,.jpeg,.png'
             }),
@@ -627,6 +657,10 @@ class PlotForm(forms.ModelForm):
                 'class': 'form-control',
                 'accept': '.pdf,.jpg,.jpeg,.png'
             }),
+            'government_price_proof': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
         }
     
     def __init__(self, *args, **kwargs):
@@ -634,12 +668,6 @@ class PlotForm(forms.ModelForm):
         self.owner = kwargs.pop('owner', None)
         self.is_edit = kwargs.get('instance', None) is not None
         super().__init__(*args, **kwargs)
-        
-        # Custom soil type widget
-        self.fields['soil_type'].widget = forms.Select(
-            choices=self.SOIL_TYPE_CHOICES,
-            attrs={'class': 'form-control'}
-        )
         
         # If this is a POST request, update subcounty choices based on submitted county
         if self.data.get('county'):
@@ -679,11 +707,15 @@ class PlotForm(forms.ModelForm):
         self.fields['county'].help_text = "Select the county where your plot is located"
         self.fields['subcounty'].help_text = "Select the specific sub-county"
         self.fields['area'].help_text = "Size in acres"
-        self.fields['soil_type'].help_text = "Type of soil on the plot"
-        self.fields['ph_level'].help_text = "Soil pH level (0-14), optional"
-        self.fields['crop_suitability'].help_text = "Crops suitable for this soil type"
+        self.fields['price_basis'].help_text = "How was the selling price determined?"
+        self.fields['lease_basis'].help_text = "How was the lease price determined?"
+        self.fields['valuation_report'].help_text = "Optional valuation report (PDF/Image)"
+        self.fields['price_notes'].help_text = "Optional notes about market demand or negotiations"
+        self.fields['ownership_type'].help_text = "Legal tenure status"
+        self.fields['encumbrance_details'].help_text = "Specify any caveats, loans, or disputes"
         self.fields['title_deed'].help_text = "Upload title deed document (PDF/Image, max 10MB)"
-        self.fields['soil_report'].help_text = "Upload soil test report (PDF/Image, max 10MB, optional)"
+        if 'soil_report' in self.fields:
+            self.fields['soil_report'].help_text = "Upload soil test report (PDF/Image, max 10MB, optional)"
         self.fields['official_search'].help_text = "Official land search certificate (PDF/Image, max 10MB)"
         self.fields['landowner_id_doc'].help_text = "Landowner's national ID (PDF/Image, max 10MB)"
         self.fields['kra_pin'].help_text = "Landowner's KRA PIN certificate (PDF/Image, max 10MB)"
@@ -759,6 +791,14 @@ class PlotForm(forms.ModelForm):
         sale_price = cleaned_data.get('sale_price')
         lease_price_monthly = cleaned_data.get('lease_price_monthly')
         lease_price_yearly = cleaned_data.get('lease_price_yearly')
+        price_basis = cleaned_data.get('price_basis')
+        lease_basis = cleaned_data.get('lease_basis')
+        valuation_report = cleaned_data.get('valuation_report')
+        government_price_proof = cleaned_data.get('government_price_proof')
+        price_notes = cleaned_data.get('price_notes')
+        county = cleaned_data.get('county')
+        land_type = cleaned_data.get('land_type')
+        area = cleaned_data.get('area')
         
         logger.debug(f"Validating listing type: {listing_type}")
         logger.debug(f"Sale price: {sale_price}, Lease monthly: {lease_price_monthly}, Lease yearly: {lease_price_yearly}")
@@ -800,6 +840,52 @@ class PlotForm(forms.ModelForm):
                 error_msg = 'Yearly lease price cannot be negative'
                 self.add_error('lease_price_yearly', error_msg)
                 validation_errors.append(f"lease_price_yearly: {error_msg}")
+
+        # Pricing basis validation
+        if price_basis == 'valuation_report' and not valuation_report:
+            self.add_error('valuation_report', 'Valuation report is required for this price basis.')
+        if price_basis == 'government_set' and not government_price_proof:
+            self.add_error('government_price_proof', 'Government price proof is required for this price basis.')
+        if price_basis in ['agent_market', 'negotiated'] and not price_notes:
+            self.add_error('price_notes', 'Provide a brief note on market comps or negotiation basis.')
+
+        if listing_type in ['lease', 'both']:
+            if lease_basis == 'government_set' and not government_price_proof:
+                self.add_error('government_price_proof', 'Government price proof is required for this lease basis.')
+
+        # Market band validation (guardrails)
+        from .models import MarketPriceBand
+        if sale_price and area and county and land_type:
+            band = MarketPriceBand.objects.filter(
+                county=county,
+                land_type=land_type,
+                listing_type='sale',
+                effective_to__isnull=True
+            ).first()
+            if band:
+                price_per_acre = sale_price / area
+                if price_per_acre < band.min_price_per_acre or price_per_acre > band.max_price_per_acre:
+                    if price_basis != 'valuation_report':
+                        self.add_error(
+                            'sale_price',
+                            f"Sale price per acre is outside market band ({band.min_price_per_acre}-{band.max_price_per_acre}). Upload valuation report or adjust price."
+                        )
+
+        if lease_price_yearly and area and county and land_type:
+            band = MarketPriceBand.objects.filter(
+                county=county,
+                land_type=land_type,
+                listing_type='lease',
+                effective_to__isnull=True
+            ).first()
+            if band:
+                price_per_acre = lease_price_yearly / area
+                if price_per_acre < band.min_price_per_acre or price_per_acre > band.max_price_per_acre:
+                    if lease_basis != 'valuation_report':
+                        self.add_error(
+                            'lease_price_yearly',
+                            f"Lease price per acre is outside market band ({band.min_price_per_acre}-{band.max_price_per_acre}). Upload valuation report or adjust price."
+                        )
         
         # =========================================================================
         # DOCUMENT VALIDATION
@@ -1188,6 +1274,15 @@ class ExtensionReportForm(forms.ModelForm):
 
 class SurveyorReportForm(forms.ModelForm):
     """Form for submitting land surveyor inspection reports"""
+    def clean(self):
+        cleaned = super().clean()
+        price_realistic = cleaned.get('price_realistic')
+        suggested_sale_price = cleaned.get('suggested_sale_price')
+        suggested_price_per_acre = cleaned.get('suggested_price_per_acre')
+        if price_realistic is False and not (suggested_sale_price or suggested_price_per_acre):
+            self.add_error('suggested_sale_price', 'Provide a suggested sale price or price per acre.')
+        return cleaned
+
     class Meta:
         model = SurveyorReport
         exclude = ['task', 'surveyor', 'plot', 'submitted_at']
@@ -1195,6 +1290,14 @@ class SurveyorReportForm(forms.ModelForm):
             'visit_date': forms.DateTimeInput(attrs={'type': 'datetime-local', 'class': 'form-control'}),
             'gps_latitude': forms.NumberInput(attrs={'class': 'form-control'}),
             'gps_longitude': forms.NumberInput(attrs={'class': 'form-control'}),
+            'encumbrance_details': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'boundary_markers': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'topography_notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'access_road': forms.TextInput(attrs={'class': 'form-control'}),
+            'utilities_available': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'price_review_notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'suggested_price_per_acre': forms.NumberInput(attrs={'class': 'form-control'}),
+            'suggested_sale_price': forms.NumberInput(attrs={'class': 'form-control'}),
             'notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'recommendation': forms.Select(attrs={'class': 'form-control'}),
         }

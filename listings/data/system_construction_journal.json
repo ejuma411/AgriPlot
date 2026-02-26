@@ -78,5 +78,53 @@
     "evidence": "listings/urls.py",
     "status": "Done",
     "next_step": "Verify access control for staff roles"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "Verification workflow automation",
+    "work_done": "Automated post-API task creation (extension then surveyor), enforced required reports before approval, added task logs and admin review gate",
+    "evidence": "listings/verification_service.py, listings/signals.py, listings/views_admin.py",
+    "status": "Done",
+    "next_step": "Finalize exception handling and edge-case tests"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "Extension & surveyor workflows",
+    "work_done": "Built structured verification forms, grouped fields by role, surveyor price validation and plot price update handling",
+    "evidence": "listings/templates/listings/extension/conduct_review.html, listings/views_extension.py, listings/forms.py, listings/models.py",
+    "status": "Done",
+    "next_step": "Add UI summary cards for completed reports"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "Pricing guardrails",
+    "work_done": "Implemented price basis fields, validation, market price bands, and surveyor price confirmation",
+    "evidence": "listings/models.py, listings/forms.py, listings/admin.py, listings/management/commands/seed_price_bands.py",
+    "status": "Partial",
+    "next_step": "Populate MarketPriceBand with real county data"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "Document verification integration",
+    "work_done": "Linked document verification to plots and tasks; document checklist now creates DocumentVerification records",
+    "evidence": "listings/models.py, listings/views_admin.py, listings/templates/listings/admin/complete_task.html",
+    "status": "Done",
+    "next_step": "Add UI view of document verification results for admins"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "Notifications & email cycle",
+    "work_done": "End-to-end email notifications for OTP, registration, role requests/approvals, plot submission, verification stages, task completion, and final approval/rejection",
+    "evidence": "listings/notification_service.py, listings/views_otp.py, listings/views.py, listings/signals.py, listings/templates/emails/*",
+    "status": "Done",
+    "next_step": "Add SMS updates for plot stage changes"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "Admin journal & navigation",
+    "work_done": "Added system construction journal page and admin nav link",
+    "evidence": "listings/templates/listings/admin/system_construction_journal.html, listings/templates/listings/admin/base_admin.html, listings/data/system_construction_journal.json",
+    "status": "Done",
+    "next_step": "Add export/print option for journal"
   }
 ]

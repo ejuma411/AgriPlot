@@ -38,7 +38,7 @@
             </a>
             
             <!-- ============ STAFF/ADMIN SECTION ============ -->
-            {% if request.user.is_staff %}
+            {% if request.user.is_superuser %}
             <div class="nav-section-divider">
                 <hr class="my-2">
                 <p class="nav-section-title">Verification Management</p>
@@ -64,6 +64,7 @@
                 {% endif %}
             </a>
             
+            {% if request.user.is_superuser %}
             <a href="{% url 'listings:task_assignment' %}" class="nav-item {% if request.resolver_match.url_name == 'task_assignment' %}active{% endif %}">
                 <i class="fas fa-tasks"></i>
                 <span>Task Assignment</span>
@@ -73,6 +74,7 @@
                     {% endif %}
                 {% endif %}
             </a>
+            {% endif %}
             
             <a href="{% url 'listings:my_tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'my_tasks' %}active{% endif %}">
                 <i class="fas fa-user-check"></i>

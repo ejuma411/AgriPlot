@@ -70,22 +70,21 @@
                             </div>
                             <div class="progress-step" data-step="2">
                                 <span class="step-number">2</span>
-                                <span class="step-label">Listing Details</span>
+                                <span class="step-label">Ownership</span>
                             </div>
                             <div class="progress-step" data-step="3">
-                                <span class="step-number">3</span>
-                                <span class="step-label">Agri Details</span>
+                                <span class="step-number">4</span
                             </div>
                             <div class="progress-step" data-step="4">
-                                <span class="step-number">4</span>
+                                <span class="step-number">5</span>
                                 <span class="step-label">Infrastructure</span>
                             </div>
                             <div class="progress-step" data-step="5">
-                                <span class="step-number">5</span>
+                                <span class="step-number">6</span>
                                 <span class="step-label">Documents</span>
                             </div>
                             <div class="progress-step" data-step="6">
-                                <span class="step-number">6</span>
+                                <span class="step-number">7</span>
                                 <span class="step-label">Location</span>
                             </div>
                             <div class="progress-step" data-step="7">
@@ -347,7 +346,90 @@
                                 </div>
                             </div>
 
-                            <!-- Section 2: Listing Details -->
+                            <!-- Section 2: Ownership & Legal Status -->
+                            <div class="form-section mb-5">
+                                <div class="section-header mb-4">
+                                    <h5 class="section-title d-flex align-items-center">
+                                        <span class="section-badge bg-secondary">2</span>
+                                        <span>Ownership & Legal Status</span>
+                                    </h5>
+                                    <p class="section-subtitle text-muted mb-0">Tenure, encumbrances, and legal status</p>
+                                </div>
+                                <div class="form-fields">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.ownership_type.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-balance-scale me-2"></i>Ownership Type
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.ownership_type }}
+                                                {% if form.ownership_type.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.ownership_type.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.ownership_type.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.tenure_details.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-file-contract me-2"></i>Tenure Details
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.tenure_details }}
+                                                {% if form.tenure_details.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.tenure_details.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.tenure_details.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.encumbrances.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-exclamation-triangle me-2"></i>Encumbrances
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    {{ form.encumbrances }}
+                                                    <label class="form-check-label" for="{{ form.encumbrances.id_for_label }}">Has encumbrances</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3"></div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-2">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.encumbrance_details.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-info-circle me-2"></i>Encumbrance Details
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.encumbrance_details }}
+                                                {% if form.encumbrance_details.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.encumbrance_details.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.encumbrance_details.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Section 3: Listing Details -->
                             <div class="form-section mb-5">
                                 <div class="section-header mb-4">
                                     <h5 class="section-title d-flex align-items-center">
@@ -553,109 +635,121 @@
                                 </div>
                             </div>
 
-                            <!-- Section 3: Agricultural Details -->
+                            <!-- Pricing Basis -->
                             <div class="form-section mb-5">
                                 <div class="section-header mb-4">
                                     <h5 class="section-title d-flex align-items-center">
-                                        <span class="section-badge bg-success">3</span>
-                                        <span>Agricultural Details</span>
+                                        <span class="section-badge bg-secondary">2B</span>
+                                        <span>Price Basis & Valuation</span>
                                     </h5>
-                                    <p class="section-subtitle text-muted mb-0">Technical specifications for farming</p>
+                                    <p class="section-subtitle text-muted mb-0">Document how the price was determined</p>
                                 </div>
-                                
                                 <div class="form-fields">
-                                    <!-- Soil Type -->
                                     <div class="form-row mb-4">
                                         <div class="row">
                                             <div class="col-md-3">
-                                                <label for="{{ form.soil_type.id_for_label }}" class="form-label required">
-                                                    <i class="fas fa-seedling me-2"></i>Soil Type
+                                                <label for="{{ form.price_basis.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-receipt me-2"></i>Price Basis
                                                 </label>
                                             </div>
                                             <div class="col-md-6">
-                                                {{ form.soil_type }}
-                                                {% if form.soil_type.errors %}
+                                                {{ form.price_basis }}
+                                                {% if form.price_basis.errors %}
                                                 <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
-                                                    {{ form.soil_type.errors }}
+                                                    {{ form.price_basis.errors }}
                                                 </div>
                                                 {% endif %}
                                             </div>
                                             <div class="col-md-3">
-                                                <small class="text-muted">
-                                                    <i class="fas fa-info-circle"></i> {{ form.soil_type.help_text }}
-                                                </small>
+                                                <small class="text-muted">{{ form.price_basis.help_text }}</small>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- pH Level -->
                                     <div class="form-row mb-4">
                                         <div class="row">
                                             <div class="col-md-3">
-                                                <label for="{{ form.ph_level.id_for_label }}">
-                                                    <i class="fas fa-flask me-2"></i>Soil pH Level
+                                                <label for="{{ form.valuation_report.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-file-alt me-2"></i>Valuation Report
                                                 </label>
+                                                <br><small class="text-muted">If price basis is Government-set, upload official proof.</small>
                                             </div>
                                             <div class="col-md-6">
-                                                <div class="input-group">
-                                                    {{ form.ph_level }}
-                                                    <span class="input-group-text">pH</span>
-                                                </div>
-                                                {% if form.ph_level.errors %}
+                                                {{ form.valuation_report }}
+                                                {{ form.government_price_proof }}
+                                                {% if form.valuation_report.errors %}
                                                 <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
-                                                    {{ form.ph_level.errors }}
+                                                    {{ form.valuation_report.errors }}
                                                 </div>
                                                 {% endif %}
                                             </div>
                                             <div class="col-md-3">
-                                                <div class="ph-guide">
-                                                    <div class="d-flex align-items-center mb-1">
-                                                        <span class="ph-indicator acidic me-2"></span>
-                                                        <small>Acidic (0-4)</small>
-                                                    </div>
-                                                    <div class="d-flex align-items-center mb-1">
-                                                        <span class="ph-indicator neutral me-2"></span>
-                                                        <small>Neutral (5-7)</small>
-                                                    </div>
-                                                    <div class="d-flex align-items-center">
-                                                        <span class="ph-indicator alkaline me-2"></span>
-                                                        <small>Alkaline (8-14)</small>
-                                                    </div>
-                                                </div>
+                                                <small class="text-muted">{{ form.valuation_report.help_text }}</small>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <!-- Crop Suitability -->
                                     <div class="form-row mb-4">
                                         <div class="row">
                                             <div class="col-md-3">
-                                                <label for="{{ form.crop_suitability.id_for_label }}" class="form-label required">
-                                                    <i class="fas fa-leaf me-2"></i>Crop Suitability
+                                                <label for="{{ form.price_notes.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-comment-dots me-2"></i>Price Notes
                                                 </label>
                                             </div>
                                             <div class="col-md-6">
-                                                {{ form.crop_suitability }}
-                                                {% if form.crop_suitability.errors %}
+                                                {{ form.price_notes }}
+                                                {% if form.price_notes.errors %}
                                                 <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
-                                                    {{ form.crop_suitability.errors }}
+                                                    {{ form.price_notes.errors }}
                                                 </div>
                                                 {% endif %}
                                             </div>
                                             <div class="col-md-3">
-                                                <div class="crop-tags">
-                                                    <small class="d-block mb-1">Common Crops:</small>
-                                                    <div class="d-flex flex-wrap gap-1">
-                                                        <span class="crop-tag">Maize</span>
-                                                        <span class="crop-tag">Wheat</span>
-                                                        <span class="crop-tag">Coffee</span>
-                                                        <span class="crop-tag">Tea</span>
-                                                        <span class="crop-tag">Beans</span>
-                                                    </div>
+                                                <small class="text-muted">{{ form.price_notes.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row mb-2">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.is_price_negotiable.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-handshake me-2"></i>Negotiable
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    {{ form.is_price_negotiable }}
+                                                    <label class="form-check-label" for="{{ form.is_price_negotiable.id_for_label }}">
+                                                        Price is negotiable
+                                                    </label>
                                                 </div>
+                                            </div>
+                                            <div class="col-md-3"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-row mb-2" id="lease-basis-row">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.lease_basis.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-file-contract me-2"></i>Lease Price Basis
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.lease_basis }}
+                                                {% if form.lease_basis.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.lease_basis.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.lease_basis.help_text }}</small>
                                             </div>
                                         </div>
                                     </div>
@@ -1067,7 +1161,7 @@
                                                     <i class="fas fa-flask text-info fa-2x me-3"></i>
                                                     <div>
                                                         <div class="document-name fw-bold">Soil Test Report</div>
-                                                        <small class="text-muted">{{ form.soil_report.help_text }}</small>
+                                                        <small class="text-muted">{{ form..help_text }}</small>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1081,13 +1175,13 @@
                                             </div>
                                             <div class="col-md-3">
                                                 <div class="document-upload-btn">
-                                                    <label for="{{ form.soil_report.id_for_label }}" class="btn btn-sm btn-outline-info">
+                                                    <label for="{{ form..id_for_label }}" class="btn btn-sm btn-outline-info">
                                                         <i class="fas fa-upload me-1"></i> Upload
                                                     </label>
-                                                    {{ form.soil_report }}
-                                                    {% if form.soil_report.errors %}
+                                                    {{ form. }}
+                                                    {% if form..errors %}
                                                     <small class="text-danger d-block mt-1">
-                                                        {{ form.soil_report.errors }}
+                                                        {{ form..errors }}
                                                     </small>
                                                     {% endif %}
                                                 </div>
@@ -1098,61 +1192,6 @@
                             </div>
 
                             <!-- Section 6: Location / GIS Coordinates -->
-                            <div class="form-section mb-5">
-                                <div class="section-header mb-4">
-                                    <h5 class="section-title d-flex align-items-center">
-                                        <span class="section-badge bg-info">6</span>
-                                        <span>Location &amp; Map Coordinates</span>
-                                    </h5>
-                                    <p class="section-subtitle text-muted mb-0">Latitude and longitude for GIS mapping (optional but recommended)</p>
-                                </div>
-                                
-                                <div class="form-fields">
-                                    <div class="form-row mb-4">
-                                        <div class="row">
-                                            <div class="col-md-3">
-                                                <label for="{{ form.latitude.id_for_label }}">
-                                                    <i class="fas fa-map-pin me-2"></i>Latitude
-                                                </label>
-                                            </div>
-                                            <div class="col-md-6">
-                                                {{ form.latitude }}
-                                                {% if form.latitude.errors %}
-                                                <div class="invalid-feedback d-block">
-                                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.latitude.errors }}
-                                                </div>
-                                                {% endif %}
-                                            </div>
-                                            <div class="col-md-3">
-                                                <small class="text-muted">e.g. -1.292066 (Nairobi). Used for map display.</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="form-row mb-4">
-                                        <div class="row">
-                                            <div class="col-md-3">
-                                                <label for="{{ form.longitude.id_for_label }}">
-                                                    <i class="fas fa-map-pin me-2"></i>Longitude
-                                                </label>
-                                            </div>
-                                            <div class="col-md-6">
-                                                {{ form.longitude }}
-                                                {% if form.longitude.errors %}
-                                                <div class="invalid-feedback d-block">
-                                                    <i class="fas fa-exclamation-circle me-1"></i>{{ form.longitude.errors }}
-                                                </div>
-                                                {% endif %}
-                                            </div>
-                                            <div class="col-md-3">
-                                                <small class="text-muted">e.g. 36.821946 (Nairobi). Used for map display.</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Section 7: Agreement -->
                             <div class="form-section mb-5">
                                 <div class="section-header mb-4">
                                     <h5 class="section-title d-flex align-items-center">
@@ -2484,7 +2523,7 @@ document.addEventListener('DOMContentLoaded', function() {
         { id: '{{ form.official_search.id_for_label }}', previewId: 'officialSearchPreview' },
         { id: '{{ form.landowner_id_doc.id_for_label }}', previewId: 'landownerIdPreview' },
         { id: '{{ form.kra_pin.id_for_label }}', previewId: 'kraPinPreview' },
-        { id: '{{ form.soil_report.id_for_label }}', previewId: 'soilReportPreview' }
+        { id: '{{ form..id_for_label }}', previewId: 'soilReportPreview' }
     ];
     
     documentFields.forEach(field => {

@@ -61,6 +61,9 @@ class NotificationService:
     def send_email(recipient, subject, template, context):
         """Send an email and log it"""
         try:
+            if not recipient:
+                logger.warning(f"Email not sent (missing recipient): {subject}")
+                return None
             # Render email content
             html_message = render_to_string(f'emails/{template}.html', context)
             plain_message = strip_tags(html_message)
@@ -234,48 +237,38 @@ class NotificationService:
                 task=task
             )
         
-        # Notify plot owner if task was approved/rejected
+        # Notify plot owner about the verification step outcome
         if task.approved is not None:
-            status = "approved" if task.approved else "rejected"
-            owner_title = f"Plot {status.title()}: {task.plot.title}"
-            owner_message = f"Your plot has been {status} by the verification team."
-            
+            step_status = "approved" if task.approved else "rejected"
+            step_title = f"{task.get_verification_type_display()} {step_status.title()}"
+            step_message = (
+                f"Your plot '{task.plot.title}' has completed {task.get_verification_type_display().lower()} "
+                f"and was {step_status}."
+            )
             NotificationService.create_notification(
                 user=plot_owner,
-                notification_type=f'plot_{status}',
-                title=owner_title,
-                message=owner_message,
-                plot=task.plot
+                notification_type='verification_step_update',
+                title=step_title,
+                message=step_message,
+                plot=task.plot,
+                task=task
             )
-            
-            # Send email to plot owner
+
             context = {
                 'user': plot_owner,
                 'plot': task.plot,
                 'task': task,
-                'status': status,
+                'status': step_status,
                 'completed_by': completed_by,
                 'plot_url': settings.SITE_URL + reverse('listings:plot_detail', args=[task.plot.id])
             }
-            
+
             NotificationService.send_email(
                 recipient=plot_owner.email,
-                subject=owner_title,
-                template='plot_verification_status',
+                subject=step_title,
+                template='verification_step_update',
                 context=context
             )
-        
-        # Add SMS notification
-            try:
-                sms = AfricaTalkingService()
-                if task.assigned_to.phone:  # Assuming user has phone field
-                    sms.send_task_assigned(
-                        task.assigned_to.phone,
-                        task.assigned_to.get_full_name() or task.assigned_to.username,
-                        task.plot.title
-                    )
-            except Exception as e:
-                logger.error(f"SMS failed: {e}")
     
     @staticmethod
     def notify_plot_submitted(plot):
@@ -309,6 +302,31 @@ class NotificationService:
                 template='new_plot_submitted',
                 context=context
             )
+
+        # Notify plot owner
+        plot_owner = plot.agent.user if plot.agent else plot.landowner.user
+        owner_title = f"Plot Submitted: {plot.title}"
+        owner_message = "Your plot has been submitted and is under verification."
+        NotificationService.create_notification(
+            user=plot_owner,
+            notification_type='plot_submitted',
+            title=owner_title,
+            message=owner_message,
+            plot=plot
+        )
+        owner_context = {
+            'user': plot_owner,
+            'plot': plot,
+            'stage': 'document_uploaded',
+            'status_title': 'Submission Received',
+            'plot_url': settings.SITE_URL + reverse('listings:plot_detail', args=[plot.id])
+        }
+        NotificationService.send_email(
+            recipient=plot_owner.email,
+            subject=owner_title,
+            template='plot_status_update',
+            context=owner_context
+        )
     
     @staticmethod
     def notify_changes_requested(plot, requested_by, notes):
@@ -342,6 +360,118 @@ class NotificationService:
             template='changes_requested',
             context=context
         )
+
+    @staticmethod
+    def notify_plot_stage(plot, stage, details=None):
+        """Notify plot owner about a verification stage update."""
+        try:
+            plot_owner = plot.agent.user if plot.agent else plot.landowner.user
+            stage_titles = {
+                'api_verification_started': 'API Verification Started',
+                'title_search_completed': 'Title Search Completed',
+                'admin_review': 'Admin Review',
+                'physical_location_verified': 'Physical Location Verified',
+            }
+            status_title = stage_titles.get(stage, stage.replace('_', ' ').title())
+            title = f"Verification Update: {plot.title}"
+            message = f"Your plot verification moved to: {status_title}."
+            NotificationService.create_notification(
+                user=plot_owner,
+                notification_type='plot_stage_update',
+                title=title,
+                message=message,
+                plot=plot
+            )
+            context = {
+                'user': plot_owner,
+                'plot': plot,
+                'stage': stage,
+                'status_title': status_title,
+                'details': details or {},
+                'plot_url': settings.SITE_URL + reverse('listings:plot_detail', args=[plot.id])
+            }
+            NotificationService.send_email(
+                recipient=plot_owner.email,
+                subject=title,
+                template='plot_status_update',
+                context=context
+            )
+        except Exception as e:
+            logger.error(f"Plot stage notification failed: {e}")
+
+    @staticmethod
+    def notify_plot_final_status(plot, status, completed_by, notes=""):
+        """Notify plot owner when the plot is finally approved or rejected."""
+        plot_owner = plot.agent.user if plot.agent else plot.landowner.user
+        title = f"Plot {status.title()}: {plot.title}"
+        NotificationService.create_notification(
+            user=plot_owner,
+            notification_type=f'plot_{status}',
+            title=title,
+            message=f"Your plot has been {status}.",
+            plot=plot
+        )
+        context = {
+            'user': plot_owner,
+            'plot': plot,
+            'task': None,
+            'status': status,
+            'completed_by': completed_by,
+            'plot_url': settings.SITE_URL + reverse('listings:plot_detail', args=[plot.id])
+        }
+        if notes:
+            context['notes'] = notes
+        NotificationService.send_email(
+            recipient=plot_owner.email,
+            subject=title,
+            template='plot_verification_status',
+            context=context
+        )
+
+    @staticmethod
+    def notify_role_request(user, role, details=None):
+        """Notify user and admins when a role request is submitted."""
+        details = details or {}
+        user_title = f"Role Request Received: {role}"
+        NotificationService.send_email(
+            recipient=user.email,
+            subject=user_title,
+            template='role_request_received',
+            context={
+                'user': user,
+                'role': role,
+                'details': details,
+                'profile_url': settings.SITE_URL + reverse('listings:profile_management'),
+            }
+        )
+        NotificationService.create_notification(
+            user=user,
+            notification_type='role_request',
+            title=user_title,
+            message=f"Your {role} request has been submitted and is under review."
+        )
+
+        admins = User.objects.filter(is_staff=True)
+        for admin in admins:
+            NotificationService.create_notification(
+                user=admin,
+                notification_type='role_request',
+                title=f"New Role Request: {role}",
+                message=f"{user.get_full_name() or user.username} submitted a {role} request."
+            )
+            if admin.email:
+                NotificationService.send_email(
+                    recipient=admin.email,
+                    subject=f"New Role Request: {role}",
+                    template='role_request_admin',
+                    context={
+                        'admin': admin,
+                        'user': user,
+                        'role': role,
+                        'details': details,
+                        'review_url': settings.SITE_URL + reverse('listings:profile_management')
+                    }
+                )
     
     @staticmethod
     def get_user_notifications(user, limit=50, unread_only=False):

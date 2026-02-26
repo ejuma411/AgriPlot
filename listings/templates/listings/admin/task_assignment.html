@@ -9,7 +9,7 @@
     <div class="page-header-content">
         <div class="page-header-title">
             <h1><i class="fas fa-tasks me-2"></i>Task Assignment</h1>
-            <p class="page-header-subtitle">Manage verification workflow</p>
+            <p class="page-header-subtitle">Assign document review, extension assessment, and surveyor inspection tasks</p>
         </div>
         <div class="page-header-actions">
             <a href="{% url 'listings:verification_dashboard' %}" class="btn">
@@ -24,7 +24,7 @@
     <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-clock"></i></div>
         <div class="stat-value">{{ task_stats.pending|default:0 }}</div>
-        <div class="stat-label">Pending Tasks</div>
+        <div class="stat-label">Pending (Unassigned)</div>
     </div>
     <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-sync-alt"></i></div>
@@ -53,6 +53,9 @@
                 </h5>
             </div>
             <div class="admin-card-body">
+                <p class="text-muted mb-3">
+                    Extension Officers provide soil/agronomic assessments and crop suitability recommendations.
+                </p>
                 <div class="row">
                     {% for officer in extension_officers %}
                     <div class="col-md-4 mb-3">
@@ -103,6 +106,7 @@
                         <th>Task Type</th>
                         <th>Plot</th>
                         <th>Location</th>
+                        <th>Assignee</th>
                         <th>Created</th>
                         <th>Actions</th>
                     </tr>
@@ -131,6 +135,9 @@
                             {% else %}
                                 {{ task.plot.location|truncatechars:20 }}
                             {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">Unassigned</span>
                         </td>
                         <td>{{ task.assigned_at|timesince }} ago</td>
                         <td>

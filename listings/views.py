@@ -295,6 +295,15 @@ def request_extension_officer(request):
             profile.is_active = False
             profile.save()
             messages.success(request, "Request submitted. An admin will review your details.")
+            try:
+                from .notification_service import NotificationService
+                NotificationService.notify_role_request(
+                    request.user,
+                    "Extension Officer",
+                    details={"station": profile.station, "counties": profile.assigned_counties}
+                )
+            except Exception as e:
+                logger.error(f"Role request notification failed: {e}")
             return redirect('listings:profile_management')
     else:
         form = ExtensionOfficerProfileForm(instance=existing)
@@ -333,6 +342,15 @@ def request_land_surveyor(request):
             profile.is_active = False
             profile.save()
             messages.success(request, "Request submitted. An admin will review your details.")
+            try:
+                from .notification_service import NotificationService
+                NotificationService.notify_role_request(
+                    request.user,
+                    "Land Surveyor",
+                    details={"station": profile.station, "counties": profile.assigned_counties}
+                )
+            except Exception as e:
+                logger.error(f"Role request notification failed: {e}")
             return redirect('listings:profile_management')
     else:
         form = LandSurveyorProfileForm(instance=existing)
@@ -952,6 +970,8 @@ def add_plot(request):
                                 plot, initiated_by=request.user
                             )
                             logger.info(f"Created verification tasks for plot {plot.id}: {tasks_created}")
+                            from .notification_service import NotificationService
+                            NotificationService.notify_plot_submitted(plot)
                         except Exception as task_err:
                             logger.warning(f"Verification task creation failed for plot {plot.id}: {task_err}")
                     else:
@@ -2094,6 +2114,19 @@ def review_plot(request, plot_id):
             notes = request.POST.get('notes', '')
             
             if action == 'approve':
+                from .verification_service import VerificationService
+                missing_reports = VerificationService.has_required_reports(plot)
+                required_types = set(VerificationService.required_task_types(plot))
+                existing_types = set(
+                    VerificationTask.objects.filter(plot=plot).values_list('verification_type', flat=True)
+                )
+                missing_types = list(required_types - existing_types)
+                if missing_types or missing_reports:
+                    messages.error(
+                        request,
+                        f"Cannot approve. Missing tasks: {missing_types} | Missing reports: {missing_reports}"
+                    )
+                    return redirect('listings:review_plot', plot_id=plot.id)
                 verification.current_stage = 'approved'
                 verification.approved_at = timezone.now()
                 verification.stage_details['approved_by'] = request.user.username

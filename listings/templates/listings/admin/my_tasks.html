@@ -118,9 +118,19 @@
                         </div>
                         
                         <div class="task-footer">
-                            <a href="{% url 'listings:complete_task' task.id %}" class="btn btn-success w-100">
-                                <i class="fas fa-check-circle me-2"></i>Complete Task
-                            </a>
+                            {% if task.verification_type == 'extension_review' %}
+                                <a href="{% url 'listings:conduct_extension_review' task.id %}" class="btn btn-success w-100">
+                                    <i class="fas fa-seedling me-2"></i>Open Extension Review
+                                </a>
+                            {% elif task.verification_type == 'surveyor_inspection' %}
+                                <a href="{% url 'listings:conduct_surveyor_inspection' task.id %}" class="btn btn-success w-100">
+                                    <i class="fas fa-map-marked-alt me-2"></i>Open Surveyor Inspection
+                                </a>
+                            {% else %}
+                                <a href="{% url 'listings:complete_task' task.id %}" class="btn btn-success w-100">
+                                    <i class="fas fa-check-circle me-2"></i>Complete Task
+                                </a>
+                            {% endif %}
                         </div>
                     </div>
                 {% endfor %}
@@ -130,9 +140,11 @@
                 <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
                 <h5>All Caught Up!</h5>
                 <p class="text-muted">You have no active tasks at the moment.</p>
+                {% if request.user.is_superuser %}
                 <a href="{% url 'listings:task_assignment' %}" class="btn btn-outline-primary mt-3">
                     <i class="fas fa-tasks me-2"></i>View Available Tasks
                 </a>
+                {% endif %}
             </div>
         {% endif %}
     </div>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #069132 0%, #047a29 100%); color: white; padding: 24px; text-align: center; }
+        .content { background: #f9f9f9; padding: 24px; }
+        .status { background: #e9f7ee; color: #0f6b2f; padding: 16px; border-radius: 6px; margin: 16px 0; }
+        .button { display: inline-block; padding: 10px 18px; background: #069132; color: white; text-decoration: none; border-radius: 5px; }
+        .footer { text-align: center; padding: 16px; color: #666; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Plot Verification Update</h2>
+    </div>
+    <div class="content">
+        <p>Hello {{ user.get_full_name|default:user.username }},</p>
+        <p>Your plot <strong>{{ plot.title }}</strong> has moved to the next step:</p>
+        <div class="status">
+            <strong>{{ status_title }}</strong>
+        </div>
+        {% if details %}
+            <p><strong>Details:</strong></p>
+            <pre style="white-space: pre-wrap;">{{ details }}</pre>
+        {% endif %}
+        <div style="text-align:center; margin-top: 16px;">
+            <a href="{{ plot_url }}" class="button">View Plot</a>
+        </div>
+        <p>We’ll keep you updated as verification progresses.</p>
+    </div>
+    <div class="footer">
+        <p>© {% now "Y" %} AgriPlot Connect. All rights reserved.</p>
+    </div>
+</body>
+</html>

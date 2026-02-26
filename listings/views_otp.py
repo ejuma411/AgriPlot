@@ -72,9 +72,20 @@ def send_otp_verification(request):
     email_ok = True
     if otp_provider in ("email", "both"):
         try:
+            from .notification_service import NotificationService
             subject = "AgriPlot verification code"
-            message = f"Your AgriPlot verification code is: {otp}. Valid for 10 minutes."
-            send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
+            NotificationService.send_email(
+                recipient=email,
+                subject=subject,
+                template="otp_verification",
+                context={
+                    "user": None,
+                    "display_name": f"{reg_data.get('first_name', '')} {reg_data.get('last_name', '')}".strip() or reg_data.get('username', 'there'),
+                    "otp": otp,
+                    "expiry_minutes": 10,
+                    "support_url": settings.SITE_URL + "/contact-support/"
+                }
+            )
         except Exception as e:
             email_ok = False
             logger.error(f"Failed to send email OTP: {str(e)}", exc_info=True)
@@ -313,9 +324,20 @@ def resend_otp(request):
         email_ok = True
         if otp_provider in ("email", "both") and email:
             try:
+                from .notification_service import NotificationService
                 subject = "AgriPlot verification code"
-                message = f"Your AgriPlot verification code is: {otp}. Valid for 10 minutes."
-                send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [email], fail_silently=False)
+                NotificationService.send_email(
+                    recipient=email,
+                    subject=subject,
+                    template="otp_verification",
+                    context={
+                        "user": None,
+                        "display_name": reg_data.get('username', 'there'),
+                        "otp": otp,
+                        "expiry_minutes": 10,
+                        "support_url": settings.SITE_URL + "/contact-support/"
+                    }
+                )
             except Exception as e:
                 email_ok = False
                 logger.error(f"Failed to resend email OTP: {str(e)}", exc_info=True)

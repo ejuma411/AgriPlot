@@ -302,25 +302,21 @@
                 <!-- Authenticated User Menu -->
                 {% if user.is_authenticated %}
                     <!-- Dashboard Link - Routes to appropriate dashboard -->
+                    {% if not user.profile.role == 'buyer' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'listings:dashboard_router' %}">
-                            {% if not user.profile.role == 'buyer' %}
-                            <li class="nav-item">
-                                <a class="nav-link" href="{% url 'listings:dashboard_router' %}">
-                                    <i class="fas fa-chart-line me-1"></i> Dashboard
-                                    {% if user.is_staff and stats.pending_review %}
-                                        <span class="badge bg-danger ms-1">{{ stats.pending_review }}</span>
-                                    {% elif user.extension_officer and extension_tasks_count %}
-                                        <span class="badge bg-success ms-1">{{ extension_tasks_count }}</span>
-                                    {% endif %}
-                                </a>
-                            </li>
+                            <i class="fas fa-chart-line me-1"></i> Dashboard
+                            {% if user.is_superuser and stats.pending_review %}
+                                <span class="badge bg-danger ms-1">{{ stats.pending_review }}</span>
+                            {% elif user.extension_officer and extension_tasks_count %}
+                                <span class="badge bg-success ms-1">{{ extension_tasks_count }}</span>
                             {% endif %}
                         </a>
                     </li>
+                    {% endif %}
 
                     <!-- Role-specific quick links -->
-                    {% if user.is_staff %}
+                    {% if user.is_superuser %}
                         <!-- Staff/Admin Quick Links -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="staffDropdown" role="button" data-bs-toggle="dropdown">

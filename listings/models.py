@@ -236,6 +236,20 @@ class Plot(models.Model):
     # Location
     county = models.CharField(max_length=100, blank=True, null=True)
     subcounty = models.CharField(max_length=100, blank=True, null=True)
+    nearest_town = models.CharField(max_length=150, blank=True)
+    ownership_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('freehold', 'Freehold'),
+            ('leasehold', 'Leasehold'),
+            ('government', 'Government'),
+            ('community', 'Community'),
+        ],
+        default='freehold'
+    )
+    tenure_details = models.CharField(max_length=200, blank=True, help_text="Lease duration/expiry or tenure notes")
+    encumbrances = models.BooleanField(default=False)
+    encumbrance_details = models.TextField(blank=True)
 
     # Ownership
     landowner = models.ForeignKey(LandownerProfile, on_delete=models.CASCADE, null=True, blank=True)
@@ -254,20 +268,54 @@ class Plot(models.Model):
     # Sale-specific
     sale_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     price_per_acre = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    PRICE_BASIS_CHOICES = [
+        ('owner_set', 'Owner-set price'),
+        ('agent_market', 'Agent market analysis'),
+        ('valuation_report', 'Professional valuation report'),
+        ('government_set', 'Government-set price'),
+        ('negotiated', 'Negotiated (market demand)'),
+    ]
+    price_basis = models.CharField(
+        max_length=30,
+        choices=PRICE_BASIS_CHOICES,
+        default='owner_set'
+    )
+    valuation_report = models.FileField(
+        upload_to="documents/valuation_reports/",
+        null=True,
+        blank=True,
+        help_text="Optional valuation report (PDF/Image)"
+    )
+    price_notes = models.TextField(
+        blank=True,
+        help_text="Notes on how price was determined (market trends, valuation, negotiations)"
+    )
+    is_price_negotiable = models.BooleanField(default=True)
     
     # Lease-specific
     lease_price_monthly = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     lease_price_yearly = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     lease_duration = models.CharField(max_length=20, choices=LEASE_DURATION_CHOICES, null=True, blank=True)
     lease_terms = models.TextField(blank=True)
+    lease_basis = models.CharField(
+        max_length=30,
+        choices=PRICE_BASIS_CHOICES,
+        default='owner_set'
+    )
+    government_price_proof = models.FileField(
+        upload_to="documents/government_price_proofs/",
+        null=True,
+        blank=True,
+        help_text="Official notice/gazette for government-set price"
+    )
     
     # Legacy price field (keep for backward compatibility)
     price = models.DecimalField(max_digits=12, decimal_places=2)
 
     # Agricultural Fields
-    soil_type = models.CharField(max_length=100)
+    soil_type = models.CharField(max_length=100, blank=True, default="")
     ph_level = models.FloatField(null=True, blank=True)
-    crop_suitability = models.CharField(max_length=200)
+    crop_suitability = models.CharField(max_length=200, blank=True, default="")
 
     # Infrastructure
     has_water = models.BooleanField(default=False)
@@ -381,6 +429,9 @@ class Plot(models.Model):
         
         if self.listing_type in ['lease', 'both'] and not (self.lease_price_monthly or self.lease_price_yearly):
             raise ValidationError("Lease price is required for listings marked 'For Lease'")
+
+        if self.encumbrances and not self.encumbrance_details:
+            raise ValidationError("Provide encumbrance details when encumbrances are marked as present.")
         
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -533,6 +584,15 @@ class VerificationStatus(models.Model):
         # Use update() to bypass signals if we're in a recursive situation
         # But for now, just save normally
         self.save()
+
+        # Notify plot owner on stage change
+        try:
+            if original_stage != stage and self.content_type.model == 'plot':
+                if stage not in ('approved', 'rejected'):
+                    from .notification_service import NotificationService
+                    NotificationService.notify_plot_stage(self.content_object, stage, details)
+        except Exception:
+            pass
         
     # In VerificationStatus, add method to trigger API check
     def trigger_ardhisasa_check(self):
@@ -913,8 +973,11 @@ class DocumentVerification(models.Model):
         ('national_id', 'National ID'),
         ('kra_pin', 'KRA PIN'),
         ('title_deed', 'Title Deed'),
+        ('official_search', 'Official Search'),
     ]
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='document_verifications')
+    plot = models.ForeignKey('Plot', on_delete=models.SET_NULL, null=True, blank=True, related_name='document_verifications')
+    task = models.ForeignKey('VerificationTask', on_delete=models.SET_NULL, null=True, blank=True, related_name='document_verifications')
     document_type = models.CharField(max_length=30, choices=DOC_TYPE_CHOICES)
     document_file = models.FileField(upload_to="verification_docs/", null=True, blank=True)
 
@@ -938,11 +1001,23 @@ class DocumentVerification(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     @classmethod
-    def verify_document(cls, plot, doc_type, reviewer, approved, notes):
+    def verify_document(cls, plot, doc_type, reviewer, approved, notes, task=None):
+        doc_file = None
+        if doc_type == 'national_id':
+            doc_file = getattr(plot, 'landowner_id_doc', None)
+        elif doc_type == 'kra_pin':
+            doc_file = getattr(plot, 'kra_pin', None)
+        elif doc_type == 'title_deed':
+            doc_file = getattr(plot, 'title_deed', None)
+        elif doc_type == 'official_search':
+            doc_file = getattr(plot, 'official_search', None)
+
         verification = cls.objects.create(
             user=plot.agent.user if plot.agent else plot.landowner.user,
+            plot=plot,
+            task=task,
             document_type=doc_type,
-            document_file=getattr(plot, doc_type),
+            document_file=doc_file,
             is_readable=True,
             name_matches_user=approved,
             all_names_match=approved,
@@ -955,7 +1030,7 @@ class DocumentVerification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
-        unique_together = [['user', 'document_type']]
+        unique_together = [['user', 'document_type', 'plot']]
 
     def __str__(self):
         return f"{self.user.username} — {self.get_document_type_display()} ({self.approved})"
@@ -1315,6 +1390,17 @@ class SurveyorReport(models.Model):
     boundary_confirmed = models.BooleanField(default=False)
     acreage_confirmed = models.BooleanField(default=False)
     encumbrances_found = models.BooleanField(default=False)
+    encumbrance_details = models.TextField(blank=True)
+    boundary_markers = models.TextField(blank=True, help_text="Describe boundary markers or beacons found on site")
+    topography_notes = models.TextField(blank=True, help_text="Slope, terrain, drainage patterns, or obstacles")
+    access_road = models.CharField(max_length=200, blank=True, help_text="Describe road access and distance to main road")
+    utilities_available = models.TextField(blank=True, help_text="Water, electricity, irrigation, other utilities")
+    subdivision_required = models.BooleanField(default=False)
+    mutation_required = models.BooleanField(default=False)
+    price_realistic = models.BooleanField(default=True)
+    suggested_price_per_acre = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    suggested_sale_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    price_review_notes = models.TextField(blank=True)
     notes = models.TextField(blank=True)
 
     recommendation = models.CharField(max_length=25, choices=[
@@ -1334,6 +1420,39 @@ class SurveyorReport(models.Model):
 
     def __str__(self):
         return f"Surveyor Report for {self.plot.title} by {self.surveyor}"
+
+
+class MarketPriceBand(models.Model):
+    """Reference pricing band per county + land use."""
+    county = models.CharField(max_length=100)
+    land_type = models.CharField(max_length=20, choices=Plot.LAND_TYPE_CHOICES)
+    listing_type = models.CharField(max_length=10, choices=Plot.LISTING_TYPE_CHOICES)
+    min_price_per_acre = models.DecimalField(max_digits=12, decimal_places=2)
+    max_price_per_acre = models.DecimalField(max_digits=12, decimal_places=2)
+    effective_from = models.DateField()
+    effective_to = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['county', 'land_type', 'listing_type']),
+        ]
+
+    def __str__(self):
+        return f"{self.county} {self.land_type} {self.listing_type} band"
+
+
+class ComparableSale(models.Model):
+    """Comparable sales for price basis evidence."""
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='comparables')
+    title = models.CharField(max_length=200, blank=True)
+    county = models.CharField(max_length=100, blank=True)
+    price_per_acre = models.DecimalField(max_digits=12, decimal_places=2)
+    source = models.CharField(max_length=200, blank=True, help_text="Market source or reference")
+    notes = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Comparable {self.price_per_acre} for {self.plot_id}"
 
 # listings/models.py - Add if not present
 

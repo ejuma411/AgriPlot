@@ -52,6 +52,7 @@ from django.contrib.contenttypes.models import ContentType
 import logging
 from .models import VerificationStatus, Plot
 from .services.ardhisasa_integration import ArdhisasaService
+from .verification_service import VerificationService
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +124,19 @@ def trigger_ardhisasa_verification(sender, instance, created, **kwargs):
                     stage_details=instance.stage_details
                 )
                 logger.info(f"✅ Ardhisasa verification completed for plot {plot.id}")
+
+                # After API verification, assign the next role in the chain
+                try:
+                    logger.info(f"Triggering post-API assignment for plot {plot.id}")
+                    VerificationService.after_api_verification(plot, assigned_by=None)
+                except Exception as assign_err:
+                    logger.error(f"Post-API task assignment failed for plot {plot.id}: {assign_err}")
+
+                try:
+                    from .notification_service import NotificationService
+                    NotificationService.notify_plot_stage(plot, 'title_search_completed', instance.stage_details.get('title_search', {}))
+                except Exception as notify_err:
+                    logger.error(f"Stage notification failed for plot {plot.id}: {notify_err}")
             else:
                 instance.stage_details['ardhisasa_error'] = result.get('error')
                 VerificationStatus.objects.filter(pk=instance.pk).update(
@@ -132,4 +146,3 @@ def trigger_ardhisasa_verification(sender, instance, created, **kwargs):
         finally:
             # Always remove from processing set
             _processing_verification.discard(verification_id)
-

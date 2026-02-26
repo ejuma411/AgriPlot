@@ -6,6 +6,10 @@ from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 
+admin.site.site_header = "AgriPlot Administration"
+admin.site.site_title = "AgriPlot Admin"
+admin.site.index_title = "System Management"
+
 # ======================================================
 # SIMPLIFIED ADMIN FOR AGRIPLOT - FOCUS ON WHAT MATTERS
 # ======================================================
@@ -160,6 +164,12 @@ class LandownerProfileAdmin(admin.ModelAdmin):
                         'login_url': settings.SITE_URL + '/login/',
                     }
                 )
+            NotificationService.create_notification(
+                user=obj.user,
+                notification_type='role_approved',
+                title='Role Approved: Landowner',
+                message='Your landowner role has been approved.'
+            )
         self.message_user(request, f"{queryset.count()} landowner(s) verified.")
     verify_selected.short_description = "Verify selected landowners"
 
@@ -218,6 +228,12 @@ class AgentAdmin(admin.ModelAdmin):
                         'login_url': settings.SITE_URL + '/login/',
                     }
                 )
+            NotificationService.create_notification(
+                user=obj.user,
+                notification_type='role_approved',
+                title='Role Approved: Agent',
+                message='Your agent role has been approved.'
+            )
         self.message_user(request, f"{count} agent(s) verified.")
     verify_selected.short_description = "Verify selected agents"
 
@@ -301,7 +317,11 @@ class PlotAdmin(admin.ModelAdmin):
     )
     
     list_filter = (
-        "soil_type",
+        "county",
+        "ownership_type",
+        "encumbrances",
+        "price_basis",
+        "lease_basis",
         "listing_type",
         "land_type",
         "created_at",
@@ -327,13 +347,18 @@ class PlotAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ("Basic Information", {
-            "fields": ("title", "agent", "landowner", "location", "area", "latitude", "longitude", "listing_type", "land_type", "land_use_description")
+            "fields": ("title", "agent", "landowner", "location", "county", "subcounty", "nearest_town", "area", "latitude", "longitude", "listing_type", "land_type", "land_use_description")
         }),
-        ("Pricing Information", {
-            "fields": ("price", "sale_price", "price_per_acre_display", 
-                      "lease_price_monthly", "lease_price_yearly", "lease_duration", "lease_terms"),
+        ("Ownership & Legal Status", {
+            "fields": ("ownership_type", "tenure_details", "encumbrances", "encumbrance_details"),
         }),
-        ("Agricultural Details", {
+        ("Pricing (Sale)", {
+            "fields": ("sale_price", "price_per_acre_display", "price_basis", "valuation_report", "government_price_proof", "price_notes", "is_price_negotiable"),
+        }),
+        ("Pricing (Lease)", {
+            "fields": ("lease_price_monthly", "lease_price_yearly", "lease_duration", "lease_terms", "lease_basis"),
+        }),
+        ("Agricultural Summary (Verified)", {
             "fields": ("soil_type", "ph_level", "crop_suitability"),
             "classes": ("collapse",),
         }),
@@ -996,9 +1021,9 @@ class VerificationLogAdmin(admin.ModelAdmin):
 
 @admin.register(DocumentVerification)
 class DocumentVerificationAdmin(admin.ModelAdmin):
-    list_display = ('user', 'document_type', 'approved', 'name_matches_user', 'verified_by', 'verified_at')
+    list_display = ('user', 'plot', 'task', 'document_type', 'approved', 'name_matches_user', 'verified_by', 'verified_at')
     list_filter = ('document_type', 'approved')
-    search_fields = ('user__username',)
+    search_fields = ('user__username', 'plot__title')
 
 
 @admin.register(ImpersonationDetection)
@@ -1110,6 +1135,7 @@ class ExtensionOfficerAdmin(admin.ModelAdmin):
             obj.verified = True
             obj.verified_by = request.user
             obj.verified_at = timezone.now()
+            obj.is_active = True
             obj.save()
             count += 1
             if obj.user.email:
@@ -1123,6 +1149,12 @@ class ExtensionOfficerAdmin(admin.ModelAdmin):
                         'login_url': settings.SITE_URL + '/login/',
                     }
                 )
+            NotificationService.create_notification(
+                user=obj.user,
+                notification_type='role_approved',
+                title='Role Approved: Extension Officer',
+                message='Your extension officer role has been approved.'
+            )
         self.message_user(request, f"{count} officer(s) verified.")
     verify_officers.short_description = "Verify selected officers"
     
@@ -1226,6 +1258,7 @@ class LandSurveyorAdmin(admin.ModelAdmin):
             obj.verified = True
             obj.verified_by = request.user
             obj.verified_at = timezone.now()
+            obj.is_active = True
             obj.save()
             count += 1
             if obj.user.email:
@@ -1239,6 +1272,12 @@ class LandSurveyorAdmin(admin.ModelAdmin):
                         'login_url': settings.SITE_URL + '/login/',
                     }
                 )
+            NotificationService.create_notification(
+                user=obj.user,
+                notification_type='role_approved',
+                title='Role Approved: Land Surveyor',
+                message='Your land surveyor role has been approved.'
+            )
         self.message_user(request, f"{count} surveyor(s) verified.")
     verify_surveyors.short_description = "Verify selected surveyors"
 
@@ -1264,3 +1303,21 @@ class SurveyorReportAdmin(admin.ModelAdmin):
         url = reverse('admin:listings_plot_change', args=[obj.plot.id])
         return format_html('<a href="{}">{}</a>', url, obj.plot.title)
     plot_link.short_description = 'Plot'
+
+
+# -----------------------------
+# Pricing Guardrails
+# -----------------------------
+@admin.register(MarketPriceBand)
+class MarketPriceBandAdmin(admin.ModelAdmin):
+    list_display = ('county', 'land_type', 'listing_type', 'min_price_per_acre', 'max_price_per_acre', 'effective_from', 'effective_to')
+    list_filter = ('county', 'land_type', 'listing_type')
+    search_fields = ('county',)
+    ordering = ('county', 'land_type', 'listing_type')
+
+
+@admin.register(ComparableSale)
+class ComparableSaleAdmin(admin.ModelAdmin):
+    list_display = ('plot', 'county', 'price_per_acre', 'source')
+    list_filter = ('county',)
+    search_fields = ('plot__title', 'county', 'source')

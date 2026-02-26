@@ -9,7 +9,7 @@
     <div class="page-header-content">
         <div class="page-header-title">
             <h1><i class="fas fa-chart-pie me-2"></i>Verification Dashboard</h1>
-            <p class="page-header-subtitle">Manage and review plot listings</p>
+            <p class="page-header-subtitle">Manage document review, extension reports, and surveyor inspections</p>
         </div>
         <div class="page-header-actions">
             <a href="{% url 'listings:verification_queue' %}" class="btn">
@@ -19,12 +19,23 @@
     </div>
 </div>
 
+<div class="admin-card mb-3">
+    <div class="admin-card-body">
+        <strong>Verification roles:</strong>
+        <span class="text-muted">
+            Landowner/Agent submits listing & legal documents.
+            Extension Officer provides soil/agronomic assessment.
+            Surveyor verifies boundaries, access, and encumbrances.
+        </span>
+    </div>
+</div>
+
 <!-- Stats Grid -->
 <div class="stats-grid">
     <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-clock"></i></div>
         <div class="stat-value">{{ stats.pending_review|default:0 }}</div>
-        <div class="stat-label">Pending Review</div>
+        <div class="stat-label">Document Review Pending</div>
         <div class="stat-trend">
             <span class="trend-up"><i class="fas fa-arrow-up"></i> Awaiting verification</span>
         </div>
@@ -33,7 +44,7 @@
     <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-sync-alt"></i></div>
         <div class="stat-value">{{ stats.in_progress|default:0 }}</div>
-        <div class="stat-label">In Progress</div>
+        <div class="stat-label">Field Verification In Progress</div>
         <div class="stat-trend">
             <span>Currently being verified</span>
         </div>
@@ -53,7 +64,9 @@
         <div class="stat-value">{{ task_stats.pending|default:0 }}</div>
         <div class="stat-label">Unassigned Tasks</div>
         <div class="stat-trend">
-            <a href="{% url 'listings:task_assignment' %}" class="text-primary">Assign now →</a>
+                        {% if request.user.is_superuser %}
+                        <a href="{% url 'listings:task_assignment' %}" class="text-primary">Assign now →</a>
+                        {% endif %}
         </div>
     </div>
 </div>
