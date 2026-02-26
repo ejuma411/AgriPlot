@@ -1,0 +1,29 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+<div style="font-family: Arial, sans-serif; line-height: 1.6; color: #222;">
+    <h2 style="color: #0f5132;">Task Confirmation Expired</h2>
+    <p>Hello {{ admin.get_full_name|default:admin.username }},</p>
+    <p>
+        The assigned verification task below was not confirmed within 12 hours and has been
+        automatically unassigned.
+    </p>
+    <div style="border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; background: #f8fafc;">
+        <p><strong>Plot:</strong> {{ plot.title }}</p>
+        <p><strong>Task:</strong> {{ task.get_verification_type_display }}</p>
+        <p><strong>County:</strong> {{ plot.county|default:"N/A" }}</p>
+        <p><strong>Confirm by:</strong> {{ task.confirm_by|date:"F j, Y H:i" }}</p>
+    </div>
+    <p style="margin-top: 16px;">
+        Please review and reassign the task.
+    </p>
+    <p>
+        <a href="{{ review_url }}" style="display: inline-block; padding: 10px 16px; background: #0f5132; color: #fff; text-decoration: none; border-radius: 4px;">
+            Review Task Assignment
+        </a>
+    </p>
+    <p style="color: #6b7280; font-size: 13px;">
+        If this assignment should not be reissued, update the plot verification status accordingly.
+    </p>
+</div>
+{% endblock %}

@@ -922,6 +922,12 @@ class VerificationTask(models.Model):
         ('in_progress', 'In Progress'),
         ('completed', 'Completed'),
     ]
+    CONFIRMATION_CHOICES = [
+        ('pending', 'Pending'),
+        ('confirmed', 'Confirmed'),
+        ('declined', 'Declined'),
+        ('expired', 'Expired'),
+    ]
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='verification_tasks')
     verification_type = models.CharField(max_length=30, choices=TASK_TYPE_CHOICES)
     assigned_to = models.ForeignKey(
@@ -933,6 +939,10 @@ class VerificationTask(models.Model):
     )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     assigned_at = models.DateTimeField(auto_now_add=True)
+    confirm_by = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    confirmation_status = models.CharField(max_length=20, choices=CONFIRMATION_CHOICES, default='pending')
+    deadline_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
     approved = models.BooleanField(null=True, blank=True)  # True/False/None
@@ -1107,12 +1117,21 @@ class Notification(models.Model):
     NOTIFICATION_TYPES = [
         ('task_assigned', 'Task Assigned'),
         ('task_completed', 'Task Completed'),
+        ('task_reminder', 'Task Reminder'),
+        ('task_unconfirmed', 'Task Unconfirmed'),
+        ('plot_submitted', 'Plot Submitted'),
         ('plot_approved', 'Plot Approved'),
-        ('plot_rejected', ' Plot Rejected'),
+        ('plot_rejected', 'Plot Rejected'),
+        ('plot_stage_update', 'Plot Stage Update'),
         ('changes_requested', 'Changes Requested'),
         ('document_uploaded', 'Document Uploaded'),
         ('verification_started', 'Verification Started'),
         ('verification_completed', 'Verification Completed'),
+        ('verification_step_update', 'Verification Step Update'),
+        ('no_officer_available', 'No Officer Available'),
+        ('role_request', 'Role Request'),
+        ('role_approved', 'Role Approved'),
+        ('account_verified', 'Account Verified'),
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
@@ -1144,6 +1163,51 @@ class Notification(models.Model):
         self.is_read = True
         self.read_at = timezone.now()
         self.save()
+
+class SupportTicket(models.Model):
+    """Customer support tickets submitted from contact form."""
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('in_progress', 'In Progress'),
+        ('resolved', 'Resolved'),
+        ('closed', 'Closed'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    name = models.CharField(max_length=120)
+    email = models.EmailField()
+    subject = models.CharField(max_length=200)
+    message = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.subject} ({self.status})"
+
+
+class SMSLog(models.Model):
+    """Log outbound SMS messages and provider responses."""
+    PROVIDER_CHOICES = [
+        ('textsms', 'TextSMS'),
+    ]
+    provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default='textsms')
+    phone = models.CharField(max_length=30)
+    message = models.TextField()
+    status_code = models.IntegerField(null=True, blank=True)
+    success = models.BooleanField(default=False)
+    message_id = models.CharField(max_length=100, blank=True)
+    response_body = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.phone} — {self.provider} — {self.status_code}"
 
 
 class EmailLog(models.Model):

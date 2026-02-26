@@ -29,6 +29,16 @@
             <span>Currently assigned to you</span>
         </div>
     </div>
+    {% if pending_in_area != None %}
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-map-marker-alt"></i></div>
+        <div class="stat-value">{{ pending_in_area }}</div>
+        <div class="stat-label">Pending in Your Area</div>
+        <div class="stat-trend">
+            <span>Awaiting admin assignment</span>
+        </div>
+    </div>
+    {% endif %}
     <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
         <div class="stat-value">{{ completed_tasks|length }}</div>
@@ -91,6 +101,18 @@
                                     <i class="fas fa-tag"></i>
                                     <span>{{ task.plot.get_land_type_display }}</span>
                                 </div>
+                                {% if task.deadline_at %}
+                                <div class="task-detail">
+                                    <i class="fas fa-hourglass-end"></i>
+                                    <span>Deadline: {{ task.deadline_at|date:"M d, H:i" }}</span>
+                                </div>
+                                {% endif %}
+                                {% if task.confirm_by %}
+                                <div class="task-detail">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Confirm by: {{ task.confirm_by|date:"M d, H:i" }}</span>
+                                </div>
+                                {% endif %}
                             </div>
 
                             <!-- Document Status -->
@@ -118,6 +140,17 @@
                         </div>
                         
                         <div class="task-footer">
+                            {% if task.confirmation_status != 'confirmed' %}
+                                {% if task.verification_type == 'extension_review' %}
+                                    <a href="{% url 'listings:confirm_extension_task' task.id %}" class="btn btn-outline-primary w-100 mb-2">
+                                        <i class="fas fa-check me-2"></i>Confirm Task
+                                    </a>
+                                {% elif task.verification_type == 'surveyor_inspection' %}
+                                    <a href="{% url 'listings:confirm_surveyor_task' task.id %}" class="btn btn-outline-primary w-100 mb-2">
+                                        <i class="fas fa-check me-2"></i>Confirm Task
+                                    </a>
+                                {% endif %}
+                            {% endif %}
                             {% if task.verification_type == 'extension_review' %}
                                 <a href="{% url 'listings:conduct_extension_review' task.id %}" class="btn btn-success w-100">
                                     <i class="fas fa-seedling me-2"></i>Open Extension Review

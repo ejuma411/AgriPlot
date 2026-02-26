@@ -1106,10 +1106,27 @@ class PlotVerificationStatusForm(forms.ModelForm):
         self.fields['current_stage'].choices = VerificationStatus.STAGES
 
 
+# ============ SUPPORT ============
+class SupportTicketForm(forms.ModelForm):
+    class Meta:
+        model = SupportTicket
+        fields = ['name', 'email', 'subject', 'message']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Your full name'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'you@example.com'}),
+            'subject': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Subject'}),
+            'message': forms.Textarea(attrs={'class': 'form-control', 'rows': 5, 'placeholder': 'Describe your issue...'}),
+        }
+
+
 # ============ LANDOWNER WIZARD FORMS ============
 class LandownerStep1Form(BaseUserRegistrationForm):
     """Step 1: Personal information"""
-    pass
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Remove phone from step 1 to avoid duplication (kept in step 2)
+        if 'phone' in self.fields:
+            self.fields.pop('phone')
 
 
 class LandownerStep2Form(forms.Form):
@@ -1143,11 +1160,39 @@ class LandownerStep3Form(forms.Form):
         widget=forms.FileInput(attrs={'class': 'form-control'}),
         help_text="Upload your KRA PIN certificate (PDF/Image)"
     )
-    land_photos = MultipleFileField(
-        required=True,
-        widget=MultipleFileInput(attrs={'class': 'form-control'}),
-        help_text="Upload up to 5 images (JPEG, PNG, WEBP, max 5MB each)"
+    title_deed = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={'class': 'form-control'}),
+        help_text="Upload land title deed (PDF/Image)"
     )
+    land_search = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={'class': 'form-control'}),
+        help_text="Upload official land search certificate (PDF/Image)"
+    )
+    lcb_consent = forms.FileField(
+        required=False,
+        widget=forms.FileInput(attrs={'class': 'form-control'}),
+        help_text="Optional: Upload LCB consent if applicable"
+    )
+
+    def clean(self):
+        cleaned = super().clean()
+        _validate_upload("National ID", cleaned.get('national_id'))
+        _validate_upload("KRA PIN", cleaned.get('kra_pin'))
+        _validate_upload("Title Deed", cleaned.get('title_deed'))
+        _validate_upload("Land Search", cleaned.get('land_search'))
+        _validate_upload("LCB Consent", cleaned.get('lcb_consent'))
+
+        missing = []
+        for field_name in ['national_id', 'kra_pin', 'title_deed', 'land_search']:
+            if not cleaned.get(field_name):
+                missing.append(field_name.replace('_', ' ').title())
+        if missing:
+            raise forms.ValidationError(
+                "Please upload all required documents: " + ", ".join(missing)
+            )
+        return cleaned
 
 
 class LandownerStep4Form(forms.Form):

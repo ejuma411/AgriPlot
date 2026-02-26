@@ -22,10 +22,23 @@ from django.conf import settings
 from django.conf.urls.static import static
 import listings.views
 
+class CustomLoginView(auth_views.LoginView):
+    template_name = 'auth/login.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        request = self.request
+        context['show_wizard_resume'] = any(
+            key.startswith("landownerwizard") or key.startswith("wizard_")
+            for key in request.session.keys()
+        )
+        return context
+
+
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('', include('listings.urls')),
-    path('login/', auth_views.LoginView.as_view(template_name='auth/login.html'), name='login'),
+    path('login/', CustomLoginView.as_view(), name='login'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

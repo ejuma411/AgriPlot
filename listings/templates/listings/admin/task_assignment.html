@@ -88,6 +88,51 @@
     </div>
 </div>
 
+<!-- Land Surveyors Summary -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-map-marked-alt me-2"></i>Available Land Surveyors
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <p class="text-muted mb-3">
+                    Land Surveyors verify boundaries, GPS coordinates, and land legality on site.
+                </p>
+                <div class="row">
+                    {% for surveyor in surveyors %}
+                    <div class="col-md-4 mb-3">
+                        <div class="officer-card">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="officer-avatar me-2">
+                                    {{ surveyor.user.get_full_name|default:surveyor.user.username|first|upper }}
+                                </div>
+                                <div>
+                                    <strong>{{ surveyor.user.get_full_name|default:surveyor.user.username }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ surveyor.designation }}</small>
+                                </div>
+                            </div>
+                            <div class="small">
+                                <div><i class="fas fa-map-marker-alt me-1"></i> Station: {{ surveyor.station }}</div>
+                                <div><i class="fas fa-globe me-1"></i> Counties: {{ surveyor.assigned_counties|join:", " }}</div>
+                                <div><i class="fas fa-tasks me-1"></i> Workload: {{ surveyor.current_workload }}/{{ surveyor.max_daily_tasks }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <p class="text-muted text-center">No active land surveyors found.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- Pending Tasks Queue -->
 <div class="admin-card mb-4">
@@ -107,6 +152,7 @@
                         <th>Plot</th>
                         <th>Location</th>
                         <th>Assignee</th>
+                        <th>Reason</th>
                         <th>Created</th>
                         <th>Actions</th>
                     </tr>
@@ -138,6 +184,9 @@
                         </td>
                         <td>
                             <span class="badge bg-secondary">Unassigned</span>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ task.unassigned_reason|default:"Awaiting assignment" }}</small>
                         </td>
                         <td>{{ task.assigned_at|timesince }} ago</td>
                         <td>
@@ -230,7 +279,7 @@
             <!-- Modal Header -->
             <div style="background: linear-gradient(135deg, #069132 0%, #047a29 100%); color: white; padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
                 <h5 style="margin: 0; font-size: 1.25rem; font-weight: 600;">
-                    <i class="fas fa-user-plus me-2"></i>Assign Extension Task
+                    <i class="fas fa-user-plus me-2"></i><span id="assignModalTitle">Assign Task</span>
                 </h5>
                 <button type="button" onclick="closeCustomModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
             </div>
@@ -248,13 +297,14 @@
                     <input type="hidden" name="task_id" id="customTaskIdInput">
                     
                     <div style="margin-bottom: 1.5rem;">
-                        <label for="customStaffSelect" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333;">
-                            <i class="fas fa-user-graduate me-1"></i> Select Extension Officer
+                        <label for="customStaffSelect" id="customStaffLabel" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333;">
+                            <i class="fas fa-user-graduate me-1"></i> Select Officer
                         </label>
                         <select id="customStaffSelect" required style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; background: white;">
-                            <option value="">-- Choose an Extension Officer --</option>
+                            <option value="">-- Choose an Officer --</option>
                             {% for officer in extension_officers %}
                                 <option value="{{ officer.user.id }}" 
+                                        data-role="extension"
                                         data-counties="{{ officer.assigned_counties|join:',' }}"
                                         data-station="{{ officer.station }}">
                                     {{ officer.user.get_full_name|default:officer.user.username }}
@@ -262,9 +312,27 @@
                                     ({{ officer.assigned_counties|length }} counties)
                                 </option>
                             {% endfor %}
+                            {% for surveyor in surveyors %}
+                                <option value="{{ surveyor.user.id }}" 
+                                        data-role="surveyor"
+                                        data-counties="{{ surveyor.assigned_counties|join:',' }}"
+                                        data-station="{{ surveyor.station }}">
+                                    {{ surveyor.user.get_full_name|default:surveyor.user.username }}
+                                    {% if surveyor.station %} - {{ surveyor.station }}{% endif %}
+                                    ({{ surveyor.assigned_counties|length }} counties)
+                                </option>
+                            {% endfor %}
+                            {% for staff in staff_users %}
+                                <option value="{{ staff.id }}"
+                                        data-role="staff"
+                                        data-counties=""
+                                        data-station="">
+                                    {{ staff.get_full_name|default:staff.username }} (Staff)
+                                </option>
+                            {% endfor %}
                         </select>
                         <small style="display: block; margin-top: 0.5rem; color: #6c757d;">
-                            <i class="fas fa-info-circle me-1"></i> Only showing verified, active extension officers
+                            <i class="fas fa-info-circle me-1"></i> Only showing verified, active officers
                         </small>
                     </div>
 
@@ -358,6 +426,7 @@
 // Simple modal functions - no Bootstrap dependencies
 let currentTaskId = null;
 let currentPlotCounty = null;
+let currentTaskType = null;
 
 function openCustomModal(taskId, taskType, plotTitle, plotCounty) {
     console.log('Opening modal for task:', taskId, 'County:', plotCounty);
@@ -365,24 +434,56 @@ function openCustomModal(taskId, taskType, plotTitle, plotCounty) {
     // Store current task ID and county
     currentTaskId = taskId;
     currentPlotCounty = plotCounty;
+    currentTaskType = (taskType || '').toLowerCase();
     
     // Set values
     document.getElementById('customTaskIdInput').value = taskId;
-    document.getElementById('customTaskType').textContent = taskType || 'Extension Review';
+    document.getElementById('customTaskType').textContent = taskType || 'Verification Task';
     document.getElementById('customPlotTitle').textContent = plotTitle || 'Unknown Plot';
     document.getElementById('customPlotCounty').textContent = plotCounty || 'Unknown County';
     
     // Show task info
     document.getElementById('customTaskInfo').style.display = 'block';
     
+    // Update modal title and label based on task type
+    const titleEl = document.getElementById('assignModalTitle');
+    const labelEl = document.getElementById('customStaffLabel');
+    if (currentTaskType.includes('survey')) {
+        titleEl.textContent = 'Assign Surveyor Task';
+        labelEl.innerHTML = '<i class="fas fa-map-marked-alt me-1"></i> Select Land Surveyor';
+    } else if (currentTaskType.includes('extension')) {
+        titleEl.textContent = 'Assign Extension Task';
+        labelEl.innerHTML = '<i class="fas fa-seedling me-1"></i> Select Extension Officer';
+    } else if (currentTaskType.includes('document')) {
+        titleEl.textContent = 'Assign Document Review';
+        labelEl.innerHTML = '<i class="fas fa-file-alt me-1"></i> Select Staff';
+    } else {
+        titleEl.textContent = 'Assign Task';
+        labelEl.innerHTML = '<i class="fas fa-user-graduate me-1"></i> Select Officer';
+    }
+
     // Reset and filter officers
     const select = document.getElementById('customStaffSelect');
     select.value = '';
     document.getElementById('officerDetails').style.display = 'none';
     
-    // Highlight officers that cover this county
+    // Filter by role and highlight officers that cover this county
     Array.from(select.options).forEach(option => {
         if (option.value) {
+            const role = option.dataset.role;
+            if (currentTaskType.includes('survey') && role !== 'surveyor') {
+                option.style.display = 'none';
+                return;
+            }
+            if (currentTaskType.includes('extension') && role !== 'extension') {
+                option.style.display = 'none';
+                return;
+            }
+            if (currentTaskType.includes('document') && role !== 'staff') {
+                option.style.display = 'none';
+                return;
+            }
+            option.style.display = '';
             const counties = option.dataset.counties ? option.dataset.counties.split(',') : [];
             if (counties.includes(plotCounty)) {
                 option.style.fontWeight = 'bold';
@@ -414,7 +515,7 @@ function assignTask() {
     }
     
     if (!userId) {
-        alert('Please select an extension officer');
+        alert('Please select an officer');
         return;
     }
     

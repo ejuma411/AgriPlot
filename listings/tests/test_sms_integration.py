@@ -1,13 +1,13 @@
 # listings/tests/test_sms_integration.py
 from django.test import TestCase
 from unittest.mock import patch, MagicMock
-from listings.services.sms_service import AfricaTalkingService
+from listings.services.sms_service import TextSMSService
 
 class SMSIntegrationTestCase(TestCase):
     """Integration tests for SMS service"""
     
     def setUp(self):
-        self.sms = AfricaTalkingService()
+        self.sms = TextSMSService()
         self.test_phone = "+254718810503"
     
     def test_phone_validation(self):
@@ -23,12 +23,12 @@ class SMSIntegrationTestCase(TestCase):
         with self.assertRaises(Exception):
             form.validate_phone("123")
     
-    @patch('requests.post')
+    @patch('requests.Session.post')
     def test_all_notification_types(self, mock_post):
         """Test all SMS notification types"""
         mock_response = MagicMock()
         mock_response.status_code = 201
-        mock_response.json.return_value = {'SMSMessageData': {'Message': 'Sent'}}
+        mock_response.json.return_value = {'responses': [{'respose-code': 200}]}
         mock_post.return_value = mock_response
         
         # Test OTP

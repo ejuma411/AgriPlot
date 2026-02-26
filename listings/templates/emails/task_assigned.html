@@ -61,6 +61,12 @@
             <p><strong>Location:</strong> {{ plot.county|default:plot.location }}</p>
             <p><strong>Assigned by:</strong> {{ assigned_by.get_full_name|default:assigned_by.username }}</p>
             <p><strong>Assigned at:</strong> {{ task.assigned_at|date:"F j, Y H:i" }}</p>
+            {% if confirm_by %}
+            <p><strong>Confirm by:</strong> {{ confirm_by|date:"F j, Y H:i" }}</p>
+            {% endif %}
+            {% if deadline_at %}
+            <p><strong>Submission deadline:</strong> {{ deadline_at|date:"F j, Y H:i" }}</p>
+            {% endif %}
         </div>
         
         <p>Please log in to review and complete this task.</p>

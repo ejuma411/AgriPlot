@@ -268,3 +268,35 @@ class AnalyticsService:
             'stalled_plots': stalled_plots,
             'health_score': health_score
         }
+
+    @staticmethod
+    def get_sla_metrics():
+        """Get SLA metrics for confirmation and submission deadlines."""
+        now = timezone.now()
+
+        confirm_overdue_qs = VerificationTask.objects.filter(
+            confirmation_status='pending',
+            confirm_by__lt=now,
+            assigned_to__isnull=False,
+            status='in_progress'
+        ).select_related('plot', 'assigned_to')
+
+        deadline_overdue_qs = VerificationTask.objects.filter(
+            status='in_progress',
+            deadline_at__lt=now
+        ).select_related('plot', 'assigned_to')
+
+        due_soon_qs = VerificationTask.objects.filter(
+            status='in_progress',
+            deadline_at__gte=now,
+            deadline_at__lte=now + timedelta(hours=24)
+        ).select_related('plot', 'assigned_to')
+
+        return {
+            'confirm_overdue_count': confirm_overdue_qs.count(),
+            'deadline_overdue_count': deadline_overdue_qs.count(),
+            'due_soon_count': due_soon_qs.count(),
+            'confirm_overdue_tasks': confirm_overdue_qs.order_by('confirm_by')[:10],
+            'deadline_overdue_tasks': deadline_overdue_qs.order_by('deadline_at')[:10],
+            'due_soon_tasks': due_soon_qs.order_by('deadline_at')[:10],
+        }

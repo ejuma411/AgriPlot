@@ -46,11 +46,15 @@ SECRET_KEY = (
     or get_random_secret_key()
 )
 
-# Africa's Talking SMS Configuration
-AT_USERNAME = os.environ.get('AT_USERNAME', 'sandbox')  # Use 'sandbox' for testing
-AT_API_KEY = os.environ.get('AT_API_KEY', 'your-api-key')
-AT_SENDER_ID = os.environ.get('AT_SENDER_ID', 'AgriPlot')  # Your approved sender ID
-AT_SANDBOX = True  # Set to False for production
+# TextSMS Configuration
+TEXTSMS_PARTNER_ID = os.environ.get('TEXTSMS_PARTNER_ID', '')
+TEXTSMS_API_KEY = os.environ.get('TEXTSMS_API_KEY', '')
+TEXTSMS_SENDER_ID = os.environ.get('TEXTSMS_SENDER_ID', 'AgriPlot')
+# Default to official TextSMS send endpoint unless overridden in .env
+TEXTSMS_API_URL = os.environ.get(
+    'TEXTSMS_API_URL',
+    'https://sms.textsms.co.ke/api/services/sendsms/'
+)
 
 # Never use wildcard hosts. Override via DJANGO_ALLOWED_HOSTS in deployed envs.
 ALLOWED_HOSTS = _env_csv("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1,testserver")

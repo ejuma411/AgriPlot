@@ -1,33 +1,15 @@
-{% extends "auth/auth_split.html" %}
+{% extends "auth/auth_base.html" %}
+{% block title %}Register Landowner{% endblock %}
 
-{% block info_panel %}
-<h1>Register as a Landowner</h1>
-<p>Create your AgriPlot landowner profile and submit verification documents.</p>
-
-<ul class="info-list">
-    <li>✔ List your plots for sale or lease</li>
-    <li>✔ Track verification progress</li>
-    <li>✔ Receive buyer inquiries directly</li>
-</ul>
-
-<h3>Required Documents</h3>
-<ul class="info-list">
-    <li>📧 Valid email for OTP verification</li>
-    <li>📄 National ID copy</li>
-    <li>🧾 KRA PIN certificate</li>
-    <li>📜 Title deed</li>
-    <li>🔎 Official land search certificate</li>
-</ul>
-{% endblock %}
-
-{% block form_panel %}
+{% block content %}
 <h2>Create Landowner Account</h2>
+<p class="text-muted">Submit landowner documents for verification.</p>
 
-<form method="POST" enctype="multipart/form-data">
+<form method="POST" enctype="multipart/form-data" class="portal-form">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
-    <div class="alert alert-danger">
+    <div class="portal-alert alert-error">
         {% for error in form.non_field_errors %}
             {{ error }}
         {% endfor %}
@@ -37,14 +19,14 @@
     {% for field in form %}
         <div class="form-group">
             <label>{{ field.label }}</label>
-            {{ field }}
             {% if field.help_text %}
-                <small class="text-muted d-block">{{ field.help_text }}</small>
+                <div class="small text-muted">{{ field.help_text }}</div>
             {% endif %}
+            {{ field }}
             <small class="text-error">{{ field.errors }}</small>
         </div>
     {% endfor %}
 
-    <button class="btn-auth">Submit for Verification</button>
+    <button class="portal-btn">Submit for Verification</button>
 </form>
 {% endblock %}

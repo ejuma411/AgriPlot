@@ -295,11 +295,19 @@ def review_plot(request, plot_id):
             return redirect('listings:verification_queue')
             
         elif action == 'reject':
-            verification.current_stage = 'rejected'
-            verification.rejected_at = timezone.now()
-            verification.stage_details['rejection_reason'] = notes
+            verification.current_stage = 'document_uploaded'
+            verification.stage_details['admin_rejection_reason'] = notes
             verification.stage_details['rejected_by'] = request.user.username
             verification.save()
+
+            # Send back to extension officer for re-check
+            ext_task, created = VerificationTask.objects.get_or_create(
+                plot=plot,
+                verification_type='extension_review',
+                defaults={'status': 'pending'}
+            )
+            if created:
+                VerificationService.assign_extension_task(ext_task.id, assigned_by=request.user)
             
             VerificationLog.objects.create(
                 plot=plot,
@@ -308,13 +316,7 @@ def review_plot(request, plot_id):
                 comment=f"Plot rejected. Reason: {notes}"
             )
 
-            try:
-                from .notification_service import NotificationService
-                NotificationService.notify_plot_final_status(plot, 'rejected', request.user, notes)
-            except Exception as e:
-                logger.error(f"Plot rejection notification failed: {e}")
-            
-            messages.warning(request, f"Plot '{plot.title}' has been rejected.")
+            messages.warning(request, f"Plot '{plot.title}' sent back to Extension Officer for review.")
             return redirect('listings:verification_queue')
             
         elif action == 'request_changes':
@@ -402,12 +404,36 @@ def task_assignment(request):
         status='in_progress'
     ).select_related('plot', 'assigned_to').order_by('-assigned_at')
     
-    # Get EXTENSION OFFICERS instead of all staff
-    from .models import ExtensionOfficer
+    # Get EXTENSION OFFICERS and SURVEYORS
+    from .models import ExtensionOfficer, LandSurveyor
     extension_officers = ExtensionOfficer.objects.filter(
         is_active=True,
         verified=True
     ).select_related('user')
+    surveyors = LandSurveyor.objects.filter(
+        is_active=True,
+        verified=True
+    ).select_related('user')
+    staff_users = User.objects.filter(is_staff=True)
+
+    # Add unassigned reasons for pending tasks
+    for task in pending_tasks:
+        reason = "Awaiting manual assignment"
+        if task.confirmation_status == 'expired':
+            reason = "Assignment expired (not confirmed within 12 hours)"
+        if not task.plot.county:
+            reason = "Missing plot county"
+        elif task.verification_type == 'extension_review':
+            available = [o for o in extension_officers if task.plot.county in (o.assigned_counties or [])]
+            if not available:
+                reason = f"No verified extension officer for {task.plot.county}"
+        elif task.verification_type == 'surveyor_inspection':
+            available = [s for s in surveyors if task.plot.county in (s.assigned_counties or [])]
+            if not available:
+                reason = f"No verified land surveyor for {task.plot.county}"
+        elif task.verification_type == 'document_review':
+            reason = "Awaiting admin assignment"
+        task.unassigned_reason = reason
     
     # Get workload statistics
     workload = []
@@ -443,6 +469,8 @@ def task_assignment(request):
         'pending_tasks': pending_tasks,
         'in_progress_tasks': in_progress_tasks,
         'extension_officers': extension_officers,  # Pass only extension officers
+        'surveyors': surveyors,
+        'staff_users': staff_users,
         'workload': workload,
         'task_stats': task_stats,
         'page_title': 'Task Assignment'
@@ -567,6 +595,7 @@ def my_tasks(request):
     context = {
         'my_tasks': my_tasks,
         'completed_tasks': completed_tasks,
+        'pending_in_area': None,
         'page_title': 'My Tasks'
     }
     
@@ -672,6 +701,7 @@ def analytics_dashboard(request):
     task_breakdown = AnalyticsService.get_task_breakdown()
     county_stats = AnalyticsService.get_county_statistics()
     system_health = AnalyticsService.get_system_health()
+    sla_metrics = AnalyticsService.get_sla_metrics()
     
     # Convert timeline to JSON for Chart.js
     import json
@@ -685,6 +715,7 @@ def analytics_dashboard(request):
         'task_breakdown': task_breakdown,
         'county_stats': county_stats,
         'system_health': system_health,
+        'sla_metrics': sla_metrics,
         'days': days,
         'page_title': 'Analytics Dashboard'
     }

@@ -126,5 +126,45 @@
     "evidence": "listings/templates/listings/admin/system_construction_journal.html, listings/templates/listings/admin/base_admin.html, listings/data/system_construction_journal.json",
     "status": "Done",
     "next_step": "Add export/print option for journal"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "Support tickets",
+    "work_done": "Added support ticket model, form, email notifications, and contact support form submission",
+    "evidence": "listings/models.py, listings/forms.py, listings/views.py, listings/templates/listings/contact_support.html, listings/templates/emails/support_ticket_*",
+    "status": "Done",
+    "next_step": "Add ticket status update UI for admins"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "Notification inbox & timelines",
+    "work_done": "Added notifications inbox page and verification timeline in plot verification detail",
+    "evidence": "listings/views.py, listings/templates/listings/dashboard/notifications.html, listings/templates/listings/dashboard/plot_verification_detail.html",
+    "status": "Done",
+    "next_step": "Add filters and per-type notification views"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "SMS logging",
+    "work_done": "Logged outbound SMS responses and added admin views for SMS logs",
+    "evidence": "listings/models.py, listings/services/sms_service.py, listings/admin.py",
+    "status": "Done",
+    "next_step": "Add delivery status reconciliation if provider supports callbacks"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "SLA maintenance",
+    "work_done": "Added combined SLA runner for escalation + reminders",
+    "evidence": "listings/management/commands/run_sla_tasks.py",
+    "status": "Done",
+    "next_step": "Schedule run_sla_tasks via cron/systemd"
+  },
+  {
+    "date": "2026-02-26",
+    "module": "Officer workload visibility",
+    "work_done": "Added pending tasks count per officer area in dashboards",
+    "evidence": "listings/views_extension.py, listings/templates/listings/admin/my_tasks.html",
+    "status": "Done",
+    "next_step": "Add pending task details view for admins"
   }
 ]

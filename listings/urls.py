@@ -28,6 +28,7 @@ urlpatterns = [
     path("register-choice/", views.register_choice, name="register_choice"),
     path("register/buyer/", views.register_buyer, name="register_buyer"),
     path("register/landowner/simple/", views.register_landowner_simple, name="register_landowner_simple"),
+    path("register/landowner/upgrade/", views.register_landowner, name="register_landowner_upgrade"),
     path("register/landowner/", LandownerWizard.as_view(views.FORMS), name="register_landowner"),
     path(
         "register/landowner/success/",
@@ -67,6 +68,7 @@ urlpatterns = [
     path("dashboard/interests/", views.buyer_interests, name="buyer_interests"),
     path("dashboard/interest/<int:interest_id>/update/", views.update_interest_status, name="update_interest_status"),
     path("dashboard/profile/", views.profile_management, name="profile_management"),
+    path("dashboard/notifications/", views.notifications_inbox, name="notifications_inbox"),
     path("dashboard/analytics/", views.dashboard_analytics, name="dashboard_analytics"),
     path("dashboard/plot/<int:plot_id>/upload-document/", views.upload_verification_doc, name="dashboard_upload_doc"),
     path("verification-progress/", views.verification_progress, name="verification_progress"),
@@ -109,6 +111,7 @@ urlpatterns = [
         include(
             [
                 path("", views_extension.extension_dashboard, name="extension_dashboard"),
+                path("confirm/<int:task_id>/", views_extension.confirm_task, name="confirm_extension_task"),
                 path("review/<int:task_id>/", views_extension.conduct_extension_review, name="conduct_extension_review"),
                 path("report/<int:report_id>/", views_extension.view_extension_report, name="view_extension_report"),
             ]
@@ -121,6 +124,7 @@ urlpatterns = [
         include(
             [
                 path("", views_extension.surveyor_dashboard, name="surveyor_dashboard"),
+                path("confirm/<int:task_id>/", views_extension.confirm_task, name="confirm_surveyor_task"),
                 path("review/<int:task_id>/", views_extension.conduct_surveyor_inspection, name="conduct_surveyor_inspection"),
                 path("report/<int:report_id>/", views_extension.view_surveyor_report, name="view_surveyor_report"),
             ]

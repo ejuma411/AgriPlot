@@ -4,161 +4,204 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - AgriPlot Connect</title>
-    
-    <!-- Font Awesome for icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <title>AgriPlot Connect</title>
     <link rel="stylesheet" href="{% static 'css/auth.css' %}">
 </head>
 <body class="auth-body">
-    <div class="auth-wrapper">
-        <div class="auth-container">
-            <!-- LEFT SIDE - Branding & Features -->
-            <div class="auth-left">
-                <div class="brand-content">
-                    <div class="brand-icon">
-                        <i class="fas fa-leaf"></i>
-                    </div>
-                    <h1 class="brand-title">AgriPlot</h1>
-                    <p class="brand-tagline">Kenya's Premier Agricultural Land Marketplace</p>
-                    
-                    <div class="feature-list">
-                        <div class="feature-item">
-                            <i class="fas fa-check-circle"></i>
-                            <span>Verified agricultural land listings</span>
-                        </div>
-                        <div class="feature-item">
-                            <i class="fas fa-check-circle"></i>
-                            <span>Real-time soil analytics</span>
-                        </div>
-                        <div class="feature-item">
-                            <i class="fas fa-check-circle"></i>
-                            <span>Secure document verification</span>
-                        </div>
-                        <div class="feature-item">
-                            <i class="fas fa-check-circle"></i>
-                            <span>Direct connection with sellers</span>
-                        </div>
-                    </div>
-                    
-                    <div class="testimonial">
-                        <p>"Found my ideal farm in just 3 days. The verification process gave me confidence."</p>
-                        <span>- James K., Kiambu</span>
-                    </div>
+    <div class="portal-wrapper">
+        <div class="portal-card">
+            <div class="portal-logo">
+                <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot" class="portal-logo-img" />
+            </div>
+            <hr class="portal-divider" />
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="portal-alert alert-{{ message.tags }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST" class="portal-form" id="loginForm">
+                {% csrf_token %}
+
+                <label for="username">Username or Email</label>
+                <input type="text" id="username" name="username" required autofocus />
+
+                <label for="password">Password</label>
+                <div class="password-wrap">
+                    <input type="password" id="password" name="password" required />
+                    <button type="button" class="password-toggle" onclick="togglePassword()">Show</button>
+                </div>
+
+                <div class="portal-options">
+                    <label class="portal-remember">
+                        <input type="checkbox" name="remember_me">
+                        Remember me
+                    </label>
+                </div>
+
+                <button type="submit" class="portal-btn">Log In</button>
+            </form>
+
+            <div class="portal-links">
+                <a href="{% url 'listings:password_reset' %}">Forgot your password?</a>
+            </div>
+
+            {% if show_wizard_resume %}
+            <div class="resume-banner">
+                <strong>Resume your landowner registration</strong>
+                <a href="{% url 'listings:register_landowner' %}" class="portal-link-btn">Resume</a>
+            </div>
+            {% endif %}
+
+            <div class="portal-signup">
+                <span>Don't have an account?</span>
+                <div class="portal-signup-links">
+                    <a href="{% url 'listings:register_buyer' %}">Buyer</a>
+                    <a href="{% url 'listings:register_landowner' %}">Landowner</a>
+                    <a href="{% url 'listings:register_agent' %}">Agent</a>
                 </div>
             </div>
 
-            <!-- RIGHT SIDE - Login Form -->
-            <div class="auth-right">
-                <div class="form-header">
-                    <h2>Welcome Back! 👋</h2>
-                    <p>Login to access your account</p>
-                </div>
-
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-{{ message.tags }}">
-                            <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'error' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                {% endif %}
-
-                <form method="POST" class="auth-form" id="loginForm">
-                    {% csrf_token %}
-                    
-                    <div class="form-group">
-                        <label for="username">
-                            <i class="fas fa-user"></i>
-                            Username or Email
-                        </label>
-                        <input type="text" 
-                               id="username" 
-                               name="username" 
-                               placeholder="Enter your username or email"
-                               required 
-                               autofocus>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="password">
-                            <i class="fas fa-lock"></i>
-                            Password
-                        </label>
-                        <div class="password-input-wrapper">
-                            <input type="password" 
-                                   id="password" 
-                                   name="password" 
-                                   placeholder="Enter your password"
-                                   required>
-                            <button type="button" class="password-toggle" onclick="togglePassword()">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="form-options">
-                        <label class="checkbox-container">
-                            <input type="checkbox" name="remember_me">
-                            <span class="checkmark"></span>
-                            Remember me
-                        </label>
-                        <a href="{% url 'listings:password_reset' %}" class="forgot-link">Forgot Password?</a>
-                    </div>
-
-                    <button type="submit" class="btn-auth">
-                        <i class="fas fa-sign-in-alt"></i>
-                        Login
-                    </button>
-                </form>
-
-                <div class="auth-footer">
-                    <p>Don't have an account?</p>
-                    <div class="signup-options">
-                        <a href="{% url 'listings:register_buyer' %}" class="signup-link buyer">
-                            <i class="fas fa-user"></i>
-                            Sign up as Buyer
-                        </a>
-                        <a href="{% url 'listings:register_landowner' %}" class="signup-link landowner">
-                            <i class="fas fa-tractor"></i>
-                            Landowner
-                        </a>
-                        <a href="{% url 'listings:register_agent' %}" class="signup-link agent">
-                            <i class="fas fa-handshake"></i>
-                            Agent
-                        </a>
-                    </div>
-                </div>
-            </div>
+            <div class="portal-footer">© AgriPlot Connect</div>
         </div>
     </div>
 
+    <style>
+        body.auth-body {
+            background: #f5f5f5;
+        }
+        .portal-wrapper {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .portal-card {
+            width: 380px;
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 24px 26px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+        .portal-logo {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .portal-logo-img {
+            width: 90px;
+            height: 90px;
+            object-fit: contain;
+        }
+        .portal-divider {
+            margin: 10px 0 18px;
+        }
+        .portal-form label {
+            display: block;
+            margin: 10px 0 6px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .portal-form input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 2px;
+        }
+        .password-wrap {
+            position: relative;
+        }
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #0f5132;
+        }
+        .portal-options {
+            margin: 10px 0;
+        }
+        .portal-btn {
+            width: 100%;
+            background: #1f8b4c;
+            color: #fff;
+            border: none;
+            padding: 10px;
+            margin-top: 6px;
+            cursor: pointer;
+        }
+        .portal-links {
+            margin-top: 10px;
+            text-align: center;
+        }
+        .portal-links a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .portal-alert {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+            font-size: 0.85rem;
+        }
+        .portal-footer {
+            margin-top: 14px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .portal-signup {
+            margin-top: 12px;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+        .portal-signup-links {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 6px;
+        }
+        .portal-signup-links a {
+            color: #1f8b4c;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .resume-banner {
+            margin-top: 12px;
+            padding: 8px 10px;
+            border: 1px dashed #94a3b8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        .portal-link-btn {
+            background: #1f8b4c;
+            color: #fff;
+            padding: 6px 10px;
+            text-decoration: none;
+            border-radius: 2px;
+        }
+    </style>
     <script>
         function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const toggleBtn = document.querySelector('.password-toggle i');
-            
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                toggleBtn.classList.remove('fa-eye');
-                toggleBtn.classList.add('fa-eye-slash');
+            const input = document.getElementById('password');
+            const btn = document.querySelector('.password-toggle');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = 'Hide';
             } else {
-                passwordInput.type = 'password';
-                toggleBtn.classList.remove('fa-eye-slash');
-                toggleBtn.classList.add('fa-eye');
+                input.type = 'password';
+                btn.textContent = 'Show';
             }
         }
-
-        // Add loading state on form submit
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            const submitBtn = this.querySelector('.btn-auth');
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Logging in...';
-            submitBtn.disabled = true;
-        });
     </script>
 </body>
 </html>

@@ -12,7 +12,7 @@ from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.conf import settings
 from django.core.files.base import File
-from .services.sms_service import AfricaTalkingService
+from .services.sms_service import TextSMSService
 from .models import User, Profile, PhoneOTP, EmailOTP, LandownerProfile, Agent, PhoneEmailVerification
 from .forms import OTPVerificationForm
 import logging
@@ -63,7 +63,7 @@ def send_otp_verification(request):
 
     sms_ok = True
     if otp_provider in ("sms", "both"):
-        sms = AfricaTalkingService()
+        sms = TextSMSService()
         result = sms.send_otp(phone, otp)
         sms_ok = bool(result.get('success'))
         if not sms_ok:
@@ -166,6 +166,8 @@ def verify_otp(request):
             profile.phone = phone
             profile.phone_verified = (otp_provider in ("sms", "both"))
             profile.email_verified = (otp_provider in ("email", "both"))
+            if reg_data.get('address'):
+                profile.address = reg_data.get('address')
             profile.save()
 
             PhoneEmailVerification.objects.get_or_create(
@@ -226,6 +228,11 @@ def verify_otp(request):
             target_role = request.session.get('reg_target_role')
             session_keys = ['reg_phone', 'reg_data', 'reg_files', 'reg_target_role']
             for key in session_keys:
+                if key in request.session:
+                    del request.session[key]
+            # Clear wizard session data if any
+            wizard_keys = [k for k in request.session.keys() if k.startswith('landownerwizard')]
+            for key in wizard_keys:
                 if key in request.session:
                     del request.session[key]
 
@@ -317,7 +324,7 @@ def resend_otp(request):
 
         sms_ok = True
         if otp_provider in ("sms", "both"):
-            sms = AfricaTalkingService()
+            sms = TextSMSService()
             result = sms.send_otp(phone, otp)
             sms_ok = bool(result.get('success'))
 

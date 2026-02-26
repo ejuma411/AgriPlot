@@ -1,45 +1,24 @@
-{% extends "auth/auth_split.html" %}
+{% extends "auth/auth_base.html" %}
+{% block title %}Register Buyer{% endblock %}
 
-{% block info_panel %}
-
-<h1>Buy Agricultural Land on AgriPlot</h1>
-
-<p>Register as a buyer to explore and purchase verified farmland listings.</p>
-
-<ul class="info-list">
-    <li>✔ Access verified land listings nationwide</li>
-    <li>✔ Save favorite plots for future consideration</li>
-    <li>✔ Contact sellers directly</li>
-    <li>✔ Receive notifications on new listings</li>
-</ul>
-
-<h3>What You Will Need</h3>
-
-<ul class="info-list">
-    <li>📧 Valid email for OTP verification</li>
-    <li>📄 Valid identification (for verification)</li>
-    <li>📍 Preferred location or region</li>
-    <li>💰 Budget range for plots</li>
-</ul>
-
-{% endblock %}
-
-{% block form_panel %}
-
+{% block content %}
 <h2>Create Buyer Account</h2>
+<p class="text-muted">Register as a buyer to explore verified farmland listings.</p>
 
-<form method="POST">
+<form method="POST" class="portal-form">
     {% csrf_token %}
 
     {% for field in form %}
         <div class="form-group">
             <label>{{ field.label }}</label>
+            {% if field.help_text %}
+                <div class="small text-muted">{{ field.help_text }}</div>
+            {% endif %}
             {{ field }}
             <small class="text-error">{{ field.errors }}</small>
         </div>
     {% endfor %}
 
-    <button class="btn-auth">Register Buyer</button>
+    <button class="portal-btn">Register Buyer</button>
 </form>
-
 {% endblock %}

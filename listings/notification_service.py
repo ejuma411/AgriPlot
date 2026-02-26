@@ -7,7 +7,7 @@ from django.conf import settings
 from django.urls import reverse
 from django.utils import timezone
 
-from listings.services.sms_service import AfricaTalkingService
+from listings.services.sms_service import TextSMSService
 from .models import Notification, EmailLog, User, Plot, VerificationTask
 import logging
 from django.db import models
@@ -142,7 +142,9 @@ class NotificationService:
                     'login_url': settings.SITE_URL + reverse('listings:my_tasks'),
                     'site_name': 'AgriPlot Connect',
                     'task_type': task_type_display,
-                    'assigned_at': timezone.now().strftime("%Y-%m-%d %H:%M")
+                    'assigned_at': timezone.now().strftime("%Y-%m-%d %H:%M"),
+                    'confirm_by': task.confirm_by,
+                    'deadline_at': task.deadline_at
                 }
                 
                 NotificationService.send_email(
@@ -154,20 +156,10 @@ class NotificationService:
             except Exception as e:
                 logger.error(f"Failed to send task assignment email: {str(e)}")
 
-        # In notify_task_assigned method, add:
-        if task.assigned_to.profile and task.assigned_to.profile.phone:
-            sms = AfricaTalkingService()
-            sms.send_task_assigned(
-                task.assigned_to.profile.phone,
-                task.assigned_to.get_full_name() or task.assigned_to.username,
-                task.plot.title
-            )
-        
         # Send SMS if phone number available (optional)
         if hasattr(task.assigned_to, 'profile') and task.assigned_to.profile.phone:
             try:
-                from .services.sms_service import AfricaTalkingService
-                sms = AfricaTalkingService()
+                sms = TextSMSService()
                 sms.send_task_assigned(
                     task.assigned_to.profile.phone,
                     task.assigned_to.get_full_name() or task.assigned_to.username,
@@ -212,7 +204,7 @@ class NotificationService:
         
         logger.info(f"Task assignment notifications sent for task {task.id} to {task.assigned_to.username}")
 
-    from .services.sms_service import AfricaTalkingService   
+    from .services.sms_service import TextSMSService   
     @staticmethod
     def notify_task_completed(task, completed_by):
         """Send notifications when a task is completed"""
@@ -429,6 +421,60 @@ class NotificationService:
         )
 
     @staticmethod
+    def notify_admin_no_officer(plot, role_label, county):
+        admins = User.objects.filter(is_superuser=True)
+        for admin in admins:
+            NotificationService.create_notification(
+                user=admin,
+                notification_type='no_officer_available',
+                title=f"No {role_label} Available",
+                message=f"No verified {role_label.lower()} available for {county}. Plot '{plot.title}' needs manual assignment.",
+                plot=plot
+            )
+            if admin.email:
+                NotificationService.send_email(
+                    recipient=admin.email,
+                    subject=f"No {role_label} Available for {county}",
+                    template='no_officer_available',
+                    context={
+                        'admin': admin,
+                        'plot': plot,
+                        'role_label': role_label,
+                        'county': county,
+                        'review_url': settings.SITE_URL + reverse('listings:task_assignment')
+                    }
+                )
+
+    @staticmethod
+    def notify_admin_task_unconfirmed(task):
+        """Notify superusers when an assigned task was not confirmed in time."""
+        admins = User.objects.filter(is_superuser=True)
+        for admin in admins:
+            NotificationService.create_notification(
+                user=admin,
+                notification_type='task_unconfirmed',
+                title="Task Confirmation Expired",
+                message=(
+                    f"{task.get_verification_type_display()} for plot '{task.plot.title}' "
+                    "was not confirmed within 12 hours and has been unassigned."
+                ),
+                plot=task.plot,
+                task=task
+            )
+            if admin.email:
+                NotificationService.send_email(
+                    recipient=admin.email,
+                    subject="Task Confirmation Expired",
+                    template='task_unconfirmed_escalation',
+                    context={
+                        'admin': admin,
+                        'task': task,
+                        'plot': task.plot,
+                        'review_url': settings.SITE_URL + reverse('listings:task_assignment')
+                    }
+                )
+
+    @staticmethod
     def notify_role_request(user, role, details=None):
         """Notify user and admins when a role request is submitted."""
         details = details or {}
@@ -491,28 +537,28 @@ class NotificationService:
             read_at=timezone.now()
         )
 
-@staticmethod
-def notify_account_verified(user, verified_by):
-    """Send notification when account is verified"""
-    title = "Account Verified! 🎉"
-    message = f"Your account has been verified by {verified_by.get_full_name()}. You can now list plots."
-    
-    NotificationService.create_notification(
-        user=user,
-        notification_type='account_verified',
-        title=title,
-        message=message
-    )
-    
-    context = {
-        'user': user,
-        'verified_by': verified_by,
-        'login_url': settings.SITE_URL + reverse('listings:staff_dashboard')
-    }
-    
-    NotificationService.send_email(
-        recipient=user.email,
-        subject=title,
-        template='account_verified',
-        context=context
-    )
+    @staticmethod
+    def notify_account_verified(user, verified_by):
+        """Send notification when account is verified"""
+        title = "Account Verified! 🎉"
+        message = f"Your account has been verified by {verified_by.get_full_name()}. You can now list plots."
+
+        NotificationService.create_notification(
+            user=user,
+            notification_type='account_verified',
+            title=title,
+            message=message
+        )
+
+        context = {
+            'user': user,
+            'verified_by': verified_by,
+            'login_url': settings.SITE_URL + reverse('listings:staff_dashboard')
+        }
+
+        NotificationService.send_email(
+            recipient=user.email,
+            subject=title,
+            template='account_verified',
+            context=context
+        )

@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.utils import NotSupportedError
 from .models import *
 from .notification_service import *
+from .services.sms_service import TextSMSService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,8 @@ class VerificationService:
         task.assigned_to = assigned_to_user
         task.status = 'in_progress'
         task.assigned_at = timezone.now()
+        task.confirm_by = timezone.now() + timezone.timedelta(hours=12)
+        task.deadline_at = timezone.now() + timezone.timedelta(days=3)
         task.save()
 
         VerificationLog.objects.create(
@@ -68,7 +71,7 @@ class VerificationService:
         # Send SMS notification
         try:
             if assigned_to_user.profile and assigned_to_user.profile.phone:
-                sms = AfricaTalkingService()
+                sms = TextSMSService()
                 sms.send_task_assigned(
                     phone_number=assigned_to_user.profile.phone,
                     officer_name=assigned_to_user.get_full_name() or assigned_to_user.username,
@@ -129,6 +132,10 @@ class VerificationService:
             return VerificationService.assign_task(task_id, best_officer, effective_assigner)
         
         logger.warning(f"No available extension officers for plot {plot.id} (county={plot.county})")
+        try:
+            NotificationService.notify_admin_no_officer(plot, 'Extension Officer', plot.county)
+        except Exception:
+            pass
         return None
 
     @staticmethod
@@ -178,35 +185,19 @@ class VerificationService:
             return VerificationService.assign_task(task_id, best_surveyor, effective_assigner)
 
         logger.warning(f"No available surveyors for plot {plot.id} (county={plot.county})")
+        try:
+            NotificationService.notify_admin_no_officer(plot, 'Land Surveyor', plot.county)
+        except Exception:
+            pass
         return None
 
     @staticmethod
     def after_api_verification(plot, assigned_by=None):
         """
         After API verification succeeds, assign the next role in the chain.
-        Agricultural: Extension Officer first, then Surveyor after extension approval.
-        Non-agricultural: Surveyor directly.
+        Surveyor first, then Extension Officer for agricultural plots.
         """
         logger.info(f"Post-API assignment start for plot {plot.id} (land_type={plot.land_type})")
-        if plot.land_type == 'agricultural':
-            ext_task, created = VerificationTask.objects.get_or_create(
-                plot=plot,
-                verification_type='extension_review',
-                defaults={'status': 'pending'}
-            )
-            if created:
-                logger.info(f"Created extension_review task for plot {plot.id}")
-                VerificationLog.objects.create(
-                    plot=plot,
-                    verified_by=assigned_by,
-                    verification_type='task_created',
-                    comment="Extension review task created after API verification."
-                )
-                VerificationService.assign_extension_task(ext_task.id, assigned_by=assigned_by)
-            else:
-                logger.info(f"extension_review task already exists for plot {plot.id}")
-            return ext_task
-
         survey_task, created = VerificationTask.objects.get_or_create(
             plot=plot,
             verification_type='surveyor_inspection',
@@ -275,18 +266,55 @@ class VerificationService:
         except Exception as e:
             logger.error(f"Task completion notification failed: {e}")
 
-        # If extension review approved, auto-create and assign surveyor task
-        if task.verification_type == 'extension_review' and approved:
-            logger.info(f"Extension review approved for plot {task.plot.id}; creating surveyor task")
-            survey_task, created = VerificationTask.objects.get_or_create(
-                plot=task.plot,
-                verification_type='surveyor_inspection',
-                defaults={'status': 'pending'}
-            )
-            if created:
-                VerificationService.assign_surveyor_task(survey_task.id, assigned_by=completed_by)
+        # Handoff logic based on task type and outcome
+        if task.verification_type == 'surveyor_inspection':
+            if approved:
+                if task.plot.land_type == 'agricultural':
+                    ext_task, created = VerificationTask.objects.get_or_create(
+                        plot=task.plot,
+                        verification_type='extension_review',
+                        defaults={'status': 'pending'}
+                    )
+                    if created:
+                        logger.info(f"Created extension_review task for plot {task.plot.id} after surveyor approval")
+                    # Always attempt assignment if task is pending/unassigned
+                    if ext_task.status == 'pending' or ext_task.assigned_to is None:
+                        assigned = VerificationService.assign_extension_task(
+                            ext_task.id,
+                            assigned_by=completed_by
+                        )
+                        if not assigned:
+                            VerificationLog.objects.create(
+                                plot=task.plot,
+                                verified_by=completed_by,
+                                verification_type='assignment_pending',
+                                comment=(
+                                    "Extension review task pending assignment. "
+                                    "No available officer or missing county."
+                                )
+                            )
+                # Non-agricultural goes to admin review later
             else:
-                logger.info(f"Surveyor task already exists for plot {task.plot.id}")
+                content_type = ContentType.objects.get_for_model(Plot)
+                verification = VerificationStatus.objects.filter(
+                    content_type=content_type,
+                    object_id=task.plot.id
+                ).first()
+                if verification:
+                    verification.update_stage('rejected', {
+                        'rejection_reason': notes or 'Surveyor rejected the plot',
+                        'completed_by': completed_by.username
+                    })
+        elif task.verification_type == 'extension_review':
+            if not approved:
+                # Send back to surveyor for re-check
+                survey_task, created = VerificationTask.objects.get_or_create(
+                    plot=task.plot,
+                    verification_type='surveyor_inspection',
+                    defaults={'status': 'pending'}
+                )
+                if created:
+                    VerificationService.assign_surveyor_task(survey_task.id, assigned_by=completed_by)
         
         # Check if all tasks are done
         all_completed = VerificationService.check_plot_completion(task.plot)
@@ -311,7 +339,7 @@ class VerificationService:
             has_rejections = VerificationTask.objects.filter(
                 plot=task.plot,
                 approved=False
-            ).exists()
+            ).exclude(verification_type='extension_review').exists()
             
             if has_rejections:
                 verification.update_stage('rejected', {

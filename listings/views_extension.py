@@ -42,6 +42,14 @@ def extension_dashboard(request):
     
     # Get pending tasks in officer's counties
     pending_in_area = 0
+    if officer:
+        assigned_counties = officer.assigned_counties or []
+        if assigned_counties:
+            pending_in_area = VerificationTask.objects.filter(
+                status='pending',
+                verification_type='extension_review',
+                plot__county__in=assigned_counties
+            ).count()
     
     context = {
         'officer': officer,
@@ -150,6 +158,23 @@ def view_extension_report(request, report_id):
 
 
 @login_required
+def confirm_task(request, task_id):
+    """Confirm an assigned task within the required window."""
+    task = get_object_or_404(VerificationTask, id=task_id, assigned_to=request.user)
+    if task.confirmation_status == 'confirmed':
+        messages.info(request, "Task already confirmed.")
+        return redirect('listings:my_tasks')
+    if task.confirm_by and timezone.now() > task.confirm_by:
+        messages.error(request, "Confirmation window expired. Please contact admin.")
+        return redirect('listings:my_tasks')
+    task.confirmation_status = 'confirmed'
+    task.confirmed_at = timezone.now()
+    task.save(update_fields=['confirmation_status', 'confirmed_at'])
+    messages.success(request, "Task confirmed. Please complete it before the deadline.")
+    return redirect('listings:my_tasks')
+
+
+@login_required
 def surveyor_dashboard(request):
     """Dashboard for land surveyors"""
     try:
@@ -177,6 +202,14 @@ def surveyor_dashboard(request):
     ).select_related('plot').order_by('-completed_at')[:10]
 
     pending_in_area = 0
+    if surveyor:
+        assigned_counties = surveyor.assigned_counties or []
+        if assigned_counties:
+            pending_in_area = VerificationTask.objects.filter(
+                status='pending',
+                verification_type='surveyor_inspection',
+                plot__county__in=assigned_counties
+            ).count()
 
     context = {
         'surveyor': surveyor,

@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Notifications - AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">Notifications</h3>
+            <p class="text-muted mb-0">You have {{ unread_count }} unread notification(s).</p>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="mark_all">
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="fas fa-check-double me-2"></i>Mark all as read
+            </button>
+        </form>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            {% if notifications %}
+                <ul class="list-group list-group-flush">
+                    {% for n in notifications %}
+                    <li class="list-group-item d-flex justify-content-between align-items-start {% if not n.is_read %}bg-light{% endif %}">
+                        <div class="ms-2 me-auto">
+                            <div class="fw-semibold">{{ n.title }}</div>
+                            <div class="text-muted small">{{ n.message }}</div>
+                            <div class="text-muted small">{{ n.created_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% if not n.is_read %}
+                            <span class="badge bg-success">New</span>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <div class="text-center p-5">
+                    <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
+                    <p class="text-muted mb-0">No notifications yet.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

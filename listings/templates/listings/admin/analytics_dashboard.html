@@ -84,6 +84,97 @@
     </div>
 </div>
 
+<!-- SLA Dashboard -->
+<div class="admin-card mb-4">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-stopwatch me-2"></i>SLA Dashboard
+        </h5>
+    </div>
+    <div class="admin-card-body">
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-user-clock"></i></div>
+                    <div class="stat-value">{{ sla_metrics.confirm_overdue_count }}</div>
+                    <div class="stat-label">Overdue Confirmations</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-hourglass-end"></i></div>
+                    <div class="stat-value">{{ sla_metrics.deadline_overdue_count }}</div>
+                    <div class="stat-label">Overdue Deadlines</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="stat-card">
+                    <div class="stat-icon"><i class="fas fa-bell"></i></div>
+                    <div class="stat-value">{{ sla_metrics.due_soon_count }}</div>
+                    <div class="stat-label">Due in 24 Hours</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-3">
+                <h6 class="mb-2">Confirmations Overdue</h6>
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Plot</th>
+                                <th>Task</th>
+                                <th>Confirm By</th>
+                                <th>Assignee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in sla_metrics.confirm_overdue_tasks %}
+                            <tr>
+                                <td>{{ task.plot.title }}</td>
+                                <td>{{ task.get_verification_type_display }}</td>
+                                <td>{{ task.confirm_by|date:"M d, H:i" }}</td>
+                                <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-muted text-center">No overdue confirmations</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="col-md-6 mb-3">
+                <h6 class="mb-2">Deadlines Overdue</h6>
+                <div class="table-responsive">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Plot</th>
+                                <th>Task</th>
+                                <th>Deadline</th>
+                                <th>Assignee</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for task in sla_metrics.deadline_overdue_tasks %}
+                            <tr>
+                                <td>{{ task.plot.title }}</td>
+                                <td>{{ task.get_verification_type_display }}</td>
+                                <td>{{ task.deadline_at|date:"M d, H:i" }}</td>
+                                <td>{{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-muted text-center">No overdue deadlines</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Verification Timeline Chart -->
 <div class="admin-card mb-4">
     <div class="admin-card-header">

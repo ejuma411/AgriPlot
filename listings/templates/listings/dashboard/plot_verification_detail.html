@@ -311,6 +311,39 @@
                 </div>
             </div>
 
+            <!-- Verification Timeline -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-stream me-2"></i>Verification Timeline
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if verification_logs %}
+                        <ul class="list-group list-group-flush">
+                            {% for log in verification_logs %}
+                            <li class="list-group-item">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <strong>{{ log.verification_type|title }}</strong>
+                                        {% if log.verified_by %}
+                                            <span class="text-muted">by {{ log.verified_by.get_full_name|default:log.verified_by.username }}</span>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted">{{ log.created_at|date:"M d, Y H:i" }}</small>
+                                </div>
+                                {% if log.comment %}
+                                    <div class="text-muted small mt-1">{{ log.comment }}</div>
+                                {% endif %}
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No verification events recorded yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
             <!-- Additional Verification Documents -->
             {% if verification_docs %}
             <div class="card">

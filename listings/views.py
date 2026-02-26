@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.files.storage import FileSystemStorage, default_storage
@@ -26,6 +27,7 @@ import uuid
 from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from .utils import log_audit
 from django.contrib.contenttypes.models import ContentType
+from .notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -73,24 +75,86 @@ class LandownerWizard(SessionWizardView):
     def get_template_names(self):
         return [TEMPLATES[self.steps.current]]
 
+    def get_context_data(self, form, **kwargs):
+        context = super().get_context_data(form=form, **kwargs)
+        total = self.steps.count
+        current_index = self.steps.step1
+        context['progress_percent'] = int((current_index / total) * 100)
+        context['step_labels'] = [
+            {'key': 'personal', 'label': 'Account'},
+            {'key': 'verification', 'label': 'Contact'},
+            {'key': 'documents', 'label': 'Documents'},
+            {'key': 'confirmation', 'label': 'Confirm'},
+        ]
+        return context
+
+    def post(self, *args, **kwargs):
+        """Allow save & resume without clearing wizard state."""
+        request = self.request
+        if request.POST.get('save_resume'):
+            messages.success(request, "Progress saved. You can resume this registration later.")
+            return redirect('listings:home')
+        if request.POST.get('reset_wizard'):
+            self.storage.reset()
+            messages.info(request, "Registration progress cleared.")
+            return redirect('listings:register_landowner')
+        return super().post(*args, **kwargs)
+
     def dispatch(self, request, *args, **kwargs):
-        # Enforce Q1: users must be basic users first
-        if not request.user.is_authenticated:
-            messages.info(request, "Please register as a basic user first, then upgrade to landowner.")
-            return redirect('listings:register_buyer')
-        # Use upgrade flow instead of creating a new user here
-        return redirect('listings:register_landowner_simple')
+        # If already logged in, use upgrade flow
+        if request.user.is_authenticated:
+            messages.info(request, "You already have an account. Use the landowner upgrade form.")
+            return redirect('listings:register_landowner_upgrade')
+        return super().dispatch(request, *args, **kwargs)
 
     def done(self, form_list, **kwargs):
-        """Process all wizard forms and create landowner"""
+        """Process wizard forms and send OTP for registration"""
         try:
-            messages.info(self.request, "Use the landowner upgrade form to continue.")
-            return redirect('listings:register_landowner_simple')
+            step1 = self.get_cleaned_data_for_step("personal") or {}
+            step2 = self.get_cleaned_data_for_step("verification") or {}
+            step3 = self.get_cleaned_data_for_step("documents") or {}
+
+            phone = step2.get("phone") or step1.get("phone")
+            if not phone:
+                messages.error(self.request, "Phone number is required.")
+                return redirect('listings:register_landowner')
+
+            # Store registration data in session for OTP flow
+            self.request.session['reg_data'] = {
+                'username': step1.get('username'),
+                'email': step1.get('email'),
+                'first_name': step1.get('first_name'),
+                'last_name': step1.get('last_name'),
+                'password': step1.get('password1'),
+                'role': 'landowner',
+                'phone': phone,
+                'address': f"{step2.get('region', '')}, {step2.get('city', '')}".strip(", "),
+            }
+            self.request.session['reg_phone'] = phone
+
+            # Store uploaded files temporarily for OTP flow
+            stored_files = {}
+            for field_name in ['national_id', 'kra_pin', 'title_deed', 'land_search', 'lcb_consent']:
+                file_obj = step3.get(field_name)
+                if not file_obj:
+                    continue
+                try:
+                    file_obj.seek(0)
+                except Exception:
+                    pass
+                file_path = default_storage.save(
+                    f"tmp/landowner_{uuid.uuid4().hex}_{file_obj.name}",
+                    file_obj
+                )
+                stored_files[field_name] = file_path
+
+            self.request.session['reg_files'] = stored_files
+
+            from .views_otp import send_otp_verification
+            return send_otp_verification(self.request)
         except Exception as e:
             messages.error(self.request, f"Error creating account: {str(e)}")
             return redirect('listings:register_choice')
-        
-        return redirect('listings:home')
 
 
 # ============ AUTHENTICATION & REGISTRATION ============
@@ -178,30 +242,10 @@ def register_buyer(request):
     return render(request, "auth/register_buyer.html", {"form": form})
 
 def register_landowner(request):
-    """Register as landowner (new user) or upgrade (existing user)."""
+    """Upgrade an existing user to landowner."""
     if not request.user.is_authenticated:
-        if request.method == "POST":
-            form = LandownerRegistrationForm(request.POST, request.FILES)
-            if form.is_valid():
-                request.session['reg_data'] = {
-                    'username': form.cleaned_data['username'],
-                    'email': form.cleaned_data['email'],
-                    'first_name': form.cleaned_data['first_name'],
-                    'last_name': form.cleaned_data['last_name'],
-                    'password': form.cleaned_data['password1'],
-                    'role': 'landowner',
-                    'phone': form.cleaned_data['phone'],
-                }
-                request.session['reg_phone'] = form.cleaned_data['phone']
-                request.session['reg_files'] = _store_registration_files(
-                    request.FILES,
-                    ['national_id', 'kra_pin', 'title_deed', 'land_search', 'lcb_consent']
-                )
-                from .views_otp import send_otp_verification
-                return send_otp_verification(request)
-        else:
-            form = LandownerRegistrationForm()
-        return render(request, "auth/register_landowner.html", {"form": form})
+        messages.info(request, "Please complete the landowner registration wizard.")
+        return redirect('listings:register_landowner')
 
     landowner_profile = LandownerProfile.objects.filter(user=request.user).first()
     if request.method == "POST":
@@ -273,7 +317,7 @@ def register_agent(request):
 
 def register_landowner_simple(request):
     """Backward-compatibility alias for the landowner registration path."""
-    return redirect('listings:register_landowner')
+    return redirect('listings:register_landowner_upgrade')
 
 
 @login_required
@@ -472,6 +516,12 @@ def home(request):
     total_agents = Agent.objects.filter(verified=True).count()
     soil_types = Plot.objects.values_list('soil_type', flat=True).distinct()
     common_crops = ['Maize', 'Wheat', 'Coffee', 'Tea', 'Beans', 'Potatoes', 'Sugarcane', 'Rice', 'Vegetables']
+
+    # Wizard resume banner flag
+    show_wizard_resume = any(
+        key.startswith("landownerwizard") or key.startswith("wizard_")
+        for key in request.session.keys()
+    )
     
     # Pagination
     paginator = Paginator(verified_plots, 15)
@@ -490,6 +540,7 @@ def home(request):
         'filter_listing_type': listing_type,
         'filter_land_type': land_type,
         'crop_presets': crop_presets,
+        'show_wizard_resume': show_wizard_resume,
         'active_soil_filters': {
             'ph_min': ph_min, 'ph_max': ph_max, 'om_min': om_min,
             'n_min': n_min, 'p_min': p_min, 'k_min': k_min, 
@@ -1796,6 +1847,19 @@ def plot_verification_detail(request, plot_id):
     
     # Get verification documents
     verification_docs = plot.verification_docs.all()
+    verification_logs = VerificationLog.objects.filter(
+        plot=plot
+    ).select_related('verified_by').order_by('-created_at')[:50]
+
+    profile_type = "Buyer"
+    if hasattr(request.user, 'agent'):
+        profile_type = "Agent"
+    elif hasattr(request.user, 'landownerprofile'):
+        profile_type = "Landowner"
+    elif hasattr(request.user, 'extension_officer'):
+        profile_type = "Extension Officer"
+    elif hasattr(request.user, 'land_surveyor'):
+        profile_type = "Land Surveyor"
     
     context = {
         'plot': plot,
@@ -1808,6 +1872,8 @@ def plot_verification_detail(request, plot_id):
         'has_soil_report': has_soil_report,
         'verification_docs': verification_docs,
         'documents_complete': all([has_title_deed, has_official_search, has_landowner_id, has_kra_pin]),
+        'verification_logs': verification_logs,
+        'profile_type': profile_type,
     }
     
     return render(request, 'listings/dashboard/plot_verification_detail.html', context)
@@ -1864,6 +1930,26 @@ def buyer_interests(request):
     }
     
     return render(request, 'listings/dashboard/buyer_interests.html', context)
+
+
+@login_required
+def notifications_inbox(request):
+    """User notifications inbox."""
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "mark_all":
+            NotificationService.mark_all_as_read(request.user)
+            messages.success(request, "All notifications marked as read.")
+            return redirect('listings:notifications_inbox')
+
+    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:200]
+    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
+
+    return render(request, 'listings/dashboard/notifications.html', {
+        'notifications': notifications,
+        'unread_count': unread_count,
+        'page_title': 'Notifications'
+    })
 
 
 @login_required
@@ -2675,7 +2761,7 @@ def dashboard_router(request):
 
 # listings/views.py
 
-from .services.sms_service import AfricaTalkingService
+from .services.sms_service import TextSMSService
 import random
 
 def generate_otp():
@@ -2693,7 +2779,7 @@ def verify_phone(request):
         request.session['phone_otp_expiry'] = (timezone.now() + timedelta(minutes=10)).isoformat()
         
         # Send SMS
-        sms = AfricaTalkingService()
+        sms = TextSMSService()
         result = sms.send_otp(phone, otp)
         
         if result['success']:
@@ -2707,7 +2793,58 @@ def verify_phone(request):
 
 def contact_support(request):
     """Simple contact support page"""
+    support_email = 'support@agriplot.com'
+    support_phone = '+254 700 000 000'
+
+    if request.method == "POST":
+        form = SupportTicketForm(request.POST)
+        if form.is_valid():
+            ticket = form.save(commit=False)
+            if request.user.is_authenticated:
+                ticket.user = request.user
+            ticket.save()
+
+            # Notify admins by email
+            try:
+                admins = User.objects.filter(is_staff=True)
+                for admin in admins:
+                    NotificationService.send_email(
+                        recipient=admin.email,
+                        subject=f"New Support Ticket: {ticket.subject}",
+                        template='support_ticket_admin',
+                        context={
+                            'admin': admin,
+                            'ticket': ticket,
+                            'site_url': settings.SITE_URL,
+                        }
+                    )
+            except Exception as e:
+                logger.error(f"Support ticket admin email failed: {e}")
+
+            # Confirm to user
+            try:
+                NotificationService.send_email(
+                    recipient=ticket.email,
+                    subject="Support Ticket Received",
+                    template='support_ticket_received',
+                    context={'ticket': ticket}
+                )
+            except Exception as e:
+                logger.error(f"Support ticket user email failed: {e}")
+
+            messages.success(request, "Support request submitted. We will get back to you shortly.")
+            return redirect('listings:contact_support')
+    else:
+        initial = {}
+        if request.user.is_authenticated:
+            initial = {
+                'name': request.user.get_full_name() or request.user.username,
+                'email': request.user.email,
+            }
+        form = SupportTicketForm(initial=initial)
+
     return render(request, 'listings/contact_support.html', {
-        'support_email': 'support@agriplot.com',
-        'support_phone': '+254 700 000 000'
+        'support_email': support_email,
+        'support_phone': support_phone,
+        'form': form
     })

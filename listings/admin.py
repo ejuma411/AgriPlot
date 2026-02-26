@@ -4,6 +4,7 @@ from .models import *
 from django.utils.html import format_html
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
+from django.core.management import call_command
 from django.contrib.contenttypes.fields import GenericForeignKey
 
 admin.site.site_header = "AgriPlot Administration"
@@ -1314,6 +1315,12 @@ class MarketPriceBandAdmin(admin.ModelAdmin):
     list_filter = ('county', 'land_type', 'listing_type')
     search_fields = ('county',)
     ordering = ('county', 'land_type', 'listing_type')
+    actions = ['seed_default_bands']
+
+    def seed_default_bands(self, request, queryset):
+        call_command('seed_price_bands')
+        self.message_user(request, "Seeded default MarketPriceBand entries.")
+    seed_default_bands.short_description = "Seed default price bands"
 
 
 @admin.register(ComparableSale)
@@ -1321,3 +1328,34 @@ class ComparableSaleAdmin(admin.ModelAdmin):
     list_display = ('plot', 'county', 'price_per_acre', 'source')
     list_filter = ('county',)
     search_fields = ('plot__title', 'county', 'source')
+
+
+# -----------------------------
+# Notifications & Support
+# -----------------------------
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ('user', 'notification_type', 'title', 'is_read', 'created_at')
+    list_filter = ('notification_type', 'is_read')
+    search_fields = ('user__username', 'title', 'message')
+
+
+@admin.register(EmailLog)
+class EmailLogAdmin(admin.ModelAdmin):
+    list_display = ('recipient', 'subject', 'status', 'sent_at')
+    list_filter = ('status',)
+    search_fields = ('recipient', 'subject')
+
+
+@admin.register(SupportTicket)
+class SupportTicketAdmin(admin.ModelAdmin):
+    list_display = ('subject', 'name', 'email', 'status', 'created_at')
+    list_filter = ('status',)
+    search_fields = ('subject', 'name', 'email')
+
+
+@admin.register(SMSLog)
+class SMSLogAdmin(admin.ModelAdmin):
+    list_display = ('phone', 'provider', 'status_code', 'success', 'created_at')
+    list_filter = ('provider', 'success')
+    search_fields = ('phone', 'message_id')
