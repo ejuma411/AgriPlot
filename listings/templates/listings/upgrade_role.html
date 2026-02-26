@@ -7,7 +7,7 @@
 
 <form method="POST">
   {% csrf_token %}
-    <a href="{% url 'listings:register_seller' %}?next={% url 'listings:add_plot' %}" class="btn">
+    <a href="{% url 'listings:register_Seller' %}?next={% url 'listings:add_plot' %}" class="btn">
         Register as Seller
     </a>
     <a href="{% url 'listings:register_broker' %}?next={% url 'listings:add_plot' %}" class="btn">

@@ -6,6 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}AgriPlot Connect{% endblock %}</title>
+    <link rel="icon" href="{% static 'images/agriplot-logo.png' %}">
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -22,21 +23,21 @@
             display: flex;
             flex-direction: column;
             min-height: 100vh;
-            background: #f8f9fa;
+            background: var(--ag-sand-100);
         }
 
         /* Header/Navbar Styles */
         .navbar {
-            background: linear-gradient(135deg, #ffffff 0%, #f0f7f0 100%) !important;
-            border-bottom: 3px solid #069132;
-            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+            background: linear-gradient(135deg, var(--ag-white) 0%, #eef6ef 100%) !important;
+            border-bottom: 3px solid var(--ag-ochre-500);
+            box-shadow: var(--ag-shadow-soft) !important;
             padding: 0.75rem 0;
         }
 
         .navbar-brand {
             font-size: 1.35rem;
             font-weight: 700;
-            color: #069132 !important;
+            color: var(--ag-green-900) !important;
             letter-spacing: -0.5px;
         }
 
@@ -56,15 +57,15 @@
         }
 
         .navbar-nav .nav-link:hover {
-            background: rgba(6, 145, 50, 0.1);
-            color: #069132 !important;
+            background: rgba(31, 139, 76, 0.12);
+            color: var(--ag-green-900) !important;
             transform: translateY(-2px);
         }
 
         .navbar-nav .nav-link.active {
-            background: rgba(6, 145, 50, 0.15);
-            color: #069132 !important;
-            border-bottom: 2px solid #069132;
+            background: rgba(31, 139, 76, 0.18);
+            color: var(--ag-green-900) !important;
+            border-bottom: 2px solid var(--ag-ochre-500);
         }
 
         /* Dropdown menu styling */
@@ -95,8 +96,8 @@
         }
 
         .dropdown-item:hover {
-            background: rgba(6, 145, 50, 0.1);
-            color: #069132;
+            background: rgba(31, 139, 76, 0.12);
+            color: var(--ag-green-900);
             padding-left: 1.5rem;
         }
 
@@ -113,8 +114,8 @@
 
         /* Footer Styles */
         footer {
-            background: linear-gradient(135deg, #1a1a1a 0%, #0d3d1e 100%) !important;
-            border-top: 3px solid #069132;
+            background: linear-gradient(135deg, #1a1a1a 0%, #0e3a23 100%) !important;
+            border-top: 3px solid var(--ag-ochre-500);
             margin-top: 3rem;
             padding-top: 2rem !important;
             padding-bottom: 1rem !important;
@@ -140,7 +141,7 @@
         }
 
         footer a.text-muted:hover {
-            color: #069132 !important;
+            color: var(--ag-ochre-500) !important;
             transform: translateX(3px);
             display: inline-block;
         }
@@ -153,8 +154,8 @@
         }
 
         footer .social-links a:hover {
-            background: rgba(6, 145, 50, 0.2);
-            color: #1cc88a !important;
+            background: rgba(31, 139, 76, 0.2);
+            color: var(--ag-ochre-500) !important;
             transform: translateY(-3px);
         }
 
@@ -366,7 +367,7 @@
                     {% if user.agent or user.landownerprofile %}
                         <!-- Agent/Landowner Quick Links -->
                         <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="sellerDropdown" role="button" data-bs-toggle="dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" id="SellerDropdown" role="button" data-bs-toggle="dropdown">
                                 <i class="fas fa-store me-1"></i> My Listings
                             </a>
                             <ul class="dropdown-menu">
@@ -455,9 +456,9 @@
             <!-- About Section -->
             <div class="col-md-4 mb-4 mb-md-0">
                 <h6 class="fw-bold mb-3 d-flex align-items-center gap-2">
-                    <i class="fas fa-leaf" style="color: #069132;"></i> AgriPlot Connect
+                    <i class="fas fa-leaf" style="color: var(--ag-ochre-500);"></i> AgriPlot Connect
                 </h6>
-                <p class="text-muted small">Connecting agricultural land sellers and buyers across Kenya for sustainable farming growth.</p>
+                <p class="text-muted small">Connecting agricultural land Sellers and buyers across Kenya for sustainable farming growth.</p>
                 <div class="social-links">
                     <a href="#" class="text-muted me-2"><i class="fab fa-facebook"></i></a>
                     <a href="#" class="text-muted me-2"><i class="fab fa-twitter"></i></a>

@@ -95,7 +95,7 @@
             </div>
             <div class="admin-card-body">
                 {% if plot.agent %}
-                    <div class="seller-type mb-2">
+                    <div class="Seller-type mb-2">
                         <span class="badge bg-info">Licensed Agent</span>
                         {% if plot.agent.verified %}
                             <span class="badge bg-success">Verified</span>
@@ -122,7 +122,7 @@
                         </tr>
                     </table>
                 {% elif plot.landowner %}
-                    <div class="seller-type mb-2">
+                    <div class="Seller-type mb-2">
                         <span class="badge bg-primary">Landowner</span>
                         {% if plot.landowner.verified %}
                             <span class="badge bg-success">Verified</span>
@@ -145,7 +145,7 @@
                         </tr>
                     </table>
                 {% else %}
-                    <p class="text-muted">No seller information available</p>
+                    <p class="text-muted">No Seller information available</p>
                 {% endif %}
             </div>
         </div>
@@ -752,7 +752,7 @@
                         </button>
                         
                         <button type="submit" name="action" value="request_changes" class="btn btn-warning btn-lg"
-                                onclick="return confirm('Request changes from the seller?')">
+                                onclick="return confirm('Request changes from the Seller?')">
                             <i class="fas fa-edit me-2"></i> Request Changes
                         </button>
                         
@@ -1121,13 +1121,13 @@
             height: 300px;
         }
         
-        .seller-type {
+        .Seller-type {
             display: flex;
             flex-wrap: wrap;
             gap: 0.25rem;
         }
         
-        .seller-type .badge {
+        .Seller-type .badge {
             font-size: 0.7rem;
         }
         

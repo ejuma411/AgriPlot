@@ -7,11 +7,32 @@
     box-sizing: border-box;
 }
 
+/* ========================
+   DESIGN TOKENS
+   ======================== */
+:root {
+    --ag-green-900: #0f4a2e;
+    --ag-green-700: #1f8b4c;
+    --ag-olive-600: #6b8f1a;
+    --ag-ochre-500: #f0b429;
+    --ag-sand-100: #f7f3e8;
+    --ag-sand-200: #efe7d6;
+    --ag-border: #e6dcc9;
+    --ag-charcoal: #1f2325;
+    --ag-muted: #6b7280;
+    --ag-white: #ffffff;
+    --ag-radius-md: 10px;
+    --ag-radius-lg: 16px;
+    --ag-shadow: 0 10px 30px rgba(15, 74, 46, 0.12);
+    --ag-shadow-soft: 0 6px 16px rgba(15, 74, 46, 0.08);
+    --ag-transition: all 0.2s ease;
+}
+
 html, body {
     font-family: Arial, sans-serif;
     line-height: 1.6;
-    background: #f8f9fa;
-    color: #333;
+    background: var(--ag-sand-100);
+    color: #1f2937;
 }
 
 a {

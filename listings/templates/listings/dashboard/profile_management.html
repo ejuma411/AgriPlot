@@ -684,8 +684,13 @@
     /* Dashboard Layout */
     .dashboard-wrapper {
         display: flex;
-        height: 100vh;
+        min-height: 100vh;
         background: var(--gray-100);
+    }
+
+    footer {
+        margin-left: 260px;
+        width: auto;
     }
 
     /* Sidebar */
@@ -798,6 +803,7 @@
         overflow-y: auto;
         display: flex;
         flex-direction: column;
+        min-width: 0;
     }
 
     .dashboard-topbar {
@@ -848,6 +854,8 @@
         padding: 0 1.5rem;
         border-radius: var(--radius) var(--radius) 0 0;
         gap: 0.5rem;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
     }
 
     .profile-tabs .nav-link {
@@ -857,6 +865,7 @@
         font-weight: 500;
         border-bottom: 3px solid transparent;
         transition: var(--transition);
+        white-space: nowrap;
     }
 
     .profile-tabs .nav-link:hover {
@@ -897,6 +906,7 @@
     /* Profile Info Table */
     .profile-info-table {
         margin-bottom: 1rem;
+        overflow-x: auto;
     }
 
     .info-field-table {
@@ -1226,6 +1236,16 @@
         color: var(--gray-800);
     }
 
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .table {
+        min-width: 520px;
+    }
+
     /* Responsive */
     @media (max-width: 1200px) {
         .dashboard-content {
@@ -1250,16 +1270,30 @@
 
         .dashboard-main {
             margin-left: 0;
+            overflow-y: visible;
+        }
+
+        footer {
+            margin-left: 0;
         }
 
         .sidebar-nav {
             flex-direction: row;
             overflow-x: auto;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
         }
 
         .nav-item {
             white-space: nowrap;
             flex-shrink: 0;
+            border-left: none;
+            border-bottom: 2px solid transparent;
+        }
+
+        .nav-item.active {
+            border-left: none;
+            border-bottom-color: var(--primary);
         }
 
         .sidebar-footer {
@@ -1268,6 +1302,9 @@
 
         .dashboard-topbar {
             padding: 1rem;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
         }
 
         .page-title {
@@ -1291,6 +1328,35 @@
             width: auto;
             display: block;
             padding: 0.75rem;
+        }
+
+        .info-field-table,
+        .info-field-table tbody,
+        .info-field-table tr,
+        .info-field-table td {
+            display: block;
+            width: 100%;
+        }
+
+        .info-field-table tr {
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+        }
+
+        .info-field-table tr:last-child {
+            margin-bottom: 0;
+        }
+
+        .field-label {
+            border-right: none;
+            background: var(--gray-100);
+        }
+
+        .field-help {
+            border-left: none;
+            background: var(--gray-50);
         }
 
         .documents-info-grid {

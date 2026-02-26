@@ -499,9 +499,9 @@
                     {% endif %}
                 </div>
 
-                <!-- SELLER INFO -->
-                <div class="seller-mini">
-    <div class="seller-avatar" style="background-color: {% cycle '#1f7a4d' '#2c3e50' '#c0392b' '#2980b9' '#8e44ad' %}">
+                <!-- Seller INFO -->
+                <div class="Seller-mini">
+    <div class="Seller-avatar" style="background-color: {% cycle '#1f7a4d' '#2c3e50' '#c0392b' '#2980b9' '#8e44ad' %}">
         {% if plot.agent and plot.agent.user %}
             {{ plot.agent.user.get_full_name|default:plot.agent.user.username|first|upper }}
         {% elif plot.landowner and plot.landowner.user %}
@@ -511,8 +511,8 @@
         {% endif %}
     </div>
     
-    <div class="seller-details">
-        <div class="seller-name">
+    <div class="Seller-details">
+        <div class="Seller-name">
             {% if plot.agent and plot.agent.user %}
                 {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
             {% elif plot.landowner and plot.landowner.user %}
@@ -522,7 +522,7 @@
             {% endif %}
         </div>
         
-        <div class="seller-badge">
+        <div class="Seller-badge">
             {% if plot.agent %}
                 {% if plot.agent.verified %}
                 <span class="badge-verified">
@@ -548,8 +548,8 @@
             {% endif %}
         </div>
         
-        <!-- Additional seller info - with null checks -->
-        <div class="seller-meta">
+        <!-- Additional Seller info - with null checks -->
+        <div class="Seller-meta">
             
             {% if plot.agent and plot.agent.total_listings %}
             <br>
@@ -563,7 +563,7 @@
     
     <!-- Rating section - only for agents with proper null checks -->
     {% if plot.agent and plot.agent.rating %}
-    <div class="seller-rating">
+    <div class="Seller-rating">
         <span class="rating-stars">
             {% with rating=plot.agent.rating|floatformat:0 %}
                 {% for i in "12345" %}
@@ -1020,7 +1020,7 @@
 }
 
 /* Seller Info */
-.seller-mini {
+.Seller-mini {
     display: flex;
     align-items: center;
     gap: 12px;
@@ -1030,7 +1030,7 @@
     border-radius: 12px;
 }
 
-.seller-avatar {
+.Seller-avatar {
     width: 45px;
     height: 45px;
     border-radius: 50%;
@@ -1043,11 +1043,11 @@
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-.seller-details {
+.Seller-details {
     flex: 1;
 }
 
-.seller-name {
+.Seller-name {
     font-weight: 600;
     color: #2c3e50;
     font-size: 0.95rem;
@@ -1071,7 +1071,7 @@
     color: #e74c3c;
 }
 
-.seller-rating {
+.Seller-rating {
     text-align: right;
 }
 

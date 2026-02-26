@@ -6,29 +6,47 @@
 {% block extra_css %}
 <style>
     :root {
-        --primary: #069132;
-        --primary-dark: #047a29;
+        /* Ensure admin palette is always defined */
+        --ag-green-900: #0f4a2e;
+        --ag-green-700: #1f8b4c;
+        --ag-ochre-500: #f0b429;
+        --ag-sand-100: #f7f3e8;
+
+        --primary: #1f8b4c;
+        --primary-dark: #0f4a2e;
         --primary-light: #e8f5e9;
         --secondary: #6c757d;
         --success: #28a745;
         --info: #17a2b8;
-        --warning: #ffc107;
+        --warning: #f0b429;
         --danger: #dc3545;
-        --dark: #343a40;
-        --light: #f8f9fa;
+        --dark: #1f2325;
+        --light: #f7f3e8;
     }
 
     /* Admin Layout */
     .admin-wrapper {
         display: flex;
         min-height: 100vh;
-        background: #f4f6f9;
+        background: var(--ag-sand-100);
+        overflow-x: hidden;
+    }
+
+    /* Footer should not sit under fixed sidebar */
+    footer {
+        margin-left: 280px;
+        width: auto;
+    }
+
+    /* Hide public site navbar on admin pages */
+    .navbar {
+        display: none;
     }
 
     /* Admin Sidebar */
     .admin-sidebar {
         width: 280px;
-        background: linear-gradient(180deg, var(--dark) 0%, #23272b 100%);
+        background: linear-gradient(180deg, var(--dark) 0%, #161a1c 100%);
         color: white;
         position: fixed;
         height: 100vh;
@@ -182,6 +200,8 @@
         min-height: 100vh;
         display: flex;
         flex-direction: column;
+        max-width: 100%;
+        overflow-x: hidden;
     }
 
     /* Top Navigation */
@@ -310,15 +330,19 @@
     .admin-content {
         padding: 2rem;
         flex: 1;
+        color: #1f2937;
+        max-width: 100%;
+        overflow-x: hidden;
     }
 
     /* Page Header with Tabs */
     .page-header {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        background: linear-gradient(135deg, #1f8b4c 0%, #0f4a2e 100%);
         border-radius: 12px;
         padding: 2rem;
         color: white;
         margin-bottom: 2rem;
+        max-width: 100%;
     }
 
     .page-header-content {
@@ -441,6 +465,7 @@
         box-shadow: 0 2px 12px rgba(0,0,0,0.08);
         margin-bottom: 1.5rem;
         transition: all 0.3s ease;
+        max-width: 100%;
     }
 
     .admin-card:hover {
@@ -546,13 +571,15 @@
     .table-responsive {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        width: 100%;
         margin: 0 -1px; /* Prevents border cutoff */
+        overscroll-behavior-x: contain;
     }
 
     .admin-table {
         width: 100%;
         border-collapse: collapse;
-        min-width: 600px; /* Ensures table doesn't get too squished */
+        min-width: 720px; /* Ensures table doesn't get too squished */
     }
 
     .admin-table th {
@@ -572,6 +599,7 @@
         padding: 1rem;
         border-bottom: 1px solid #e9ecef;
         vertical-align: middle;
+        white-space: nowrap;
     }
 
     .admin-table tbody tr:hover td {
@@ -880,6 +908,10 @@
             grid-template-columns: repeat(2, 1fr);
             gap: 1rem;
         }
+
+        footer {
+            margin-left: 0;
+        }
     }
 
     @media (max-width: 768px) {
@@ -923,23 +955,15 @@
         }
 
         .admin-tabs .nav-tabs {
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .admin-tabs .nav-tabs::-webkit-scrollbar {
-            height: 4px;
-        }
-
-        .admin-tabs .nav-tabs::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,0.3);
-            border-radius: 4px;
+            flex-wrap: wrap;
+            overflow-x: visible;
+            padding-bottom: 0;
         }
 
         .admin-tabs .nav-tabs .nav-link {
             padding: 0.6rem 1.2rem;
+            flex: 1 1 auto;
+            justify-content: center;
         }
 
         .stats-grid {
@@ -969,6 +993,10 @@
             font-size: 1rem;
         }
 
+        .admin-content .row {
+            row-gap: 1rem;
+        }
+
         .badge {
             padding: 0.4rem 0.6rem;
             font-size: 0.75rem;
@@ -989,8 +1017,43 @@
         .profile-name {
             max-width: 100px;
         }
+
+        .page-title {
+            white-space: normal;
+            overflow: visible;
+            text-overflow: clip;
+        }
+
+        .table-responsive {
+            overflow-x: visible;
+        }
+
+        .admin-table {
+            min-width: 0;
+        }
+
+        .admin-table th,
+        .admin-table td {
+            white-space: normal;
+            word-break: break-word;
+        }
     }
 
+    @media (max-width: 640px) {
+        .admin-topbar {
+            padding: 0.75rem 1rem;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        .topbar-right {
+            width: 100%;
+            justify-content: space-between;
+        }
+        .page-title {
+            font-size: 1.1rem;
+        }
+    }
     @media (max-width: 576px) {
         .page-header-actions {
             flex-direction: column;
@@ -1044,6 +1107,13 @@
         .modal-body,
         .modal-footer {
             padding: 1rem;
+        }
+    }
+
+    @media (max-width: 992px) {
+        .admin-content .row > [class*="col-"] {
+            flex: 0 0 100%;
+            max-width: 100%;
         }
     }
 

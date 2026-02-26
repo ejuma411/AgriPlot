@@ -25,7 +25,7 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AddField(
-            model_name="sellerprofile",
+            model_name="Sellerprofile",
             name="land_search",
             field=models.FileField(
                 default="",
@@ -34,7 +34,7 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AddField(
-            model_name="sellerprofile",
+            model_name="Sellerprofile",
             name="lcb_consent",
             field=models.FileField(
                 blank=True,
@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AddField(
-            model_name="sellerprofile",
+            model_name="Sellerprofile",
             name="title_deed",
             field=models.FileField(
                 default="",
@@ -63,29 +63,29 @@ class Migration(migrations.Migration):
             ),
         ),
         migrations.AlterField(
-            model_name="sellerprofile",
+            model_name="Sellerprofile",
             name="kra_pin",
             field=models.FileField(
                 default="",
-                help_text="Upload a copy of the seller’s KRA PIN",
+                help_text="Upload a copy of the Seller’s KRA PIN",
                 upload_to="docs/kra_pins/",
             ),
         ),
         migrations.AlterField(
-            model_name="sellerprofile",
+            model_name="Sellerprofile",
             name="national_id",
             field=models.FileField(
                 default="",
-                help_text="Upload a copy of the seller’s national ID",
+                help_text="Upload a copy of the Seller’s national ID",
                 upload_to="docs/national_ids/",
             ),
         ),
         migrations.AlterField(
-            model_name="sellerprofile",
+            model_name="Sellerprofile",
             name="verified",
             field=models.BooleanField(
                 default=False,
-                help_text="Indicator that this seller’s profile and documents are verified",
+                help_text="Indicator that this Seller’s profile and documents are verified",
             ),
         ),
         migrations.AlterField(
@@ -95,7 +95,7 @@ class Migration(migrations.Migration):
                 choices=[
                     ("title_deed", "Title Deed"),
                     ("official_search", "Official Search Certificate"),
-                    ("seller_id", "Seller ID"),
+                    ("Seller_id", "Seller ID"),
                     ("kra_pin", "KRA PIN Certificate"),
                     ("survey_plan", "Survey Plan"),
                     ("rates_clearance", "Land Rates Clearance"),

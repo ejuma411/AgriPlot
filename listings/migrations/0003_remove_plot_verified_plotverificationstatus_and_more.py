@@ -146,7 +146,7 @@ class Migration(migrations.Migration):
                             ("title_deed", "Title Deed"),
                             ("survey_plan", "Survey Plan"),
                             ("official_search", "Official Search Certificate"),
-                            ("seller_id", "Seller ID"),
+                            ("Seller_id", "Seller ID"),
                             ("land_rates", "Land Rates/Clearance"),
                             ("lcb_consent", "Land Control Board Consent"),
                         ],

@@ -1,20 +1,8 @@
-{% extends "auth/auth_split.html" %}
+{% extends "auth/auth_base.html" %}
+{% block title %}LandOwner Registration{% endblock %}
 
-{% block info_panel %}
-<h1>Sell Agricultural Land on AgriPlot</h1>
-<p>Step {{ wizard.steps.step1 }} of {{ wizard.steps.count }} - {{ wizard.steps.current|capfirst }}</p>
-<p>Verification takes 24–48 hrs. Your documents are encrypted and secure.</p>
-
-<ul class="info-list">
-    <li>✔ Upload verified land documents</li>
-    <li>✔ Add soil & crop suitability data</li>
-    <li>✔ Connect directly with buyers</li>
-    <li>✔ Increase land visibility nationwide</li>
-</ul>
-{% endblock %}
-
-{% block form_panel %}
-<h2>Seller Registration - Step {{ wizard.steps.step1 }}</h2>
+{% block content %}
+<h2>LandOwner Registration — Step {{ wizard.steps.step1 }} of {{ wizard.steps.count }}</h2>
 
 <p class="text-muted" style="margin-top: -6px;">
     {% if wizard.steps.current == 'personal' %}
@@ -73,7 +61,7 @@
 </div>
 
 
-<form method="POST" enctype="multipart/form-data">
+<form method="POST" enctype="multipart/form-data" class="portal-form">
     {% csrf_token %}
     {{ wizard.management_form }}
 
@@ -91,21 +79,21 @@
         </div>
     {% endfor %}
 
-    <div class="d-flex justify-content-between gap-2">
+    <div class="wizard-actions">
         {% if wizard.steps.prev %}
-            <button class="btn-auth btn-secondary" type="submit" name="wizard_goto_step" value="{{ wizard.steps.prev }}">
+            <button class="portal-btn portal-btn--secondary" type="submit" name="wizard_goto_step" value="{{ wizard.steps.prev }}">
                 Back
             </button>
         {% else %}
             <span></span>
         {% endif %}
-        <button class="btn-auth btn-outline-danger" type="submit" name="reset_wizard" value="1">
+        <button class="portal-btn portal-btn--danger" type="submit" name="reset_wizard" value="1">
             Cancel &amp; Reset
         </button>
-        <button class="btn-auth btn-outline" type="submit" name="save_resume" value="1">
+        <button class="portal-btn portal-btn--outline" type="submit" name="save_resume" value="1">
             Save &amp; Resume
         </button>
-        <button class="btn-auth" type="submit" id="wizardNext">
+        <button class="portal-btn" type="submit" id="wizardNext">
             {% if wizard.steps.last %}Finish{% else %}Next{% endif %}
         </button>
     </div>
@@ -204,17 +192,26 @@ document.addEventListener("DOMContentLoaded", function() {
         margin-bottom: 12px;
         font-size: 0.9rem;
     }
-    .btn-outline {
+    .wizard-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .wizard-actions > * {
+        width: 100%;
+    }
+    .portal-btn--outline {
         background: transparent;
         border: 1px solid #94a3b8;
         color: #0f172a;
     }
-    .btn-outline-danger {
+    .portal-btn--danger {
         background: transparent;
         border: 1px solid #fca5a5;
         color: #b91c1c;
     }
-    .btn-secondary {
+    .portal-btn--secondary {
         background: #e2e8f0;
         color: #0f172a;
         border: none;
@@ -263,6 +260,11 @@ document.addEventListener("DOMContentLoaded", function() {
     .wizard-step.done .step-index {
         background: #1e3a8a;
         color: #fff;
+    }
+    @media (max-width: 640px) {
+        .wizard-actions {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}

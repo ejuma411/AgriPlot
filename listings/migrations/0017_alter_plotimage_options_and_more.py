@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveField(
             model_name="plot",
-            name="seller_id",
+            name="Seller_id",
         ),
         migrations.RemoveField(
             model_name="profile",
@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
         ),
         migrations.RemoveField(
             model_name="profile",
-            name="is_verified_seller",
+            name="is_verified_Seller",
         ),
         migrations.AddField(
             model_name="agent",

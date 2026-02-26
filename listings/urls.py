@@ -16,7 +16,6 @@ urlpatterns = [
     path("ajax/search/", views.ajax_search, name="ajax_search"),
 
     # Plot management
-    path("add-plot/", views.add_plot, name="add_plot"),
     path("plot/<int:id>/edit/", views.edit_plot, name="edit_plot"),
     path("plot/<int:plot_id>/document/<str:doc_type>/", views.serve_plot_document, name="serve_plot_document"),
     path("plot/<int:plot_id>/upload-document/", views.upload_verification_doc, name="upload_verification_doc"),
@@ -61,6 +60,8 @@ urlpatterns = [
          name='password_reset_complete'),
     
     # Dashboard
+    path("add-plot/", RedirectView.as_view(pattern_name="listings:add_plot", permanent=True)),
+    path("dashboard/add-plot/", views.add_plot, name="add_plot"),
     path("dashboard/", views.dashboard_router, name="dashboard_router"),
     path("staff-dashboard/", views.staff_dashboard, name="staff_dashboard"),
     path("dashboard/plots/", views.my_plots, name="my_plots"),
@@ -136,7 +137,7 @@ urlpatterns = [
     path("analytics/export/", views_admin.export_report, name="export_report"),
 
     # Backward compatibility redirects
-    path("register/seller/", RedirectView.as_view(pattern_name="listings:register_landowner", permanent=True), name="register_seller"),
+    path("register/Seller/", RedirectView.as_view(pattern_name="listings:register_landowner", permanent=True), name="register_Seller"),
     path("register/broker/", RedirectView.as_view(pattern_name="listings:register_agent", permanent=True), name="register_broker"),
 
     # Test endpoints (remove in production)

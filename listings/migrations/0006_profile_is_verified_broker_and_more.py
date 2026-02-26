@@ -17,7 +17,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="profile",
-            name="is_verified_seller",
+            name="is_verified_Seller",
             field=models.BooleanField(default=False),
         ),
     ]

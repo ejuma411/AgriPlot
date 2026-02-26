@@ -32,12 +32,12 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name="plot",
-            name="seller_id",
+            name="Seller_id",
             field=models.FileField(
                 blank=True,
                 help_text="Seller's national ID",
                 null=True,
-                upload_to="documents/seller_ids/",
+                upload_to="documents/Seller_ids/",
             ),
         ),
         migrations.AlterField(

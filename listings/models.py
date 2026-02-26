@@ -31,7 +31,7 @@ class Profile(models.Model):
         return self.user.username
     
     @property
-    def is_verified_seller(self):
+    def is_verified_Seller(self):
         """Backward compatibility - checks if user is verified landowner"""
         return hasattr(self.user, 'landownerprofile') and self.user.landownerprofile.verified
     
@@ -49,7 +49,7 @@ class Profile(models.Model):
         return hasattr(self.user, 'agent')
     
     @property
-    def is_seller(self):
+    def is_Seller(self):
         return self.is_landowner
     
     @property

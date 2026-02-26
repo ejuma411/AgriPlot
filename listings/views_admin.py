@@ -219,14 +219,17 @@ def system_construction_journal(request):
 @staff_member_required
 def review_plot(request, plot_id):
     """Review a single plot"""
-    
-    plot = get_object_or_404(
+    plot = (
         Plot.objects.select_related(
             'landowner__user',
             'agent__user'
-        ),
-        id=plot_id
+        )
+        .filter(id=plot_id)
+        .first()
     )
+    if not plot:
+        messages.error(request, "Plot not found or already deleted.")
+        return redirect('listings:verification_queue')
     
     # Get or create verification status
     plot_content_type = ContentType.objects.get_for_model(Plot)

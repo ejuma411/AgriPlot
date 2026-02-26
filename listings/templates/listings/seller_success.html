@@ -1,10 +1,12 @@
-<!-- listings/templates/listings/seller_success.html -->
+{% load static %}
+<!-- listings/templates/listings/Seller_success.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seller Registration Successful</title>
+    <title>LandOwner Registration Successful</title>
+    <link rel="icon" href="{% static 'images/agriplot-logo.png' %}">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -48,7 +50,7 @@
 
         <!-- Message -->
         <p class="mt-4 text-gray-600">
-            Congratulations! You are now registered as a seller. You can start listing your products and manage your account.
+            Congratulations! You are now registered as a Seller. You can start listing your products and manage your account.
         </p>
 
         <!-- Buttons -->

@@ -1156,7 +1156,7 @@ def add_plot(request):
 
     agents = Agent.objects.select_related("user").all() if is_superuser else []
     landowners = LandownerProfile.objects.select_related("user").all() if is_superuser else []
-    return render(request, "listings/add_plot.html", {
+    return render(request, "listings/dashboard/add_plot.html", {
         "form": plot_form,
         "is_agent": is_agent,
         "is_landowner": is_landowner,
@@ -2793,8 +2793,8 @@ def verify_phone(request):
 
 def contact_support(request):
     """Simple contact support page"""
-    support_email = 'support@agriplot.com'
-    support_phone = '+254 700 000 000'
+    support_email = 'ejuma411@gmail.com'
+    support_phone = '+254 718 810 503'
 
     if request.method == "POST":
         form = SupportTicketForm(request.POST)

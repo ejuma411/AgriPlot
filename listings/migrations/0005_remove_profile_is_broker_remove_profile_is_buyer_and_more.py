@@ -29,21 +29,21 @@ class Migration(migrations.Migration):
             field=models.CharField(blank=True, default="", max_length=20),
         ),
         migrations.AlterField(
-            model_name="sellerprofile",
+            model_name="Sellerprofile",
             name="kra_pin",
             field=models.FileField(
                 blank=True,
-                help_text="Upload a copy of the seller’s KRA PIN",
+                help_text="Upload a copy of the Seller’s KRA PIN",
                 null=True,
                 upload_to="docs/kra_pins/",
             ),
         ),
         migrations.AlterField(
-            model_name="sellerprofile",
+            model_name="Sellerprofile",
             name="national_id",
             field=models.FileField(
                 blank=True,
-                help_text="Upload a copy of the seller’s national ID",
+                help_text="Upload a copy of the Seller’s national ID",
                 null=True,
                 upload_to="docs/national_ids/",
             ),
