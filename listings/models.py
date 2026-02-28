@@ -451,23 +451,7 @@ class Plot(models.Model):
                 return False
         return True
     
-    def get_reaction_counts(self):
-        """Get all reaction counts for this plot"""
-        return {
-            'love': self.reactions.filter(reaction_type='love').count(),
-            'like': self.reactions.filter(reaction_type='like').count(),
-            'potential': self.reactions.filter(reaction_type='potential').count(),
-        }
-    
-    def get_user_reactions(self, user):
-        """Get reactions for a specific user on this plot"""
-        if not user.is_authenticated:
-            return []
-        return list(self.reactions.filter(user=user).values_list('reaction_type', flat=True))
-    
-    def total_reaction_count(self):
-        """Get total number of all reactions"""
-        return self.reactions.count()
+    # Community reactions removed
 
 
 # -----------------------------
@@ -789,33 +773,6 @@ class ContactRequest(models.Model):
 
 
 # -----------------------------
-# Plot Reactions Model
-# -----------------------------
-class PlotReaction(models.Model):
-    """Track user reactions (love, like, potential) on plots."""
-    REACTION_CHOICES = [
-        ('love', '❤️ Love'),
-        ('like', '👍 Like'),
-        ('potential', '🌱 Growth Potential'),
-    ]
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='plot_reactions')
-    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='reactions')
-    reaction_type = models.CharField(max_length=20, choices=REACTION_CHOICES)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-        unique_together = ['user', 'plot', 'reaction_type']
-        indexes = [
-            models.Index(fields=['plot', 'reaction_type']),
-        ]
-    
-    def __str__(self):
-        return f"{self.user.username} {self.get_reaction_type_display()} {self.plot.title}"
-
-
-# -----------------------------
 # Audit Log (ZTA/CIA)
 # -----------------------------
 class AuditLog(models.Model):
@@ -857,6 +814,28 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f"{self.get_action_display()} by {self.user_id} at {self.created_at}"
+
+
+# -----------------------------
+# Editable Site Pages
+# -----------------------------
+class SitePage(models.Model):
+    SLUG_CHOICES = [
+        ("about", "About Us"),
+        ("terms", "Terms of Service"),
+        ("privacy", "Privacy Policy"),
+    ]
+
+    slug = models.CharField(max_length=50, choices=SLUG_CHOICES, unique=True)
+    title = models.CharField(max_length=200)
+    body = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["slug"]
+
+    def __str__(self):
+        return self.get_slug_display()
 
 
 # -----------------------------

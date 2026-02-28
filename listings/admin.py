@@ -312,7 +312,6 @@ class PlotAdmin(admin.ModelAdmin):
         "land_type_display",
         "verification_display",
         "has_all_documents",
-        "reaction_count_display",
         "contact_requests_count",
         "created_at",
     )
@@ -565,23 +564,6 @@ class PlotAdmin(admin.ModelAdmin):
         return "No contact requests yet"
     contact_requests_summary.short_description = "Recent Contact Requests"
     
-    def reaction_count_display(self, obj):
-        """Display reaction counts"""
-        counts = obj.get_reaction_counts()
-        total = obj.total_reaction_count()
-        
-        if total == 0:
-            return format_html('<span style="color: #ccc;">No reactions</span>')
-        
-        return format_html(
-            '❤️ {} | 👍 {} | 🌱 {} | <strong>Total: {}</strong>',
-            counts.get('love', 0),
-            counts.get('like', 0),
-            counts.get('potential', 0),
-            total
-        )
-    reaction_count_display.short_description = "Reactions"
-    
     def has_all_documents(self, obj):
         """Check if plot has all required documents - uses property without parentheses"""
         if obj.has_all_documents:  # Property, not method
@@ -821,8 +803,7 @@ class PlotAdmin(admin.ModelAdmin):
             'agent__user',
             'landowner__user'
         ).prefetch_related(
-            'contact_requests',
-            'reactions'
+            'contact_requests'
         )
         return queryset
 
@@ -1338,6 +1319,12 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = ('user', 'notification_type', 'title', 'is_read', 'created_at')
     list_filter = ('notification_type', 'is_read')
     search_fields = ('user__username', 'title', 'message')
+
+
+@admin.register(SitePage)
+class SitePageAdmin(admin.ModelAdmin):
+    list_display = ("slug", "title", "updated_at")
+    search_fields = ("slug", "title")
 
 
 @admin.register(EmailLog)

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page.title|default:"Terms of Service" }} — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="p-4 p-md-5 bg-white rounded-4 shadow-sm border">
+        <h1 class="mb-3">{{ page.title|default:"Terms of Service" }}</h1>
+        <p class="text-muted">Effective Date: 2026-02-27</p>
+
+        {% if page.body %}
+            <div class="content-rich">{{ page.body|safe }}</div>
+        {% else %}
+            <p>These Terms govern your access to and use of AgriPlot Connect. By accessing the platform, you agree to be bound by these Terms.</p>
+
+            <h4 class="mt-4">1. Definitions</h4>
+            <ul>
+              <li><strong>“Platform”</strong> means the AgriPlot Connect website, apps, and services.</li>
+              <li><strong>“User”</strong> means any person who accesses the Platform, including buyers, landowners, agents, officers, and administrators.</li>
+              <li><strong>“Listing”</strong> means a land parcel published or submitted for verification.</li>
+            </ul>
+
+            <h4 class="mt-4">2. Eligibility</h4>
+            <p>You must be at least 18 years old and legally capable to enter into contracts. You represent that all registration information you submit is accurate and complete.</p>
+
+            <h4 class="mt-4">3. Account Responsibilities</h4>
+            <ul>
+              <li>Keep your login credentials secure and confidential.</li>
+              <li>Notify us immediately of unauthorized access.</li>
+              <li>You are responsible for all activities under your account.</li>
+            </ul>
+
+            <h4 class="mt-4">4. Listings & Verification</h4>
+            <ul>
+              <li>Only list land you own or are authorized to represent.</li>
+              <li>Provide valid documentation for title and ownership verification.</li>
+              <li>Verification results are based on documents, officer reports, and available records.</li>
+            </ul>
+
+            <h4 class="mt-4">5. Pricing & Accuracy</h4>
+            <ul>
+              <li>Prices must be supported by market data, valuation reports, or official guidance.</li>
+              <li>Surveyors may flag or adjust unrealistic pricing.</li>
+              <li>Misrepresentation may result in listing removal or account suspension.</li>
+            </ul>
+
+            <h4 class="mt-4">6. Communications</h4>
+            <ul>
+              <li>Do not send abusive, fraudulent, or misleading messages.</li>
+              <li>Contact information may be shared for transaction purposes.</li>
+              <li>We may monitor communications for compliance and safety.</li>
+            </ul>
+
+            <h4 class="mt-4">7. Prohibited Activities</h4>
+            <ul>
+              <li>Submitting false documents or impersonating others.</li>
+              <li>Attempting to bypass verification stages.</li>
+              <li>Scraping or abusing platform services.</li>
+            </ul>
+
+            <h4 class="mt-4">8. Intellectual Property</h4>
+            <p>All platform content, logos, and trademarks are owned by AgriPlot Connect. You may not copy or reuse them without prior written consent.</p>
+
+            <h4 class="mt-4">9. Disclaimers</h4>
+            <p>The Platform provides verification tools but does not guarantee transaction outcomes or guarantee title validity beyond the provided verification stages.</p>
+
+            <h4 class="mt-4">10. Limitation of Liability</h4>
+            <p>To the maximum extent permitted by law, AgriPlot Connect shall not be liable for indirect, incidental, or consequential damages arising from platform use.</p>
+
+            <h4 class="mt-4">11. Governing Law</h4>
+            <p>These Terms are governed by the laws of Kenya.</p>
+
+            <h4 class="mt-4">12. Dispute Resolution</h4>
+            <ul>
+              <li>Parties shall first attempt good‑faith negotiation.</li>
+              <li>If unresolved, disputes may be referred to mediation in Kenya.</li>
+              <li>If mediation fails, disputes shall be resolved by courts of competent jurisdiction in Kenya.</li>
+            </ul>
+
+            <h4 class="mt-4">13. Changes to Terms</h4>
+            <p>We may update these Terms from time to time. Continued use constitutes acceptance of the updated Terms.</p>
+
+            <h4 class="mt-4">14. Contact</h4>
+            <p>If you have questions about these Terms, contact support.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

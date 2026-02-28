@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}How It Works — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="p-4 p-md-5 bg-white rounded-4 shadow-sm border">
+                <h1 class="mb-3">How It Works</h1>
+                <p class="text-muted">AgriPlot Connect uses a structured verification workflow to ensure listings are accurate and trustworthy.</p>
+
+                <h4 class="mt-4">For Landowners & Agents</h4>
+                <ol>
+                    <li>Create an account and submit a listing.</li>
+                    <li>Upload ownership documents and required identifiers.</li>
+                    <li>Wait for verification stages to complete.</li>
+                    <li>Once approved, your plot becomes publicly visible.</li>
+                </ol>
+
+                <h4 class="mt-4">Verification Stages</h4>
+                <ul>
+                    <li>Document review and ownership checks.</li>
+                    <li>Extension officer soil and agronomic assessment.</li>
+                    <li>Surveyor boundary and access verification.</li>
+                    <li>Admin review and publication.</li>
+                </ul>
+
+                <h4 class="mt-4">For Buyers</h4>
+                <ol>
+                    <li>Browse listings and review verification status.</li>
+                    <li>Contact owner/agent directly within the platform.</li>
+                    <li>Request site visits or additional documentation.</li>
+                </ol>
+
+                <div class="alert alert-info mt-4">
+                    Questions? Visit the FAQ or contact support.
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="{% url 'listings:faq' %}" class="btn btn-outline-success">View FAQ</a>
+                    <a href="{% url 'listings:contact_us' %}" class="btn btn-success">Contact Support</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

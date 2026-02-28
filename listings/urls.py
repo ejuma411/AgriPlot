@@ -14,6 +14,13 @@ urlpatterns = [
     path("", views.home, name="home"),
     path("plot/<int:id>/", views.plot_detail, name="plot_detail"),
     path("ajax/search/", views.ajax_search, name="ajax_search"),
+    path("browse-plots/", TemplateView.as_view(template_name="listings/info/browse_plots.html"), name="browse_plots"),
+    path("how-it-works/", TemplateView.as_view(template_name="listings/info/how_it_works.html"), name="how_it_works"),
+    path("contact-us/", TemplateView.as_view(template_name="listings/info/contact_us.html"), name="contact_us"),
+    path("about-us/", views.info_page, {"slug": "about", "template_name": "listings/info/about_us.html"}, name="about_us"),
+    path("terms/", views.info_page, {"slug": "terms", "template_name": "listings/info/terms.html"}, name="terms"),
+    path("privacy/", views.info_page, {"slug": "privacy", "template_name": "listings/info/privacy.html"}, name="privacy"),
+    path("faq/", TemplateView.as_view(template_name="listings/info/faq.html"), name="faq"),
 
     # Plot management
     path("plot/<int:id>/edit/", views.edit_plot, name="edit_plot"),
@@ -80,8 +87,6 @@ urlpatterns = [
     # API endpoints
     path("api/request-contact/<int:plot_id>/", views.request_contact_details, name="request_contact"),
     path("api/log-phone-view/<int:plot_id>/", views.log_phone_view, name="log_phone_view"),
-    path("api/plot-reactions/<int:plot_id>/toggle/", views.toggle_plot_reaction, name="toggle_reaction"),
-    path("api/plot-reactions/<int:plot_id>/get/", views.get_plot_reactions, name="get_reactions"),
     path("get-subcounties/", views.get_subcounties, name="get_subcounties"),
 
     # Admin verification (canonical routes)

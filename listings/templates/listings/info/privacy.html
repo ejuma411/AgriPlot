@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page.title|default:"Privacy Policy" }} — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="p-4 p-md-5 bg-white rounded-4 shadow-sm border">
+        <h1 class="mb-3">{{ page.title|default:"Privacy Policy" }}</h1>
+        <p class="text-muted">Effective Date: 2026-02-27</p>
+
+        {% if page.body %}
+            <div class="content-rich">{{ page.body|safe }}</div>
+        {% else %}
+            <p>This Privacy Policy explains how AgriPlot Connect collects, uses, shares, and protects your information. We are committed to compliance with the Kenya Data Protection Act, 2019.</p>
+
+            <h4 class="mt-4">1. Information We Collect</h4>
+            <ul>
+              <li>Account details: name, email, phone, and role.</li>
+              <li>Listing data: property details, documents, and pricing information.</li>
+              <li>Usage data: activity logs, notifications, and interactions.</li>
+            </ul>
+
+            <h4 class="mt-4">2. Lawful Basis for Processing</h4>
+            <p>We process data based on consent, contractual necessity, legal obligations, and legitimate interests in accordance with the Kenya Data Protection Act, 2019.</p>
+
+            <h4 class="mt-4">3. How We Use Information</h4>
+            <ul>
+              <li>To verify listings and user identity.</li>
+              <li>To deliver notifications and communication.</li>
+              <li>To improve platform security and performance.</li>
+            </ul>
+
+            <h4 class="mt-4">4. Sharing of Information</h4>
+            <ul>
+              <li>Contact details are shared only for legitimate transactions.</li>
+              <li>We may share data with service providers for email/SMS delivery.</li>
+              <li>We do not sell your personal information to third parties.</li>
+            </ul>
+
+            <h4 class="mt-4">5. Data Retention</h4>
+            <p>We retain data as long as necessary to provide services, comply with legal obligations, and resolve disputes.</p>
+
+            <h4 class="mt-4">6. Security</h4>
+            <p>We use access controls, audit logs, and secure storage to protect sensitive data. However, no system is 100% secure.</p>
+
+            <h4 class="mt-4">7. Your Rights Under the Kenya Data Protection Act, 2019</h4>
+            <ul>
+              <li>Right to be informed about data collection and use.</li>
+              <li>Right to access personal data held by the platform.</li>
+              <li>Right to correction of inaccurate data.</li>
+              <li>Right to deletion in specific circumstances.</li>
+              <li>Right to object to processing in specific circumstances.</li>
+            </ul>
+
+            <h4 class="mt-4">8. Data Processing Agreement (DPA) – Summary</h4>
+            <p>Where AgriPlot Connect processes personal data on behalf of a controller, the following terms apply as part of a Data Processing Agreement:</p>
+            <ul>
+              <li><strong>Purpose limitation:</strong> We process personal data only for documented instructions and verification services.</li>
+              <li><strong>Confidentiality:</strong> Personnel with access to personal data are bound by confidentiality obligations.</li>
+              <li><strong>Security measures:</strong> We implement safeguards appropriate to risk, including access controls and secure storage.</li>
+              <li><strong>Sub‑processors:</strong> We may engage vetted sub‑processors (email/SMS). Where required, we notify controllers of material changes.</li>
+              <li><strong>Data subject rights:</strong> We assist controllers with access, correction, deletion, or objection requests.</li>
+              <li><strong>Incident response:</strong> We maintain procedures to detect and respond to incidents and notify controllers without undue delay.</li>
+              <li><strong>Retention & deletion:</strong> Upon termination or valid request, we delete or return data unless retention is required by law.</li>
+              <li><strong>Audit support:</strong> We provide reasonable information to demonstrate compliance.</li>
+            </ul>
+
+            <h4 class="mt-4">9. Cookies & Tracking</h4>
+            <p>We may use cookies to improve user experience and site analytics.</p>
+
+            <h4 class="mt-4">10. Changes to This Policy</h4>
+            <p>We may update this Privacy Policy from time to time. Continued use constitutes acceptance of changes.</p>
+
+            <h4 class="mt-4">11. Contact</h4>
+            <p>For privacy requests, contact support.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

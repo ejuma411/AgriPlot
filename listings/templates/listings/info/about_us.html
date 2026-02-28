@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page.title|default:"About Us" }} — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="p-4 p-md-5 bg-white rounded-4 shadow-sm border">
+                <h1 class="mb-3">{{ page.title|default:"About Us" }}</h1>
+
+                {% if page.body %}
+                    <div class="content-rich">{{ page.body|safe }}</div>
+                {% else %}
+                    <p class="text-muted">AgriPlot Connect is a land listing and verification platform focused on agricultural properties. We help landowners and agents publish credible listings, and help buyers access verified land information.</p>
+
+                    <h4 class="mt-4">Our Mission</h4>
+                    <p>To improve trust, transparency, and efficiency in agricultural land transactions by combining document verification, field assessments, and price validation.</p>
+
+                    <h4 class="mt-4">What We Do</h4>
+                    <ul>
+                        <li>Verify ownership and legal documents before publication.</li>
+                        <li>Collect extension reports for soil and agronomic suitability.</li>
+                        <li>Confirm boundary and access details through licensed surveyors.</li>
+                        <li>Provide structured pricing inputs to discourage over‑ or under‑pricing.</li>
+                    </ul>
+
+                    <h4 class="mt-4">Who We Serve</h4>
+                    <ul>
+                        <li>Landowners and agents listing agricultural land.</li>
+                        <li>Buyers seeking verified land opportunities.</li>
+                        <li>Extension officers and surveyors contributing field data.</li>
+                        <li>Institutions and partners needing verified land datasets.</li>
+                    </ul>
+
+                    <h4 class="mt-4">Why Trust Matters</h4>
+                    <p>Land transactions are high‑value and high‑risk. We enforce structured verification stages and clear records to reduce fraud and disputes.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -20,6 +20,7 @@ from django.core.exceptions import DisallowedHost, ValidationError
 from decimal import Decimal
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
+from .models import SitePage
 from django.utils.http import url_has_allowed_host_and_scheme
 import json
 import os
@@ -2539,60 +2540,13 @@ def landowner_success(request):
     return render(request, 'listings/landowner_success.html')
 
 
-# ============ PLOT REACTIONS ============
-@login_required
-def toggle_plot_reaction(request, plot_id):
-    """Toggle a reaction on a plot (love, like, or potential)"""
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Invalid request method'}, status=400)
-    
-    plot = get_object_or_404(Plot, id=plot_id)
-    reaction_type = request.POST.get('reaction_type', '').lower()
-    
-    # Validate reaction type
-    valid_reactions = ['love', 'like', 'potential']
-    if reaction_type not in valid_reactions:
-        return JsonResponse({'error': 'Invalid reaction type'}, status=400)
-    
-    # Toggle reaction
-    reaction, created = PlotReaction.objects.get_or_create(
-        user=request.user,
-        plot=plot,
-        reaction_type=reaction_type
+# ============ STATIC INFO PAGES ============
+def info_page(request, slug, template_name):
+    page, _ = SitePage.objects.get_or_create(
+        slug=slug,
+        defaults={"title": slug.replace("_", " ").title()}
     )
-    
-    if not created:
-        reaction.delete()
-        user_has_reaction = False
-    else:
-        user_has_reaction = True
-    
-    # Get updated counts
-    reaction_counts = plot.get_reaction_counts()
-    
-    return JsonResponse({
-        'success': True,
-        'user_has_reaction': user_has_reaction,
-        'reaction_type': reaction_type,
-        'counts': reaction_counts,
-        'total_reactions': plot.total_reaction_count()
-    })
-
-
-@login_required
-def get_plot_reactions(request, plot_id):
-    """Get all reaction data for a plot"""
-    plot = get_object_or_404(Plot, id=plot_id)
-    
-    user_reactions = plot.get_user_reactions(request.user)
-    reaction_counts = plot.get_reaction_counts()
-    
-    return JsonResponse({
-        'plot_id': plot_id,
-        'user_reactions': user_reactions,
-        'counts': reaction_counts,
-        'total_reactions': plot.total_reaction_count()
-    })
+    return render(request, template_name, {"page": page})
 
 
 # ============ VERIFICATION PROGRESS ============

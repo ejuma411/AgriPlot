@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}FAQ — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      <div class="p-4 p-md-5 bg-white rounded-4 shadow-sm border">
+        <h1 class="mb-3">Frequently Asked Questions</h1>
+
+        <h5 class="mt-4">Verification</h5>
+        <div class="accordion" id="faqVerification">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="v1">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#v1a">How long does verification take?</button>
+            </h2>
+            <div id="v1a" class="accordion-collapse collapse show" data-bs-parent="#faqVerification">
+              <div class="accordion-body">Typically 24–48 hours depending on workload and document completeness.</div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="v2">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#v2a">Can I list land without documents?</button>
+            </h2>
+            <div id="v2a" class="accordion-collapse collapse" data-bs-parent="#faqVerification">
+              <div class="accordion-body">Documents are required before verification and publication.</div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="v3">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#v3a">What if my listing is rejected?</button>
+            </h2>
+            <div id="v3a" class="accordion-collapse collapse" data-bs-parent="#faqVerification">
+              <div class="accordion-body">You will receive reasons and can correct issues and resubmit.</div>
+            </div>
+          </div>
+        </div>
+
+        <h5 class="mt-4">Pricing</h5>
+        <div class="accordion" id="faqPricing">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="p1">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#p1a">How is price verified?</button>
+            </h2>
+            <div id="p1a" class="accordion-collapse collapse show" data-bs-parent="#faqPricing">
+              <div class="accordion-body">Surveyors compare prices against market bands and valuation reports.</div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="p2">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#p2a">Can I set any price I want?</button>
+            </h2>
+            <div id="p2a" class="accordion-collapse collapse" data-bs-parent="#faqPricing">
+              <div class="accordion-body">Prices outside market bands may be flagged or adjusted.</div>
+            </div>
+          </div>
+        </div>
+
+        <h5 class="mt-4">Contact & Messaging</h5>
+        <div class="accordion" id="faqContact">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="c1">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#c1a">How do I contact an owner or agent?</button>
+            </h2>
+            <div id="c1a" class="accordion-collapse collapse show" data-bs-parent="#faqContact">
+              <div class="accordion-body">Use the Contact section on the plot details page.</div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="c2">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#c2a">Why can’t I see the phone number?</button>
+            </h2>
+            <div id="c2a" class="accordion-collapse collapse" data-bs-parent="#faqContact">
+              <div class="accordion-body">Phone numbers are shown on request to protect privacy.</div>
+            </div>
+          </div>
+        </div>
+
+        <h5 class="mt-4">Accounts</h5>
+        <div class="accordion" id="faqAccounts">
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="a1">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#a1a">Can I upgrade my role?</button>
+            </h2>
+            <div id="a1a" class="accordion-collapse collapse show" data-bs-parent="#faqAccounts">
+              <div class="accordion-body">Yes, submit an upgrade request from your profile page.</div>
+            </div>
+          </div>
+          <div class="accordion-item">
+            <h2 class="accordion-header" id="a2">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#a2a">How do I reset my password?</button>
+            </h2>
+            <div id="a2a" class="accordion-collapse collapse" data-bs-parent="#faqAccounts">
+              <div class="accordion-body">Use the password reset link on the login page.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Browse Plots — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="p-4 p-md-5 bg-white rounded-4 shadow-sm border">
+                <h1 class="mb-3">Browse Plots</h1>
+                <p class="text-muted">Use the listings page to explore verified agricultural plots. Filter by county, land type, price range, and verification status.</p>
+
+                <h5 class="mt-4">What You Can Filter</h5>
+                <ul>
+                    <li>County and sub‑county</li>
+                    <li>Land type (agricultural, residential, commercial)</li>
+                    <li>Sale vs lease listings</li>
+                    <li>Verified vs pending listings</li>
+                </ul>
+
+                <h5 class="mt-4">Tips for Buyers</h5>
+                <ul>
+                    <li>Always review verification status before engagement.</li>
+                    <li>Check soil type and suitability for intended crops.</li>
+                    <li>Confirm land access and nearby infrastructure.</li>
+                </ul>
+
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="{% url 'listings:home' %}" class="btn btn-success">
+                        <i class="fas fa-search me-2"></i>Go to Listings
+                    </a>
+                    <a href="{% url 'listings:register_buyer' %}" class="btn btn-outline-success">
+                        <i class="fas fa-user-plus me-2"></i>Register as Buyer
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

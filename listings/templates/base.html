@@ -472,9 +472,9 @@
                 <h6 class="fw-bold mb-3">Quick Links</h6>
                 <ul class="list-unstyled">
                     <li class="mb-2"><a href="{% url 'listings:home' %}" class="text-muted text-decoration-none small">Home</a></li>
-                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">Browse Plots</a></li>
-                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">How It Works</a></li>
-                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">Contact Us</a></li>
+                    <li class="mb-2"><a href="{% url 'listings:browse_plots' %}" class="text-muted text-decoration-none small">Browse Plots</a></li>
+                    <li class="mb-2"><a href="{% url 'listings:how_it_works' %}" class="text-muted text-decoration-none small">How It Works</a></li>
+                    <li class="mb-2"><a href="{% url 'listings:contact_us' %}" class="text-muted text-decoration-none small">Contact Us</a></li>
                 </ul>
             </div>
 
@@ -482,10 +482,10 @@
             <div class="col-md-4">
                 <h6 class="fw-bold mb-3">Information</h6>
                 <ul class="list-unstyled">
-                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">About Us</a></li>
-                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">Terms of Service</a></li>
-                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">Privacy Policy</a></li>
-                    <li class="mb-2"><a href="#" class="text-muted text-decoration-none small">FAQ</a></li>
+                    <li class="mb-2"><a href="{% url 'listings:about_us' %}" class="text-muted text-decoration-none small">About Us</a></li>
+                    <li class="mb-2"><a href="{% url 'listings:terms' %}" class="text-muted text-decoration-none small">Terms of Service</a></li>
+                    <li class="mb-2"><a href="{% url 'listings:privacy' %}" class="text-muted text-decoration-none small">Privacy Policy</a></li>
+                    <li class="mb-2"><a href="{% url 'listings:faq' %}" class="text-muted text-decoration-none small">FAQ</a></li>
                 </ul>
             </div>
         </div>

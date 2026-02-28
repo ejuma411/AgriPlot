@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Contact Us — AgriPlot Connect{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="p-4 p-md-5 bg-white rounded-4 shadow-sm border">
+                <h1 class="mb-3">Contact Us</h1>
+                <p class="text-muted">Need help or want to report an issue? Reach us through the support form or email.</p>
+
+                <h5 class="mt-4">Support Channels</h5>
+                <ul>
+                    <li>Support Form: Use the built‑in support request form.</li>
+                    <li>Email: support@agriplotconnect.com</li>
+                </ul>
+
+                <h5 class="mt-4">What to Include</h5>
+                <ul>
+                    <li>Your account email or phone number.</li>
+                    <li>Plot ID or listing title (if relevant).</li>
+                    <li>Clear description of your request.</li>
+                </ul>
+
+                <div class="d-flex flex-wrap gap-2 mt-4">
+                    <a href="{% url 'listings:contact_support' %}" class="btn btn-success">
+                        <i class="fas fa-envelope me-2"></i>Open Support Form
+                    </a>
+                    <a href="mailto:support@agriplotconnect.com" class="btn btn-outline-success">
+                        <i class="fas fa-paper-plane me-2"></i>Email Support
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
