@@ -418,6 +418,12 @@ class Plot(models.Model):
 
     def __str__(self):
         return self.title
+
+    def primary_image_url(self):
+        first_image = self.images.first()
+        if first_image and first_image.image:
+            return first_image.image.url
+        return ""
     
     def clean(self):
         """Validate plot data"""

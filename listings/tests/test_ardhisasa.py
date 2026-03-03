@@ -40,10 +40,12 @@ class Command(BaseCommand):
         result = service.verify_plot_title(plot)
         
         if result['success']:
+            verification_data = result.get('verification_data', {})
+            search_data = verification_data.get('search_result', {})
             self.stdout.write(self.style.SUCCESS("✅ Verification successful!"))
-            self.stdout.write(f"   Title: {result['search_data'].get('title_number')}")
-            self.stdout.write(f"   Owner: {result['search_data'].get('owner_name')}")
-            self.stdout.write(f"   Reference: {result['search_data'].get('search_reference')}")
+            self.stdout.write(f"   Title: {verification_data.get('title_number') or search_data.get('title_number')}")
+            self.stdout.write(f"   Owner: {search_data.get('owner_name')}")
+            self.stdout.write(f"   Reference: {search_data.get('search_reference')}")
         else:
             self.stdout.write(self.style.ERROR(f"❌ Verification failed: {result['error']}"))
     
@@ -63,9 +65,11 @@ class Command(BaseCommand):
         result = service.verify_plot_title(plot)
         
         if result['success']:
+            verification_data = result.get('verification_data', {})
+            search_data = verification_data.get('search_result', {})
             self.stdout.write(self.style.SUCCESS("✅ Verification successful!"))
-            self.stdout.write(f"   Search ref: {result['search_data'].get('search_reference')}")
-            self.stdout.write(f"   Owner: {result['search_data'].get('owner_name')}")
+            self.stdout.write(f"   Search ref: {search_data.get('search_reference')}")
+            self.stdout.write(f"   Owner: {search_data.get('owner_name')}")
         else:
             self.stdout.write(self.style.WARNING(f"⚠️ Verification failed: {result['error']}"))
             self.stdout.write(f"   Expected: {test_data['expected']}")

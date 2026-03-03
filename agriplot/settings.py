@@ -95,6 +95,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.humanize",
 
     # Third Party Apps
     "formtools",
@@ -163,6 +164,7 @@ SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")
 # External integration settings
 ARDHISASA_API_URL = os.environ.get("ARDHISASA_API_URL", "")
 ARDHISASA_API_KEY = os.environ.get("ARDHISASA_API_KEY", "")
+ARDHISASA_MODE = os.environ.get("ARDHISASA_MODE", "mock")
 
 # Feature flags for security controls (Q7/Q8)
 REQUIRE_CONTACT_VERIFICATION = _env_bool("REQUIRE_CONTACT_VERIFICATION", default=False)

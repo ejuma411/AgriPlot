@@ -44,9 +44,19 @@ class MockArdhisasaClient:
         Mock ownership verification
         """
         time.sleep(1)
+
+        # Deterministic mismatch for testing specific scenarios
+        if "MISMATCH" in title_number.upper():
+            return {
+                'success': True,
+                'verified': False,
+                'title_number': title_number,
+                'registered_owner': "JANE SMITH",
+                'message': 'Owner name does not match registry records'
+            }
         
-        # 90% success rate for testing
-        if random.random() < 0.9:
+        # Default to success for mock runs
+        if random.random() < 0.98:
             return {
                 'success': True,
                 'verified': True,

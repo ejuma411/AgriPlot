@@ -194,27 +194,22 @@ class VerificationService:
     @staticmethod
     def after_api_verification(plot, assigned_by=None):
         """
-        After API verification succeeds, assign the next role in the chain.
-        Surveyor first, then Extension Officer for agricultural plots.
+        After API verification succeeds, move to document review.
+        Surveyor task is created only after document review is approved.
         """
         logger.info(f"Post-API assignment start for plot {plot.id} (land_type={plot.land_type})")
-        survey_task, created = VerificationTask.objects.get_or_create(
+        doc_task, _ = VerificationTask.objects.get_or_create(
             plot=plot,
-            verification_type='surveyor_inspection',
+            verification_type='document_review',
             defaults={'status': 'pending'}
         )
-        if created:
-            logger.info(f"Created surveyor_inspection task for plot {plot.id}")
-            VerificationLog.objects.create(
-                plot=plot,
-                verified_by=assigned_by,
-                verification_type='task_created',
-                comment="Surveyor inspection task created after API verification."
-            )
-            VerificationService.assign_surveyor_task(survey_task.id, assigned_by=assigned_by)
-        else:
-            logger.info(f"surveyor_inspection task already exists for plot {plot.id}")
-        return survey_task
+        VerificationLog.objects.create(
+            plot=plot,
+            verified_by=assigned_by,
+            verification_type='task_pending',
+            comment="Document review pending after API verification."
+        )
+        return doc_task
     
     @staticmethod
     def check_plot_completion(plot):
@@ -303,6 +298,28 @@ class VerificationService:
                 if verification:
                     verification.update_stage('rejected', {
                         'rejection_reason': notes or 'Surveyor rejected the plot',
+                        'completed_by': completed_by.username
+                    })
+        elif task.verification_type == 'document_review':
+            if approved:
+                survey_task, created = VerificationTask.objects.get_or_create(
+                    plot=task.plot,
+                    verification_type='surveyor_inspection',
+                    defaults={'status': 'pending'}
+                )
+                if created:
+                    logger.info(f"Created surveyor_inspection task for plot {task.plot.id} after document review approval")
+                if survey_task.status == 'pending' or survey_task.assigned_to is None:
+                    VerificationService.assign_surveyor_task(survey_task.id, assigned_by=completed_by)
+            else:
+                content_type = ContentType.objects.get_for_model(Plot)
+                verification = VerificationStatus.objects.filter(
+                    content_type=content_type,
+                    object_id=task.plot.id
+                ).first()
+                if verification:
+                    verification.update_stage('rejected', {
+                        'rejection_reason': notes or 'Document review rejected the plot',
                         'completed_by': completed_by.username
                     })
         elif task.verification_type == 'extension_review':
@@ -517,9 +534,34 @@ class VerificationService:
                 object_id=plot.id
             ).first()
             if verification:
-                verification.update_stage('title_search_completed')
+                verification_data = result.get('verification_data', {})
+                search_result = verification_data.get('search_result', {})
+                verification.update_stage('title_search_completed', {
+                    'search_reference': search_result.get('search_reference'),
+                    'title_number': verification_data.get('title_number') or search_result.get('title_number'),
+                    'parcel_number': search_result.get('parcel_number'),
+                    'owner_name': search_result.get('owner_name'),
+                    'search_result': search_result,
+                    'ownership_result': verification_data.get('ownership_result'),
+                    'encumbrance_result': verification_data.get('encumbrance_result'),
+                    'decision': verification_data.get('decision')
+                })
 
             # After API verification, assign the next role in the chain
             VerificationService.after_api_verification(plot, assigned_by=None)
+        else:
+            content_type = ContentType.objects.get_for_model(Plot)
+            verification = VerificationStatus.objects.filter(
+                content_type=content_type,
+                object_id=plot.id
+            ).first()
+            if verification:
+                verification.stage_details['ardhisasa_error'] = result.get('error')
+                verification.stage_details['ardhisasa_failure'] = result.get('decision')
+                VerificationStatus.objects.filter(pk=verification.pk).update(
+                    current_stage='rejected',
+                    rejected_at=timezone.now(),
+                    stage_details=verification.stage_details
+                )
 
         return result

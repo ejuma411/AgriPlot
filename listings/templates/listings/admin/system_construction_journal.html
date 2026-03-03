@@ -4,6 +4,89 @@
 {% block title %}System Construction Journal - AgriPlot Admin{% endblock %}
 
 {% block admin_content %}
+<style>
+    .print-header {
+        display: none;
+    }
+    @media print {
+        @page {
+            margin: 12mm;
+        }
+        .page-header-actions,
+        .admin-sidebar,
+        .top-navbar,
+        .no-print {
+            display: none !important;
+        }
+        .print-header {
+            display: block;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .print-header h2 {
+            margin: 0;
+            font-size: 18px;
+            letter-spacing: 0.5px;
+        }
+        .print-header p {
+            margin: 4px 0 0;
+            font-size: 12px;
+            color: #555;
+        }
+        .admin-content {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .page-header {
+            margin-bottom: 8px !important;
+        }
+        .admin-card {
+            margin-top: 0 !important;
+        }
+        .admin-card {
+            box-shadow: none !important;
+            border: 1px solid #e0e0e0 !important;
+        }
+        .admin-card-header {
+            border-bottom: 1px solid #e0e0e0 !important;
+        }
+        .admin-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 11px !important;
+        }
+        .admin-table th,
+        .admin-table td {
+            border: 1px solid #ddd !important;
+            padding: 6px 8px !important;
+            vertical-align: top;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+        }
+        .admin-table th:first-child,
+        .admin-table td:first-child {
+            width: 110px !important;
+            white-space: nowrap !important;
+        }
+        .admin-table th {
+            background: #f3f3f3 !important;
+            color: #222 !important;
+            font-weight: 700 !important;
+        }
+        .admin-table tr {
+            page-break-inside: avoid !important;
+        }
+        .badge {
+            border: 1px solid #ccc !important;
+            color: #222 !important;
+            background: #f6f6f6 !important;
+        }
+        a[href]:after {
+            content: "";
+        }
+    }
+</style>
 <div class="page-header">
     <div class="page-header-content">
         <div class="page-header-title">
@@ -11,9 +94,18 @@
             {% comment %} <p class="page-header-subtitle">Admin-only progress log for system construction</p> {% endcomment %}
         </div>
         <div class="page-header-actions">
-            {% comment %} <span class="text-muted">Data file: <code>{{ data_file }}</code></span> {% endcomment %}
+            {% if request.user.is_superuser %}
+            <button class="btn btn-outline-primary no-print" onclick="window.print()">
+                <i class="fas fa-print me-2"></i>Print / Save PDF
+            </button>
+            {% endif %}
         </div>
     </div>
+</div>
+
+<div class="print-header">
+    <h2>AgriPlot Connect — System Construction Journal</h2>
+    <p>Generated on {{ now|date:"F j, Y" }}</p>
 </div>
 
 <div class="admin-card">

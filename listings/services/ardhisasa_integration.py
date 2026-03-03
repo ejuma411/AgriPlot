@@ -12,7 +12,10 @@ logger = logging.getLogger(__name__)
 class ArdhisasaService:
     """Service for Ardhisasa API integration"""
     
-    def __init__(self, use_mock=True):
+    def __init__(self, use_mock=None):
+        if use_mock is None:
+            mode = getattr(settings, "ARDHISASA_MODE", "mock").lower()
+            use_mock = (mode != "real")
         # Use mock for development, real API for production
         if use_mock or settings.DEBUG:
             self.client = MockArdhisasaClient()
@@ -63,26 +66,46 @@ class ArdhisasaService:
                     'area': plot.area
                 }
             )
-            
-            # ... rest of your verification logic ...
-            
-            # At the end, use update() to change stage without triggering signals
-            verification.current_stage = 'title_search_completed'
-            verification.title_search_at = timezone.now()
-            verification.stage_details['title_search'] = {
-                'search_reference': search_result.get('search_reference'),
-                'title_number': title_number,
-                'owner_name': search_result.get('owner_name')
-            }
-            
-            # Use update() to bypass signals
-            VerificationStatus.objects.filter(pk=verification.pk).update(
-                current_stage='title_search_completed',
-                title_search_at=timezone.now(),
-                stage_details=verification.stage_details
+
+            if not search_result or not search_result.get('success'):
+                reason = search_result.get('message') if search_result else "Title search failed"
+                return self._handle_failure(plot, verification, reason, search_result=search_result)
+
+            # Step 2: Verify ownership
+            owner_id_number = self._get_owner_id_number(plot)
+            owner_name = self._get_owner_name(plot)
+            ownership_result = self.client.verify_ownership(
+                title_number,
+                owner_id_number,
+                owner_name=owner_name
             )
-            
-            return {'success': True, 'search_data': search_result}
+
+            if ownership_result and ownership_result.get('verified') is False:
+                reason = ownership_result.get('message') or "Owner verification failed"
+                return self._handle_failure(
+                    plot,
+                    verification,
+                    reason,
+                    search_result=search_result,
+                    ownership_result=ownership_result
+                )
+
+            # Step 3: Encumbrance check (informational, does not fail)
+            encumbrance_result = self.client.get_encumbrances(title_number)
+
+            verification_data = {
+                'title_number': title_number,
+                'search_result': search_result,
+                'ownership_result': ownership_result,
+                'encumbrance_result': encumbrance_result,
+                'decision': {
+                    'passed': True,
+                    'owner_verified': True,
+                    'has_encumbrances': bool(encumbrance_result.get('has_encumbrances'))
+                }
+            }
+
+            return {'success': True, 'verification_data': verification_data}
             
         except Exception as e:
             logger.error(f"Ardhisasa verification error: {str(e)}", exc_info=True)
@@ -131,4 +154,40 @@ class ArdhisasaService:
             'success': False,
             'error': error_message,
             'verification': verification
+        }
+
+    def _handle_failure(self, plot, verification, reason, search_result=None, ownership_result=None):
+        """Handle failed verification (invalid or mismatched data)."""
+        details = {
+            'reason': reason,
+            'search_result': search_result,
+            'ownership_result': ownership_result
+        }
+        verification.stage_details['ardhisasa_failure'] = details
+        VerificationStatus.objects.filter(pk=verification.pk).update(
+            current_stage='rejected',
+            rejected_at=timezone.now(),
+            stage_details=verification.stage_details
+        )
+        VerificationLog.objects.create(
+            plot=plot,
+            verification_type='api_rejected',
+            comment=f"Ardhisasa rejected: {reason}"
+        )
+        try:
+            from ..notification_service import NotificationService
+            NotificationService.notify_plot_final_status(
+                plot=plot,
+                status='rejected',
+                completed_by=None,
+                notes=reason
+            )
+        except Exception:
+            pass
+
+        logger.error(f"❌ Ardhisasa verification rejected for plot {plot.id}: {reason}")
+        return {
+            'success': False,
+            'error': reason,
+            'decision': details
         }

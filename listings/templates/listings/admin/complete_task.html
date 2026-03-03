@@ -179,6 +179,47 @@
                                 </div>
                             </div>
                         </div>
+                        <div class="verification-section mb-4">
+                            <h6 class="section-subtitle">Extracted Document Details</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Registered Owner Name (from Title/Official Search)</label>
+                                    <input type="text" class="form-control" name="owner_name_extracted" value="{{ form_data.owner_name_extracted|default:'' }}" required>
+                                    <small class="text-muted">Must match user name: <strong>{{ expected_owner_name }}</strong></small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">National ID Number (from ID)</label>
+                                    <input type="text" class="form-control" name="id_number_extracted" value="{{ form_data.id_number_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">KRA PIN (from KRA Certificate)</label>
+                                    <input type="text" class="form-control" name="kra_pin_extracted" value="{{ form_data.kra_pin_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Title Number (from Title Deed)</label>
+                                    <input type="text" class="form-control" name="title_number_extracted" value="{{ form_data.title_number_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Parcel/Plot Number (from Title)</label>
+                                    <input type="text" class="form-control" name="parcel_number_extracted" value="{{ form_data.parcel_number_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Official Search Reference</label>
+                                    <input type="text" class="form-control" name="search_ref_extracted" value="{{ form_data.search_ref_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Official Search Date</label>
+                                    <input type="date" class="form-control" name="search_date_extracted" value="{{ form_data.search_date_extracted|default:'' }}">
+                                    <small class="text-muted">Should be recent (within 3 months)</small>
+                                </div>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="confirm_doc_match" name="confirm_doc_match" required>
+                                <label class="form-check-label" for="confirm_doc_match">
+                                    I confirm the extracted details match the uploaded documents and user profile.
+                                </label>
+                            </div>
+                        </div>
                     {% elif task.verification_type == 'extension_review' %}
                         <div class="verification-section mb-4">
                             <h6 class="section-subtitle">Agricultural Assessment</h6>
@@ -374,6 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Validate that all checkboxes are checked for document review
     form.addEventListener('submit', function(e) {
         const checkboxes = document.querySelectorAll('.form-check-input');
+        const requiredInputs = form.querySelectorAll('input[required], select[required], textarea[required]');
         let allChecked = true;
         
         checkboxes.forEach(cb => {
@@ -381,10 +423,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 allChecked = false;
             }
         });
+
+        let allFilled = true;
+        requiredInputs.forEach(input => {
+            if (input.type === 'radio') return;
+            if (!input.value) {
+                allFilled = false;
+            }
+        });
         
-        if (!allChecked) {
+        if (!allChecked || !allFilled) {
             e.preventDefault();
-            alert('Please confirm all document checks before completing the task.');
+            alert('Please complete all required document checks and extracted fields before submitting.');
             return false;
         }
     });

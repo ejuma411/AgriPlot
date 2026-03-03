@@ -52,18 +52,31 @@ def trigger_ardhisasa(request, plot_id):
     result = service.verify_plot_title(plot)
     
     if result.get('success'):
+        verification_data = result.get('verification_data', {})
+        search_result = verification_data.get('search_result', {})
         verification.update_stage('title_search_completed', {
-            'search_reference': result.get('search_data', {}).get('search_reference'),
-            'title_number': result.get('search_data', {}).get('title_number'),
-            'parcel_number': result.get('search_data', {}).get('parcel_number'),
-            'owner_name': result.get('search_data', {}).get('owner_name')
+            'search_reference': search_result.get('search_reference'),
+            'title_number': verification_data.get('title_number') or search_result.get('title_number'),
+            'parcel_number': search_result.get('parcel_number'),
+            'owner_name': search_result.get('owner_name'),
+            'search_result': search_result,
+            'ownership_result': verification_data.get('ownership_result'),
+            'encumbrance_result': verification_data.get('encumbrance_result'),
+            'decision': verification_data.get('decision')
         })
         return JsonResponse({
             'success': True, 
             'message': 'Ardhisasa verification completed',
-            'data': result.get('search_data')
+            'data': verification_data
         })
     else:
+        verification.stage_details['ardhisasa_error'] = result.get('error')
+        verification.stage_details['ardhisasa_failure'] = result.get('decision')
+        VerificationStatus.objects.filter(pk=verification.pk).update(
+            current_stage='rejected',
+            rejected_at=timezone.now(),
+            stage_details=verification.stage_details
+        )
         return JsonResponse({
             'success': False, 
             'error': result.get('error', 'Unknown error occurred')
@@ -595,11 +608,28 @@ def my_tasks(request):
         status='completed'
     ).select_related('plot').order_by('-completed_at')[:10]
     
+    pending_admin_tasks = VerificationTask.objects.none()
+    admin_review_plots = Plot.objects.none()
+    if request.user.is_superuser:
+        pending_admin_tasks = VerificationTask.objects.filter(
+            verification_type='document_review',
+            status='pending'
+        ).select_related('plot').order_by('assigned_at')
+        
+        plot_content_type = ContentType.objects.get_for_model(Plot)
+        admin_review_ids = VerificationStatus.objects.filter(
+            content_type=plot_content_type,
+            current_stage='admin_review'
+        ).values_list('object_id', flat=True)
+        admin_review_plots = Plot.objects.filter(id__in=admin_review_ids)
+    
     context = {
         'my_tasks': my_tasks,
         'completed_tasks': completed_tasks,
         'pending_in_area': None,
-        'page_title': 'My Tasks'
+        'page_title': 'My Tasks',
+        'pending_admin_tasks': pending_admin_tasks,
+        'admin_review_plots': admin_review_plots
     }
     
     return render(request, 'listings/admin/my_tasks.html', context)
@@ -610,6 +640,7 @@ def complete_task_view(request, task_id):
     """View for completing a task"""
     
     task = get_object_or_404(VerificationTask, id=task_id, assigned_to=request.user)
+    expected_owner_name = (task.plot.agent.user.get_full_name() if task.plot.agent else task.plot.landowner.user.get_full_name()) or (task.plot.agent.user.username if task.plot.agent else task.plot.landowner.user.username)
     
     if request.method == 'POST':
         notes = request.POST.get('notes', '')
@@ -617,11 +648,134 @@ def complete_task_view(request, task_id):
 
         if task.verification_type == 'document_review':
             from .models import DocumentVerification
+            from .services.ocr_service import DocumentOCRService, OCRUnavailable
+            ocr_results = {}
+            form_data = {
+                'owner_name_extracted': request.POST.get('owner_name_extracted', '').strip(),
+                'id_number_extracted': request.POST.get('id_number_extracted', '').strip(),
+                'kra_pin_extracted': request.POST.get('kra_pin_extracted', '').strip(),
+                'title_number_extracted': request.POST.get('title_number_extracted', '').strip(),
+                'parcel_number_extracted': request.POST.get('parcel_number_extracted', '').strip(),
+                'search_ref_extracted': request.POST.get('search_ref_extracted', '').strip(),
+                'search_date_extracted': request.POST.get('search_date_extracted', '').strip(),
+            }
+            confirm_doc_match = bool(request.POST.get('confirm_doc_match'))
+
+            def _norm(value):
+                return ''.join(c for c in (value or '').lower().strip() if c.isalnum())
+
+            owner_name_matches = _norm(form_data['owner_name_extracted']) == _norm(expected_owner_name)
+            id_matches = True
+            if task.plot.agent and getattr(task.plot.agent, 'id_number', ''):
+                id_matches = _norm(form_data['id_number_extracted']) == _norm(task.plot.agent.id_number)
+
+            missing_fields = [k for k, v in form_data.items() if not v and k != 'search_date_extracted']
+
+            if approved:
+                errors = []
+                if missing_fields:
+                    errors.append("All extracted document fields must be filled before approval.")
+                if not confirm_doc_match:
+                    errors.append("You must confirm extracted details match the uploaded documents.")
+                if not owner_name_matches:
+                    errors.append("Registered owner name does not match the user profile.")
+                if not id_matches:
+                    errors.append("National ID number does not match the agent profile.")
+
+                # OCR strict check: compare extracted values with OCR results
+                try:
+                    ocr_results = {}
+                    ocr_title = DocumentOCRService.extract_fields(
+                        DocumentOCRService.extract_text(task.plot.title_deed)
+                    )
+                    ocr_search = DocumentOCRService.extract_fields(
+                        DocumentOCRService.extract_text(task.plot.official_search)
+                    )
+                    ocr_id = DocumentOCRService.extract_fields(
+                        DocumentOCRService.extract_text(task.plot.landowner_id_doc)
+                    )
+                    ocr_kra = DocumentOCRService.extract_fields(
+                        DocumentOCRService.extract_text(task.plot.kra_pin)
+                    )
+                    ocr_results = {
+                        'title_deed': ocr_title,
+                        'official_search': ocr_search,
+                        'national_id': ocr_id,
+                        'kra_pin': ocr_kra
+                    }
+
+                    def _match_pair(label, a, b):
+                        return _norm(a) == _norm(b) and _norm(a) != ""
+
+                    # Document-to-document comparisons
+                    if not _match_pair('owner_name', ocr_title.get('owner_name'), ocr_search.get('owner_name')):
+                        errors.append("OCR check failed: Owner name mismatch between Title Deed and Official Search.")
+                    if not _match_pair('title_number', ocr_title.get('title_number'), ocr_search.get('title_number')):
+                        errors.append("OCR check failed: Title number mismatch between Title Deed and Official Search.")
+                    if ocr_search.get('parcel_number') and not _match_pair('parcel_number', ocr_title.get('parcel_number'), ocr_search.get('parcel_number')):
+                        errors.append("OCR check failed: Parcel number mismatch between Title Deed and Official Search.")
+
+                    # Cross-document owner name with ID and KRA
+                    if _norm(ocr_id.get('owner_name')) and not _match_pair('owner_name', ocr_title.get('owner_name'), ocr_id.get('owner_name')):
+                        errors.append("OCR check failed: Owner name mismatch between Title Deed and National ID.")
+                    if _norm(ocr_kra.get('owner_name')) and not _match_pair('owner_name', ocr_title.get('owner_name'), ocr_kra.get('owner_name')):
+                        errors.append("OCR check failed: Owner name mismatch between Title Deed and KRA PIN.")
+
+                    # Required fields present
+                    if not _norm(ocr_id.get('id_number')):
+                        errors.append("OCR check failed: National ID number not found in ID document.")
+                    if not _norm(ocr_kra.get('kra_pin')):
+                        errors.append("OCR check failed: KRA PIN not found in KRA certificate.")
+                    if not _norm(ocr_search.get('search_ref')):
+                        errors.append("OCR check failed: Search reference not found in Official Search.")
+                except OCRUnavailable as exc:
+                    errors.append(f"OCR unavailable: {exc}. Install Tesseract + pytesseract to enable strict checks.")
+                    ocr_results = {'error': str(exc)}
+
+                if errors:
+                    try:
+                        logger.error(
+                            "Document review blocked by OCR checks. plot_id=%s task_id=%s errors=%s ocr=%s",
+                            task.plot.id,
+                            task.id,
+                            errors,
+                            ocr_results
+                        )
+                    except Exception:
+                        pass
+                    for err in errors:
+                        messages.error(request, err)
+                    context = {
+                        'task': task,
+                        'plot': task.plot,
+                        'page_title': f'Complete Task: {task.get_verification_type_display()}',
+                        'expected_owner_name': expected_owner_name,
+                        'form_data': form_data
+                    }
+                    return render(request, 'listings/admin/complete_task.html', context)
+
             checklist = {
                 'title_deed': bool(request.POST.get('check_title')),
                 'official_search': bool(request.POST.get('check_search')),
                 'national_id': bool(request.POST.get('check_id')),
                 'kra_pin': bool(request.POST.get('check_kra')),
+            }
+            if approved and not all(checklist.values()):
+                messages.error(request, "All document checklist items must be confirmed before approval.")
+                context = {
+                    'task': task,
+                    'plot': task.plot,
+                    'page_title': f'Complete Task: {task.get_verification_type_display()}',
+                    'expected_owner_name': expected_owner_name,
+                    'form_data': form_data
+                }
+                return render(request, 'listings/admin/complete_task.html', context)
+            extracted_summary = {
+                **form_data,
+                'expected_owner_name': expected_owner_name,
+                'owner_name_matches': owner_name_matches,
+                'id_matches_agent': id_matches,
+                'ocr_results': ocr_results
             }
             for doc_type, checked in checklist.items():
                 DocumentVerification.verify_document(
@@ -629,7 +783,10 @@ def complete_task_view(request, task_id):
                     doc_type=doc_type,
                     reviewer=request.user,
                     approved=approved and checked,
-                    notes=notes,
+                    notes=json.dumps({
+                        'review_notes': notes,
+                        'extracted': extracted_summary
+                    }),
                     task=task
                 )
         
@@ -645,7 +802,9 @@ def complete_task_view(request, task_id):
     context = {
         'task': task,
         'plot': task.plot,
-        'page_title': f'Complete Task: {task.get_verification_type_display()}'
+        'page_title': f'Complete Task: {task.get_verification_type_display()}',
+        'expected_owner_name': expected_owner_name,
+        'form_data': {}
     }
     
     return render(request, 'listings/admin/complete_task.html', context)

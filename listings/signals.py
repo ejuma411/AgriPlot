@@ -112,10 +112,18 @@ def trigger_ardhisasa_verification(sender, instance, created, **kwargs):
                 # Use update() instead of save() to avoid triggering signals again
                 instance.current_stage = 'title_search_completed'
                 instance.title_search_at = timezone.now()
+                verification_data = result.get('verification_data', {})
+                search_result = verification_data.get('search_result', {})
                 instance.stage_details['title_search'] = {
-                    'search_reference': result.get('search_data', {}).get('search_reference'),
-                    'title_number': result.get('search_data', {}).get('title_number'),
-                    'owner_name': result.get('search_data', {}).get('owner_name')
+                    'search_reference': search_result.get('search_reference'),
+                    'title_number': verification_data.get('title_number') or search_result.get('title_number'),
+                    'owner_name': search_result.get('owner_name'),
+                    'parcel_number': search_result.get('parcel_number')
+                }
+                instance.stage_details['ardhisasa_checks'] = {
+                    'ownership_result': verification_data.get('ownership_result'),
+                    'encumbrance_result': verification_data.get('encumbrance_result'),
+                    'decision': verification_data.get('decision')
                 }
                 # Use update() to bypass signals
                 VerificationStatus.objects.filter(pk=instance.pk).update(
@@ -139,7 +147,10 @@ def trigger_ardhisasa_verification(sender, instance, created, **kwargs):
                     logger.error(f"Stage notification failed for plot {plot.id}: {notify_err}")
             else:
                 instance.stage_details['ardhisasa_error'] = result.get('error')
+                instance.stage_details['ardhisasa_failure'] = result.get('decision')
                 VerificationStatus.objects.filter(pk=instance.pk).update(
+                    current_stage='rejected',
+                    rejected_at=timezone.now(),
                     stage_details=instance.stage_details
                 )
                 logger.error(f"❌ Ardhisasa verification failed for plot {plot.id}: {result.get('error')}")

@@ -23,19 +23,19 @@
                         <table class="table table-bordered">
                             <tr>
                                 <th>Title Number</th>
-                                <td>{{ result.search_data.title_number }}</td>
+                                <td>{{ result.verification_data.title_number|default:result.verification_data.search_result.title_number }}</td>
                             </tr>
                             <tr>
                                 <th>Owner Name</th>
-                                <td>{{ result.search_data.owner_name }}</td>
+                                <td>{{ result.verification_data.search_result.owner_name }}</td>
                             </tr>
                             <tr>
                                 <th>Parcel Number</th>
-                                <td>{{ result.search_data.parcel_number }}</td>
+                                <td>{{ result.verification_data.search_result.parcel_number }}</td>
                             </tr>
                             <tr>
                                 <th>Search Reference</th>
-                                <td>{{ result.search_data.search_reference }}</td>
+                                <td>{{ result.verification_data.search_result.search_reference }}</td>
                             </tr>
                         </table>
                         
@@ -44,7 +44,7 @@
                             <tr>
                                 <th>Verified</th>
                                 <td>
-                                    {% if result.ownership_data.verified %}
+                                    {% if result.verification_data.ownership_result.verified %}
                                         <span class="badge bg-success">Yes</span>
                                     {% else %}
                                         <span class="badge bg-danger">No</span>
@@ -54,7 +54,7 @@
                         </table>
                         
                         <h4>Encumbrance Check</h4>
-                        <pre>{{ result.encumbrance_data|pprint }}</pre>
+                        <pre>{{ result.verification_data.encumbrance_result|pprint }}</pre>
                         
                     {% else %}
                         <div class="alert alert-danger">

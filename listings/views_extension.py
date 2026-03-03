@@ -263,6 +263,17 @@ def conduct_surveyor_inspection(request, task_id):
             report.plot = plot
             report.save()
 
+            # Update plot GPS coordinates from surveyor report
+            gps_updates = []
+            if report.gps_latitude is not None:
+                plot.latitude = report.gps_latitude
+                gps_updates.append('latitude')
+            if report.gps_longitude is not None:
+                plot.longitude = report.gps_longitude
+                gps_updates.append('longitude')
+            if gps_updates:
+                plot.save(update_fields=gps_updates)
+
             # If surveyor flags price unrealistic, update plot pricing (sale listings)
             if report.price_realistic is False and plot.listing_type in ['sale', 'both']:
                 updated_fields = []

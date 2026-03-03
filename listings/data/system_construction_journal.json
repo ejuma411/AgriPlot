@@ -160,11 +160,59 @@
     "next_step": "Schedule run_sla_tasks via cron/systemd"
   },
   {
-    "date": "2026-02-26",
+    "date": "2026-02-28",
     "module": "Officer workload visibility",
     "work_done": "Added pending tasks count per officer area in dashboards",
     "evidence": "listings/views_extension.py, listings/templates/listings/admin/my_tasks.html",
     "status": "Done",
     "next_step": "Add pending task details view for admins"
+  },
+  {
+    "date": "2026-03-02",
+    "module": "Admin My Tasks enhancements",
+    "work_done": "Added pending document reviews and final admin approvals sections, with assign-to-me for superuser",
+    "evidence": "listings/views_admin.py, listings/templates/listings/admin/my_tasks.html",
+    "status": "Done",
+    "next_step": "Add filters for task type and status"
+  },
+  {
+    "date": "2026-03-02",
+    "module": "Document verification strict checks (OCR)",
+    "work_done": "Implemented OCR-based cross-document validation for owner name, title number, parcel number, KRA PIN and search ref; blocked approval on mismatch",
+    "evidence": "listings/services/ocr_service.py, listings/views_admin.py",
+    "status": "Partial",
+    "next_step": "Finalize OCR dependencies on all environments and expose OCR preview in UI"
+  },
+  {
+    "date": "2026-03-02",
+    "module": "Ardhisasa fail-fast checks",
+    "work_done": "Added explicit failure handling for mock API (title not found / owner mismatch) and stage rejection with notifications",
+    "evidence": "listings/services/ardhisasa_integration.py, listings/signals.py, listings/tasks.py",
+    "status": "Done",
+    "next_step": "Integrate real API when available"
+  },
+  {
+    "date": "2026-03-02",
+    "module": "Email rendering stability",
+    "work_done": "Enabled humanize filters for email templates",
+    "evidence": "agriplot/settings.py, listings/templates/emails/new_plot_submitted.html",
+    "status": "Done",
+    "next_step": "Add unified email QA checks"
+  },
+  {
+    "date": "2026-03-02",
+    "module": "Footer info pages & admin-editable content",
+    "work_done": "Added About/Terms/Privacy editable pages and detailed info templates",
+    "evidence": "listings/models.py, listings/views.py, listings/templates/listings/info/*",
+    "status": "Done",
+    "next_step": "Add rich text editor in admin for content pages"
+  },
+  {
+    "date": "2026-03-02",
+    "module": "Auth UI refresh",
+    "work_done": "Unified login/registration/reset layouts and added logo + favicon in base templates",
+    "evidence": "listings/templates/auth/*, listings/templates/base.html",
+    "status": "Done",
+    "next_step": "Finalize accessibility and form validation messaging"
   }
 ]

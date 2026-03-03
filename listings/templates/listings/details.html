@@ -1,65 +1,134 @@
 {% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 
 {% block title %}{{ plot.title }} — AgriPlot Connect{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
-    <!-- Page Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="dashboard-header">
-                <div class="dashboard-header-content">
-                    <div class="dashboard-title">
-                        <h2>{{ plot.title }}</h2>
-                        <p class="dashboard-subtitle">Plot ID: #{{ plot.id }} • {{ plot.location }}</p>
-                    </div>
-                    <div class="dashboard-stats-summary">
-                        <div class="stat-badge">
-                            <span class="stat-badge-value text-primary">KES {{ plot.price|floatformat:0 }}</span>
-                            <span class="stat-badge-label">Price</span>
-                        </div>
-                        <div class="stat-badge">
-                            <span class="stat-badge-value text-success">{{ plot.area|floatformat:1 }}</span>
-                            <span class="stat-badge-label">Acres</span>
-                        </div>
-                        <div class="stat-badge">
-                            <span class="stat-badge-value">
-                                {% if plot.verification_status.status == 'verified' %}
-                                <i class="fas fa-check-circle text-success"></i>
-                                {% else %}
-                                <i class="fas fa-clock text-warning"></i>
-                                {% endif %}
-                            </span>
-                            <span class="stat-badge-label">
-                                {% if plot.verification_status.status == 'verified' %}Verified{% else %}Pending{% endif %}
-                            </span>
-                        </div>
-                    </div>
+<section class="detail-hero" style="background-image: url('{% if plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
+    <div class="detail-hero-overlay"></div>
+    <div class="detail-hero-card">
+        <div class="hero-card-logo">
+            <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot">
+        </div>
+        <div class="hero-card-info">
+            <h2>{{ plot.title }}</h2>
+            <p class="hero-location">
+                {% if plot.county %}{{ plot.county }}{% if plot.subcounty %}, {{ plot.subcounty }}{% endif %}{% else %}{{ plot.location }}{% endif %}
+            </p>
+            <div class="hero-stats">
+                <div class="hero-stat">
+                    <span class="value">KES {{ plot.price|floatformat:0 }}</span>
+                    <span class="label">Price</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="value">{{ plot.area|floatformat:1 }} Acres</span>
+                    <span class="label">Plot Area</span>
+                </div>
+                <div class="hero-stat">
+                    <span class="value">
+                        {% if plot.area and plot.area > 0 and plot.price %}
+                            {% widthratio plot.price plot.area 1 as price_per_acre %}
+                            KES {{ price_per_acre|floatformat:0|intcomma }} /acre
+                        {% else %}
+                            —
+                        {% endif %}
+                    </span>
+                    <span class="label">Price Per Acre</span>
                 </div>
             </div>
         </div>
-    </div>
-
-    <!-- Navigation -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <nav class="detail-navigation">
-                <a href="{% url 'listings:home' %}" class="nav-link">
-                    <i class="fas fa-arrow-left me-2"></i>Back to Listings
-                </a>
-                <a href="#details" class="nav-link active">Details</a>
-                <a href="#location" class="nav-link">Location</a>
-                <a href="#documents" class="nav-link">Documents</a>
-                <a href="#agent" class="nav-link">Owner</a>
-            </nav>
+        <div class="hero-card-actions">
+            <a href="#agent" class="btn hero-btn primary">
+                <i class="fas fa-comment-dots me-2"></i>Chat with Seller
+            </a>
+            <a href="#location" class="btn hero-btn outline">
+                <i class="fas fa-map-marker-alt me-2"></i>View Location
+            </a>
+            
         </div>
     </div>
+</section>
 
-    <!-- Main Content Grid -->
-    <div class="row">
+<div class="container-fluid py-4 detail-shell">
+    <div class="detail-layout">
+        <aside class="detail-nav">
+            <a href="{% url 'listings:home' %}" class="nav-link"><i class="fas fa-arrow-left me-2"></i>Back to Listings</a>
+            <a href="#details" class="nav-link active">Overview</a>
+            <a href="#about" class="nav-link">About</a>
+            <a href="#amenities" class="nav-link">Amenities</a>
+            <a href="#gallery" class="nav-link">Gallery</a>
+            <a href="#location" class="nav-link">Location</a>
+            <a href="#agent" class="nav-link">Owner</a>
+        </aside>
+        <main class="detail-main">
+            <!-- Main Content Grid -->
+            <div class="row">
         <!-- Left Column: Location & Details -->
         <div class="col-lg-8 mb-4">
+            <!-- About -->
+            <div class="dashboard-card mb-4" id="about">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-align-left me-2"></i>About
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">
+                        {{ plot.land_use_description|default:plot.special_features|default:"Detailed description will be added after verification." }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Amenities -->
+            <div class="dashboard-card mb-4" id="amenities">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-list-check me-2"></i>Amenities
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="amenities-grid">
+                        <span class="amenity-chip {% if plot.has_water %}ok{% else %}no{% endif %}">
+                            <i class="fas fa-tint me-1"></i>Water: {{ plot.water_source|default:"No" }}
+                        </span>
+                        <span class="amenity-chip {% if plot.has_electricity %}ok{% else %}no{% endif %}">
+                            <i class="fas fa-bolt me-1"></i>Electricity
+                        </span>
+                        <span class="amenity-chip {% if plot.has_road_access %}ok{% else %}no{% endif %}">
+                            <i class="fas fa-road me-1"></i>Road: {{ plot.road_type|default:"N/A" }}
+                        </span>
+                        <span class="amenity-chip {% if plot.has_buildings %}ok{% else %}no{% endif %}">
+                            <i class="fas fa-building me-1"></i>Buildings
+                        </span>
+                        <span class="amenity-chip">
+                            <i class="fas fa-border-all me-1"></i>Fencing: {{ plot.fencing|default:"Not specified" }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gallery -->
+            <div class="dashboard-card mb-4" id="gallery">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-images me-2"></i>Gallery
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="gallery-grid">
+                        {% if plot.extension_reports.first and plot.extension_reports.first.site_photos %}
+                            {% for photo in plot.extension_reports.first.site_photos %}
+                                <img src="{{ photo }}" alt="Plot photo" class="gallery-thumb">
+                            {% endfor %}
+                        {% else %}
+                            <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
+                            <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
+                            <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
             <!-- Location / GIS Map -->
             <div class="dashboard-card mb-4" id="location">
                 <div class="card-header">
@@ -213,53 +282,7 @@
 
         <!-- Right Column: Documents & Broker Info -->
         <div class="col-lg-4 mb-4">
-            <!-- Documents -->
-            <div class="dashboard-card mb-4" id="documents">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-file-alt me-2"></i>Documents
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="documents-list">
-                        <div class="document-item {% if plot.title_deed %}available{% else %}missing{% endif %}">
-                            <div class="document-icon">
-                                <i class="fas fa-file-contract fa-2x"></i>
-                            </div>
-                            <div class="document-info">
-                                <h6>Title Deed</h6>
-                                {% if plot.title_deed and can_view_documents %}
-                                <a href="{% url 'listings:serve_plot_document' plot.id 'title_deed' %}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-download me-1"></i>View Document
-                                </a>
-                                {% elif plot.title_deed %}
-                                <small class="text-muted">Restricted to owner/admin</small>
-                                {% else %}
-                                <small class="text-muted">Not uploaded</small>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <div class="document-item {% if plot.soil_report %}available{% else %}missing{% endif %}">
-                            <div class="document-icon">
-                                <i class="fas fa-flask fa-2x"></i>
-                            </div>
-                            <div class="document-info">
-                                <h6>Soil Test Report</h6>
-                                {% if plot.soil_report and can_view_documents %}
-                                <a href="{% url 'listings:serve_plot_document' plot.id 'soil_report' %}" target="_blank" class="btn btn-sm btn-outline-info">
-                                    <i class="fas fa-download me-1"></i>View Report
-                                </a>
-                                {% elif plot.soil_report %}
-                                <small class="text-muted">Restricted to owner/admin</small>
-                                {% else %}
-                                <small class="text-muted">Optional - Not uploaded</small>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            
 
             <!-- Owner/Agent Information & Contact -->
             <div class="dashboard-card mb-4" id="agent">
@@ -539,6 +562,8 @@
             </div>
         </div>
     </div>
+        </main>
+    </div>
 </div>
 
 <style>
@@ -571,6 +596,198 @@ a {
 a:hover {
     text-decoration: none;
     color: #1f7a4d;
+}
+
+/* =========================
+   FARMLAND-STYLE DETAILS
+========================= */
+.detail-hero {
+    position: relative;
+    min-height: 360px;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: flex-end;
+    padding: 40px 0 30px;
+}
+
+.detail-hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.6));
+}
+
+.detail-hero-card {
+    position: relative;
+    z-index: 2;
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 18px;
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    gap: 18px;
+    align-items: center;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+}
+
+.hero-card-logo img {
+    width: 80px;
+    height: 80px;
+    object-fit: contain;
+}
+
+.hero-card-info h2 {
+    margin: 0 0 6px;
+    font-size: 1.4rem;
+}
+
+.hero-location {
+    margin: 0 0 12px;
+    color: #5d6d6a;
+}
+
+.hero-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.hero-stat .value {
+    font-weight: 700;
+    color: #1f7a4d;
+}
+
+.hero-stat .label {
+    font-size: 0.78rem;
+    color: #66756f;
+}
+
+.hero-card-actions {
+    display: grid;
+    gap: 8px;
+}
+
+.hero-btn {
+    padding: 8px 14px;
+    border-radius: 10px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.hero-btn.primary {
+    background: #1f7a4d;
+    color: #fff;
+}
+
+.hero-btn.outline {
+    border: 1px solid #1f7a4d;
+    color: #1f7a4d;
+}
+
+.detail-shell {
+    background: #f6f8f6;
+}
+
+.detail-layout {
+    display: grid;
+    grid-template-columns: 220px 1fr;
+    gap: 24px;
+}
+
+.detail-nav {
+    position: sticky;
+    top: 90px;
+    align-self: start;
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.detail-nav .nav-link {
+    display: block;
+    padding: 10px 12px;
+    color: #4b5b56;
+    border-left: 3px solid transparent;
+}
+
+.detail-nav .nav-link:hover {
+    border-left-color: #1f7a4d;
+    background: #f3faf6;
+}
+
+.detail-main .dashboard-card {
+    border-radius: 14px;
+}
+
+.amenities-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.amenity-chip {
+    background: #f3f7f5;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+}
+
+.amenity-chip.ok {
+    background: #e6f6ee;
+    color: #1f7a4d;
+}
+
+.amenity-chip.no {
+    background: #fff1f1;
+    color: #c0392b;
+}
+
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.gallery-thumb {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 10px;
+}
+
+@media (max-width: 992px) {
+    .detail-layout {
+        grid-template-columns: 1fr;
+    }
+    .detail-nav {
+        position: static;
+    }
+    .detail-hero-card {
+        grid-template-columns: 70px 1fr;
+    }
+    .hero-card-actions {
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 640px) {
+    .detail-hero-card {
+        grid-template-columns: 1fr;
+        text-align: left;
+    }
+    .hero-stats {
+        grid-template-columns: 1fr;
+    }
+    .hero-card-actions {
+        grid-template-columns: 1fr;
+    }
 }
 
 .container-fluid {
