@@ -461,6 +461,22 @@ class Plot(models.Model):
 
 
 # -----------------------------
+# Plot Images (Uploaded by Surveyor)
+# -----------------------------
+class PlotImage(models.Model):
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="images")
+    image = models.ImageField(upload_to="plot_images/")
+    uploaded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"PlotImage {self.id} for Plot {self.plot_id}"
+
+
+# -----------------------------
 # Document Uploads for Verification
 # -----------------------------
 class VerificationDocument(models.Model):

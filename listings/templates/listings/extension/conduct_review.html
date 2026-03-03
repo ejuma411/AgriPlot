@@ -176,6 +176,16 @@
                 </div>
             </div>
 
+            <h5 class="mt-2">Plot Images</h5>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label">Surveyor Photos</label>
+                    {{ form.plot_images }}
+                    {% if form.plot_images.help_text %}<small class="text-muted d-block">{{ form.plot_images.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.plot_images.errors }}</small>
+                </div>
+            </div>
+
             <h5 class="mt-2">Encumbrances</h5>
             <div class="row">
                 <div class="col-12 col-md-6 mb-3">

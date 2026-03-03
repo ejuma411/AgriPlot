@@ -214,5 +214,93 @@
     "evidence": "listings/templates/auth/*, listings/templates/base.html",
     "status": "Done",
     "next_step": "Finalize accessibility and form validation messaging"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Surveyor report uploads",
+    "work_done": "Fixed multi-file upload widget for surveyor plot images by using MultipleFileInput",
+    "evidence": "listings/forms.py",
+    "status": "Done",
+    "next_step": "Verify uploads flow in surveyor report UI"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Public marketplace, search & filters",
+    "work_done": "Implemented public home marketplace with verification-only listings, rich filters (soil, crop, price, area), crop presets, AJAX search, and pagination; added plot detail view and info pages",
+    "evidence": "listings/views.py, listings/templates/listings/home.html, listings/templates/listings/_market_grid.html, listings/templates/listings/details.html, listings/templates/listings/info/*",
+    "status": "Done",
+    "next_step": "Add map-based search and saved filters"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Plot listing management",
+    "work_done": "Built plot creation/editing forms, document upload checklist, and agent dashboard pages for managing listings and verification progress",
+    "evidence": "listings/views.py, listings/forms.py, listings/templates/listings/dashboard/add_plot.html, listings/templates/listings/edit_plot.html, listings/templates/listings/dashboard/my_plots.html",
+    "status": "Done",
+    "next_step": "Add draft autosave and bulk image management"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Buyer interest & contact flows",
+    "work_done": "Implemented buyer interest tracking, contact requests, phone view logging, and agent-facing interest dashboard",
+    "evidence": "listings/models.py, listings/views.py, listings/templates/listings/dashboard/buyer_interests.html, listings/templates/listings/details.html",
+    "status": "Done",
+    "next_step": "Add messaging thread and automated follow-ups"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Plot images & media",
+    "work_done": "Added plot image model, upload handling, and gallery rendering on listing details",
+    "evidence": "listings/models.py, listings/forms.py, listings/views.py, listings/templates/listings/details.html",
+    "status": "Done",
+    "next_step": "Add image ordering and compression pipeline"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Audit logging (security/compliance)",
+    "work_done": "Implemented audit log model and utilities for recording sensitive actions with IP/User-Agent capture",
+    "evidence": "listings/models.py, listings/utils.py, listings/admin.py",
+    "status": "Done",
+    "next_step": "Add audit log export/reporting"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Pricing suggestions & comparables",
+    "work_done": "Added price comparables, pricing suggestion generation, and admin management",
+    "evidence": "listings/models.py, listings/utils.py, listings/admin.py",
+    "status": "Partial",
+    "next_step": "Expose pricing suggestions to agents/landowners in UI"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Location validation & Kenya data",
+    "work_done": "Added county/subcounty validation utilities and curated Kenya location data used in forms",
+    "evidence": "listings/location_utils.py, listings/kenya_data.py, listings/forms.py",
+    "status": "Done",
+    "next_step": "Add geocoding and map visualization"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "CMS-style site pages",
+    "work_done": "Added editable site pages (about/terms/privacy) with admin management and public templates",
+    "evidence": "listings/models.py, listings/views.py, listings/admin.py, listings/templates/listings/info/*",
+    "status": "Done",
+    "next_step": "Add rich-text editor and revision history"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Impersonation detection & document hashing",
+    "work_done": "Implemented document hash tracking and impersonation detection records to flag repeat/duplicate uploads",
+    "evidence": "listings/models.py, listings/admin.py",
+    "status": "Done",
+    "next_step": "Add automated alerts and admin review queue"
+  },
+  {
+    "date": "2026-03-03",
+    "module": "Testing & QA artifacts",
+    "work_done": "Added automated tests for SMS and Ardhisasa flows plus manual test report checklist",
+    "evidence": "listings/tests/*.py, TEST_REPORT.md",
+    "status": "Done",
+    "next_step": "Expand tests for OCR and verification edge cases"
   }
 ]

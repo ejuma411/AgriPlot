@@ -263,6 +263,19 @@ def conduct_surveyor_inspection(request, task_id):
             report.plot = plot
             report.save()
 
+            # Save plot images uploaded by surveyor
+            try:
+                from .models import PlotImage
+                images = request.FILES.getlist('plot_images')
+                for img in images:
+                    PlotImage.objects.create(
+                        plot=plot,
+                        image=img,
+                        uploaded_by=request.user
+                    )
+            except Exception as e:
+                logger.error(f"Failed to save plot images: {e}")
+
             # Update plot GPS coordinates from surveyor report
             gps_updates = []
             if report.gps_latitude is not None:

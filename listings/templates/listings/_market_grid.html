@@ -12,7 +12,7 @@
     <div class="market-grid">
         {% for plot in featured_plots %}
         <div class="market-card fb-card" data-land-type="{{ plot.land_type }}">
-            <div class="fb-image" style="background-image: url('{% if plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
+            <div class="fb-image" style="background-image: url('{% if plot.images.first %}{{ plot.images.first.image.url }}{% elif plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
                 <span class="fb-badge">{{ plot.get_land_type_display }}</span>
                 <button class="fb-fav" title="Save plot">
                     <i class="far fa-heart"></i>

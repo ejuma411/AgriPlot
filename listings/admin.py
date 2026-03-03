@@ -1311,6 +1311,13 @@ class ComparableSaleAdmin(admin.ModelAdmin):
     search_fields = ('plot__title', 'county', 'source')
 
 
+@admin.register(PlotImage)
+class PlotImageAdmin(admin.ModelAdmin):
+    list_display = ('plot', 'uploaded_by', 'uploaded_at')
+    list_filter = ('uploaded_at',)
+    search_fields = ('plot__title', 'uploaded_by__username')
+
+
 # -----------------------------
 # Notifications & Support
 # -----------------------------

@@ -1319,6 +1319,15 @@ class ExtensionReportForm(forms.ModelForm):
 
 class SurveyorReportForm(forms.ModelForm):
     """Form for submitting land surveyor inspection reports"""
+    plot_images = MultipleFileField(
+        required=False,
+        label="Plot Images (Survey Photos)",
+        help_text="Upload clear photos of the plot (JPG/PNG).",
+        widget=MultipleFileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*'
+        })
+    )
     def clean(self):
         cleaned = super().clean()
         price_realistic = cleaned.get('price_realistic')

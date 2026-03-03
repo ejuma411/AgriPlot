@@ -5,7 +5,7 @@
 {% block title %}{{ plot.title }} — AgriPlot Connect{% endblock %}
 
 {% block content %}
-<section class="detail-hero" style="background-image: url('{% if plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
+<section class="detail-hero" style="background-image: url('{% if plot.images.first %}{{ plot.images.first.image.url }}{% elif plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
     <div class="detail-hero-overlay"></div>
     <div class="detail-hero-card">
         <div class="hero-card-logo">
@@ -117,7 +117,11 @@
                 </div>
                 <div class="card-body">
                     <div class="gallery-grid">
-                        {% if plot.extension_reports.first and plot.extension_reports.first.site_photos %}
+                        {% if plot.images.all %}
+                            {% for img in plot.images.all %}
+                                <img src="{{ img.image.url }}" alt="Plot photo" class="gallery-thumb">
+                            {% endfor %}
+                        {% elif plot.extension_reports.first and plot.extension_reports.first.site_photos %}
                             {% for photo in plot.extension_reports.first.site_photos %}
                                 <img src="{{ photo }}" alt="Plot photo" class="gallery-thumb">
                             {% endfor %}
