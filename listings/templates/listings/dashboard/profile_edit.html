@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% load static %}
+{% load plot_extras %}
+
+{% block title %}Edit Profile — AgriPlot Connect{% endblock %}
+
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/account.css' %}">
+<style>
+    footer { margin-left: 0; }
+    .dashboard-main { margin-left: 0; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper account-page">
+    <main class="dashboard-main">
+        <div class="dashboard-topbar">
+            <div class="topbar-left">
+                <h1 class="page-title">Edit Profile</h1>
+                <p class="page-subtitle">Update your account and role details.</p>
+            </div>
+        </div>
+
+        <div class="dashboard-content">
+            <div class="content-left">
+                {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                    <div class="alert alert-dismissible fade show 
+                        {% if message.tags == 'error' %}alert-danger
+                        {% elif message.tags == 'success' %}alert-success
+                        {% elif message.tags == 'warning' %}alert-warning
+                        {% else %}alert-info{% endif %}" role="alert">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span>{{ message }}</span>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-user me-2"></i>Account Details
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" class="settings-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="section" value="account">
+                            <div class="profile-info-table">
+                                <table class="info-field-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="field-label"><label class="required">First Name</label></td>
+                                            <td class="field-input"><input type="text" class="form-control" name="first_name" value="{{ request.user.first_name }}" required></td>
+                                            <td class="field-help"><small class="text-muted">Legal first name</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label class="required">Last Name</label></td>
+                                            <td class="field-input"><input type="text" class="form-control" name="last_name" value="{{ request.user.last_name }}" required></td>
+                                            <td class="field-help"><small class="text-muted">Legal last name</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>Username</label></td>
+                                            <td class="field-input"><input type="text" class="form-control" value="{{ request.user.username }}" readonly></td>
+                                            <td class="field-help"><small class="text-muted">Username cannot be changed</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label class="required">Email Address</label></td>
+                                            <td class="field-input"><input type="email" class="form-control" name="email" value="{{ request.user.email }}" required></td>
+                                            <td class="field-help"><small class="text-muted">Used for alerts and 2FA</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>Phone Number</label></td>
+                                            <td class="field-input"><input type="tel" class="form-control" name="phone" value="{{ profile.phone|default:'' }}"></td>
+                                            <td class="field-help"><small class="text-muted">SMS verification</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>Address</label></td>
+                                            <td class="field-input"><textarea class="form-control" name="address" rows="3">{{ profile.address|default:'' }}</textarea></td>
+                                            <td class="field-help"><small class="text-muted">Optional contact address</small></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="form-actions mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Save Changes
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                {% if is_agent %}
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title"><i class="fas fa-briefcase me-2"></i>Agent Details</h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" class="settings-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="section" value="agent">
+                            <div class="profile-info-table">
+                                <table class="info-field-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="field-label"><label>Agent Phone</label></td>
+                                            <td class="field-input"><input type="tel" class="form-control" name="agent_phone" value="{{ agent.phone|default:'' }}"></td>
+                                            <td class="field-help"><small class="text-muted">Public contact</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>License Number</label></td>
+                                            <td class="field-input"><input type="text" class="form-control" name="license_number" value="{{ agent.license_number|default:'' }}"></td>
+                                            <td class="field-help"><small class="text-muted">Professional license</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>National ID</label></td>
+                                            <td class="field-input"><input type="text" class="form-control" name="id_number" value="{{ agent.id_number|default:'' }}"></td>
+                                            <td class="field-help"><small class="text-muted">Government ID</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>Contact Preference</label></td>
+                                            <td class="field-input">
+                                                <select class="form-select" name="contact_preference">
+                                                    <option value="email" {% if agent.contact_preference == 'email' %}selected{% endif %}>Email</option>
+                                                    <option value="phone" {% if agent.contact_preference == 'phone' %}selected{% endif %}>Phone</option>
+                                                    <option value="whatsapp" {% if agent.contact_preference == 'whatsapp' %}selected{% endif %}>WhatsApp</option>
+                                                    <option value="any" {% if agent.contact_preference == 'any' %}selected{% endif %}>Any</option>
+                                                </select>
+                                            </td>
+                                            <td class="field-help"><small class="text-muted">Preferred channel</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>Availability</label></td>
+                                            <td class="field-input">
+                                                <div class="d-flex gap-2">
+                                                    <input type="time" class="form-control" name="available_from" value="{% if agent.available_from %}{{ agent.available_from|time:'H:i' }}{% endif %}">
+                                                    <input type="time" class="form-control" name="available_to" value="{% if agent.available_to %}{{ agent.available_to|time:'H:i' }}{% endif %}">
+                                                </div>
+                                            </td>
+                                            <td class="field-help"><small class="text-muted">Typical hours</small></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="form-actions mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Save Agent Details
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if is_extension %}
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title"><i class="fas fa-seedling me-2"></i>Extension Officer Details</h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" class="settings-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="section" value="extension_officer">
+                            <div class="profile-info-table">
+                                <table class="info-field-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="field-label"><label>Phone</label></td>
+                                            <td class="field-input"><input type="tel" class="form-control" name="officer_phone" value="{{ extension_officer.phone|default:'' }}"></td>
+                                            <td class="field-help"><small class="text-muted">Work contact</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>Office Address</label></td>
+                                            <td class="field-input"><textarea class="form-control" name="office_address" rows="2">{{ extension_officer.office_address|default:'' }}</textarea></td>
+                                            <td class="field-help"><small class="text-muted">Office location</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>Station</label></td>
+                                            <td class="field-input"><input type="text" class="form-control" value="{{ extension_officer.station|default:'' }}" readonly></td>
+                                            <td class="field-help"><small class="text-muted">Assigned by admin</small></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="form-actions mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Save Officer Details
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if is_surveyor %}
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title"><i class="fas fa-map-marked-alt me-2"></i>Surveyor Details</h6>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" class="settings-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="section" value="land_surveyor">
+                            <div class="profile-info-table">
+                                <table class="info-field-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="field-label"><label>Phone</label></td>
+                                            <td class="field-input"><input type="tel" class="form-control" name="surveyor_phone" value="{{ land_surveyor.phone|default:'' }}"></td>
+                                            <td class="field-help"><small class="text-muted">Work contact</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>Office Address</label></td>
+                                            <td class="field-input"><textarea class="form-control" name="surveyor_address" rows="2">{{ land_surveyor.office_address|default:'' }}</textarea></td>
+                                            <td class="field-help"><small class="text-muted">Office location</small></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="field-label"><label>Station</label></td>
+                                            <td class="field-input"><input type="text" class="form-control" value="{{ land_surveyor.station|default:'' }}" readonly></td>
+                                            <td class="field-help"><small class="text-muted">Assigned by admin</small></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="form-actions mt-4">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Save Surveyor Details
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="content-right">
+                <div class="card sticky-top">
+                    <div class="card-body text-center">
+                        <div class="profile-avatar-large">{{ request.user.get_full_name|first|upper }}</div>
+                        <h5 class="mt-3 mb-1">{{ request.user.get_full_name|default:request.user.username }}</h5>
+                        <p class="text-muted mb-4">{{ profile_type }}</p>
+                        <div class="profile-actions mt-4 d-grid gap-2">
+                            <a href="{% url 'listings:profile_management' %}" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-user me-2"></i>Back to Profile
+                            </a>
+                            <a href="{% url 'listings:account_settings' %}" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-cog me-2"></i>Security Settings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+{% endblock %}

@@ -2,10 +2,11 @@
 {% block title %}Register Landowner{% endblock %}
 
 {% block content %}
-<h2>Create Landowner Account</h2>
-<p class="text-muted">Submit landowner documents for verification.</p>
+<p class="auth-kicker">Landowner Verification</p>
+<h2 class="auth-title">Create Landowner Account</h2>
+<p class="auth-subtitle">Submit landowner documents for verification.</p>
 
-<form method="POST" enctype="multipart/form-data" class="portal-form">
+<form method="POST" enctype="multipart/form-data" class="auth-form">
     {% csrf_token %}
 
     {% if form.non_field_errors %}
@@ -27,6 +28,6 @@
         </div>
     {% endfor %}
 
-    <button class="portal-btn">Submit for Verification</button>
+    <button class="auth-btn">Submit for Verification</button>
 </form>
 {% endblock %}

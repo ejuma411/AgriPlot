@@ -2,22 +2,23 @@
 {% block title %}Choose Role{% endblock %}
 
 {% block content %}
-<h2>Join AgriPlot</h2>
-<p class="text-muted">Select how you want to use the platform.</p>
+<p class="auth-kicker">New Account</p>
+<h2 class="auth-title">Join AgriPlot</h2>
+<p class="auth-subtitle">Select how you want to use the platform.</p>
 
 <div class="portal-signup">
-    <div class="portal-signup-links">
+    <div class="auth-chip-row">
         <a href="{% url 'listings:register_buyer' %}?role=buyer">Buyer</a>
         <a href="{% url 'listings:register_buyer' %}?role=landowner">Landowner</a>
         <a href="{% url 'listings:register_buyer' %}?role=agent">Agent</a>
     </div>
 </div>
 
-<hr class="portal-divider" />
+<hr class="auth-divider" />
 
-<h3 style="margin: 8px 0;">Verification Roles</h3>
+<h3 class="auth-panel-title">Verification Roles</h3>
 <div class="portal-signup">
-    <div class="portal-signup-links">
+    <div class="auth-chip-row">
         <a href="{% url 'listings:register_buyer' %}?role=extension_officer">Extension Officer</a>
         <a href="{% url 'listings:register_buyer' %}?role=land_surveyor">Land Surveyor</a>
     </div>

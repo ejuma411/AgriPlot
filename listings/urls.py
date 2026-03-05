@@ -29,6 +29,9 @@ urlpatterns = [
 
     # Authentication
     path("logout/", LogoutView.as_view(next_page="listings:home"), name="logout"),
+    path("two-factor/setup/", views_auth.two_factor_setup, name="two_factor_setup"),
+    path("two-factor/verify/", views_auth.two_factor_verify, name="two_factor_verify"),
+    path("sessions/signout-all/", views_auth.sign_out_all_sessions, name="sign_out_all_sessions"),
 
     # Registration
     path("register-choice/", views.register_choice, name="register_choice"),
@@ -76,6 +79,8 @@ urlpatterns = [
     path("dashboard/interests/", views.buyer_interests, name="buyer_interests"),
     path("dashboard/interest/<int:interest_id>/update/", views.update_interest_status, name="update_interest_status"),
     path("dashboard/profile/", views.profile_management, name="profile_management"),
+    path("dashboard/profile/edit/", views.profile_edit, name="profile_edit"),
+    path("dashboard/settings/", views.account_settings, name="account_settings"),
     path("dashboard/notifications/", views.notifications_inbox, name="notifications_inbox"),
     path("dashboard/analytics/", views.dashboard_analytics, name="dashboard_analytics"),
     path("dashboard/plot/<int:plot_id>/upload-document/", views.upload_verification_doc, name="dashboard_upload_doc"),

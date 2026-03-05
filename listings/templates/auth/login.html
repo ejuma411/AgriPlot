@@ -1,208 +1,65 @@
-{% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AgriPlot Connect</title>
-    <link rel="icon" href="{% static 'images/agriplot-logo.png' %}">
-    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
-</head>
-<body class="auth-body">
-    <div class="portal-wrapper">
-        <div class="portal-card">
-            <div class="portal-logo">
-                <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot" class="portal-logo-img" />
-            </div>
-            <hr class="portal-divider" />
+{% extends "auth/auth_base.html" %}
+{% block title %}Login — AgriPlot Connect{% endblock %}
 
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="portal-alert alert-{{ message.tags }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
+{% block content %}
+<p class="auth-kicker">Secure Access</p>
+<h2 class="auth-title">Welcome back</h2>
+<p class="auth-subtitle">Sign in to manage listings, verification tasks, and buyer inquiries with verified access.</p>
 
-            <form method="POST" class="portal-form" id="loginForm">
-                {% csrf_token %}
+<form method="POST" class="auth-form" id="loginForm">
+    {% csrf_token %}
 
-                <label for="username">Username or Email</label>
-                <input type="text" id="username" name="username" required autofocus />
+    <label for="username">Username or Email</label>
+    <input type="text" id="username" name="username" required autofocus />
 
-                <label for="password">Password</label>
-                <div class="password-wrap">
-                    <input type="password" id="password" name="password" required />
-                    <button type="button" class="password-toggle" onclick="togglePassword()">Show</button>
-                </div>
-
-                <div class="portal-options">
-                    <label class="portal-remember">
-                        <input type="checkbox" name="remember_me">
-                        Remember me
-                    </label>
-                </div>
-
-                <button type="submit" class="portal-btn">Log In</button>
-            </form>
-
-            <div class="portal-links">
-                <a href="{% url 'listings:password_reset' %}">Forgot your password?</a>
-            </div>
-
-            {% if show_wizard_resume %}
-            <div class="resume-banner">
-                <strong>Resume your landowner registration</strong>
-                <a href="{% url 'listings:register_landowner' %}" class="portal-link-btn">Resume</a>
-            </div>
-            {% endif %}
-
-            <div class="portal-signup">
-                <span>Don't have an account?</span>
-                <div class="portal-signup-links">
-                    <a href="{% url 'listings:register_buyer' %}">Buyer</a>
-                    <a href="{% url 'listings:register_landowner' %}">Landowner</a>
-                    <a href="{% url 'listings:register_agent' %}">Agent</a>
-                </div>
-            </div>
-
-            <div class="portal-footer">© AgriPlot Connect</div>
-        </div>
+    <label for="password">Password</label>
+    <div class="password-wrap">
+        <input type="password" id="password" name="password" required />
+        <button type="button" class="password-toggle" onclick="togglePassword()">Show</button>
     </div>
 
-    <style>
-        body.auth-body {
-            background: #f5f5f5;
+    <div class="auth-row">
+        <label class="auth-check">
+            <input type="checkbox" name="remember_me">
+            Remember me
+        </label>
+        <a class="auth-link" href="{% url 'listings:password_reset' %}">Forgot your password?</a>
+    </div>
+
+    <button type="submit" class="auth-btn">Log In</button>
+</form>
+
+{% if show_wizard_resume %}
+<div class="auth-note">
+    <strong>Resume your landowner registration</strong>
+    <a href="{% url 'listings:register_landowner' %}" class="auth-link-btn">Resume</a>
+</div>
+{% endif %}
+
+<div class="portal-signup">
+    <span>Don't have an account?</span>
+    <div class="auth-chip-row">
+        <a href="{% url 'listings:register_buyer' %}">Buyer</a>
+        <a href="{% url 'listings:register_landowner' %}">Landowner</a>
+        <a href="{% url 'listings:register_agent' %}">Agent</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block auth_links %}{% endblock %}
+
+{% block extra_js %}
+<script>
+    function togglePassword() {
+        const input = document.getElementById('password');
+        const btn = document.querySelector('.password-toggle');
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = 'Hide';
+        } else {
+            input.type = 'password';
+            btn.textContent = 'Show';
         }
-        .portal-wrapper {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-        }
-        .portal-card {
-            width: 380px;
-            background: #fff;
-            border: 1px solid #ddd;
-            padding: 24px 26px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        }
-        .portal-logo {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-        .portal-logo-img {
-            width: 90px;
-            height: 90px;
-            object-fit: contain;
-        }
-        .portal-divider {
-            margin: 10px 0 18px;
-        }
-        .portal-form label {
-            display: block;
-            margin: 10px 0 6px;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        .portal-form input {
-            width: 100%;
-            padding: 8px 10px;
-            border: 1px solid #ccc;
-            border-radius: 2px;
-        }
-        .password-wrap {
-            position: relative;
-        }
-        .password-toggle {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            font-size: 0.85rem;
-            color: #0f5132;
-        }
-        .portal-options {
-            margin: 10px 0;
-        }
-        .portal-btn {
-            width: 100%;
-            background: #1f8b4c;
-            color: #fff;
-            border: none;
-            padding: 10px;
-            margin-top: 6px;
-            cursor: pointer;
-        }
-        .portal-links {
-            margin-top: 10px;
-            text-align: center;
-        }
-        .portal-links a {
-            color: #0066cc;
-            text-decoration: none;
-        }
-        .portal-alert {
-            background: #fff3cd;
-            border: 1px solid #ffeeba;
-            padding: 8px 10px;
-            margin-bottom: 10px;
-            font-size: 0.85rem;
-        }
-        .portal-footer {
-            margin-top: 14px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #666;
-        }
-        .portal-signup {
-            margin-top: 12px;
-            text-align: center;
-            font-size: 0.85rem;
-        }
-        .portal-signup-links {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 6px;
-        }
-        .portal-signup-links a {
-            color: #1f8b4c;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .resume-banner {
-            margin-top: 12px;
-            padding: 8px 10px;
-            border: 1px dashed #94a3b8;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-        }
-        .portal-link-btn {
-            background: #1f8b4c;
-            color: #fff;
-            padding: 6px 10px;
-            text-decoration: none;
-            border-radius: 2px;
-        }
-    </style>
-    <script>
-        function togglePassword() {
-            const input = document.getElementById('password');
-            const btn = document.querySelector('.password-toggle');
-            if (input.type === 'password') {
-                input.type = 'text';
-                btn.textContent = 'Hide';
-            } else {
-                input.type = 'password';
-                btn.textContent = 'Show';
-            }
-        }
-    </script>
-</body>
-</html>
+    }
+</script>
+{% endblock %}

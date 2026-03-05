@@ -57,6 +57,32 @@ class Profile(models.Model):
         return self.is_agent
 
 
+class TwoFactorSettings(models.Model):
+    """Per-user 2FA configuration."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="two_factor_settings")
+    is_enabled = models.BooleanField(default=False)
+    totp_secret = models.CharField(max_length=64, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"2FA for {self.user.username} ({'enabled' if self.is_enabled else 'disabled'})"
+
+
+class TwoFactorBackupCode(models.Model):
+    """One-time backup codes for 2FA."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="two_factor_backup_codes")
+    code_hash = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Backup code for {self.user.username} ({'used' if self.used_at else 'unused'})"
+
+
 class Agent(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 

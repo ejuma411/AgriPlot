@@ -1,306 +1,74 @@
 [
   {
     "date": "2026-02-24",
-    "module": "Core data models",
-    "work_done": "Implemented Profile, Agent, LandownerProfile, Plot, SoilReport, ContactRequest, UserInterest, PlotReaction",
-    "evidence": "listings/models.py",
+    "module": "Design foundation",
+    "work_done": "Defined core UI tone for AgriPlot: calm agritech palette, legible typography, and modular card layouts to support data-heavy workflows.",
+    "evidence": "static/css/styles.css",
     "status": "Done",
-    "next_step": "Finalize UI validations"
+    "next_step": "Apply the same visual language to admin tools and dashboards"
   },
   {
     "date": "2026-02-24",
-    "module": "Registration & role upgrades",
-    "work_done": "Implemented buyer registration and upgrade flow for landowner/agent",
-    "evidence": "listings/views.py, listings/forms.py",
+    "module": "Registration & onboarding UX",
+    "work_done": "Structured the onboarding flow with clear role selection and progressive disclosure to reduce friction for multi-role users.",
+    "evidence": "listings/templates/auth/register_choice.html, listings/templates/auth/register_*.html",
     "status": "Done",
-    "next_step": "Enforce OTP in all upgrade flows"
+    "next_step": "Add inline validation and microcopy for edge cases"
   },
   {
     "date": "2026-02-24",
-    "module": "Verification workflow (documents + stages)",
-    "work_done": "Added verification documents and workflow status tracking",
-    "evidence": "listings/models.py, listings/migrations/0018...0032",
+    "module": "Verification experience",
+    "work_done": "Established a staged verification UX concept (documents → review → approval) for consistent status messaging across the platform.",
+    "evidence": "listings/templates/listings/dashboard/plot_verification_detail.html",
     "status": "Partial",
-    "next_step": "Complete admin review UI and task orchestration"
-  },
-  {
-    "date": "2026-02-24",
-    "module": "Extension officer verification",
-    "work_done": "Added extension officer model, reports, and tasks",
-    "evidence": "listings/models.py, listings/views_extension.py",
-    "status": "Partial",
-    "next_step": "Create officer dashboard and assignment workflow"
-  },
-  {
-    "date": "2026-02-24",
-    "module": "Land surveyor verification",
-    "work_done": "Added land surveyor model and reports",
-    "evidence": "listings/models.py",
-    "status": "Partial",
-    "next_step": "Implement inspection workflow UI"
-  },
-  {
-    "date": "2026-02-24",
-    "module": "OTP verification",
-    "work_done": "Added OTP models and settings",
-    "evidence": "listings/models.py, listings/views_otp.py, agriplot/settings.py",
-    "status": "Partial",
-    "next_step": "Enforce OTP gates across sensitive actions"
-  },
-  {
-    "date": "2026-02-24",
-    "module": "Notifications",
-    "work_done": "Added notification service scaffolding",
-    "evidence": "listings/notification_service.py",
-    "status": "Partial",
-    "next_step": "Connect full email/SMS triggers"
-  },
-  {
-    "date": "2026-02-24",
-    "module": "Analytics",
-    "work_done": "Implemented analytics service",
-    "evidence": "listings/analytics_service.py",
-    "status": "Partial",
-    "next_step": "Build dashboard UI and charts"
-  },
-  {
-    "date": "2026-02-24",
-    "module": "Ardhisasa integration",
-    "work_done": "Added integration scaffold and mocks",
-    "evidence": "listings/services/ardhisasa_integration.py",
-    "status": "Started",
-    "next_step": "Implement real API calls and error handling"
+    "next_step": "Surface stage‑specific tips and clear next actions"
   },
   {
     "date": "2026-02-25",
-    "module": "Admin routing",
-    "work_done": "Updated URLs for verification dashboards",
-    "evidence": "listings/urls.py",
+    "module": "Admin navigation patterns",
+    "work_done": "Aligned admin navigation for quick access to verification queues, tasks, and analytics with consistent iconography.",
+    "evidence": "listings/templates/listings/admin/base_admin.html",
     "status": "Done",
-    "next_step": "Verify access control for staff roles"
+    "next_step": "Introduce global admin search for records"
   },
   {
     "date": "2026-02-26",
-    "module": "Verification workflow automation",
-    "work_done": "Automated post-API task creation (extension then surveyor), enforced required reports before approval, added task logs and admin review gate",
-    "evidence": "listings/verification_service.py, listings/signals.py, listings/views_admin.py",
+    "module": "Notification presentation",
+    "work_done": "Introduced a clean notification inbox with unread emphasis to keep operational updates visible without clutter.",
+    "evidence": "listings/templates/listings/dashboard/notifications.html",
     "status": "Done",
-    "next_step": "Finalize exception handling and edge-case tests"
-  },
-  {
-    "date": "2026-02-26",
-    "module": "Extension & surveyor workflows",
-    "work_done": "Built structured verification forms, grouped fields by role, surveyor price validation and plot price update handling",
-    "evidence": "listings/templates/listings/extension/conduct_review.html, listings/views_extension.py, listings/forms.py, listings/models.py",
-    "status": "Done",
-    "next_step": "Add UI summary cards for completed reports"
-  },
-  {
-    "date": "2026-02-26",
-    "module": "Pricing guardrails",
-    "work_done": "Implemented price basis fields, validation, market price bands, and surveyor price confirmation",
-    "evidence": "listings/models.py, listings/forms.py, listings/admin.py, listings/management/commands/seed_price_bands.py",
-    "status": "Partial",
-    "next_step": "Populate MarketPriceBand with real county data"
-  },
-  {
-    "date": "2026-02-26",
-    "module": "Document verification integration",
-    "work_done": "Linked document verification to plots and tasks; document checklist now creates DocumentVerification records",
-    "evidence": "listings/models.py, listings/views_admin.py, listings/templates/listings/admin/complete_task.html",
-    "status": "Done",
-    "next_step": "Add UI view of document verification results for admins"
-  },
-  {
-    "date": "2026-02-26",
-    "module": "Notifications & email cycle",
-    "work_done": "End-to-end email notifications for OTP, registration, role requests/approvals, plot submission, verification stages, task completion, and final approval/rejection",
-    "evidence": "listings/notification_service.py, listings/views_otp.py, listings/views.py, listings/signals.py, listings/templates/emails/*",
-    "status": "Done",
-    "next_step": "Add SMS updates for plot stage changes"
-  },
-  {
-    "date": "2026-02-26",
-    "module": "Admin journal & navigation",
-    "work_done": "Added system construction journal page and admin nav link",
-    "evidence": "listings/templates/listings/admin/system_construction_journal.html, listings/templates/listings/admin/base_admin.html, listings/data/system_construction_journal.json",
-    "status": "Done",
-    "next_step": "Add export/print option for journal"
-  },
-  {
-    "date": "2026-02-26",
-    "module": "Support tickets",
-    "work_done": "Added support ticket model, form, email notifications, and contact support form submission",
-    "evidence": "listings/models.py, listings/forms.py, listings/views.py, listings/templates/listings/contact_support.html, listings/templates/emails/support_ticket_*",
-    "status": "Done",
-    "next_step": "Add ticket status update UI for admins"
-  },
-  {
-    "date": "2026-02-26",
-    "module": "Notification inbox & timelines",
-    "work_done": "Added notifications inbox page and verification timeline in plot verification detail",
-    "evidence": "listings/views.py, listings/templates/listings/dashboard/notifications.html, listings/templates/listings/dashboard/plot_verification_detail.html",
-    "status": "Done",
-    "next_step": "Add filters and per-type notification views"
-  },
-  {
-    "date": "2026-02-26",
-    "module": "SMS logging",
-    "work_done": "Logged outbound SMS responses and added admin views for SMS logs",
-    "evidence": "listings/models.py, listings/services/sms_service.py, listings/admin.py",
-    "status": "Done",
-    "next_step": "Add delivery status reconciliation if provider supports callbacks"
-  },
-  {
-    "date": "2026-02-26",
-    "module": "SLA maintenance",
-    "work_done": "Added combined SLA runner for escalation + reminders",
-    "evidence": "listings/management/commands/run_sla_tasks.py",
-    "status": "Done",
-    "next_step": "Schedule run_sla_tasks via cron/systemd"
-  },
-  {
-    "date": "2026-02-28",
-    "module": "Officer workload visibility",
-    "work_done": "Added pending tasks count per officer area in dashboards",
-    "evidence": "listings/views_extension.py, listings/templates/listings/admin/my_tasks.html",
-    "status": "Done",
-    "next_step": "Add pending task details view for admins"
+    "next_step": "Add filters by notification type"
   },
   {
     "date": "2026-03-02",
-    "module": "Admin My Tasks enhancements",
-    "work_done": "Added pending document reviews and final admin approvals sections, with assign-to-me for superuser",
-    "evidence": "listings/views_admin.py, listings/templates/listings/admin/my_tasks.html",
+    "module": "Admin task clarity",
+    "work_done": "Expanded admin task screens with clearer sections and hierarchy to reduce cognitive load when reviewing documents and approvals.",
+    "evidence": "listings/templates/listings/admin/my_tasks.html",
     "status": "Done",
-    "next_step": "Add filters for task type and status"
-  },
-  {
-    "date": "2026-03-02",
-    "module": "Document verification strict checks (OCR)",
-    "work_done": "Implemented OCR-based cross-document validation for owner name, title number, parcel number, KRA PIN and search ref; blocked approval on mismatch",
-    "evidence": "listings/services/ocr_service.py, listings/views_admin.py",
-    "status": "Partial",
-    "next_step": "Finalize OCR dependencies on all environments and expose OCR preview in UI"
-  },
-  {
-    "date": "2026-03-02",
-    "module": "Ardhisasa fail-fast checks",
-    "work_done": "Added explicit failure handling for mock API (title not found / owner mismatch) and stage rejection with notifications",
-    "evidence": "listings/services/ardhisasa_integration.py, listings/signals.py, listings/tasks.py",
-    "status": "Done",
-    "next_step": "Integrate real API when available"
-  },
-  {
-    "date": "2026-03-02",
-    "module": "Email rendering stability",
-    "work_done": "Enabled humanize filters for email templates",
-    "evidence": "agriplot/settings.py, listings/templates/emails/new_plot_submitted.html",
-    "status": "Done",
-    "next_step": "Add unified email QA checks"
-  },
-  {
-    "date": "2026-03-02",
-    "module": "Footer info pages & admin-editable content",
-    "work_done": "Added About/Terms/Privacy editable pages and detailed info templates",
-    "evidence": "listings/models.py, listings/views.py, listings/templates/listings/info/*",
-    "status": "Done",
-    "next_step": "Add rich text editor in admin for content pages"
-  },
-  {
-    "date": "2026-03-02",
-    "module": "Auth UI refresh",
-    "work_done": "Unified login/registration/reset layouts and added logo + favicon in base templates",
-    "evidence": "listings/templates/auth/*, listings/templates/base.html",
-    "status": "Done",
-    "next_step": "Finalize accessibility and form validation messaging"
+    "next_step": "Add per‑task quick actions and status chips"
   },
   {
     "date": "2026-03-03",
-    "module": "Surveyor report uploads",
-    "work_done": "Fixed multi-file upload widget for surveyor plot images by using MultipleFileInput",
-    "evidence": "listings/forms.py",
+    "module": "Public marketplace UX",
+    "work_done": "Designed a marketplace layout that balances visual browsing with structured filters for land, crop, and price discovery.",
+    "evidence": "listings/templates/listings/home.html, listings/templates/listings/_market_grid.html",
     "status": "Done",
-    "next_step": "Verify uploads flow in surveyor report UI"
+    "next_step": "Add map‑based search for spatial exploration"
   },
   {
     "date": "2026-03-03",
-    "module": "Public marketplace, search & filters",
-    "work_done": "Implemented public home marketplace with verification-only listings, rich filters (soil, crop, price, area), crop presets, AJAX search, and pagination; added plot detail view and info pages",
-    "evidence": "listings/views.py, listings/templates/listings/home.html, listings/templates/listings/_market_grid.html, listings/templates/listings/details.html, listings/templates/listings/info/*",
+    "module": "Listing detail presentation",
+    "work_done": "Structured listing detail pages to surface verification, images, and key property metadata in a predictable order.",
+    "evidence": "listings/templates/listings/details.html",
     "status": "Done",
-    "next_step": "Add map-based search and saved filters"
+    "next_step": "Add sticky action panel for contact and save"
   },
   {
-    "date": "2026-03-03",
-    "module": "Plot listing management",
-    "work_done": "Built plot creation/editing forms, document upload checklist, and agent dashboard pages for managing listings and verification progress",
-    "evidence": "listings/views.py, listings/forms.py, listings/templates/listings/dashboard/add_plot.html, listings/templates/listings/edit_plot.html, listings/templates/listings/dashboard/my_plots.html",
+    "date": "2026-03-05",
+    "module": "Account UX & visual system",
+    "work_done": "Established a consistent account UI system with premium typography (Newsreader + Outfit), refined spacing, and card‑based layouts. Split the account experience into Profile view, Profile edit, and Settings screens to reduce cognitive load and isolate security actions. Removed sidebars on account pages to maximize form readability on large screens.",
+    "evidence": "listings/templates/auth/*, listings/templates/listings/dashboard/profile_management.html, listings/templates/listings/dashboard/profile_edit.html, listings/templates/listings/dashboard/settings.html, static/css/auth.css, static/css/account.css",
     "status": "Done",
-    "next_step": "Add draft autosave and bulk image management"
-  },
-  {
-    "date": "2026-03-03",
-    "module": "Buyer interest & contact flows",
-    "work_done": "Implemented buyer interest tracking, contact requests, phone view logging, and agent-facing interest dashboard",
-    "evidence": "listings/models.py, listings/views.py, listings/templates/listings/dashboard/buyer_interests.html, listings/templates/listings/details.html",
-    "status": "Done",
-    "next_step": "Add messaging thread and automated follow-ups"
-  },
-  {
-    "date": "2026-03-03",
-    "module": "Plot images & media",
-    "work_done": "Added plot image model, upload handling, and gallery rendering on listing details",
-    "evidence": "listings/models.py, listings/forms.py, listings/views.py, listings/templates/listings/details.html",
-    "status": "Done",
-    "next_step": "Add image ordering and compression pipeline"
-  },
-  {
-    "date": "2026-03-03",
-    "module": "Audit logging (security/compliance)",
-    "work_done": "Implemented audit log model and utilities for recording sensitive actions with IP/User-Agent capture",
-    "evidence": "listings/models.py, listings/utils.py, listings/admin.py",
-    "status": "Done",
-    "next_step": "Add audit log export/reporting"
-  },
-  {
-    "date": "2026-03-03",
-    "module": "Pricing suggestions & comparables",
-    "work_done": "Added price comparables, pricing suggestion generation, and admin management",
-    "evidence": "listings/models.py, listings/utils.py, listings/admin.py",
-    "status": "Partial",
-    "next_step": "Expose pricing suggestions to agents/landowners in UI"
-  },
-  {
-    "date": "2026-03-03",
-    "module": "Location validation & Kenya data",
-    "work_done": "Added county/subcounty validation utilities and curated Kenya location data used in forms",
-    "evidence": "listings/location_utils.py, listings/kenya_data.py, listings/forms.py",
-    "status": "Done",
-    "next_step": "Add geocoding and map visualization"
-  },
-  {
-    "date": "2026-03-03",
-    "module": "CMS-style site pages",
-    "work_done": "Added editable site pages (about/terms/privacy) with admin management and public templates",
-    "evidence": "listings/models.py, listings/views.py, listings/admin.py, listings/templates/listings/info/*",
-    "status": "Done",
-    "next_step": "Add rich-text editor and revision history"
-  },
-  {
-    "date": "2026-03-03",
-    "module": "Impersonation detection & document hashing",
-    "work_done": "Implemented document hash tracking and impersonation detection records to flag repeat/duplicate uploads",
-    "evidence": "listings/models.py, listings/admin.py",
-    "status": "Done",
-    "next_step": "Add automated alerts and admin review queue"
-  },
-  {
-    "date": "2026-03-03",
-    "module": "Testing & QA artifacts",
-    "work_done": "Added automated tests for SMS and Ardhisasa flows plus manual test report checklist",
-    "evidence": "listings/tests/*.py, TEST_REPORT.md",
-    "status": "Done",
-    "next_step": "Expand tests for OCR and verification edge cases"
+    "next_step": "Add a shared account sub‑nav and notification preferences"
   }
 ]

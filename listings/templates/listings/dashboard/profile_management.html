@@ -2,71 +2,97 @@
 {% load static %}
 {% load plot_extras %}
 
-{% block title %}Profile Management — AgriPlot Connect{% endblock %}
+{% block title %}Profile — AgriPlot Connect{% endblock %}
+
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/account.css' %}">
+<style>
+    footer { margin-left: 0; }
+    .dashboard-main { margin-left: 0; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="dashboard-wrapper">
-    <!-- Sidebar Navigation -->
-    <aside class="dashboard-sidebar">
-        <div class="sidebar-brand">
-            <i class="fas fa-leaf"></i>
-            <span>AgriPlot</span>
-        </div>
-        
-        <nav class="sidebar-nav">
-            <a href="{% url 'listings:staff_dashboard' %}" class="nav-item">
-                <i class="fas fa-home"></i>
-                <span>Dashboard</span>
-            </a>
-            {% if is_agent or is_landowner %}
-                <a href="{% url 'listings:my_plots' %}" class="nav-item">
-                    <i class="fas fa-list"></i>
-                    <span>My Plots</span>
-                </a>
-                <a href="{% url 'listings:add_plot' %}" class="nav-item">
-                    <i class="fas fa-plus-circle"></i>
-                    <span>Add New Plot</span>
-                </a>
-                <a href="{% url 'listings:buyer_interests' %}" class="nav-item">
-                    <i class="fas fa-envelope"></i>
-                    <span>Messages</span>
-                </a>
-            {% endif %}
-            <a href="{% url 'listings:profile_management' %}" class="nav-item active">
-                <i class="fas fa-user-circle"></i>
-                <span>Profile</span>
-            </a>
-        </nav>
-        
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">{{ request.user.get_full_name|first|upper }}</div>
-                <div class="user-details">
-                    <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
-                    <p class="user-role">{{ profile_type }}</p>
-                </div>
-            </div>
-        </div>
-    </aside>
-
-    <!-- Main Content Area -->
+<div class="dashboard-wrapper account-page">
     <main class="dashboard-main">
-        <!-- Top Header Bar -->
         <div class="dashboard-topbar">
             <div class="topbar-left">
-                <h1 class="page-title">Profile Management</h1>
-                <p class="page-subtitle">Manage your account and business information</p>
+                <h1 class="page-title">Profile Overview</h1>
+                <p class="page-subtitle">Registered details and verification status.</p>
             </div>
         </div>
 
-        <!-- Main Content Grid -->
         <div class="dashboard-content">
             <div class="content-left">
-                {% if role_requests %}
-                <div class="card mb-4">
+                {% if messages %}
+                <div class="mb-4">
+                    {% for message in messages %}
+                    <div class="alert alert-dismissible fade show 
+                        {% if message.tags == 'error' %}alert-danger
+                        {% elif message.tags == 'success' %}alert-success
+                        {% elif message.tags == 'warning' %}alert-warning
+                        {% else %}alert-info{% endif %}" role="alert">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-check-circle me-2"></i>
+                                <span>{{ message }}</span>
+                            </div>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="card">
                     <div class="card-header">
                         <h6 class="card-title">
-                            <i class="fas fa-id-badge me-2"></i>My Role Requests
+                            <i class="fas fa-id-card me-2"></i>Account Details
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="profile-info-table">
+                            <table class="info-field-table">
+                                <tbody>
+                                    <tr>
+                                        <td class="field-label">Full Name</td>
+                                        <td class="field-input">{{ request.user.get_full_name|default:request.user.username }}</td>
+                                        <td class="field-help"><small class="text-muted">Public display</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Username</td>
+                                        <td class="field-input">{{ request.user.username }}</td>
+                                        <td class="field-help"><small class="text-muted">Unique identifier</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Email</td>
+                                        <td class="field-input">{{ request.user.email|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Primary contact</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Phone</td>
+                                        <td class="field-input">{{ profile.phone|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">SMS verification</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Address</td>
+                                        <td class="field-input">{{ profile.address|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Optional</small></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {% if role_requests %}
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title">
+                            <i class="fas fa-id-badge me-2"></i>Verification Status
                         </h6>
                     </div>
                     <div class="card-body">
@@ -109,509 +135,124 @@
                     </div>
                 </div>
                 {% endif %}
-                <div class="card mb-4">
+
+                {% if is_agent %}
+                <div class="card">
                     <div class="card-header">
-                        <h6 class="card-title">
-                            <i class="fas fa-user-plus me-2"></i>Request To Change Your Role
-                        </h6>
+                        <h6 class="card-title"><i class="fas fa-briefcase me-2"></i>Agent Details</h6>
                     </div>
                     <div class="card-body">
-                        <div class="d-flex flex-wrap gap-2">
-                            {% if not is_landowner %}
-                                <a class="btn btn-outline-success" href="{% url 'listings:register_landowner_upgrade' %}">Apply as Landowner</a>
-                            {% endif %}
-                            {% if not is_agent %}
-                                <a class="btn btn-outline-warning" href="{% url 'listings:register_agent' %}">Apply as Agent</a>
-                            {% endif %}
-                            {% if not is_extension %}
-                                <a class="btn btn-outline-info" href="{% url 'listings:request_extension_officer' %}">Apply as Extension Officer</a>
-                            {% endif %}
-                            {% if not is_surveyor %}
-                                <a class="btn btn-outline-primary" href="{% url 'listings:request_land_surveyor' %}">Apply as Land Surveyor</a>
-                            {% endif %}
+                        <div class="profile-info-table">
+                            <table class="info-field-table">
+                                <tbody>
+                                    <tr>
+                                        <td class="field-label">Agent Phone</td>
+                                        <td class="field-input">{{ agent.phone|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Public contact</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">License Number</td>
+                                        <td class="field-input">{{ agent.license_number|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Professional license</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">National ID</td>
+                                        <td class="field-input">{{ agent.id_number|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Government ID</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Contact Preference</td>
+                                        <td class="field-input">{{ agent.contact_preference|default:'any' }}</td>
+                                        <td class="field-help"><small class="text-muted">Preferred channel</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Availability</td>
+                                        <td class="field-input">
+                                            {% if agent.available_from %}{{ agent.available_from|time:'H:i' }}{% endif %}
+                                            {% if agent.available_to %}– {{ agent.available_to|time:'H:i' }}{% endif %}
+                                        </td>
+                                        <td class="field-help"><small class="text-muted">Typical hours</small></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
-                        <p class="text-muted mt-2 mb-0">Applications are reviewed by admins. You can track status above.</p>
                     </div>
-                </div>
-                <!-- Messages Display -->
-                {% if messages %}
-                <div class="mb-4">
-                    {% for message in messages %}
-                    <div class="alert alert-dismissible fade show 
-                        {% if message.tags == 'error' %}alert-danger
-                        {% elif message.tags == 'success' %}alert-success
-                        {% elif message.tags == 'warning' %}alert-warning
-                        {% else %}alert-info{% endif %}" role="alert">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-check-circle me-2"></i>
-                                <span>{{ message }}</span>
-                            </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    </div>
-                    {% endfor %}
                 </div>
                 {% endif %}
 
-                <!-- Profile Tabs -->
-                <ul class="nav nav-tabs profile-tabs mb-4" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal-tab-pane" type="button" role="tab" aria-controls="personal-tab-pane" aria-selected="true">
-                            <i class="fas fa-user me-2"></i>Personal Info
-                        </button>
-                    </li>
-                    {% if is_agent or is_landowner %}
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="business-tab" data-bs-toggle="tab" data-bs-target="#business-tab-pane" type="button" role="tab" aria-controls="business-tab-pane" aria-selected="false">
-                            <i class="fas fa-briefcase me-2"></i>Business Details
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents-tab-pane" type="button" role="tab" aria-controls="documents-tab-pane" aria-selected="false">
-                            <i class="fas fa-file-alt me-2"></i>Documents
-                        </button>
-                    </li>
-                    {% endif %}
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="security-tab" data-bs-toggle="tab" data-bs-target="#security-tab-pane" type="button" role="tab" aria-controls="security-tab-pane" aria-selected="false">
-                            <i class="fas fa-lock me-2"></i>Security
-                        </button>
-                    </li>
-                </ul>
-
-                <!-- Tab Content -->
-                <div class="tab-content">
-                    <!-- Personal Information Tab -->
-                    <div class="tab-pane fade show active" id="personal-tab-pane" role="tabpanel" aria-labelledby="personal-tab">
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="card-title">
-                                    <i class="fas fa-user me-2"></i>Personal Information
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST" class="personal-form">
-                                    {% csrf_token %}
-                                    
-                                    <div class="profile-info-table">
-                                        <table class="info-field-table">
-                                            <tbody>
-                                                <!-- Full Name -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label class="required">Full Name</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <input type="text" class="form-control" name="full_name" value="{{ profile.get_full_name }}" required>
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">Your complete legal name</small>
-                                                    </td>
-                                                </tr>
-                                                
-                                                <!-- Email -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label class="required">Email Address</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <input type="email" class="form-control" name="email" value="{{ request.user.email }}" required>
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">For account notifications</small>
-                                                    </td>
-                                                </tr>
-                                                
-                                                <!-- Phone -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label class="required">Phone Number</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <input type="tel" class="form-control" name="phone" value="{{ profile.phone|default:'' }}" required>
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">Preferably mobile number</small>
-                                                    </td>
-                                                </tr>
-                                                
-                                                <!-- National ID -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label>National ID</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <input type="text" class="form-control" name="national_id" value="{{ profile.national_id|default:'' }}">
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">ID number for verification</small>
-                                                    </td>
-                                                </tr>
-                                                
-                                                <!-- County -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label>County</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <select class="form-select" name="county">
-                                                            <option value="">Select County</option>
-                                                            <option value="Nairobi" {% if profile.county == 'Nairobi' %}selected{% endif %}>Nairobi</option>
-                                                            <option value="Kajiado" {% if profile.county == 'Kajiado' %}selected{% endif %}>Kajiado</option>
-                                                            <option value="Muranga" {% if profile.county == 'Muranga' %}selected{% endif %}>Muranga</option>
-                                                            <option value="Nyeri" {% if profile.county == 'Nyeri' %}selected{% endif %}>Nyeri</option>
-                                                            <option value="Kiambu" {% if profile.county == 'Kiambu' %}selected{% endif %}>Kiambu</option>
-                                                            <option value="Nakuru" {% if profile.county == 'Nakuru' %}selected{% endif %}>Nakuru</option>
-                                                            <option value="Uasin Gishu" {% if profile.county == 'Uasin Gishu' %}selected{% endif %}>Uasin Gishu</option>
-                                                            <option value="Kisii" {% if profile.county == 'Kisii' %}selected{% endif %}>Kisii</option>
-                                                            <option value="Siaya" {% if profile.county == 'Siaya' %}selected{% endif %}>Siaya</option>
-                                                        </select>
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">Your home county</small>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <!-- Form Actions -->
-                                    <div class="form-actions mt-4">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-save me-2"></i>Save Changes
-                                        </button>
-                                        <button type="reset" class="btn btn-outline-secondary">
-                                            <i class="fas fa-undo me-2"></i>Reset
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
+                {% if is_extension %}
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title"><i class="fas fa-seedling me-2"></i>Extension Officer Details</h6>
                     </div>
-
-                    {% if is_agent or is_landowner %}
-                    <!-- Business Details Tab -->
-                    <div class="tab-pane fade" id="business-tab-pane" role="tabpanel" aria-labelledby="business-tab">
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="card-title">
-                                    <i class="fas fa-briefcase me-2"></i>Business Information
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST" class="business-form">
-                                    {% csrf_token %}
-                                    
-                                    <div class="profile-info-table">
-                                        <table class="info-field-table">
-                                            <tbody>
-                                                <!-- Business Name -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label>Business Name</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <input type="text" class="form-control" name="business_name" value="{{ profile.business_name|default:'' }}">
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">Your business trading name</small>
-                                                    </td>
-                                                </tr>
-                                                
-                                                <!-- KRA PIN -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label>KRA PIN</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <input type="text" class="form-control" name="kra_pin" value="{{ profile.kra_pin|default:'' }}">
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">For tax purposes</small>
-                                                    </td>
-                                                </tr>
-                                                
-                                                <!-- Business Type -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label>Business Type</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <select class="form-select" name="business_type">
-                                                            <option value="">Select Type</option>
-                                                            <option value="Individual Farmer" {% if profile.business_type == 'Individual Farmer' %}selected{% endif %}>Individual Farmer</option>
-                                                            <option value="Farming Company" {% if profile.business_type == 'Farming Company' %}selected{% endif %}>Farming Company</option>
-                                                            <option value="Land Broker" {% if profile.business_type == 'Land Broker' %}selected{% endif %}>Land Broker</option>
-                                                            <option value="Agricultural Supplier" {% if profile.business_type == 'Agricultural Supplier' %}selected{% endif %}>Agricultural Supplier</option>
-                                                        </select>
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">Type of business</small>
-                                                    </td>
-                                                </tr>
-                                                
-                                                <!-- Years in Business -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label>Years in Business</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <select class="form-select" name="years_in_business">
-                                                            <option value="">Select</option>
-                                                            <option value="Less than 1" {% if profile.years_in_business == 'Less than 1' %}selected{% endif %}>Less than 1 year</option>
-                                                            <option value="1-3" {% if profile.years_in_business == '1-3' %}selected{% endif %}>1-3 years</option>
-                                                            <option value="3-5" {% if profile.years_in_business == '3-5' %}selected{% endif %}>3-5 years</option>
-                                                            <option value="5-10" {% if profile.years_in_business == '5-10' %}selected{% endif %}>5-10 years</option>
-                                                            <option value="10+" {% if profile.years_in_business == '10+' %}selected{% endif %}>10+ years</option>
-                                                        </select>
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">Your experience</small>
-                                                    </td>
-                                                </tr>
-
-                                                <!-- Business Description -->
-                                                <tr>
-                                                    <td class="field-label">
-                                                        <label>About Your Business</label>
-                                                    </td>
-                                                    <td class="field-input">
-                                                        <textarea class="form-control" name="business_description" rows="4" placeholder="Tell buyers about your business...">{{ profile.business_description|default:'' }}</textarea>
-                                                    </td>
-                                                    <td class="field-help">
-                                                        <small class="text-muted">Max 500 characters</small>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-
-                                    <!-- Form Actions -->
-                                    <div class="form-actions mt-4">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-save me-2"></i>Save Changes
-                                        </button>
-                                        <button type="reset" class="btn btn-outline-secondary">
-                                            <i class="fas fa-undo me-2"></i>Reset
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Documents Tab -->
-                    <div class="tab-pane fade" id="documents-tab-pane" role="tabpanel" aria-labelledby="documents-tab">
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="card-title">
-                                    <i class="fas fa-file-alt me-2"></i>Verification Documents
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="documents-info-grid">
-                                    <!-- National ID -->
-                                    <div class="document-card">
-                                        <div class="document-header">
-                                            <div class="document-icon bg-primary">
-                                                <i class="fas fa-id-card"></i>
-                                            </div>
-                                            <div class="document-info">
-                                                <h6 class="document-title">National ID</h6>
-                                                <p class="document-status text-muted mb-0">
-                                                    {% if profile.national_id_doc %}
-                                                        <span class="badge bg-success">
-                                                            <i class="fas fa-check-circle"></i> Uploaded
-                                                        </span>
-                                                    {% else %}
-                                                        <span class="badge bg-warning">
-                                                            <i class="fas fa-exclamation-circle"></i> Pending
-                                                        </span>
-                                                    {% endif %}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="document-actions">
-                                            <input type="file" id="nationalIdFile" style="display: none;" accept=".pdf,.jpg,.jpeg,.png">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('nationalIdFile').click()">
-                                                <i class="fas fa-upload me-1"></i>Upload
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- KRA PIN Certificate -->
-                                    <div class="document-card">
-                                        <div class="document-header">
-                                            <div class="document-icon bg-success">
-                                                <i class="fas fa-file-invoice-dollar"></i>
-                                            </div>
-                                            <div class="document-info">
-                                                <h6 class="document-title">KRA PIN Certificate</h6>
-                                                <p class="document-status text-muted mb-0">
-                                                    {% if profile.kra_pin_doc %}
-                                                        <span class="badge bg-success">
-                                                            <i class="fas fa-check-circle"></i> Uploaded
-                                                        </span>
-                                                    {% else %}
-                                                        <span class="badge bg-warning">
-                                                            <i class="fas fa-exclamation-circle"></i> Pending
-                                                        </span>
-                                                    {% endif %}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="document-actions">
-                                            <input type="file" id="kraPinFile" style="display: none;" accept=".pdf,.jpg,.jpeg,.png">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('kraPinFile').click()">
-                                                <i class="fas fa-upload me-1"></i>Upload
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Broker License (if applicable) -->
-                                    {% if profile_type == 'Broker' %}
-                                    <div class="document-card">
-                                        <div class="document-header">
-                                            <div class="document-icon bg-info">
-                                                <i class="fas fa-certificate"></i>
-                                            </div>
-                                            <div class="document-info">
-                                                <h6 class="document-title">Broker License</h6>
-                                                <p class="document-status text-muted mb-0">
-                                                    {% if profile.broker_license %}
-                                                        <span class="badge bg-success">
-                                                            <i class="fas fa-check-circle"></i> Uploaded
-                                                        </span>
-                                                    {% else %}
-                                                        <span class="badge bg-danger">
-                                                            <i class="fas fa-times-circle"></i> Required
-                                                        </span>
-                                                    {% endif %}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="document-actions">
-                                            <input type="file" id="brokerLicenseFile" style="display: none;" accept=".pdf,.jpg,.jpeg,.png">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="document.getElementById('brokerLicenseFile').click()">
-                                                <i class="fas fa-upload me-1"></i>Upload
-                                            </button>
-                                        </div>
-                                    </div>
-                                    {% endif %}
-                                </div>
-
-                                <div class="alert alert-info mt-4">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Document Requirements:</strong> All documents must be clear, valid, and in PDF, JPG, or PNG format. Maximum file size is 10MB per document.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Security Tab -->
-                    <div class="tab-pane fade" id="security-tab-pane" role="tabpanel" aria-labelledby="security-tab">
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="card-title">
-                                    <i class="fas fa-lock me-2"></i>Security Settings
-                                </h6>
-                            </div>
-                            <div class="card-body">
-                                <form method="POST" class="security-form">
-                                    {% csrf_token %}
-                                    
-                                    <!-- Change Password Section -->
-                                    <div class="security-section mb-5">
-                                        <h6 class="security-section-title mb-3">
-                                            <i class="fas fa-key me-2"></i>Change Password
-                                        </h6>
-                                        
-                                        <div class="profile-info-table">
-                                            <table class="info-field-table">
-                                                <tbody>
-                                                    <!-- Current Password -->
-                                                    <tr>
-                                                        <td class="field-label">
-                                                            <label class="required">Current Password</label>
-                                                        </td>
-                                                        <td class="field-input">
-                                                            <input type="password" class="form-control" name="current_password">
-                                                        </td>
-                                                        <td class="field-help">
-                                                            <small class="text-muted">Your current password</small>
-                                                        </td>
-                                                    </tr>
-                                                    
-                                                    <!-- New Password -->
-                                                    <tr>
-                                                        <td class="field-label">
-                                                            <label class="required">New Password</label>
-                                                        </td>
-                                                        <td class="field-input">
-                                                            <input type="password" class="form-control" name="new_password">
-                                                        </td>
-                                                        <td class="field-help">
-                                                            <small class="text-muted">Min 8 characters, mixed case, numbers</small>
-                                                        </td>
-                                                    </tr>
-                                                    
-                                                    <!-- Confirm Password -->
-                                                    <tr>
-                                                        <td class="field-label">
-                                                            <label class="required">Confirm Password</label>
-                                                        </td>
-                                                        <td class="field-input">
-                                                            <input type="password" class="form-control" name="confirm_password">
-                                                        </td>
-                                                        <td class="field-help">
-                                                            <small class="text-muted">Re-enter new password</small>
-                                                        </td>
-                                                    </tr>
-                                                </tbody>
-                                            </table>
-                                        </div>
-
-                                        <div class="form-actions mt-3">
-                                            <button type="submit" class="btn btn-danger" name="change_password">
-                                                <i class="fas fa-sync me-2"></i>Change Password
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <!-- Session Security Section -->
-                                    <div class="security-section">
-                                        <h6 class="security-section-title mb-3">
-                                            <i class="fas fa-shield-alt me-2"></i>Session Security
-                                        </h6>
-                                        
-                                        <div class="session-info-card">
-                                            <div class="session-item">
-                                                <div class="session-detail">
-                                                    <strong>Current Session</strong>
-                                                    <p class="mb-0 text-muted">
-                                                        <small>Last activity: Just now</small>
-                                                    </p>
-                                                </div>
-                                                <span class="badge bg-success">Active</span>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-actions mt-3">
-                                            <button type="button" class="btn btn-warning">
-                                                <i class="fas fa-sign-out-alt me-2"></i>Sign Out All Sessions
-                                            </button>
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
+                    <div class="card-body">
+                        <div class="profile-info-table">
+                            <table class="info-field-table">
+                                <tbody>
+                                    <tr>
+                                        <td class="field-label">Designation</td>
+                                        <td class="field-input">{{ extension_officer.designation|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Role title</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Station</td>
+                                        <td class="field-input">{{ extension_officer.station|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Assigned office</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Phone</td>
+                                        <td class="field-input">{{ extension_officer.phone|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Work contact</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Office Address</td>
+                                        <td class="field-input">{{ extension_officer.office_address|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Location</small></td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
+                {% endif %}
+
+                {% if is_surveyor %}
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="card-title"><i class="fas fa-map-marked-alt me-2"></i>Surveyor Details</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="profile-info-table">
+                            <table class="info-field-table">
+                                <tbody>
+                                    <tr>
+                                        <td class="field-label">Designation</td>
+                                        <td class="field-input">{{ land_surveyor.designation|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Role title</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Station</td>
+                                        <td class="field-input">{{ land_surveyor.station|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Assigned office</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Phone</td>
+                                        <td class="field-input">{{ land_surveyor.phone|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Work contact</small></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="field-label">Office Address</td>
+                                        <td class="field-input">{{ land_surveyor.office_address|default:'Not set' }}</td>
+                                        <td class="field-help"><small class="text-muted">Location</small></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
             </div>
 
-            <!-- Right Sidebar - Profile Overview -->
             <div class="content-right">
                 <div class="card sticky-top">
                     <div class="card-body text-center">
@@ -639,13 +280,16 @@
                         <div class="profile-status mt-4">
                             <div class="status-badge">
                                 <i class="fas fa-check-circle"></i>
-                                Profile Verified
+                                {% if role_requests|length > 0 %}Profile In Review{% else %}Profile Ready{% endif %}
                             </div>
                         </div>
 
-                        <div class="profile-actions mt-4">
-                            <a href="{% url 'listings:my_plots' %}" class="btn btn-sm btn-primary w-100">
-                                <i class="fas fa-list me-2"></i>View Plots
+                        <div class="profile-actions mt-4 d-grid gap-2">
+                            <a href="{% url 'listings:profile_edit' %}" class="btn btn-sm btn-primary w-100">
+                                <i class="fas fa-edit me-2"></i>Edit Profile
+                            </a>
+                            <a href="{% url 'listings:account_settings' %}" class="btn btn-sm btn-outline-primary w-100">
+                                <i class="fas fa-cog me-2"></i>Security Settings
                             </a>
                         </div>
                     </div>
@@ -654,797 +298,4 @@
         </div>
     </main>
 </div>
-
-<style>
-    /* Root Variables */
-    :root {
-        --primary: #069132;
-        --primary-light: #e3ebf7;
-        --success: #1cc88a;
-        --success-light: #d4edda;
-        --warning: #f6c23e;
-        --warning-light: #fff3cd;
-        --danger: #e74a3b;
-        --danger-light: #f8d7da;
-        --info: #36b9cc;
-        --info-light: #d1ecf1;
-        --gray-50: #f9fafb;
-        --gray-100: #f8f9fa;
-        --gray-200: #e9ecef;
-        --gray-300: #dee2e6;
-        --gray-600: #6c757d;
-        --gray-700: #5a5c69;
-        --gray-800: #0e7833;
-        --shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
-        --shadow-lg: 0 0.35rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        --radius: 0.75rem;
-        --transition: all 0.2s ease;
-    }
-
-    /* Dashboard Layout */
-    .dashboard-wrapper {
-        display: flex;
-        min-height: 100vh;
-        background: var(--gray-100);
-    }
-
-    footer {
-        margin-left: 260px;
-        width: auto;
-    }
-
-    /* Sidebar */
-    .dashboard-sidebar {
-        width: 260px;
-        background: white;
-        border-right: 1px solid var(--gray-300);
-        display: flex;
-        flex-direction: column;
-        overflow-y: auto;
-        position: fixed;
-        height: 100vh;
-        left: 0;
-        top: 0;
-        z-index: 1000;
-    }
-
-    .sidebar-brand {
-        padding: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        font-weight: 700;
-        font-size: 1.3rem;
-        color: var(--primary);
-        border-bottom: 2px solid var(--gray-200);
-    }
-
-    .sidebar-brand i {
-        font-size: 1.5rem;
-    }
-
-    .sidebar-nav {
-        flex: 1;
-        padding: 1rem 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .nav-item {
-        padding: 0.875rem 1.5rem;
-        color: var(--gray-700);
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        transition: var(--transition);
-        border-left: 3px solid transparent;
-    }
-
-    .nav-item:hover {
-        background: var(--gray-100);
-        color: var(--primary);
-    }
-
-    .nav-item.active {
-        background: var(--primary-light);
-        color: var(--primary);
-        border-left-color: var(--primary);
-        font-weight: 600;
-    }
-
-    .nav-item i {
-        width: 20px;
-        text-align: center;
-    }
-
-    .sidebar-footer {
-        padding: 1.5rem;
-        border-top: 1px solid var(--gray-300);
-    }
-
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .user-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: var(--primary);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1.1rem;
-    }
-
-    .user-details p {
-        margin: 0;
-        font-size: 0.85rem;
-    }
-
-    .user-name {
-        font-weight: 600;
-        color: var(--gray-800);
-    }
-
-    .user-role {
-        color: var(--gray-600);
-    }
-
-    /* Main Content */
-    .dashboard-main {
-        flex: 1;
-        margin-left: 260px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-    }
-
-    .dashboard-topbar {
-        background: white;
-        padding: 1.5rem 2rem;
-        border-bottom: 1px solid var(--gray-300);
-    }
-
-    .page-title {
-        margin: 0;
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--gray-800);
-    }
-
-    .page-subtitle {
-        margin: 0.25rem 0 0 0;
-        color: var(--gray-600);
-        font-size: 0.95rem;
-    }
-
-    /* Dashboard Content */
-    .dashboard-content {
-        padding: 2rem;
-        display: grid;
-        grid-template-columns: 1fr 320px;
-        gap: 2rem;
-        flex: 1;
-        width: 100%;
-    }
-
-    .content-left {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-    }
-
-    .content-right {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-    }
-
-    /* Tabs */
-    .profile-tabs {
-        border-bottom: 2px solid var(--gray-300) !important;
-        background: white;
-        padding: 0 1.5rem;
-        border-radius: var(--radius) var(--radius) 0 0;
-        gap: 0.5rem;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .profile-tabs .nav-link {
-        color: var(--gray-600);
-        border: none;
-        padding: 1rem 1.25rem;
-        font-weight: 500;
-        border-bottom: 3px solid transparent;
-        transition: var(--transition);
-        white-space: nowrap;
-    }
-
-    .profile-tabs .nav-link:hover {
-        color: var(--primary);
-        border-bottom-color: var(--primary);
-    }
-
-    .profile-tabs .nav-link.active {
-        color: var(--primary);
-        border-bottom-color: var(--primary);
-        background: transparent;
-    }
-
-    /* Card */
-    .card {
-        background: white;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        overflow: hidden;
-    }
-
-    .card-header {
-        padding: 1.5rem;
-        border-bottom: 2px solid var(--gray-200);
-    }
-
-    .card-title {
-        margin: 0;
-        font-size: 1.15rem;
-        font-weight: 600;
-        color: var(--gray-800);
-    }
-
-    .card-body {
-        padding: 1.5rem;
-    }
-
-    /* Profile Info Table */
-    .profile-info-table {
-        margin-bottom: 1rem;
-        overflow-x: auto;
-    }
-
-    .info-field-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .info-field-table tr {
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .info-field-table tr:last-child {
-        border-bottom: none;
-    }
-
-    .field-label {
-        width: 25%;
-        padding: 1rem;
-        background: var(--gray-100);
-        font-weight: 500;
-        color: var(--gray-700);
-        border-right: 1px solid var(--gray-200);
-    }
-
-    .field-label .required::after {
-        content: " *";
-        color: var(--danger);
-    }
-
-    .field-input {
-        width: 50%;
-        padding: 1rem;
-    }
-
-    .field-help {
-        width: 25%;
-        padding: 1rem;
-        border-left: 1px solid var(--gray-200);
-        background: var(--gray-50);
-        font-size: 0.85rem;
-    }
-
-    .form-control, .form-select {
-        border-radius: 6px;
-        border: 2px solid var(--gray-300);
-        padding: 0.75rem;
-        transition: var(--transition);
-        width: 100%;
-    }
-
-    .form-control:focus, .form-select:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 0.25rem rgba(6, 145, 50, 0.15);
-    }
-
-    textarea.form-control {
-        resize: vertical;
-        min-height: 100px;
-    }
-
-    /* Buttons */
-    .btn {
-        padding: 0.75rem 1.5rem;
-        border-radius: 6px;
-        font-weight: 500;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: var(--transition);
-        border: 1px solid transparent;
-        cursor: pointer;
-    }
-
-    .btn-primary {
-        background: var(--primary);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: #0b9810;
-    }
-
-    .btn-outline-primary {
-        border-color: var(--primary);
-        color: var(--primary);
-    }
-
-    .btn-outline-primary:hover {
-        background: var(--primary);
-        color: white;
-    }
-
-    .btn-outline-secondary {
-        border-color: var(--gray-600);
-        color: var(--gray-600);
-    }
-
-    .btn-outline-secondary:hover {
-        background: var(--gray-600);
-        color: white;
-    }
-
-    .btn-danger {
-        background: var(--danger);
-        color: white;
-    }
-
-    .btn-danger:hover {
-        background: #c82333;
-    }
-
-    .btn-warning {
-        background: var(--warning);
-        color: var(--gray-800);
-    }
-
-    .btn-warning:hover {
-        background: #e0a800;
-    }
-
-    .btn-sm {
-        padding: 0.5rem 1rem;
-        font-size: 0.875rem;
-    }
-
-    /* Form Actions */
-    .form-actions {
-        display: flex;
-        gap: 1rem;
-    }
-
-    /* Documents Grid */
-    .documents-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .document-card {
-        background: var(--gray-50);
-        border: 2px solid var(--gray-200);
-        border-radius: 10px;
-        padding: 1.5rem;
-        transition: var(--transition);
-    }
-
-    .document-card:hover {
-        border-color: var(--primary);
-        box-shadow: var(--shadow);
-    }
-
-    .document-header {
-        display: flex;
-        align-items: flex-start;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .document-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.5rem;
-        flex-shrink: 0;
-    }
-
-    .document-icon.bg-primary {
-        background: var(--primary);
-    }
-
-    .document-icon.bg-success {
-        background: var(--success);
-    }
-
-    .document-icon.bg-info {
-        background: var(--info);
-    }
-
-    .document-info {
-        flex: 1;
-    }
-
-    .document-title {
-        margin: 0;
-        font-weight: 600;
-        color: var(--gray-800);
-    }
-
-    .document-status {
-        margin: 0.5rem 0 0 0;
-    }
-
-    .document-actions {
-        display: flex;
-        gap: 0.5rem;
-    }
-
-    /* Security Section */
-    .security-section {
-        padding-bottom: 2rem;
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .security-section:last-child {
-        border-bottom: none;
-    }
-
-    .security-section-title {
-        color: var(--gray-800);
-        font-weight: 600;
-        margin-bottom: 1rem;
-    }
-
-    .session-info-card {
-        background: var(--gray-50);
-        border: 1px solid var(--gray-200);
-        border-radius: 8px;
-        padding: 1.5rem;
-    }
-
-    .session-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .session-detail strong {
-        display: block;
-        color: var(--gray-800);
-        margin-bottom: 0.5rem;
-    }
-
-    /* Profile Avatar Large */
-    .profile-avatar-large {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        background: var(--primary);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 2rem;
-        margin: 0 auto;
-    }
-
-    .sticky-top {
-        position: sticky;
-        top: 2rem;
-    }
-
-    /* Profile Stats */
-    .profile-stats {
-        display: grid;
-        grid-template-columns: 1fr;
-        gap: 1rem;
-    }
-
-    .stat-item {
-        padding: 1rem;
-        background: var(--gray-50);
-        border-radius: 8px;
-        text-align: center;
-    }
-
-    .stat-number {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--primary);
-    }
-
-    .stat-label {
-        font-size: 0.85rem;
-        color: var(--gray-600);
-        margin-top: 0.5rem;
-    }
-
-    /* Status Badge */
-    .profile-status {
-        margin-top: 1rem;
-    }
-
-    .status-badge {
-        background: var(--success-light);
-        color: var(--success);
-        padding: 0.75rem 1rem;
-        border-radius: 6px;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 500;
-    }
-
-    /* Alerts */
-    .alert {
-        border-radius: 8px;
-        border: 1px solid;
-    }
-
-    .alert-info {
-        background: var(--info-light);
-        border-color: var(--info);
-        color: var(--info);
-    }
-
-    .alert-danger {
-        background: var(--danger-light);
-        border-color: var(--danger);
-        color: var(--danger);
-    }
-
-    .alert-success {
-        background: var(--success-light);
-        border-color: var(--success);
-        color: var(--success);
-    }
-
-    .alert-warning {
-        background: var(--warning-light);
-        border-color: var(--warning);
-        color: var(--gray-800);
-    }
-
-    .table-responsive {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .table {
-        min-width: 520px;
-    }
-
-    /* Responsive */
-    @media (max-width: 1200px) {
-        .dashboard-content {
-            grid-template-columns: 1fr;
-        }
-
-        .content-right {
-            order: -1;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .dashboard-wrapper {
-            flex-direction: column;
-        }
-
-        .dashboard-sidebar {
-            width: 100%;
-            height: auto;
-            position: static;
-        }
-
-        .dashboard-main {
-            margin-left: 0;
-            overflow-y: visible;
-        }
-
-        footer {
-            margin-left: 0;
-        }
-
-        .sidebar-nav {
-            flex-direction: row;
-            overflow-x: auto;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-        }
-
-        .nav-item {
-            white-space: nowrap;
-            flex-shrink: 0;
-            border-left: none;
-            border-bottom: 2px solid transparent;
-        }
-
-        .nav-item.active {
-            border-left: none;
-            border-bottom-color: var(--primary);
-        }
-
-        .sidebar-footer {
-            display: none;
-        }
-
-        .dashboard-topbar {
-            padding: 1rem;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.75rem;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-        }
-
-        .profile-tabs {
-            padding: 0;
-            overflow-x: auto;
-            flex-wrap: nowrap;
-        }
-
-        .profile-tabs .nav-link {
-            padding: 0.75rem 1rem;
-            font-size: 0.9rem;
-        }
-
-        .field-label,
-        .field-input,
-        .field-help {
-            width: auto;
-            display: block;
-            padding: 0.75rem;
-        }
-
-        .info-field-table,
-        .info-field-table tbody,
-        .info-field-table tr,
-        .info-field-table td {
-            display: block;
-            width: 100%;
-        }
-
-        .info-field-table tr {
-            border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            margin-bottom: 0.75rem;
-            overflow: hidden;
-        }
-
-        .info-field-table tr:last-child {
-            margin-bottom: 0;
-        }
-
-        .field-label {
-            border-right: none;
-            background: var(--gray-100);
-        }
-
-        .field-help {
-            border-left: none;
-            background: var(--gray-50);
-        }
-
-        .documents-info-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .sticky-top {
-            position: static;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .dashboard-content {
-            padding: 1rem;
-        }
-
-        .page-title {
-            font-size: 1.3rem;
-        }
-
-        .profile-tabs .nav-link {
-            padding: 0.5rem 0.75rem;
-            font-size: 0.8rem;
-        }
-
-        .card-body {
-            padding: 1rem;
-        }
-
-        .form-control, .form-select {
-            padding: 0.5rem;
-        }
-
-        .info-field-table {
-            font-size: 0.9rem;
-        }
-
-        .field-label,
-        .field-input,
-        .field-help {
-            padding: 0.5rem;
-        }
-    }
-</style>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Password strength indicator
-        const newPasswordInput = document.querySelector('input[name="new_password"]');
-        
-        if (newPasswordInput) {
-            newPasswordInput.addEventListener('input', function() {
-                const password = this.value;
-                let strength = 0;
-                
-                if (password.length >= 8) strength++;
-                if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-                if (/\d/.test(password)) strength++;
-                if (/[^a-zA-Z\d]/.test(password)) strength++;
-                
-                // Update strength indicator if it exists
-                const strengthIndicator = document.querySelector('.password-strength');
-                if (strengthIndicator) {
-                    strengthIndicator.className = 'password-strength strength-' + strength;
-                }
-            });
-        }
-
-        // Form submission handlers
-        const securityForm = document.querySelector('.security-form');
-        if (securityForm) {
-            securityForm.addEventListener('submit', function(e) {
-                const newPassword = document.querySelector('input[name="new_password"]').value;
-                const confirmPassword = document.querySelector('input[name="confirm_password"]').value;
-                
-                if (newPassword !== confirmPassword) {
-                    e.preventDefault();
-                    alert('Passwords do not match');
-                    return false;
-                }
-                
-                if (newPassword.length < 8) {
-                    e.preventDefault();
-                    alert('Password must be at least 8 characters');
-                    return false;
-                }
-            });
-        }
-    });
-</script>
 {% endblock %}

@@ -2,8 +2,9 @@
 {% block title %}Verify OTP{% endblock %}
 
 {% block content %}
-<h2>Verify Your Account</h2>
-<p class="text-muted">
+<p class="auth-kicker">Account Verification</p>
+<h2 class="auth-title">Verify Your Account</h2>
+<p class="auth-subtitle">
     {% if channel == 'email' %}
         We've sent a verification code to your email address.
     {% elif channel == 'sms' %}
@@ -13,7 +14,7 @@
     {% endif %}
 </p>
 
-<form method="post" action="{% url 'listings:verify_otp' %}" class="portal-form">
+<form method="post" action="{% url 'listings:verify_otp' %}" class="auth-form">
     {% csrf_token %}
     <label for="{{ form.otp.id_for_label }}">Verification Code</label>
     {{ form.otp }}
@@ -21,14 +22,14 @@
         <div class="portal-alert alert-error">{{ form.otp.errors }}</div>
     {% endif %}
     <div class="small text-muted">Code expires in 10 minutes</div>
-    <button type="submit" class="portal-btn">Verify & Complete Registration</button>
+    <button type="submit" class="auth-btn">Verify & Complete Registration</button>
 </form>
 
 <div class="portal-links">
     <form method="post" action="{% url 'listings:resend_otp' %}">
         {% csrf_token %}
         <input type="hidden" name="phone" value="{{ phone }}">
-        <button type="submit" class="portal-btn" style="background:#6c757d;">Resend Code</button>
+        <button type="submit" class="auth-btn auth-btn--muted">Resend Code</button>
     </form>
     <a href="{% url 'login' %}">Back to Login</a>
 </div>

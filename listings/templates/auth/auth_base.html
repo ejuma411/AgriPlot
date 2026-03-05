@@ -7,114 +7,83 @@
     <title>{% block title %}AgriPlot Auth{% endblock %}</title>
     <link rel="icon" href="{% static 'images/agriplot-logo.png' %}">
     <link rel="stylesheet" href="{% static 'css/auth.css' %}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
 </head>
 <body class="auth-body">
-    <div class="portal-wrapper">
-        <div class="portal-card">
-            <div class="portal-logo">
-                <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot" class="portal-logo-img" />
-            </div>
-            <hr class="portal-divider" />
-
-            {% if messages %}
-                {% for message in messages %}
-                    <div class="portal-alert alert-{{ message.tags }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-
-            {% block content %}{% endblock %}
-
-            <div class="portal-links">
-                <a href="{% url 'login' %}">Back to Login</a>
+    <div class="auth-shell">
+        <section class="auth-hero">
+            <div class="auth-hero-brand">
+                <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot" class="hero-logo" />
+                <div>
+                    <p class="auth-hero-kicker">AgriPlot Connect</p>
+                    <h1 class="auth-hero-title">Verified land transactions, built for real decisions.</h1>
+                    <p class="auth-hero-subtitle">
+                        Document checks, officer reviews, and soil intelligence integrated into every listing.
+                    </p>
+                </div>
             </div>
 
-            <div class="portal-footer">© AgriPlot Connect</div>
-        </div>
+            <div class="auth-hero-metrics">
+                <div class="metric-card">
+                    <p class="metric-label">Verification Tracks</p>
+                    <p class="metric-value">3 layers</p>
+                    <p class="metric-note">Docs, extension, surveyor</p>
+                </div>
+                <div class="metric-card">
+                    <p class="metric-label">Security Standard</p>
+                    <p class="metric-value">2FA Ready</p>
+                    <p class="metric-note">Backup codes included</p>
+                </div>
+            </div>
+
+            <div class="hero-badges">
+                <span>Document Checks</span>
+                <span>Extension Reviews</span>
+                <span>Surveyor Inspections</span>
+                <span>Secure Sessions</span>
+            </div>
+
+            <div class="auth-hero-footnote">
+                <span class="auth-pill">Trusted by verified buyers</span>
+                <span class="auth-pill">Evidence-first listings</span>
+            </div>
+        </section>
+
+        <section class="auth-panel">
+            <div class="auth-card">
+                <div class="auth-card-header">
+                    <div class="auth-logo">
+                        <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot" />
+                    </div>
+                    <div>
+                        <p class="auth-brand">AgriPlot Connect</p>
+                        <p class="auth-caption">Secure access to verified listings</p>
+                    </div>
+                </div>
+
+                {% if messages %}
+                    <div class="auth-messages">
+                        {% for message in messages %}
+                            <div class="auth-alert alert-{{ message.tags }}">{{ message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+
+                {% block content %}{% endblock %}
+
+                <div class="portal-links auth-footer-links">
+                    {% block auth_links %}
+                        <a href="{% url 'login' %}">Back to Login</a>
+                    {% endblock %}
+                </div>
+
+                <div class="portal-footer">© AgriPlot Connect</div>
+            </div>
+        </section>
     </div>
-
-    <style>
-        body.auth-body { background: #f5f5f5; }
-        .portal-wrapper {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-        }
-        .portal-card {
-            width: 420px;
-            background: #fff;
-            border: 1px solid #ddd;
-            padding: 24px 26px;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-        }
-        .portal-logo {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 10px;
-        }
-        .portal-logo-img {
-            width: 90px;
-            height: 90px;
-            object-fit: contain;
-        }
-        .portal-divider { margin: 10px 0 18px; }
-        .portal-alert {
-            background: #fff3cd;
-            border: 1px solid #ffeeba;
-            padding: 8px 10px;
-            margin-bottom: 10px;
-            font-size: 0.85rem;
-        }
-        .portal-form label {
-            display: block;
-            margin: 10px 0 6px;
-            font-weight: 600;
-            font-size: 0.9rem;
-        }
-        .portal-form input, .portal-form select, .portal-form textarea {
-            width: 100%;
-            padding: 8px 10px;
-            border: 1px solid #ccc;
-            border-radius: 2px;
-        }
-        .portal-btn {
-            width: 100%;
-            background: #1f8b4c;
-            color: #fff;
-            border: none;
-            padding: 10px;
-            margin-top: 10px;
-            cursor: pointer;
-        }
-        .portal-links {
-            margin-top: 10px;
-            text-align: center;
-            font-size: 0.85rem;
-        }
-        .portal-links a { color: #0066cc; text-decoration: none; }
-        .portal-footer {
-            margin-top: 14px;
-            text-align: center;
-            font-size: 0.8rem;
-            color: #666;
-        }
-        .portal-signup {
-            margin-top: 12px;
-            text-align: center;
-            font-size: 0.85rem;
-        }
-        .portal-signup-links {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            margin-top: 6px;
-        }
-        .portal-signup-links a {
-            color: #1f8b4c;
-            text-decoration: none;
-            font-weight: 600;
-        }
-    </style>
+    {% block extra_js %}{% endblock %}
 </body>
 </html>

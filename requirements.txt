@@ -34,12 +34,14 @@ django-timezone-field==7.2.1
 django-widget-tweaks==1.5.1
 dotenv==0.9.9
 fonttools==4.61.1
+git-filter-repo==2.47.0
 idna==3.11
 iniconfig==2.3.0
 joblib==1.5.3
 kombu==5.6.2
 nltk==3.9.2
 packaging==25.0
+pdf2image==1.17.0
 pillow==12.1.0
 pluggy==1.6.0
 prompt_toolkit==3.0.52
@@ -48,7 +50,9 @@ pycparser==2.23
 pydyf==0.12.1
 Pygments==2.19.2
 PyMySQL==1.1.2
+pyotp==2.9.0
 pyphen==0.17.2
+pytesseract==0.3.13
 pytest==9.0.2
 pytest-django==4.12.0
 python-crontab==3.3.0
@@ -57,6 +61,7 @@ python-decouple==3.8
 python-dotenv==1.2.1
 pytz==2025.2
 PyYAML==6.0.3
+qrcode==8.2
 redis==7.1.0
 regex==2025.11.3
 reportlab==4.4.7
