@@ -84,7 +84,15 @@
                     </tr>
                     <tr>
                         <th>Area:</th>
-                        <td>{{ plot.area }} acres</td>
+                        <td>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Parcel Number:</th>
+                        <td>{{ plot.parcel_number|default:"Not provided" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Registration Section:</th>
+                        <td>{{ plot.registration_section|default:"Not provided" }}</td>
                     </tr>
                     <tr>
                         <th>Land Type:</th>
@@ -117,6 +125,11 @@
                         Official Search
                         {% if not plot.official_search %}<small class="text-danger">(Missing)</small>{% endif %}
                     </li>
+                    <li class="{% if plot.survey_map %}completed{% endif %}">
+                        <i class="fas {% if plot.survey_map %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Survey Map / Mutation
+                        {% if not plot.survey_map %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
                     <li class="{% if plot.landowner_id_doc %}completed{% endif %}">
                         <i class="fas {% if plot.landowner_id_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
                         Landowner ID
@@ -126,6 +139,21 @@
                         <i class="fas {% if plot.kra_pin %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
                         KRA PIN
                         {% if not plot.kra_pin %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.rates_clearance %}completed{% endif %}">
+                        <i class="fas {% if plot.rates_clearance %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Rates Clearance
+                        {% if not plot.rates_clearance %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.rent_clearance %}completed{% endif %}">
+                        <i class="fas {% if plot.rent_clearance %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Rent Clearance
+                        {% if not plot.rent_clearance %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.spousal_consent_doc %}completed{% endif %}">
+                        <i class="fas {% if plot.spousal_consent_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Spousal Consent
+                        {% if not plot.spousal_consent_doc %}<small class="text-danger">(Missing)</small>{% endif %}
                     </li>
                 </ul>
             </div>
@@ -160,7 +188,7 @@
                                     <input class="form-check-input" type="checkbox" id="check_search" name="check_search" required>
                                     <label class="form-check-label" for="check_search">
                                         <strong>Official Search</strong><br>
-                                        <small class="text-muted">Verify that the official search is recent (within 3 months) and matches title deed</small>
+                                        <small class="text-muted">Verify that the official search is recent (within 30 days) and matches title deed</small>
                                     </label>
                                 </div>
                                 <div class="form-check mb-3">

@@ -52,7 +52,15 @@
                     </tr>
                     <tr>
                         <th>Area:</th>
-                        <td>{{ plot.area }} acres</td>
+                        <td>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Parcel Number:</th>
+                        <td>{{ plot.parcel_number|default:"Not provided" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Registration Section:</th>
+                        <td>{{ plot.registration_section|default:"Not provided" }}</td>
                     </tr>
                     <tr>
                         <th>Listing Type:</th>

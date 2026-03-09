@@ -307,11 +307,12 @@ class PlotAdmin(admin.ModelAdmin):
         "location",
         "coordinates_display",
         "price_display",
-        "area",
+        "area_with_unit",
         "listing_type_display",
         "land_type_display",
         "verification_display",
         "has_all_documents",
+        "is_registry_record",
         "contact_requests_count",
         "created_at",
     )
@@ -330,6 +331,7 @@ class PlotAdmin(admin.ModelAdmin):
     search_fields = (
         "title",
         "location",
+        "parcel_number",
         "agent__user__username",
         "landowner__user__username",
     )
@@ -347,10 +349,24 @@ class PlotAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ("Basic Information", {
-            "fields": ("title", "agent", "landowner", "location", "county", "subcounty", "nearest_town", "area", "latitude", "longitude", "listing_type", "land_type", "land_use_description")
+            "fields": ("title", "agent", "landowner", "location", "county", "subcounty", "nearest_town", "area", "area_unit", "latitude", "longitude", "listing_type", "land_type", "land_use_description")
         }),
         ("Ownership & Legal Status", {
-            "fields": ("ownership_type", "tenure_details", "encumbrances", "encumbrance_details"),
+            "fields": (
+                "parcel_number",
+                "registration_section",
+                "owner_full_name",
+                "owner_id_number",
+                "spousal_consent",
+                "ownership_type",
+                "tenure_details",
+                "encumbrances",
+                "encumbrance_details",
+            ),
+        }),
+        ("Registry", {
+            "fields": ("is_registry_record",),
+            "classes": ("collapse",),
         }),
         ("Pricing (Sale)", {
             "fields": ("sale_price", "price_per_acre_display", "price_basis", "valuation_report", "government_price_proof", "price_notes", "is_price_negotiable"),
@@ -369,10 +385,10 @@ class PlotAdmin(admin.ModelAdmin):
             "classes": ("collapse",),
         }),
         ("Plot Documents", {
-            "fields": ("title_deed", "soil_report"),
+            "fields": ("title_deed", "survey_map", "spousal_consent_doc", "soil_report"),
         }),
         ("Verification Documents", {
-            "fields": ("official_search", "landowner_id_doc", "kra_pin"),
+            "fields": ("official_search", "rates_clearance", "rent_clearance", "landowner_id_doc", "kra_pin"),
             "classes": ("collapse",),
         }),
         ("Documents Summary", {
@@ -415,6 +431,10 @@ class PlotAdmin(admin.ModelAdmin):
             )
         return "-"
     owner_info.short_description = "Owner"
+
+    def area_with_unit(self, obj):
+        return obj.area_display
+    area_with_unit.short_description = "Area"
     
     def listing_type_display(self, obj):
         """Display listing type with color coding"""
@@ -823,6 +843,10 @@ class ContactRequestAdmin(admin.ModelAdmin):
     
     def has_add_permission(self, request):
         return False
+
+    def area_with_unit(self, obj):
+        return obj.area_display
+    area_with_unit.short_description = "Area"
 
 
 # ----------------------------------------

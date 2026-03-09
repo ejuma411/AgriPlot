@@ -952,6 +952,7 @@ def add_plot(request):
             # Log cleaned data (excluding sensitive info)
             safe_cleaned = {k: v for k, v in plot_form.cleaned_data.items() 
                            if k not in ['csrfmiddlewaretoken', 'title_deed', 'official_search', 
+                                       'survey_map', 'spousal_consent_doc', 'rates_clearance', 'rent_clearance',
                                        'landowner_id_doc', 'kra_pin', 'soil_report']}
             logger.debug(f"Cleaned data: {safe_cleaned}")
             
@@ -974,8 +975,16 @@ def add_plot(request):
                 uploaded_docs = []
                 if plot.title_deed:
                     uploaded_docs.append('title_deed')
+                if plot.survey_map:
+                    uploaded_docs.append('survey_map')
+                if plot.spousal_consent_doc:
+                    uploaded_docs.append('spousal_consent_doc')
                 if plot.official_search:
                     uploaded_docs.append('official_search')
+                if plot.rates_clearance:
+                    uploaded_docs.append('rates_clearance')
+                if plot.rent_clearance:
+                    uploaded_docs.append('rent_clearance')
                 if plot.landowner_id_doc:
                     uploaded_docs.append('landowner_id_doc')
                 if plot.kra_pin:
@@ -1297,6 +1306,7 @@ def edit_plot(request, id):
             # Log cleaned data (excluding sensitive info)
             safe_cleaned = {k: v for k, v in form.cleaned_data.items() 
                            if k not in ['csrfmiddlewaretoken', 'title_deed', 'official_search', 
+                                       'survey_map', 'spousal_consent_doc', 'rates_clearance', 'rent_clearance',
                                        'landowner_id_doc', 'kra_pin', 'soil_report']}
             logger.debug(f"Cleaned data: {safe_cleaned}")
             
@@ -1313,6 +1323,12 @@ def edit_plot(request, id):
                     critical_changes.append('subcounty')
                 if original_plot.area != form.cleaned_data.get('area'):
                     critical_changes.append('area')
+                if original_plot.area_unit != form.cleaned_data.get('area_unit'):
+                    critical_changes.append('area_unit')
+                if original_plot.parcel_number != form.cleaned_data.get('parcel_number'):
+                    critical_changes.append('parcel_number')
+                if original_plot.registration_section != form.cleaned_data.get('registration_section'):
+                    critical_changes.append('registration_section')
                 if original_plot.price != form.cleaned_data.get('price'):
                     critical_changes.append('price')
                 
@@ -2236,8 +2252,16 @@ def dashboard_analytics(request):
         'total_interests': total_interests,
         'total_plots': plots.count(),
         'avg_price': plots.aggregate(avg=Avg('price'))['avg'] or 0,
-        'avg_area': plots.aggregate(avg=Avg('area'))['avg'] or 0,
+        'avg_area': 0,
     }
+
+    # Normalize average area to acres for analytics
+    try:
+        area_values = [p.area_acres for p in plots if p.area_acres]
+        if area_values:
+            context['avg_area'] = sum(area_values) / len(area_values)
+    except Exception:
+        context['avg_area'] = 0
     
     return render(request, 'listings/dashboard/analytics.html', context)
 

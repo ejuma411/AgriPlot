@@ -121,6 +121,7 @@ INSTALLED_APPS = [
     "jazzmin",
     
     # Django Core Apps
+    'django_extensions',
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",

@@ -284,7 +284,55 @@ class Plot(models.Model):
     # Basic Info
     title = models.CharField(max_length=200)
     location = models.CharField(max_length=300)
-    area = models.FloatField(help_text="In acres or hectares")
+    AREA_UNIT_CHOICES = [
+        ('acres', 'Acres'),
+        ('hectares', 'Hectares'),
+    ]
+    area = models.FloatField(help_text="Land area value")
+    area_unit = models.CharField(
+        max_length=10,
+        choices=AREA_UNIT_CHOICES,
+        default='acres',
+        help_text="Unit for the land area"
+    )
+    parcel_number = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        unique=True,
+        db_index=True,
+        help_text="Parcel/Title/LR number (e.g., REGISTRY/BLOCK/PARCEL or LR 1234/567)"
+    )
+    registration_section = models.CharField(
+        max_length=150,
+        blank=True,
+        null=True,
+        help_text="Registration section / registry block (e.g., Nairobi/Block 10)"
+    )
+    search_certificate_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Official search certificate date"
+    )
+    search_reference_number = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Official search reference number"
+    )
+    owner_full_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Name of registered owner as per title/search"
+    )
+    owner_id_number = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="National ID number of the registered owner"
+    )
+    spousal_consent = models.BooleanField(
+        default=False,
+        help_text="Spousal consent provided (if matrimonial property)"
+    )
     
     # Listing Type
     listing_type = models.CharField(max_length=10, choices=LISTING_TYPE_CHOICES, default='sale')
@@ -371,6 +419,18 @@ class Plot(models.Model):
         blank=True,
         help_text="Official title deed document"
     )
+    survey_map = models.FileField(
+        upload_to="documents/survey_maps/",
+        null=True,
+        blank=True,
+        help_text="Survey map or mutation form"
+    )
+    spousal_consent_doc = models.FileField(
+        upload_to="documents/spousal_consents/",
+        null=True,
+        blank=True,
+        help_text="Spousal consent document (if applicable)"
+    )
     
     soil_report = models.FileField(
         upload_to="documents/soil_reports/", 
@@ -385,6 +445,18 @@ class Plot(models.Model):
         null=True,
         blank=True,
         help_text="Official land search certificate"
+    )
+    rates_clearance = models.FileField(
+        upload_to="documents/rates_clearance/",
+        null=True,
+        blank=True,
+        help_text="Land rates clearance certificate"
+    )
+    rent_clearance = models.FileField(
+        upload_to="documents/rent_clearance/",
+        null=True,
+        blank=True,
+        help_text="Land rent clearance certificate"
     )
     
     landowner_id_doc = models.FileField(  # ✅ Changed from landowner_id
@@ -433,6 +505,10 @@ class Plot(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_published = models.BooleanField(default=False)
+    is_registry_record = models.BooleanField(
+        default=False,
+        help_text="Marks plots used as official registry records for land search testing"
+    )
     class Meta:
         indexes = [
             models.Index(fields=['-created_at']),
@@ -450,6 +526,23 @@ class Plot(models.Model):
         if first_image and first_image.image:
             return first_image.image.url
         return ""
+
+    @property
+    def area_acres(self):
+        """Return area in acres regardless of stored unit."""
+        if self.area is None:
+            return None
+        if self.area_unit == 'hectares':
+            return self.area * 2.47105
+        return self.area
+
+    @property
+    def area_display(self):
+        """Human-friendly area display with unit."""
+        if self.area is None:
+            return "Not provided"
+        unit = self.get_area_unit_display() if self.area_unit else "Acres"
+        return f"{self.area} {unit}"
     
     def clean(self):
         """Validate plot data"""
@@ -477,7 +570,15 @@ class Plot(models.Model):
     @property
     def has_all_documents(self):
         """Check if plot has all required documents"""
-        required_docs = ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin']
+        required_docs = [
+            'title_deed',
+            'survey_map',
+            'official_search',
+            'landowner_id_doc',
+            'kra_pin',
+            'rates_clearance',
+            'rent_clearance',
+        ]
         for doc_field in required_docs:
             if not getattr(self, doc_field):
                 return False
@@ -511,8 +612,11 @@ class VerificationDocument(models.Model):
         ('official_search', "Official Search Certificate"),
         ('landowner_id', "Landowner National ID"),
         ('kra_pin', "KRA PIN Certificate"),
-        ('survey_plan', "Survey Plan"),
+        ('survey_map', "Survey Map / Mutation Form"),
         ('rates_clearance', "Land Rates Clearance"),
+        ('rent_clearance', "Land Rent Clearance"),
+        ('spousal_consent', "Spousal Consent"),
+        ('survey_plan', "Survey Plan"),
         ('lcb_consent', "LCB Consent"),
     ]
 
@@ -582,6 +686,8 @@ class VerificationStatus(models.Model):
     api_started_at = models.DateTimeField(null=True, blank=True)
     title_search_at = models.DateTimeField(null=True, blank=True)
     owner_verified_at = models.DateTimeField(null=True, blank=True)
+    encumbrance_check_at = models.DateTimeField(null=True, blank=True)
+    physical_location_verified_at = models.DateTimeField(null=True, blank=True)
     admin_review_at = models.DateTimeField(null=True, blank=True)
     approved_at = models.DateTimeField(null=True, blank=True)
     rejected_at = models.DateTimeField(null=True, blank=True)
@@ -605,9 +711,20 @@ class VerificationStatus(models.Model):
         if details:
             self.stage_details[stage] = details
         
-        # Set corresponding timestamp
-        timestamp_field = f"{stage}_at"
-        if hasattr(self, timestamp_field):
+        # Set corresponding timestamp (explicit mapping)
+        stage_timestamp_map = {
+            'document_uploaded': 'document_uploaded_at',
+            'api_verification_started': 'api_started_at',
+            'title_search_completed': 'title_search_at',
+            'owner_verified': 'owner_verified_at',
+            'encumbrance_check': 'encumbrance_check_at',
+            'physical_location_verified': 'physical_location_verified_at',
+            'admin_review': 'admin_review_at',
+            'approved': 'approved_at',
+            'rejected': 'rejected_at',
+        }
+        timestamp_field = stage_timestamp_map.get(stage)
+        if timestamp_field and hasattr(self, timestamp_field):
             setattr(self, timestamp_field, timezone.now())
         
         if stage == 'approved':
@@ -1336,6 +1453,18 @@ class ExtensionReport(models.Model):
     
     # Soil assessment
     soil_ph_verified = models.FloatField(null=True, blank=True)
+    soil_ph = models.DecimalField(
+        max_digits=4,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Measured soil pH"
+    )
+    soil_classification = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="e.g., Black Cotton, Red Volcanic"
+    )
     soil_texture = models.CharField(max_length=50, choices=[
         ('sandy', 'Sandy'),
         ('loamy', 'Loamy'),
@@ -1350,8 +1479,14 @@ class ExtensionReport(models.Model):
         ('moderate', 'Moderate'),
         ('poor', 'Poor'),
     ], blank=True)
+    topography = models.CharField(max_length=20, choices=[
+        ('flat', 'Flat'),
+        ('gentle', 'Gentle Slope'),
+        ('steep', 'Steep'),
+    ], blank=True)
     
     # Crop assessment
+    current_land_use = models.TextField(blank=True, help_text="Current land use on site")
     existing_crops = models.TextField(blank=True, help_text="Crops currently growing")
     crop_health = models.CharField(max_length=50, choices=[
         ('excellent', 'Excellent'),
@@ -1371,6 +1506,34 @@ class ExtensionReport(models.Model):
         ('poor', 'Poor'),
     ], blank=True)
     irrigation_system = models.CharField(max_length=100, blank=True)
+    power_access = models.CharField(max_length=50, choices=[
+        ('grid', 'Grid Power'),
+        ('offgrid', 'Off-grid / Solar'),
+        ('none', 'No Power'),
+        ('unknown', 'Unknown'),
+    ], default='unknown')
+
+    # Zoning & LCB
+    zoning_status = models.CharField(max_length=50, choices=[
+        ('agricultural', 'Agricultural'),
+        ('residential', 'Residential'),
+        ('commercial', 'Commercial'),
+        ('mixed_use', 'Mixed Use'),
+        ('unknown', 'Unknown'),
+    ], default='unknown')
+    lcb_approval_potential = models.CharField(max_length=50, choices=[
+        ('likely', 'Likely'),
+        ('uncertain', 'Uncertain'),
+        ('unlikely', 'Unlikely'),
+        ('not_applicable', 'Not Applicable'),
+    ], default='uncertain')
+    lcb_zone = models.BooleanField(
+        default=False,
+        help_text="Subject to Land Control Board (LCB) consent"
+    )
+    project_feasibility_note = models.TextField(blank=True, help_text="Utilities, access, market viability")
+    soil_analysis_notes = models.TextField(blank=True, help_text="Soil analysis summary and constraints")
+    topography_summary = models.TextField(blank=True, help_text="Terrain, slope, drainage summary")
     
     # Photos
     site_photos = models.JSONField(default=list, help_text="List of photo URLs")
@@ -1483,6 +1646,60 @@ class SurveyorReport(models.Model):
     encumbrances_found = models.BooleanField(default=False)
     encumbrance_details = models.TextField(blank=True)
     boundary_markers = models.TextField(blank=True, help_text="Describe boundary markers or beacons found on site")
+    beacon_status = models.CharField(max_length=50, choices=[
+        ('all_present', 'All beacons present and intact'),
+        ('missing', 'Some beacons missing (re-establishment required)'),
+        ('displaced', 'Beacons displaced or tampered with'),
+    ], blank=True)
+    beacon_certificate = models.FileField(
+        upload_to="documents/beacon_certificates/",
+        null=True,
+        blank=True,
+        help_text="Beacon certificate (if issued)"
+    )
+    mutation_form = models.FileField(
+        upload_to="documents/mutation_forms/",
+        null=True,
+        blank=True,
+        help_text="Certified copy of the latest mutation form/survey plan"
+    )
+    rim_map_sheet_no = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="RIM map sheet number"
+    )
+    ground_acreage = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Measured area on ground (hectares)"
+    )
+    deed_area = models.DecimalField(
+        max_digits=10,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Area as stated on title deed (hectares)"
+    )
+    boundary_report = models.FileField(
+        upload_to="documents/boundary_reports/",
+        null=True,
+        blank=True,
+        help_text="Boundary verification report"
+    )
+    encroachment_found = models.BooleanField(default=False)
+    encroachment_details = models.TextField(blank=True)
+    lsb_license_number = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Land Surveyors Board (LSB) registration number"
+    )
+    surveyor_license_number = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Surveyor ISK license number"
+    )
     topography_notes = models.TextField(blank=True, help_text="Slope, terrain, drainage patterns, or obstacles")
     access_road = models.CharField(max_length=200, blank=True, help_text="Describe road access and distance to main road")
     utilities_available = models.TextField(blank=True, help_text="Water, electricity, irrigation, other utilities")

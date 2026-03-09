@@ -425,7 +425,7 @@
                                                 <i class="fas fa-money-bill"></i> {{ plot.price|floatformat:0 }} KES
                                             </span>
                                             <span class="meta-item">
-                                                <i class="fas fa-expand"></i> {{ plot.area }} acres
+                                                <i class="fas fa-expand"></i> {{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}
                                             </span>
                                         </div>
                                     </div>

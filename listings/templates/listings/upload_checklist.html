@@ -125,6 +125,24 @@
                                                     Land registry search
                                                 </small>
                                             </div>
+                                            {% elif doc_type == 'survey_map' %}
+                                            <i class="fas fa-ruler-combined me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Survey Map / Mutation</strong>
+                                                <small class="text-muted d-block">
+                                                    Survey map or mutation form
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'spousal_consent' %}
+                                            <i class="fas fa-user-check me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Spousal Consent</strong>
+                                                <small class="text-muted d-block">
+                                                    Consent for matrimonial property
+                                                </small>
+                                            </div>
                                             {% elif doc_type == 'rates_clearance' %}
                                             <i class="fas fa-receipt me-2 
                                                {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
@@ -132,6 +150,15 @@
                                                 <strong>Rates Clearance</strong>
                                                 <small class="text-muted d-block">
                                                     Tax clearance certificate
+                                                </small>
+                                            </div>
+                                            {% elif doc_type == 'rent_clearance' %}
+                                            <i class="fas fa-file-invoice me-2 
+                                               {% if doc_type in missing_docs %}text-danger{% else %}text-success{% endif %}"></i>
+                                            <div>
+                                                <strong>Rent Clearance</strong>
+                                                <small class="text-muted d-block">
+                                                    Land rent clearance certificate
                                                 </small>
                                             </div>
                                             {% elif doc_type == 'mother_title' %}

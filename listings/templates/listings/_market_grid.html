@@ -28,7 +28,7 @@
                 </div>
                 <div class="fb-meta">
                     <span class="fb-price">KES {{ plot.price|floatformat:0|intcomma }}</span>
-                    <span class="fb-area">{{ plot.area }} acres</span>
+                    <span class="fb-area">{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
                 </div>
                 <div class="fb-actions">
                     <a class="fb-cta" href="{% url 'listings:plot_detail' plot.id %}">Explore</a>

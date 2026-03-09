@@ -4,16 +4,31 @@ import hashlib
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.utils import timezone
 from .models import *
 from decimal import Decimal, InvalidOperation
 from .location_utils import validate_kenyan_location, get_subcounties_for_county
+import re
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
 validation_logger = logging.getLogger('listings.validation')
 
 ALLOWED_DOC_EXTENSIONS = {'.pdf', '.jpg', '.jpeg', '.png'}
-MAX_UPLOAD_MB = 10
+MAX_UPLOAD_MB = 20
+
+PARCEL_PATTERN_REGISTRY = re.compile(r"^[A-Za-z0-9]+(?:/[A-Za-z0-9]+)+$")
+PARCEL_PATTERN_LR = re.compile(r"^L\.?R\.?\s*(NO\.?|NO|NUMBER)?\s*\d+(?:/\d+)*$", re.IGNORECASE)
+
+def _validate_parcel_number(value):
+    if not value:
+        raise forms.ValidationError("Parcel number is required.")
+    normalized = value.strip()
+    if not (PARCEL_PATTERN_REGISTRY.match(normalized) or PARCEL_PATTERN_LR.match(normalized)):
+        raise forms.ValidationError(
+            "Use a valid parcel format (e.g., REGISTRY/BLOCK/PARCEL or LR 1234/567)."
+        )
+    return normalized
 
 def _validate_upload(field_name, file_obj):
     if not file_obj:
@@ -439,6 +454,48 @@ class PlotForm(forms.ModelForm):
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         help_text="Describe the current use of this land"
     )
+
+    parcel_number = forms.CharField(
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g., REGISTRY/BLOCK/PARCEL or LR 1234/567'
+        }),
+        help_text="Parcel/Title/LR number used for official searches"
+    )
+
+    registration_section = forms.CharField(
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'e.g., Nairobi/Block 10'
+        }),
+        help_text="Registration section / registry block"
+    )
+    search_certificate_date = forms.DateField(
+        required=True,
+        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+        help_text="Official land search date (must be within 30 days)"
+    )
+    search_reference_number = forms.CharField(
+        required=True,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        help_text="Reference number from the official search certificate"
+    )
+    owner_full_name = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        help_text="Registered owner's name as per title/search"
+    )
+    owner_id_number = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+        help_text="Registered owner's national ID number"
+    )
+    spousal_consent = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
     
     # Sale fields
     sale_price = forms.DecimalField(
@@ -504,6 +561,12 @@ class PlotForm(forms.ModelForm):
         required=False,
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
         help_text="Specific lease conditions and restrictions"
+    )
+
+    area_unit = forms.ChoiceField(
+        choices=Plot.AREA_UNIT_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={'class': 'form-select'})
     )
     ownership_type = forms.ChoiceField(
         choices=Plot._meta.get_field('ownership_type').choices,
@@ -614,11 +677,31 @@ class PlotForm(forms.ModelForm):
         required=False,
         widget=forms.Select(attrs={'class': 'form-control'})
     )
+
+    survey_map = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'})
+    )
+    spousal_consent_doc = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'})
+    )
+    rates_clearance = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'})
+    )
+    rent_clearance = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'})
+    )
     
     class Meta:
         model = Plot
         fields = [
-            'title', 'county', 'subcounty', 'location', 'area', 'listing_type', 'land_type',
+            'title', 'county', 'subcounty', 'location', 'area', 'area_unit', 'parcel_number', 'registration_section',
+            'search_certificate_date', 'search_reference_number',
+            'owner_full_name', 'owner_id_number', 'spousal_consent',
+            'listing_type', 'land_type',
             'land_use_description', 'nearest_town',
             'ownership_type', 'tenure_details', 'encumbrances', 'encumbrance_details',
             'sale_price', 'price_per_acre',
@@ -627,7 +710,8 @@ class PlotForm(forms.ModelForm):
             'has_water', 'water_source', 'has_electricity', 'electricity_meter',
             'has_road_access', 'road_type', 'road_distance_km',
             'has_buildings', 'building_description', 'fencing',
-            'title_deed', 'official_search',
+            'title_deed', 'survey_map', 'spousal_consent_doc',
+            'official_search', 'rates_clearance', 'rent_clearance',
             'landowner_id_doc', 'kra_pin'
         ]
         widgets = {
@@ -645,9 +729,32 @@ class PlotForm(forms.ModelForm):
                 'class': 'form-control',
                 'accept': '.pdf,.jpg,.jpeg,.png'
             }),
+            'survey_map': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
+            'spousal_consent_doc': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
             'official_search': forms.ClearableFileInput(attrs={
                 'class': 'form-control',
                 'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
+            'rates_clearance': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
+            'rent_clearance': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
+            'search_certificate_date': forms.DateInput(attrs={
+                'type': 'date',
+                'class': 'form-control'
+            }),
+            'search_reference_number': forms.TextInput(attrs={
+                'class': 'form-control'
             }),
             'landowner_id_doc': forms.ClearableFileInput(attrs={
                 'class': 'form-control',
@@ -690,35 +797,68 @@ class PlotForm(forms.ModelForm):
         # Set required fields for creation vs edit
         if not self.is_edit:
             # For new plots, all documents are required except soil_report
-            required_docs = ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin']
+            required_docs = [
+                'title_deed',
+                'survey_map',
+                'official_search',
+                'landowner_id_doc',
+                'kra_pin',
+                'rates_clearance',
+                'rent_clearance',
+            ]
             for doc_field in required_docs:
                 if doc_field in self.fields:
                     self.fields[doc_field].required = True
+
+            if 'owner_full_name' in self.fields:
+                self.fields['owner_full_name'].required = True
+            if 'owner_id_number' in self.fields:
+                self.fields['owner_id_number'].required = True
+            if 'search_certificate_date' in self.fields:
+                self.fields['search_certificate_date'].required = True
+            if 'search_reference_number' in self.fields:
+                self.fields['search_reference_number'].required = True
             
             # Listing type is required
             self.fields['listing_type'].required = True
             self.fields['land_type'].required = True
         else:
             # For editing, documents are optional (allow updates)
-            pass
+            if 'parcel_number' in self.fields:
+                self.fields['parcel_number'].required = False
+            if 'registration_section' in self.fields:
+                self.fields['registration_section'].required = False
+            if 'search_certificate_date' in self.fields:
+                self.fields['search_certificate_date'].required = False
+            if 'search_reference_number' in self.fields:
+                self.fields['search_reference_number'].required = False
         
         # Add help texts
         self.fields['title'].help_text = "Give your plot a descriptive title"
         self.fields['county'].help_text = "Select the county where your plot is located"
         self.fields['subcounty'].help_text = "Select the specific sub-county"
-        self.fields['area'].help_text = "Size in acres"
+        self.fields['area'].help_text = "Land area value"
+        self.fields['area_unit'].help_text = "Select acres or hectares"
+        self.fields['parcel_number'].help_text = "Parcel/Title/LR number used for official search"
+        self.fields['registration_section'].help_text = "Registry/Block as shown on the title (e.g., Nairobi/Block 10)"
+        self.fields['owner_full_name'].help_text = "Registered owner's name (as per title/land search)"
+        self.fields['owner_id_number'].help_text = "Registered owner's national ID number"
         self.fields['price_basis'].help_text = "How was the selling price determined?"
         self.fields['lease_basis'].help_text = "How was the lease price determined?"
         self.fields['valuation_report'].help_text = "Optional valuation report (PDF/Image)"
         self.fields['price_notes'].help_text = "Optional notes about market demand or negotiations"
         self.fields['ownership_type'].help_text = "Legal tenure status"
         self.fields['encumbrance_details'].help_text = "Specify any caveats, loans, or disputes"
-        self.fields['title_deed'].help_text = "Upload title deed document (PDF/Image, max 10MB)"
+        self.fields['title_deed'].help_text = "Upload title deed document (PDF/Image, max 20MB)"
+        self.fields['survey_map'].help_text = "Upload survey map or mutation form (PDF/Image, max 20MB)"
+        self.fields['spousal_consent_doc'].help_text = "Upload spousal consent document if applicable"
         if 'soil_report' in self.fields:
-            self.fields['soil_report'].help_text = "Upload soil test report (PDF/Image, max 10MB, optional)"
-        self.fields['official_search'].help_text = "Official land search certificate (PDF/Image, max 10MB)"
-        self.fields['landowner_id_doc'].help_text = "Landowner's national ID (PDF/Image, max 10MB)"
-        self.fields['kra_pin'].help_text = "Landowner's KRA PIN certificate (PDF/Image, max 10MB)"
+            self.fields['soil_report'].help_text = "Upload soil test report (PDF/Image, max 20MB, optional)"
+        self.fields['official_search'].help_text = "Official land search certificate (PDF/Image, max 20MB)"
+        self.fields['rates_clearance'].help_text = "Land rates clearance certificate (PDF/Image, max 20MB)"
+        self.fields['rent_clearance'].help_text = "Land rent clearance certificate (PDF/Image, max 20MB)"
+        self.fields['landowner_id_doc'].help_text = "Landowner's national ID (PDF/Image, max 20MB)"
+        self.fields['kra_pin'].help_text = "Landowner's KRA PIN certificate (PDF/Image, max 20MB)"
     
     def clean(self):
         """Validate all form data with comprehensive error checking"""
@@ -771,6 +911,74 @@ class PlotForm(forms.ModelForm):
         # =========================================================================
         # OWNER VALIDATION
         # =========================================================================
+        parcel_number = cleaned_data.get('parcel_number')
+        registration_section = cleaned_data.get('registration_section')
+        search_certificate_date = cleaned_data.get('search_certificate_date')
+        search_reference_number = cleaned_data.get('search_reference_number')
+        owner_full_name = cleaned_data.get('owner_full_name')
+        owner_id_number = cleaned_data.get('owner_id_number')
+        spousal_consent = cleaned_data.get('spousal_consent')
+        spousal_consent_doc = cleaned_data.get('spousal_consent_doc')
+
+        require_parcel = not self.is_edit
+
+        if parcel_number:
+            try:
+                cleaned_data['parcel_number'] = _validate_parcel_number(parcel_number)
+            except forms.ValidationError as e:
+                self.add_error('parcel_number', e)
+                validation_errors.append(f"parcel_number: {e}")
+        elif require_parcel:
+            self.add_error('parcel_number', "Parcel number is required.")
+            validation_errors.append("parcel_number: required")
+
+        if not registration_section and require_parcel:
+            self.add_error('registration_section', "Registration section is required.")
+            validation_errors.append("registration_section: required")
+
+        if require_parcel:
+            if not search_certificate_date:
+                self.add_error('search_certificate_date', "Search certificate date is required.")
+                validation_errors.append("search_certificate_date: required")
+            if not search_reference_number:
+                self.add_error('search_reference_number', "Search reference number is required.")
+                validation_errors.append("search_reference_number: required")
+
+        if search_certificate_date:
+            today = timezone.localdate()
+            if search_certificate_date > today:
+                self.add_error('search_certificate_date', "Search certificate date cannot be in the future.")
+                validation_errors.append("search_certificate_date: future date")
+            else:
+                age_days = (today - search_certificate_date).days
+                if age_days > 30:
+                    self.add_error(
+                        'search_certificate_date',
+                        "Search certificate is older than 30 days. Upload a recent search."
+                    )
+                    validation_errors.append("search_certificate_date: older than 30 days")
+
+        if require_parcel:
+            if not owner_full_name:
+                self.add_error('owner_full_name', "Owner name is required.")
+                validation_errors.append("owner_full_name: required")
+            if not owner_id_number:
+                self.add_error('owner_id_number', "Owner ID number is required.")
+                validation_errors.append("owner_id_number: required")
+
+        if spousal_consent and not spousal_consent_doc:
+            self.add_error('spousal_consent_doc', "Upload spousal consent document.")
+            validation_errors.append("spousal_consent_doc: required when consent is checked")
+
+        if parcel_number:
+            existing = Plot.objects.filter(parcel_number__iexact=parcel_number)
+            if self.instance and self.instance.pk:
+                existing = existing.exclude(pk=self.instance.pk)
+            if existing.exists():
+                error_msg = "This parcel number is already listed."
+                self.add_error('parcel_number', error_msg)
+                validation_errors.append(f"parcel_number: {error_msg}")
+
         if self.owner and not self.is_edit:
             try:
                 if isinstance(self.owner, Agent):
@@ -799,6 +1007,20 @@ class PlotForm(forms.ModelForm):
         county = cleaned_data.get('county')
         land_type = cleaned_data.get('land_type')
         area = cleaned_data.get('area')
+        area_unit = cleaned_data.get('area_unit') or 'acres'
+
+        def _to_acres(value, unit):
+            if value is None:
+                return None
+            try:
+                value_float = float(value)
+            except (ValueError, TypeError):
+                return None
+            if unit == 'hectares':
+                return value_float * 2.47105
+            return value_float
+
+        area_acres = _to_acres(area, area_unit)
         
         logger.debug(f"Validating listing type: {listing_type}")
         logger.debug(f"Sale price: {sale_price}, Lease monthly: {lease_price_monthly}, Lease yearly: {lease_price_yearly}")
@@ -855,7 +1077,7 @@ class PlotForm(forms.ModelForm):
 
         # Market band validation (guardrails)
         from .models import MarketPriceBand
-        if sale_price and area and county and land_type:
+        if sale_price and area_acres and county and land_type:
             band = MarketPriceBand.objects.filter(
                 county=county,
                 land_type=land_type,
@@ -863,7 +1085,7 @@ class PlotForm(forms.ModelForm):
                 effective_to__isnull=True
             ).first()
             if band:
-                price_per_acre = sale_price / area
+                price_per_acre = sale_price / area_acres
                 if price_per_acre < band.min_price_per_acre or price_per_acre > band.max_price_per_acre:
                     if price_basis != 'valuation_report':
                         self.add_error(
@@ -871,7 +1093,7 @@ class PlotForm(forms.ModelForm):
                             f"Sale price per acre is outside market band ({band.min_price_per_acre}-{band.max_price_per_acre}). Upload valuation report or adjust price."
                         )
 
-        if lease_price_yearly and area and county and land_type:
+        if lease_price_yearly and area_acres and county and land_type:
             band = MarketPriceBand.objects.filter(
                 county=county,
                 land_type=land_type,
@@ -879,7 +1101,7 @@ class PlotForm(forms.ModelForm):
                 effective_to__isnull=True
             ).first()
             if band:
-                price_per_acre = lease_price_yearly / area
+                price_per_acre = lease_price_yearly / area_acres
                 if price_per_acre < band.min_price_per_acre or price_per_acre > band.max_price_per_acre:
                     if lease_basis != 'valuation_report':
                         self.add_error(
@@ -890,18 +1112,28 @@ class PlotForm(forms.ModelForm):
         # =========================================================================
         # DOCUMENT VALIDATION
         # =========================================================================
-        document_fields = ['title_deed', 'soil_report', 'official_search', 'landowner_id_doc', 'kra_pin']
+        document_fields = [
+            'title_deed',
+            'survey_map',
+            'spousal_consent_doc',
+            'soil_report',
+            'official_search',
+            'rates_clearance',
+            'rent_clearance',
+            'landowner_id_doc',
+            'kra_pin',
+        ]
         
         for field_name in document_fields:
             document = cleaned_data.get(field_name)
             if document and hasattr(document, 'size'):
                 logger.debug(f"Validating document: {field_name}, Size: {document.size} bytes")
                 
-                # Check file size (max 10MB)
-                max_size = 10 * 1024 * 1024  # 10MB
+                # Check file size
+                max_size = MAX_UPLOAD_MB * 1024 * 1024
                 if document.size > max_size:
                     size_mb = document.size / (1024 * 1024)
-                    error_msg = f"{field_name.replace('_', ' ').title()} must be less than 10MB (current: {size_mb:.2f}MB)"
+                    error_msg = f"{field_name.replace('_', ' ').title()} must be less than {MAX_UPLOAD_MB}MB (current: {size_mb:.2f}MB)"
                     self.add_error(field_name, error_msg)
                     validation_errors.append(f"{field_name}: {error_msg}")
                     logger.warning(f"File too large: {field_name} - {size_mb:.2f}MB")
@@ -920,9 +1152,9 @@ class PlotForm(forms.ModelForm):
         # =========================================================================
         area = cleaned_data.get('area')
         
-        if sale_price and area:
+        if sale_price and area_acres:
             try:
-                area_decimal = Decimal(str(area))
+                area_decimal = Decimal(str(area_acres))
                 if area_decimal > 0:
                     price_per_acre = Decimal(str(sale_price)) / area_decimal
                     cleaned_data['price_per_acre'] = price_per_acre
@@ -945,11 +1177,12 @@ class PlotForm(forms.ModelForm):
         if area is not None:
             try:
                 area_float = float(area)
+                area_acres_check = _to_acres(area_float, area_unit)
                 if area_float <= 0:
                     error_msg = 'Area must be greater than 0'
                     self.add_error('area', error_msg)
                     validation_errors.append(f"area: {error_msg}")
-                elif area_float > 100000:  # Sanity check: max 100,000 acres
+                elif area_acres_check and area_acres_check > 100000:  # Sanity check: max 100,000 acres
                     error_msg = 'Area seems unusually large. Please verify the size.'
                     self.add_error('area', error_msg)
                     validation_errors.append(f"area: {error_msg}")
@@ -982,7 +1215,16 @@ class PlotForm(forms.ModelForm):
         
         # Check if documents were uploaded
         docs_uploaded = []
-        for field in ['title_deed', 'official_search', 'landowner_id_doc', 'kra_pin']:
+        for field in [
+            'title_deed',
+            'survey_map',
+            'spousal_consent_doc',
+            'official_search',
+            'rates_clearance',
+            'rent_clearance',
+            'landowner_id_doc',
+            'kra_pin',
+        ]:
             if field in self.changed_data:
                 docs_uploaded.append(field)
         
@@ -1089,6 +1331,12 @@ class TitleSearchResultForm(forms.ModelForm):
             ('Manual', 'Manual Search'),
             ('Other', 'Other'),
         ]
+
+    def clean_parcel_number(self):
+        value = self.cleaned_data.get('parcel_number')
+        if value:
+            return _validate_parcel_number(value)
+        return value
 
 
 class PlotVerificationStatusForm(forms.ModelForm):
@@ -1296,6 +1544,21 @@ class ExtensionReportForm(forms.ModelForm):
         required=False,
         help_text="Upload photos from the site visit (you can select multiple files)"
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Prefer the new soil_ph field, hide legacy soil_ph_verified
+        if 'soil_ph_verified' in self.fields:
+            self.fields.pop('soil_ph_verified')
+        if 'soil_ph' in self.fields:
+            self.fields['soil_ph'].required = True
+            self.fields['soil_ph'].help_text = "Measured soil pH value (e.g., 6.5)"
+        if 'topography' in self.fields:
+            self.fields['topography'].required = True
+        if 'current_land_use' in self.fields:
+            self.fields['current_land_use'].required = True
+        if 'lcb_zone' in self.fields:
+            self.fields['lcb_zone'].required = False
     
     class Meta:
         model = ExtensionReport
@@ -1308,12 +1571,23 @@ class ExtensionReportForm(forms.ModelForm):
             'recommended_crops': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'improvement_suggestions': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
             'comments': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'project_feasibility_note': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'soil_analysis_notes': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'topography_summary': forms.Textarea(attrs={'rows': 3, 'class': 'form-control'}),
+            'soil_ph': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'}),
+            'soil_classification': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Black Cotton'}),
+            'topography': forms.Select(attrs={'class': 'form-control'}),
+            'current_land_use': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'lcb_zone': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
             'soil_texture': forms.Select(attrs={'class': 'form-control'}),
             'soil_drainage': forms.Select(attrs={'class': 'form-control'}),
             'crop_health': forms.Select(attrs={'class': 'form-control'}),
             'water_quality': forms.Select(attrs={'class': 'form-control'}),
+            'power_access': forms.Select(attrs={'class': 'form-control'}),
             'overall_suitability': forms.Select(attrs={'class': 'form-control'}),
             'recommendation': forms.Select(attrs={'class': 'form-control'}),
+            'zoning_status': forms.Select(attrs={'class': 'form-control'}),
+            'lcb_approval_potential': forms.Select(attrs={'class': 'form-control'}),
         }
 
 
@@ -1328,6 +1602,20 @@ class SurveyorReportForm(forms.ModelForm):
             'accept': 'image/*'
         })
     )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Prefer LSB registration number
+        if 'surveyor_license_number' in self.fields:
+            self.fields.pop('surveyor_license_number')
+        if 'lsb_license_number' in self.fields:
+            self.fields['lsb_license_number'].required = True
+            self.fields['lsb_license_number'].help_text = "Land Surveyors Board (LSB) registration number"
+        if 'mutation_form' in self.fields:
+            self.fields['mutation_form'].required = True
+        if 'ground_acreage' in self.fields:
+            self.fields['ground_acreage'].label = "Measured Area (Ha)"
+            self.fields['ground_acreage'].help_text = "Actual area measured on the ground (hectares)"
+
     def clean(self):
         cleaned = super().clean()
         price_realistic = cleaned.get('price_realistic')
@@ -1346,9 +1634,19 @@ class SurveyorReportForm(forms.ModelForm):
             'gps_longitude': forms.NumberInput(attrs={'class': 'form-control'}),
             'encumbrance_details': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'boundary_markers': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'beacon_status': forms.Select(attrs={'class': 'form-control'}),
+            'rim_map_sheet_no': forms.TextInput(attrs={'class': 'form-control'}),
+            'ground_acreage': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'deed_area': forms.NumberInput(attrs={'class': 'form-control', 'step': '0.0001'}),
+            'lsb_license_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'LSB/123'}),
+            'mutation_form': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'}),
+            'beacon_certificate': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'}),
+            'boundary_report': forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'}),
             'topography_notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'access_road': forms.TextInput(attrs={'class': 'form-control'}),
             'utilities_available': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
+            'encroachment_found': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'encroachment_details': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'price_review_notes': forms.Textarea(attrs={'rows': 2, 'class': 'form-control'}),
             'suggested_price_per_acre': forms.NumberInput(attrs={'class': 'form-control'}),
             'suggested_sale_price': forms.NumberInput(attrs={'class': 'form-control'}),

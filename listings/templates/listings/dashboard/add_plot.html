@@ -321,18 +321,24 @@
                                         <div class="row">
                                             <div class="col-md-3">
                                                 <label for="{{ form.area.id_for_label }}" class="form-label required">
-                                                    <i class="fas fa-ruler-combined me-2"></i>Area (Acres)
+                                                    <i class="fas fa-ruler-combined me-2"></i>Area
                                                 </label>
                                             </div>
                                             <div class="col-md-6">
                                                 <div class="input-group">
                                                     {{ form.area }}
-                                                    <span class="input-group-text">acres</span>
+                                                    {{ form.area_unit }}
                                                 </div>
                                                 {% if form.area.errors %}
                                                 <div class="invalid-feedback d-block">
                                                     <i class="fas fa-exclamation-circle me-1"></i>
                                                     {{ form.area.errors }}
+                                                </div>
+                                                {% endif %}
+                                                {% if form.area_unit.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.area_unit.errors }}
                                                 </div>
                                                 {% endif %}
                                             </div>
@@ -356,6 +362,132 @@
                                     <p class="section-subtitle text-muted mb-0">Tenure, encumbrances, and legal status</p>
                                 </div>
                                 <div class="form-fields">
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.owner_full_name.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-user me-2"></i>Owner Name
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.owner_full_name }}
+                                                {% if form.owner_full_name.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.owner_full_name.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.owner_full_name.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.owner_id_number.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-id-card me-2"></i>Owner ID Number
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.owner_id_number }}
+                                                {% if form.owner_id_number.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.owner_id_number.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.owner_id_number.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.spousal_consent.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-user-check me-2"></i>Spousal Consent
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    {{ form.spousal_consent }}
+                                                    <label class="form-check-label" for="{{ form.spousal_consent.id_for_label }}">Provided</label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">Required for matrimonial property</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.parcel_number.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-hashtag me-2"></i>Parcel Number
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.parcel_number }}
+                                                {% if form.parcel_number.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.parcel_number.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.parcel_number.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.registration_section.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-map-marked-alt me-2"></i>Registration Section
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.registration_section }}
+                                                {% if form.registration_section.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.registration_section.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.registration_section.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.search_certificate_date.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-calendar-check me-2"></i>Search Date
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.search_certificate_date }}
+                                                {% if form.search_certificate_date.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.search_certificate_date.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.search_certificate_date.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.search_reference_number.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-fingerprint me-2"></i>Search Reference
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.search_reference_number }}
+                                                {% if form.search_reference_number.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.search_reference_number.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.search_reference_number.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <div class="form-row mb-4">
                                         <div class="row">
                                             <div class="col-md-3">
@@ -1081,6 +1213,78 @@
                                         </div>
                                     </div>
 
+                                    <!-- Survey Map / Mutation Form -->
+                                    <div class="document-card mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <div class="document-info">
+                                                    <i class="fas fa-ruler-combined text-info fa-2x me-3"></i>
+                                                    <div>
+                                                        <div class="document-name fw-bold">Survey Map / Mutation Form</div>
+                                                        <small class="text-muted">{{ form.survey_map.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-danger">Required</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="surveyMapPreview" class="document-preview text-muted">
+                                                    No file selected
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.survey_map.id_for_label }}" class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.survey_map }}
+                                                    {% if form.survey_map.errors %}
+                                                    <small class="text-danger d-block mt-1">
+                                                        {{ form.survey_map.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Spousal Consent -->
+                                    <div class="document-card mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <div class="document-info">
+                                                    <i class="fas fa-user-check text-secondary fa-2x me-3"></i>
+                                                    <div>
+                                                        <div class="document-name fw-bold">Spousal Consent</div>
+                                                        <small class="text-muted">{{ form.spousal_consent_doc.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-secondary">Conditional</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="spousalConsentPreview" class="document-preview text-muted">
+                                                    No file selected
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.spousal_consent_doc.id_for_label }}" class="btn btn-sm btn-outline-secondary">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.spousal_consent_doc }}
+                                                    {% if form.spousal_consent_doc.errors %}
+                                                    <small class="text-danger d-block mt-1">
+                                                        {{ form.spousal_consent_doc.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Landowner ID -->
                                     <div class="document-card mb-3">
                                         <div class="row align-items-center">
@@ -1182,6 +1386,78 @@
                                                     {% if form..errors %}
                                                     <small class="text-danger d-block mt-1">
                                                         {{ form..errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Rates Clearance -->
+                                    <div class="document-card mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <div class="document-info">
+                                                    <i class="fas fa-receipt text-dark fa-2x me-3"></i>
+                                                    <div>
+                                                        <div class="document-name fw-bold">Rates Clearance</div>
+                                                        <small class="text-muted">{{ form.rates_clearance.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-danger">Required</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="ratesClearancePreview" class="document-preview text-muted">
+                                                    No file selected
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.rates_clearance.id_for_label }}" class="btn btn-sm btn-outline-dark">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.rates_clearance }}
+                                                    {% if form.rates_clearance.errors %}
+                                                    <small class="text-danger d-block mt-1">
+                                                        {{ form.rates_clearance.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Rent Clearance -->
+                                    <div class="document-card mb-3">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <div class="document-info">
+                                                    <i class="fas fa-file-invoice text-dark fa-2x me-3"></i>
+                                                    <div>
+                                                        <div class="document-name fw-bold">Rent Clearance</div>
+                                                        <small class="text-muted">{{ form.rent_clearance.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-danger">Required</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="rentClearancePreview" class="document-preview text-muted">
+                                                    No file selected
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.rent_clearance.id_for_label }}" class="btn btn-sm btn-outline-dark">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.rent_clearance }}
+                                                    {% if form.rent_clearance.errors %}
+                                                    <small class="text-danger d-block mt-1">
+                                                        {{ form.rent_clearance.errors }}
                                                     </small>
                                                     {% endif %}
                                                 </div>
@@ -2419,12 +2695,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Price per acre calculation
     const areaInput = document.getElementById('{{ form.area.id_for_label }}');
+    const areaUnitSelect = document.getElementById('{{ form.area_unit.id_for_label }}');
     const salePriceInput = document.getElementById('{{ form.sale_price.id_for_label }}');
     const pricePerAcreDisplay = document.getElementById('pricePerAcreDisplay');
     
     function calculatePricePerAcre() {
-        const area = parseFloat(areaInput?.value) || 0;
+        let area = parseFloat(areaInput?.value) || 0;
         const price = parseFloat(salePriceInput?.value) || 0;
+        const unit = areaUnitSelect?.value || 'acres';
+        if (unit === 'hectares') {
+            area = area * 2.47105;
+        }
         
         if (area > 0 && price > 0) {
             const perAcre = price / area;
@@ -2436,6 +2717,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (areaInput && salePriceInput && pricePerAcreDisplay) {
         areaInput.addEventListener('input', calculatePricePerAcre);
+        if (areaUnitSelect) {
+            areaUnitSelect.addEventListener('change', calculatePricePerAcre);
+        }
         salePriceInput.addEventListener('input', calculatePricePerAcre);
         calculatePricePerAcre();
     }
@@ -2530,9 +2814,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const documentFields = [
         { id: '{{ form.title_deed.id_for_label }}', previewId: 'titleDeedPreview' },
         { id: '{{ form.official_search.id_for_label }}', previewId: 'officialSearchPreview' },
+        { id: '{{ form.survey_map.id_for_label }}', previewId: 'surveyMapPreview' },
+        { id: '{{ form.spousal_consent_doc.id_for_label }}', previewId: 'spousalConsentPreview' },
         { id: '{{ form.landowner_id_doc.id_for_label }}', previewId: 'landownerIdPreview' },
         { id: '{{ form.kra_pin.id_for_label }}', previewId: 'kraPinPreview' },
-        { id: '{{ form..id_for_label }}', previewId: 'soilReportPreview' }
+        { id: '{{ form.rates_clearance.id_for_label }}', previewId: 'ratesClearancePreview' },
+        { id: '{{ form.rent_clearance.id_for_label }}', previewId: 'rentClearancePreview' },
+        { id: '{{ form.soil_report.id_for_label }}', previewId: 'soilReportPreview' }
     ];
     
     documentFields.forEach(field => {

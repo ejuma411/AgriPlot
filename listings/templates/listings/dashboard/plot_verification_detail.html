@@ -108,8 +108,10 @@
                     <h6 class="text-muted">Plot Information</h6>
                     <p><strong>Title:</strong> {{ plot.title }}</p>
                     <p><strong>Location:</strong> {{ plot.location }}</p>
+                    <p><strong>Parcel Number:</strong> {{ plot.parcel_number|default:"Not provided" }}</p>
+                    <p><strong>Registration Section:</strong> {{ plot.registration_section|default:"Not provided" }}</p>
                     <p><strong>Price:</strong> KES {{ plot.price|floatformat:0 }}</p>
-                    <p><strong>Area:</strong> {{ plot.area }} acres</p>
+                    <p><strong>Area:</strong> {{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</p>
                 </div>
                 <div class="col-md-6">
                     <h6 class="text-muted">Agricultural Details</h6>

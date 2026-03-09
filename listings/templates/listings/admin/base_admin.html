@@ -1329,6 +1329,11 @@
                     <i class="fas fa-map-marked-alt"></i>
                     <span>All Plots</span>
                 </a>
+                <a href="{% url 'listings:registry_parcels' %}"
+                   class="nav-item {% if request.resolver_match.url_name == 'registry_parcels' %}active{% endif %}">
+                    <i class="fas fa-barcode"></i>
+                    <span>Registry Parcels</span>
+                </a>
                 <a href="{% url 'listings:system_construction_journal' %}"
                    class="nav-item {% if request.resolver_match.url_name == 'system_construction_journal' %}active{% endif %}">
                     <i class="fas fa-clipboard-list"></i>

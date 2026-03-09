@@ -75,6 +75,31 @@
     </div>
 </div>
 
+{% if officer or surveyor %}
+<div class="admin-card mb-4">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-search me-2"></i>Find Plot by Parcel Number
+        </h5>
+    </div>
+    <div class="admin-card-body">
+        <form method="post" action="{% if officer %}{% url 'listings:extension_find_plot' %}{% else %}{% url 'listings:surveyor_find_plot' %}{% endif %}">
+            {% csrf_token %}
+            <div class="row g-3 align-items-center">
+                <div class="col-md-8">
+                    <input type="text" name="parcel_number" class="form-control" placeholder="Enter parcel number (e.g., REGISTRY/BLOCK/PARCEL)" required>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i>Open Plot
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
 {% if request.user.is_superuser %}
 <div class="admin-card mb-4">
     <div class="admin-card-header">
@@ -105,7 +130,7 @@
                                 </div>
                                 <div class="task-detail">
                                     <i class="fas fa-ruler-combined"></i>
-                                    <span>{{ task.plot.area }} acres</span>
+                                    <span>{{ task.plot.area }} {{ task.plot.get_area_unit_display|default:"Acres" }}</span>
                                 </div>
                                 <div class="task-detail">
                                     <i class="fas fa-tag"></i>
@@ -159,7 +184,7 @@
                                 </div>
                                 <div class="task-detail">
                                     <i class="fas fa-ruler-combined"></i>
-                                    <span>{{ plot.area }} acres</span>
+                                    <span>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
                                 </div>
                                 <div class="task-detail">
                                     <i class="fas fa-tag"></i>
@@ -223,7 +248,7 @@
                                 </div>
                                 <div class="task-detail">
                                     <i class="fas fa-ruler-combined"></i>
-                                    <span>{{ task.plot.area }} acres</span>
+                                    <span>{{ task.plot.area }} {{ task.plot.get_area_unit_display|default:"Acres" }}</span>
                                 </div>
                                 <div class="task-detail">
                                     <i class="fas fa-tag"></i>

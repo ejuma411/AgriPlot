@@ -22,13 +22,13 @@
                     <span class="label">Price</span>
                 </div>
                 <div class="hero-stat">
-                    <span class="value">{{ plot.area|floatformat:1 }} Acres</span>
+                    <span class="value">{{ plot.area|floatformat:1 }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
                     <span class="label">Plot Area</span>
                 </div>
                 <div class="hero-stat">
                     <span class="value">
-                        {% if plot.area and plot.area > 0 and plot.price %}
-                            {% widthratio plot.price plot.area 1 as price_per_acre %}
+                        {% if plot.area_acres and plot.area_acres > 0 and plot.price %}
+                            {% widthratio plot.price plot.area_acres 1 as price_per_acre %}
                             KES {{ price_per_acre|floatformat:0|intcomma }} /acre
                         {% else %}
                             —
@@ -201,7 +201,21 @@
                                     <td class="detail-label">Area</td>
                                     <td class="detail-value">
                                         <i class="fas fa-ruler-combined text-warning me-2"></i>
-                                        {{ plot.area|floatformat:1 }} Acres
+                                        {{ plot.area|floatformat:1 }} {{ plot.get_area_unit_display|default:"Acres" }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="detail-label">Parcel Number</td>
+                                    <td class="detail-value">
+                                        <i class="fas fa-hashtag text-secondary me-2"></i>
+                                        {{ plot.parcel_number|default:"Not provided" }}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="detail-label">Registration Section</td>
+                                    <td class="detail-value">
+                                        <i class="fas fa-map-marked-alt text-secondary me-2"></i>
+                                        {{ plot.registration_section|default:"Not provided" }}
                                     </td>
                                 </tr>
                                 <tr>
@@ -209,9 +223,9 @@
                                     <td class="detail-value">
                                         <i class="fas fa-money-bill-wave text-success me-2"></i>
                                         KES {{ plot.price|floatformat:0 }}
-                                        {% if plot.area and plot.area > 0 %}
+                                        {% if plot.area_acres and plot.area_acres > 0 %}
                                         <small class="text-muted d-block mt-1">
-                                            (KES {% widthratio plot.price plot.area 1 as price_per_acre %}{{ price_per_acre|floatformat:0 }} per acre)
+                                            (KES {% widthratio plot.price plot.area_acres 1 as price_per_acre %}{{ price_per_acre|floatformat:0 }} per acre)
                                         </small>
                                         {% endif %}
                                     </td>

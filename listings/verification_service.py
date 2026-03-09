@@ -376,21 +376,60 @@ class VerificationService:
                     comment=f"Approval blocked. Missing tasks: {missing_types}, reports: {missing_reports}"
                 )
             else:
-                # All verification tasks complete; send to admin for final approval
-                verification.update_stage('admin_review', {
-                    'completed_by': completed_by.username,
-                    'completed_at': timezone.now().isoformat()
-                })
-                VerificationLog.objects.create(
-                    plot=task.plot,
-                    verification_type='admin_review',
-                    comment="All verification tasks completed. Awaiting admin approval."
-                )
+                # Auto-approve when required reports exist
+                VerificationService.finalize_verification_if_ready(task.plot, completed_by=completed_by)
                 
                 # Plot is now verified! 🎉
                 # You could add a 'is_verified' field to Plot model or just use verification status
         
         return task
+
+    @staticmethod
+    def finalize_verification_if_ready(plot, completed_by=None):
+        """
+        Auto-approve a plot once required reports exist for the parcel.
+        Agricultural plots require both SurveyorReport and ExtensionReport.
+        Non-agricultural plots require SurveyorReport only.
+        """
+        required_reports = ['surveyor_report']
+        if plot.land_type == 'agricultural':
+            required_reports.append('extension_report')
+
+        missing = []
+        if 'surveyor_report' in required_reports and not SurveyorReport.objects.filter(plot=plot).exists():
+            missing.append('surveyor_report')
+        if 'extension_report' in required_reports and not ExtensionReport.objects.filter(plot=plot).exists():
+            missing.append('extension_report')
+
+        if missing:
+            return False
+
+        content_type = ContentType.objects.get_for_model(Plot)
+        verification = VerificationStatus.objects.filter(
+            content_type=content_type,
+            object_id=plot.id
+        ).first()
+        if not verification:
+            verification = VerificationStatus.objects.create(
+                content_type=content_type,
+                object_id=plot.id,
+                current_stage='document_uploaded',
+                document_uploaded_at=timezone.now()
+            )
+
+        verification.update_stage('approved', {
+            'auto_approved': True,
+            'completed_by': completed_by.username if completed_by else 'system',
+            'completed_at': timezone.now().isoformat()
+        })
+
+        VerificationLog.objects.create(
+            plot=plot,
+            verified_by=completed_by,
+            verification_type='auto_approved',
+            comment="Auto-approved after surveyor and extension reports were submitted."
+        )
+        return True
     
     @staticmethod
     def check_plot_verification_completion(plot):

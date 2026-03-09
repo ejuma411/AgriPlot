@@ -63,7 +63,9 @@ class ArdhisasaService:
                 plot_details={
                     'county': plot.county,
                     'subcounty': plot.subcounty,
-                    'area': plot.area
+                    'area': plot.area,
+                    'registration_section': getattr(plot, 'registration_section', None),
+                    'parcel_number': getattr(plot, 'parcel_number', None)
                 }
             )
 
@@ -114,9 +116,11 @@ class ArdhisasaService:
             
     def _extract_title_number(self, plot):
         """
-        Extract title number from plot.
-        For testing, you can use a pattern or a dedicated field.
+        Extract parcel/title number from plot.
+        Prefer explicit parcel number supplied by the owner.
         """
+        if getattr(plot, 'parcel_number', None):
+            return plot.parcel_number
         # For testing, generate based on plot ID
         return f"TEST/{plot.id}/2024"
     
@@ -131,6 +135,8 @@ class ArdhisasaService:
     
     def _get_owner_name(self, plot):
         """Get owner name"""
+        if getattr(plot, 'owner_full_name', None):
+            return plot.owner_full_name
         if plot.agent:
             return plot.agent.user.get_full_name() or plot.agent.user.username
         elif plot.landowner:

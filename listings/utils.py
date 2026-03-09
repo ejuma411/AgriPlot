@@ -57,8 +57,8 @@ def suggest_price(plot):
 
     if comparables.exists():
         avg_per_acre = comparables.aggregate(avg=Avg('price_per_acre'))['avg']
-        if avg_per_acre and plot.area and plot.area > 0:
-            suggested = Decimal(str(plot.area)) * avg_per_acre
+        if avg_per_acre and plot.area_acres and plot.area_acres > 0:
+            suggested = Decimal(str(plot.area_acres)) * avg_per_acre
             min_p = suggested * Decimal('0.85')
             max_p = suggested * Decimal('1.15')
             PricingSuggestion.objects.create(
@@ -90,12 +90,21 @@ def suggest_price(plot):
     fallback = fallback[:20]
 
     if fallback.exists():
-        # Average price per acre from similar plots
-        from django.db.models import F
-        fallback = fallback.annotate(ppa=F('sale_price') / F('area')).filter(ppa__gt=0)
-        avg_ppa = fallback.aggregate(avg=Avg('ppa'))['avg']
-        if avg_ppa and plot.area and plot.area > 0:
-            suggested = Decimal(str(plot.area)) * avg_ppa
+        # Average price per acre from similar plots (normalize area units)
+        ppas = []
+        for item in fallback:
+            area_acres = item.area_acres
+            if not area_acres or not item.sale_price:
+                continue
+            try:
+                ppa = Decimal(str(item.sale_price)) / Decimal(str(area_acres))
+                if ppa > 0:
+                    ppas.append(ppa)
+            except Exception:
+                continue
+        if ppas and plot.area_acres and plot.area_acres > 0:
+            avg_ppa = sum(ppas) / len(ppas)
+            suggested = Decimal(str(plot.area_acres)) * avg_ppa
             min_p = suggested * Decimal('0.85')
             max_p = suggested * Decimal('1.15')
             PricingSuggestion.objects.create(
@@ -104,14 +113,14 @@ def suggest_price(plot):
                 price_range_min=min_p,
                 price_range_max=max_p,
                 methodology='Similar listings (same area/soil)',
-                comparable_plots_used=fallback.count(),
+                comparable_plots_used=len(ppas),
                 explanation=f'Based on {fallback.count()} similar listing(s).',
             )
             return {
                 'suggested_price': suggested,
                 'min_price': min_p,
                 'max_price': max_p,
-                'comparable_count': fallback.count(),
+                'comparable_count': len(ppas),
                 'explanation': f'Based on {fallback.count()} similar listing(s).',
             }
 

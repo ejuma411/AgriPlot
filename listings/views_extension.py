@@ -4,7 +4,8 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils import timezone
-from .models import ExtensionOfficer, LandSurveyor, VerificationTask, Plot, ExtensionReport, SurveyorReport
+from .models import ExtensionOfficer, LandSurveyor, VerificationTask, Plot, ExtensionReport, SurveyorReport, VerificationStatus
+from django.contrib.contenttypes.models import ContentType
 from .forms import ExtensionReportForm, SurveyorReportForm
 from .verification_service import VerificationService
 import logging
@@ -106,7 +107,9 @@ def conduct_extension_review(request, task_id):
             plot_updates = {}
             if report.soil_texture:
                 plot_updates["soil_type"] = report.soil_texture
-            if report.soil_ph_verified is not None:
+            if report.soil_ph is not None:
+                plot_updates["ph_level"] = float(report.soil_ph)
+            elif report.soil_ph_verified is not None:
                 plot_updates["ph_level"] = report.soil_ph_verified
             if report.recommended_crops:
                 plot_updates["crop_suitability"] = report.recommended_crops
@@ -224,6 +227,66 @@ def surveyor_dashboard(request):
 
 
 @login_required
+def find_plot_by_parcel(request, role):
+    """
+    Find plot by parcel number and open the appropriate report form.
+    role: 'surveyor' or 'extension'
+    """
+    if request.method != 'POST':
+        return redirect('listings:my_tasks')
+
+    parcel_number = (request.POST.get('parcel_number') or '').strip()
+    if not parcel_number:
+        messages.error(request, "Parcel number is required.")
+        return redirect('listings:my_tasks')
+
+    plot = Plot.objects.filter(parcel_number__iexact=parcel_number).first()
+    if not plot:
+        messages.error(request, "No plot found for that parcel number.")
+        return redirect('listings:my_tasks')
+
+    # Ensure verification status exists
+    try:
+        content_type = ContentType.objects.get_for_model(Plot)
+        VerificationStatus.objects.get_or_create(
+            content_type=content_type,
+            object_id=plot.id,
+            defaults={'current_stage': 'document_uploaded', 'document_uploaded_at': timezone.now()}
+        )
+    except Exception:
+        pass
+
+    if role == 'surveyor':
+        task_type = 'surveyor_inspection'
+        redirect_name = 'listings:conduct_surveyor_inspection'
+    else:
+        task_type = 'extension_review'
+        redirect_name = 'listings:conduct_extension_review'
+
+    task, created = VerificationTask.objects.get_or_create(
+        plot=plot,
+        verification_type=task_type,
+        defaults={
+            'status': 'in_progress',
+            'assigned_to': request.user,
+            'assigned_at': timezone.now(),
+        }
+    )
+
+    if not created:
+        if task.assigned_to and task.assigned_to != request.user and not request.user.is_superuser:
+            messages.error(request, "This task is already assigned to another officer.")
+            return redirect('listings:my_tasks')
+        if task.status in ('pending', 'in_progress'):
+            task.assigned_to = request.user
+            task.status = 'in_progress'
+            task.assigned_at = timezone.now()
+            task.save(update_fields=['assigned_to', 'status', 'assigned_at'])
+
+    return redirect(redirect_name, task_id=task.id)
+
+
+@login_required
 def conduct_surveyor_inspection(request, task_id):
     """Conduct land surveyor inspection for a plot"""
     task = get_object_or_404(
@@ -261,6 +324,8 @@ def conduct_surveyor_inspection(request, task_id):
                     messages.error(request, "You do not have a land surveyor profile.")
                     return redirect('listings:surveyor_dashboard')
             report.plot = plot
+            if not report.lsb_license_number and hasattr(report.surveyor, 'license_number'):
+                report.lsb_license_number = report.surveyor.license_number
             report.save()
 
             # Save plot images uploaded by surveyor

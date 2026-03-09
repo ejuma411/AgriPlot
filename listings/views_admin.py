@@ -154,6 +154,27 @@ def verification_dashboard(request):
 
 
 @staff_member_required
+def registry_parcels(request):
+    """List registry parcel numbers for testing land search."""
+    q = (request.GET.get("q") or "").strip()
+    parcels = Plot.objects.filter(is_registry_record=True)
+    if q:
+        parcels = parcels.filter(
+            Q(parcel_number__icontains=q) |
+            Q(registration_section__icontains=q) |
+            Q(county__icontains=q) |
+            Q(subcounty__icontains=q)
+        )
+    parcels = parcels.order_by("county", "parcel_number")
+    return render(request, "listings/admin/registry_parcels.html", {
+        "page_title": "Registry Parcels",
+        "parcels": parcels,
+        "query": q,
+        "total": parcels.count(),
+    })
+
+
+@staff_member_required
 def verification_queue(request):
     """Full queue of plots pending verification"""
     

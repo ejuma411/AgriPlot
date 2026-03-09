@@ -143,12 +143,19 @@ class ArdhisasaVerificationService:
     
     def get_owner_name(self):
         """Extract owner name from verification object"""
+        target = getattr(self.verification, 'content_object', None)
+        if target and getattr(target, 'owner_full_name', None):
+            return target.owner_full_name
         if hasattr(self.verification.content_object, 'user'):
             return self.verification.content_object.user.get_full_name()
         return "Unknown"
     
     def get_title_number(self):
         """Extract title number from documents"""
+        # Prefer parcel number if available
+        target = getattr(self.verification, 'content_object', None)
+        if target and hasattr(target, 'parcel_number') and target.parcel_number:
+            return target.parcel_number
         # In real implementation, you'd parse from uploaded documents
         return f"TITLE/{timezone.now().year}/{self.verification.id}"
     

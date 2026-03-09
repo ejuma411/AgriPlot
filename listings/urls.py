@@ -100,6 +100,7 @@ urlpatterns = [
     path("verify/verification/review/<int:plot_id>/", views_admin.review_plot, name="review_plot"),
     path("verify/verification/history/<int:plot_id>/", views_admin.plot_verification_history, name="verification_history"),
     path("verify/system-construction/", views_admin.system_construction_journal, name="system_construction_journal"),
+    path("verify/registry/", views_admin.registry_parcels, name="registry_parcels"),
 
     # Legacy admin route compatibility
     path("verify/dashboard/", RedirectView.as_view(pattern_name="listings:verification_dashboard", permanent=True)),
@@ -125,6 +126,7 @@ urlpatterns = [
                 path("confirm/<int:task_id>/", views_extension.confirm_task, name="confirm_extension_task"),
                 path("review/<int:task_id>/", views_extension.conduct_extension_review, name="conduct_extension_review"),
                 path("report/<int:report_id>/", views_extension.view_extension_report, name="view_extension_report"),
+                path("find-plot/", views_extension.find_plot_by_parcel, {"role": "extension"}, name="extension_find_plot"),
             ]
         ),
     ),
@@ -138,6 +140,7 @@ urlpatterns = [
                 path("confirm/<int:task_id>/", views_extension.confirm_task, name="confirm_surveyor_task"),
                 path("review/<int:task_id>/", views_extension.conduct_surveyor_inspection, name="conduct_surveyor_inspection"),
                 path("report/<int:report_id>/", views_extension.view_surveyor_report, name="view_surveyor_report"),
+                path("find-plot/", views_extension.find_plot_by_parcel, {"role": "surveyor"}, name="surveyor_find_plot"),
             ]
         ),
     ),

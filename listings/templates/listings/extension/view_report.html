@@ -12,7 +12,12 @@
     <div class="card shadow-sm mb-4">
         <div class="card-body">
             <h5 class="card-title mb-3">{{ plot.title }}</h5>
+            {% if report.officer %}
             <p class="mb-1"><strong>Officer:</strong> {{ report.officer.user.get_full_name|default:report.officer.user.username }}</p>
+            {% endif %}
+            {% if report.surveyor %}
+            <p class="mb-1"><strong>Surveyor:</strong> {{ report.surveyor.user.get_full_name|default:report.surveyor.user.username }}</p>
+            {% endif %}
             <p class="mb-1"><strong>Visit Date:</strong> {{ report.visit_date|date:"Y-m-d H:i" }}</p>
             <p class="mb-0"><strong>Recommendation:</strong> {{ report.get_recommendation_display }}</p>
         </div>
@@ -21,10 +26,73 @@
     <div class="card shadow-sm">
         <div class="card-body">
             <h6 class="mb-3">Summary</h6>
+            {% if report.overall_suitability %}
             <p class="mb-2"><strong>Overall Suitability:</strong> {{ report.get_overall_suitability_display }}</p>
+            {% endif %}
+            {% if report.recommended_crops %}
             <p class="mb-2"><strong>Recommended Crops:</strong> {{ report.recommended_crops|default:"-" }}</p>
+            {% endif %}
+            {% if report.improvement_suggestions %}
             <p class="mb-2"><strong>Improvements:</strong> {{ report.improvement_suggestions|default:"-" }}</p>
-            <p class="mb-0"><strong>Comments:</strong> {{ report.comments|default:"-" }}</p>
+            {% endif %}
+            {% if report.zoning_status %}
+            <p class="mb-2"><strong>Zoning Status:</strong> {{ report.get_zoning_status_display }}</p>
+            {% endif %}
+            {% if report.lcb_approval_potential %}
+            <p class="mb-2"><strong>LCB Approval:</strong> {{ report.get_lcb_approval_potential_display }}</p>
+            {% endif %}
+            {% if report.lcb_zone %}
+            <p class="mb-2"><strong>LCB Zone:</strong> Yes</p>
+            {% endif %}
+            {% if report.topography %}
+            <p class="mb-2"><strong>Topography:</strong> {{ report.get_topography_display }}</p>
+            {% endif %}
+            {% if report.soil_ph %}
+            <p class="mb-2"><strong>Soil pH:</strong> {{ report.soil_ph }}</p>
+            {% endif %}
+            {% if report.soil_classification %}
+            <p class="mb-2"><strong>Soil Classification:</strong> {{ report.soil_classification }}</p>
+            {% endif %}
+            {% if report.current_land_use %}
+            <p class="mb-2"><strong>Current Land Use:</strong> {{ report.current_land_use }}</p>
+            {% endif %}
+            {% if report.power_access %}
+            <p class="mb-2"><strong>Power Access:</strong> {{ report.get_power_access_display }}</p>
+            {% endif %}
+            {% if report.project_feasibility_note %}
+            <p class="mb-2"><strong>Project Feasibility:</strong> {{ report.project_feasibility_note }}</p>
+            {% endif %}
+            {% if report.boundary_confirmed is not None %}
+            <p class="mb-2"><strong>Boundary Confirmed:</strong> {{ report.boundary_confirmed }}</p>
+            {% endif %}
+            {% if report.acreage_confirmed is not None %}
+            <p class="mb-2"><strong>Acreage Confirmed:</strong> {{ report.acreage_confirmed }}</p>
+            {% endif %}
+            {% if report.ground_acreage %}
+            <p class="mb-2"><strong>Ground Acreage:</strong> {{ report.ground_acreage }}</p>
+            {% endif %}
+            {% if report.deed_area %}
+            <p class="mb-2"><strong>Deed Area:</strong> {{ report.deed_area }}</p>
+            {% endif %}
+            {% if report.rim_map_sheet_no %}
+            <p class="mb-2"><strong>RIM Map Sheet:</strong> {{ report.rim_map_sheet_no }}</p>
+            {% endif %}
+            {% if report.beacon_status %}
+            <p class="mb-2"><strong>Beacon Status:</strong> {{ report.get_beacon_status_display }}</p>
+            {% endif %}
+            {% if report.lsb_license_number %}
+            <p class="mb-2"><strong>LSB License:</strong> {{ report.lsb_license_number }}</p>
+            {% endif %}
+            {% if report.mutation_form %}
+            <p class="mb-2"><strong>Mutation Form:</strong> <a href="{{ report.mutation_form.url }}" target="_blank">View</a></p>
+            {% endif %}
+            {% if report.encroachment_found %}
+            <p class="mb-2"><strong>Encroachment:</strong> Yes</p>
+            {% endif %}
+            {% if report.encroachment_details %}
+            <p class="mb-2"><strong>Encroachment Details:</strong> {{ report.encroachment_details }}</p>
+            {% endif %}
+            <p class="mb-0"><strong>Comments:</strong> {{ report.comments|default:report.notes|default:"-" }}</p>
         </div>
     </div>
 </div>
