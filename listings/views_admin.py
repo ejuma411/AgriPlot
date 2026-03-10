@@ -11,10 +11,12 @@ from django.conf import settings
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
-from django.db.models import Q
+from django.db.models import Q, Count
+from django.utils.dateparse import parse_date
 from .models import *
 from .verification_service import VerificationService
 from .utils import log_audit
+from registry_mock.models import RegistryMismatchAttempt
 
 # Add this logger definition
 logger = logging.getLogger(__name__)
@@ -109,6 +111,10 @@ def verification_dashboard(request):
             content_type=plot_content_type,
             current_stage='document_uploaded'
         ).count(),
+        'pending_registry_search': VerificationTask.objects.filter(
+            verification_type='registry_search',
+            status='pending'
+        ).count(),
         
         'in_progress': VerificationStatus.objects.filter(
             content_type=plot_content_type,
@@ -136,6 +142,13 @@ def verification_dashboard(request):
         content_type=plot_content_type,
         current_stage='document_uploaded'
     ).select_related('content_type').order_by('-created_at')[:10]
+
+    flagged_parcels = RegistryMismatchAttempt.objects.values("parcel_number").annotate(
+        attempts=Count("id")
+    ).filter(attempts__gte=3).order_by("-attempts")[:10]
+    flagged_total = RegistryMismatchAttempt.objects.values("parcel_number").annotate(
+        attempts=Count("id")
+    ).filter(attempts__gte=3).count()
     
     # Extract the plot IDs and fetch the plots
     plot_ids = [v.object_id for v in pending_verifications]
@@ -147,7 +160,9 @@ def verification_dashboard(request):
     context = {
         'stats': stats,
         'pending_plots': pending_plots,
-        'page_title': 'Verification Dashboard'
+        'page_title': 'Verification Dashboard',
+        'flagged_parcels': flagged_parcels,
+        'flagged_total': flagged_total,
     }
     
     return render(request, 'listings/admin/verification_dashboard.html', context)
@@ -171,6 +186,25 @@ def registry_parcels(request):
         "parcels": parcels,
         "query": q,
         "total": parcels.count(),
+    })
+
+
+@staff_member_required
+def registry_mismatches(request):
+    """View registry mismatch attempts for audit and fraud prevention."""
+    q = (request.GET.get("q") or "").strip()
+    attempts = RegistryMismatchAttempt.objects.all().order_by("-created_at")
+    if q:
+        attempts = attempts.filter(
+            Q(parcel_number__icontains=q) |
+            Q(provided_owner_name__icontains=q) |
+            Q(provided_owner_id__icontains=q)
+        )
+    return render(request, "listings/admin/registry_mismatches.html", {
+        "page_title": "Registry Mismatch Report",
+        "attempts": attempts[:500],
+        "query": q,
+        "total": attempts.count(),
     })
 
 
@@ -215,10 +249,18 @@ def verification_queue(request):
     
     # Create a dictionary for quick lookup of verification status
     verification_map = {v.object_id: v for v in verifications}
+    registry_task_map = {
+        task.plot_id: task
+        for task in VerificationTask.objects.filter(
+            plot_id__in=plot_ids,
+            verification_type='registry_search'
+        )
+    }
     
     # Attach verification status to each plot
     for plot in plots:
         plot.verification_status = verification_map.get(plot.id)
+        plot.registry_task = registry_task_map.get(plot.id)
     
     context = {
         'plots': plots,
@@ -286,11 +328,18 @@ def review_plot(request, plot_id):
         plot=plot
     ).select_related('verified_by').order_by('-created_at')[:20]
     
+    admin_ready = False
+    if verification and verification.current_stage == 'admin_review':
+        admin_ready = bool(verification.stage_details.get('admin_review', {}).get('ready_for_publish'))
+
     if request.method == 'POST':
         action = request.POST.get('action')
         notes = request.POST.get('notes', '')
         
-        if action == 'approve':
+        if action in ('approve', 'publish'):
+            if not admin_ready:
+                messages.error(request, "This plot is not ready for final approval yet.")
+                return redirect('listings:review_plot', plot_id=plot.id)
             missing_reports = VerificationService.has_required_reports(plot)
             required_types = set(VerificationService.required_task_types(plot))
             existing_types = set(
@@ -328,7 +377,7 @@ def review_plot(request, plot_id):
             except Exception as e:
                 logger.error(f"Plot approval notification failed: {e}")
             
-            messages.success(request, f"Plot '{plot.title}' has been approved!")
+            messages.success(request, f"Plot '{plot.title}' has been published!")
             return redirect('listings:verification_queue')
             
         elif action == 'reject':
@@ -376,6 +425,7 @@ def review_plot(request, plot_id):
         'plot': plot,
         'verification': verification,
         'verification_logs': verification_logs,
+        'admin_ready': admin_ready,
         'page_title': f'Review: {plot.title}'
     }
     
@@ -470,6 +520,8 @@ def task_assignment(request):
                 reason = f"No verified land surveyor for {task.plot.county}"
         elif task.verification_type == 'document_review':
             reason = "Awaiting admin assignment"
+        elif task.verification_type == 'registry_search':
+            reason = "Automated registry search (system task)"
         task.unassigned_reason = reason
     
     # Get workload statistics
@@ -661,11 +713,23 @@ def complete_task_view(request, task_id):
     """View for completing a task"""
     
     task = get_object_or_404(VerificationTask, id=task_id, assigned_to=request.user)
-    expected_owner_name = (task.plot.agent.user.get_full_name() if task.plot.agent else task.plot.landowner.user.get_full_name()) or (task.plot.agent.user.username if task.plot.agent else task.plot.landowner.user.username)
+    plot_content_type = ContentType.objects.get_for_model(Plot)
+    verification = VerificationStatus.objects.filter(
+        content_type=plot_content_type,
+        object_id=task.plot.id
+    ).first()
+    registry_data = {}
+    if verification:
+        registry_data = verification.stage_details.get('title_search_completed', {}) or {}
+    expected_owner_name = (task.plot.owner_full_name or '').strip()
+    if not expected_owner_name and task.plot.landowner:
+        expected_owner_name = (task.plot.landowner.user.get_full_name() or task.plot.landowner.user.username).strip()
+    expected_owner_id = (task.plot.owner_id_number or '').strip()
     
     if request.method == 'POST':
         notes = request.POST.get('notes', '')
         approved = request.POST.get('approved') == 'true'
+        review_metadata = None
 
         if task.verification_type == 'document_review':
             from .models import DocumentVerification
@@ -685,12 +749,17 @@ def complete_task_view(request, task_id):
             def _norm(value):
                 return ''.join(c for c in (value or '').lower().strip() if c.isalnum())
 
-            owner_name_matches = _norm(form_data['owner_name_extracted']) == _norm(expected_owner_name)
+            owner_name_matches = True
+            if expected_owner_name:
+                owner_name_matches = _norm(form_data['owner_name_extracted']) == _norm(expected_owner_name)
             id_matches = True
-            if task.plot.agent and getattr(task.plot.agent, 'id_number', ''):
-                id_matches = _norm(form_data['id_number_extracted']) == _norm(task.plot.agent.id_number)
+            if expected_owner_id:
+                id_matches = _norm(form_data['id_number_extracted']) == _norm(expected_owner_id)
 
             missing_fields = [k for k, v in form_data.items() if not v and k != 'search_date_extracted']
+            registry_owner_name = registry_data.get('owner_name') or registry_data.get('registered_owner_name')
+            registry_title_number = registry_data.get('title_number')
+            registry_parcel_number = registry_data.get('parcel_number')
 
             if approved:
                 errors = []
@@ -698,10 +767,16 @@ def complete_task_view(request, task_id):
                     errors.append("All extracted document fields must be filled before approval.")
                 if not confirm_doc_match:
                     errors.append("You must confirm extracted details match the uploaded documents.")
-                if not owner_name_matches:
-                    errors.append("Registered owner name does not match the user profile.")
-                if not id_matches:
-                    errors.append("National ID number does not match the agent profile.")
+                if expected_owner_name and not owner_name_matches:
+                    errors.append("Registered owner name does not match the listing's registered owner details.")
+                if expected_owner_id and not id_matches:
+                    errors.append("Registered owner ID number does not match the listing's registered owner details.")
+                if registry_owner_name and _norm(form_data['owner_name_extracted']) != _norm(registry_owner_name):
+                    errors.append("Registered owner name does not match registry search results.")
+                if registry_title_number and _norm(form_data['title_number_extracted']) != _norm(registry_title_number):
+                    errors.append("Title number does not match registry search results.")
+                if registry_parcel_number and _norm(form_data['parcel_number_extracted']) != _norm(registry_parcel_number):
+                    errors.append("Parcel number does not match registry search results.")
 
                 # OCR strict check: compare extracted values with OCR results
                 try:
@@ -771,24 +846,92 @@ def complete_task_view(request, task_id):
                         'plot': task.plot,
                         'page_title': f'Complete Task: {task.get_verification_type_display()}',
                         'expected_owner_name': expected_owner_name,
-                        'form_data': form_data
+                        'form_data': form_data,
+                        'registry_data': registry_data
                     }
                     return render(request, 'listings/admin/complete_task.html', context)
 
-            checklist = {
+            doc_checklist = {
                 'title_deed': bool(request.POST.get('check_title')),
                 'official_search': bool(request.POST.get('check_search')),
                 'national_id': bool(request.POST.get('check_id')),
                 'kra_pin': bool(request.POST.get('check_kra')),
             }
-            if approved and not all(checklist.values()):
+            review_checklist = {
+                'name_match': bool(request.POST.get('check_name_match')),
+                'seal_signature': bool(request.POST.get('check_seal_signature')),
+                'rates_clearance': bool(request.POST.get('check_rates_clearance')),
+                'rent_clearance': bool(request.POST.get('check_rent_clearance')),
+                'consent_transfer': bool(request.POST.get('check_consent_transfer')),
+                'lcb_consent': bool(request.POST.get('check_lcb_consent')),
+                'mutation_form': bool(request.POST.get('check_mutation_form')),
+                'plupa1': bool(request.POST.get('check_plupa1')),
+                'spousal_consent': bool(request.POST.get('check_spousal_consent')),
+                'search_recency': bool(request.POST.get('check_search_recency')),
+            }
+            checklist = {**doc_checklist, **review_checklist}
+            search_date_extracted = parse_date(form_data.get('search_date_extracted') or "")
+            if approved and review_checklist.get('search_recency'):
+                if not search_date_extracted:
+                    messages.error(request, "Search recency check requires a valid official search date.")
+                else:
+                    days_since = (timezone.now().date() - search_date_extracted).days
+                    if days_since > 30:
+                        messages.error(request, "Official search must be dated within the last 30 days.")
+                        review_checklist['search_recency'] = False
+            if approved and review_checklist.get('rates_clearance'):
+                if not task.plot.rates_clearance:
+                    messages.error(request, "Rates clearance certificate is required for approval.")
+                    review_checklist['rates_clearance'] = False
+            if approved and task.plot.ownership_type == 'leasehold':
+                if review_checklist.get('rent_clearance') and not task.plot.rent_clearance:
+                    messages.error(request, "Rent clearance certificate is required for leasehold plots.")
+                    review_checklist['rent_clearance'] = False
+                if review_checklist.get('consent_transfer') and not task.plot.consent_to_transfer:
+                    messages.error(request, "Consent to transfer is required for leasehold plots.")
+                    review_checklist['consent_transfer'] = False
+            if approved and task.plot.land_type == 'agricultural':
+                if review_checklist.get('lcb_consent') and not task.plot.lcb_consent_doc:
+                    messages.error(request, "LCB consent is required for agricultural land.")
+                    review_checklist['lcb_consent'] = False
+            if approved and task.plot.is_subdivision:
+                if review_checklist.get('mutation_form') and not task.plot.survey_map:
+                    messages.error(request, "Mutation form/survey map is required for subdivision.")
+                    review_checklist['mutation_form'] = False
+                if review_checklist.get('plupa1') and not task.plot.plupa1_form:
+                    messages.error(request, "PLUPA 1 / PPA 1 approval form is required for subdivision.")
+                    review_checklist['plupa1'] = False
+            if approved and task.plot.spousal_consent:
+                if review_checklist.get('spousal_consent') and not task.plot.spousal_consent_doc:
+                    messages.error(request, "Spousal consent document is required for approval.")
+                    review_checklist['spousal_consent'] = False
+            checklist = {**doc_checklist, **review_checklist}
+
+            required_checks = {
+                'title_deed': True,
+                'official_search': True,
+                'national_id': True,
+                'kra_pin': True,
+                'name_match': True,
+                'seal_signature': True,
+                'rates_clearance': True,
+                'search_recency': True,
+                'rent_clearance': task.plot.ownership_type == 'leasehold',
+                'consent_transfer': task.plot.ownership_type == 'leasehold',
+                'lcb_consent': task.plot.land_type == 'agricultural',
+                'mutation_form': task.plot.is_subdivision,
+                'plupa1': task.plot.is_subdivision,
+                'spousal_consent': task.plot.spousal_consent,
+            }
+            if approved and not all(value for key, value in checklist.items() if required_checks.get(key, False)):
                 messages.error(request, "All document checklist items must be confirmed before approval.")
                 context = {
                     'task': task,
                     'plot': task.plot,
                     'page_title': f'Complete Task: {task.get_verification_type_display()}',
                     'expected_owner_name': expected_owner_name,
-                    'form_data': form_data
+                    'form_data': form_data,
+                    'registry_data': registry_data
                 }
                 return render(request, 'listings/admin/complete_task.html', context)
             extracted_summary = {
@@ -796,9 +939,10 @@ def complete_task_view(request, task_id):
                 'expected_owner_name': expected_owner_name,
                 'owner_name_matches': owner_name_matches,
                 'id_matches_agent': id_matches,
-                'ocr_results': ocr_results
+                'ocr_results': ocr_results,
+                'registry_data': registry_data
             }
-            for doc_type, checked in checklist.items():
+            for doc_type, checked in doc_checklist.items():
                 DocumentVerification.verify_document(
                     plot=task.plot,
                     doc_type=doc_type,
@@ -810,8 +954,27 @@ def complete_task_view(request, task_id):
                     }),
                     task=task
                 )
+
+            review_metadata = {
+                'checklist': checklist,
+                'form_data': form_data,
+                'registry_data': registry_data,
+                'reviewed_by': request.user.username
+            }
+            task.review_metadata = review_metadata
+            task.save(update_fields=['review_metadata'])
         
-        task = VerificationService.complete_task(task_id, request.user, notes, approved)
+        if task.verification_type == 'document_review':
+            status_label = 'approved' if approved else 'rejected'
+            task = VerificationService.complete_document_review(
+                task_id,
+                request.user,
+                status_label,
+                notes,
+                review_metadata=review_metadata if task.review_metadata else None
+            )
+        else:
+            task = VerificationService.complete_task(task_id, request.user, notes, approved)
         
         if approved:
             messages.success(request, f"Task completed and approved!")
@@ -825,7 +988,8 @@ def complete_task_view(request, task_id):
         'plot': task.plot,
         'page_title': f'Complete Task: {task.get_verification_type_display()}',
         'expected_owner_name': expected_owner_name,
-        'form_data': {}
+        'form_data': {},
+        'registry_data': registry_data
     }
     
     return render(request, 'listings/admin/complete_task.html', context)

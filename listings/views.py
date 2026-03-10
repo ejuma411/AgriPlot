@@ -28,6 +28,7 @@ import uuid
 from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from .utils import log_audit
 from django.contrib.contenttypes.models import ContentType
+from registry_mock.services import verify_with_registry
 from .notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
@@ -784,6 +785,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, DatabaseError
 from .forms import PlotForm
 from .models import Plot, VerificationStatus, Agent, LandownerProfile
+from registry_mock.models import RegistryMismatchAttempt
 from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from .utils import log_audit
 
@@ -886,6 +888,7 @@ def add_plot(request):
     selected_county = None
     selected_subcounty = None
     sub_counties = []
+    mismatch_count = None
 
     if request.method == "POST":
         logger.info(f"Processing POST request for plot creation")
@@ -895,6 +898,11 @@ def add_plot(request):
         # Validate county and subcounty early
         selected_county = request.POST.get('county')
         selected_subcounty = request.POST.get('subcounty')
+        parcel_for_mismatch = (request.POST.get('parcel_number') or '').strip()
+        if request.user.is_staff and parcel_for_mismatch:
+            mismatch_count = RegistryMismatchAttempt.objects.filter(
+                parcel_number__iexact=parcel_for_mismatch
+            ).count()
         
         logger.info(f"Selected County: {selected_county}")
         logger.info(f"Selected Sub-county: {selected_subcounty}")
@@ -937,9 +945,9 @@ def add_plot(request):
             try:
                 if is_superuser and owner is None:
                     messages.error(request, "Select a valid owner (agent or landowner) to create this plot.")
-                    plot_form = PlotForm(request.POST, request.FILES)
+                    plot_form = PlotForm(request.POST, request.FILES, user=request.user)
                 else:
-                    plot_form = PlotForm(request.POST, request.FILES, owner=owner)
+                    plot_form = PlotForm(request.POST, request.FILES, owner=owner, user=request.user)
                 logger.info("PlotForm initialized successfully")
             except Exception as e:
                 logger.error(f"Error initializing PlotForm: {str(e)}", exc_info=True)
@@ -1015,7 +1023,8 @@ def add_plot(request):
                                 'plot_id': plot.id,
                                 'county': plot.county,
                                 'subcounty': plot.subcounty,
-                                'documents_uploaded': uploaded_docs
+                                'documents_uploaded': uploaded_docs,
+                                'registry_check': getattr(plot_form, "registry_result", None) or {}
                             }
                         }
                     )
@@ -1033,6 +1042,11 @@ def add_plot(request):
                             logger.info(f"Created verification tasks for plot {plot.id}: {tasks_created}")
                             from .notification_service import NotificationService
                             NotificationService.notify_plot_submitted(plot)
+                            # Trigger mock Ardhisasa verification for title search
+                            try:
+                                VerificationService.initiate_ardhisasa_verification(plot.id)
+                            except Exception as api_err:
+                                logger.warning(f"Ardhisasa verification failed for plot {plot.id}: {api_err}")
                         except Exception as task_err:
                             logger.warning(f"Verification task creation failed for plot {plot.id}: {task_err}")
                     else:
@@ -1179,6 +1193,7 @@ def add_plot(request):
         "is_superuser": is_superuser,
         "agents": agents,
         "landowners": landowners,
+        "mismatch_count": mismatch_count,
     })
 
 from django.http import JsonResponse
@@ -1190,6 +1205,37 @@ def get_subcounties(request):
             'subcounties': KENYA_SUB_COUNTIES[county]
         })
     return JsonResponse({'subcounties': []})
+
+@login_required
+def registry_lookup(request):
+    parcel_number = (request.GET.get('parcel_number') or '').strip()
+    if not parcel_number:
+        return JsonResponse({'verified': False, 'message': 'Parcel number is required.'}, status=400)
+    result = verify_with_registry(parcel_number)
+    if not result.get('verified'):
+        return JsonResponse({'verified': False, 'message': result.get('message') or 'Registry lookup failed.'})
+    record = result.get('record')
+    data = {
+        'verified': True,
+        'message': result.get('message'),
+        'record': {
+            'parcel_number': record.parcel_number,
+            'registered_owner_name': record.registered_owner_name,
+            'owner_id_number': record.owner_id_number,
+            'owner_kra_pin': record.owner_kra_pin,
+            'county': record.county,
+            'subcounty': record.subcounty,
+            'registration_section': record.registration_section,
+            'search_reference_number': record.search_reference_number,
+            'search_certificate_date': record.search_certificate_date.isoformat() if record.search_certificate_date else None,
+            'acreage_ha': float(record.acreage_ha) if record.acreage_ha is not None else None,
+            'land_type': record.land_type,
+            'is_charged': bool(record.is_charged),
+            'has_caution': bool(record.has_caution),
+        },
+        'has_encumbrances': bool(record.is_charged or record.has_caution),
+    }
+    return JsonResponse(data)
 
 import json
 import logging
@@ -2858,7 +2904,7 @@ def verify_phone(request):
 
 def contact_support(request):
     """Simple contact support page"""
-    support_email = 'ejuma411@gmail.com'
+    support_email = 'agriplotconnect@gmail.com'
     support_phone = '+254 718 810 503'
 
     if request.method == "POST":

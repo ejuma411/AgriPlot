@@ -401,6 +401,24 @@
                                     <div class="form-row mb-4">
                                         <div class="row">
                                             <div class="col-md-3">
+                                                <label for="{{ form.owner_kra_pin_number.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-file-invoice me-2"></i>Owner KRA PIN
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.owner_kra_pin_number }}
+                                                {% if form.owner_kra_pin_number.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.owner_kra_pin_number.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.owner_kra_pin_number.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
                                                 <label for="{{ form.spousal_consent.id_for_label }}" class="form-label">
                                                     <i class="fas fa-user-check me-2"></i>Spousal Consent
                                                 </label>
@@ -428,9 +446,60 @@
                                                 {% if form.parcel_number.errors %}
                                                 <div class="invalid-feedback d-block">{{ form.parcel_number.errors }}</div>
                                                 {% endif %}
+                                                <div class="mt-2 d-flex gap-2 align-items-center">
+                                                    <button type="button" class="btn btn-outline-primary btn-sm" id="registryFetchBtn">
+                                                        <i class="fas fa-search me-1"></i>Fetch Registry Data
+                                                    </button>
+                                                    <small id="registryFetchStatus" class="text-muted"></small>
+                                                </div>
                                             </div>
                                             <div class="col-md-3">
                                                 <small class="text-muted">{{ form.parcel_number.help_text }}</small>
+                                                {% if request.user.is_staff and mismatch_count != None %}
+                                                <div class="mt-2">
+                                                    <span class="badge {% if mismatch_count > 0 %}bg-danger{% else %}bg-success{% endif %}">
+                                                        Mismatch attempts: {{ mismatch_count }}
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.is_subdivision.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-code-branch me-2"></i>Subdivision
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-check">
+                                                    {{ form.is_subdivision }}
+                                                    <label class="form-check-label" for="{{ form.is_subdivision.id_for_label }}">
+                                                        This listing is a portion of a larger parcel
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.is_subdivision.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="form-row mb-4" id="originalParcelRow" style="display: none;">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.original_parcel_number.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-link me-2"></i>Original Parcel Number
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.original_parcel_number }}
+                                                {% if form.original_parcel_number.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.original_parcel_number.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.original_parcel_number.help_text }}</small>
                                             </div>
                                         </div>
                                     </div>
@@ -1214,7 +1283,7 @@
                                     </div>
 
                                     <!-- Survey Map / Mutation Form -->
-                                    <div class="document-card mb-3">
+                                    <div class="document-card mb-3" id="docSurveyMap">
                                         <div class="row align-items-center">
                                             <div class="col-md-4">
                                                 <div class="document-info">
@@ -1226,7 +1295,7 @@
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
-                                                <span class="badge bg-danger">Required</span>
+                                                <span class="badge bg-secondary doc-badge">Conditional</span>
                                             </div>
                                             <div class="col-md-3">
                                                 <div id="surveyMapPreview" class="document-preview text-muted">
@@ -1250,7 +1319,7 @@
                                     </div>
 
                                     <!-- Spousal Consent -->
-                                    <div class="document-card mb-3">
+                                    <div class="document-card mb-3" id="docSpousalConsent">
                                         <div class="row align-items-center">
                                             <div class="col-md-4">
                                                 <div class="document-info">
@@ -1262,7 +1331,7 @@
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
-                                                <span class="badge bg-secondary">Conditional</span>
+                                                <span class="badge bg-secondary doc-badge">Conditional</span>
                                             </div>
                                             <div class="col-md-3">
                                                 <div id="spousalConsentPreview" class="document-preview text-muted">
@@ -1394,7 +1463,7 @@
                                     </div>
 
                                     <!-- Rates Clearance -->
-                                    <div class="document-card mb-3">
+                                    <div class="document-card mb-3" id="docRatesClearance">
                                         <div class="row align-items-center">
                                             <div class="col-md-4">
                                                 <div class="document-info">
@@ -1406,7 +1475,7 @@
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
-                                                <span class="badge bg-danger">Required</span>
+                                                <span class="badge bg-danger doc-badge">Required</span>
                                             </div>
                                             <div class="col-md-3">
                                                 <div id="ratesClearancePreview" class="document-preview text-muted">
@@ -1429,8 +1498,116 @@
                                         </div>
                                     </div>
 
+                                    <!-- LCB Consent -->
+                                    <div class="document-card mb-3" id="docLcbConsent">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <div class="document-info">
+                                                    <i class="fas fa-stamp text-success fa-2x me-3"></i>
+                                                    <div>
+                                                        <div class="document-name fw-bold">LCB Consent</div>
+                                                        <small class="text-muted">{{ form.lcb_consent_doc.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-secondary doc-badge">Conditional</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="lcbConsentPreview" class="document-preview text-muted">
+                                                    No file selected
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.lcb_consent_doc.id_for_label }}" class="btn btn-sm btn-outline-success">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.lcb_consent_doc }}
+                                                    {% if form.lcb_consent_doc.errors %}
+                                                    <small class="text-danger d-block mt-1">
+                                                        {{ form.lcb_consent_doc.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- PLUPA 1 / PPA 1 -->
+                                    <div class="document-card mb-3" id="docPlupa1">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <div class="document-info">
+                                                    <i class="fas fa-file-signature text-warning fa-2x me-3"></i>
+                                                    <div>
+                                                        <div class="document-name fw-bold">PLUPA 1 / PPA 1</div>
+                                                        <small class="text-muted">{{ form.plupa1_form.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-secondary doc-badge">Conditional</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="plupa1Preview" class="document-preview text-muted">
+                                                    No file selected
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.plupa1_form.id_for_label }}" class="btn btn-sm btn-outline-warning">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.plupa1_form }}
+                                                    {% if form.plupa1_form.errors %}
+                                                    <small class="text-danger d-block mt-1">
+                                                        {{ form.plupa1_form.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Consent to Transfer (Leasehold) -->
+                                    <div class="document-card mb-3" id="docConsentTransfer">
+                                        <div class="row align-items-center">
+                                            <div class="col-md-4">
+                                                <div class="document-info">
+                                                    <i class="fas fa-file-contract text-primary fa-2x me-3"></i>
+                                                    <div>
+                                                        <div class="document-name fw-bold">Consent to Transfer</div>
+                                                        <small class="text-muted">{{ form.consent_to_transfer.help_text }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <span class="badge bg-secondary doc-badge">Conditional</span>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div id="consentTransferPreview" class="document-preview text-muted">
+                                                    No file selected
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="document-upload-btn">
+                                                    <label for="{{ form.consent_to_transfer.id_for_label }}" class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-upload me-1"></i> Upload
+                                                    </label>
+                                                    {{ form.consent_to_transfer }}
+                                                    {% if form.consent_to_transfer.errors %}
+                                                    <small class="text-danger d-block mt-1">
+                                                        {{ form.consent_to_transfer.errors }}
+                                                    </small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Rent Clearance -->
-                                    <div class="document-card mb-3">
+                                    <div class="document-card mb-3" id="docRentClearance">
                                         <div class="row align-items-center">
                                             <div class="col-md-4">
                                                 <div class="document-info">
@@ -1442,7 +1619,7 @@
                                                 </div>
                                             </div>
                                             <div class="col-md-2">
-                                                <span class="badge bg-danger">Required</span>
+                                                <span class="badge bg-secondary doc-badge">Conditional</span>
                                             </div>
                                             <div class="col-md-3">
                                                 <div id="rentClearancePreview" class="document-preview text-muted">
@@ -2819,6 +2996,9 @@ document.addEventListener('DOMContentLoaded', function() {
         { id: '{{ form.landowner_id_doc.id_for_label }}', previewId: 'landownerIdPreview' },
         { id: '{{ form.kra_pin.id_for_label }}', previewId: 'kraPinPreview' },
         { id: '{{ form.rates_clearance.id_for_label }}', previewId: 'ratesClearancePreview' },
+        { id: '{{ form.lcb_consent_doc.id_for_label }}', previewId: 'lcbConsentPreview' },
+        { id: '{{ form.plupa1_form.id_for_label }}', previewId: 'plupa1Preview' },
+        { id: '{{ form.consent_to_transfer.id_for_label }}', previewId: 'consentTransferPreview' },
         { id: '{{ form.rent_clearance.id_for_label }}', previewId: 'rentClearancePreview' },
         { id: '{{ form.soil_report.id_for_label }}', previewId: 'soilReportPreview' }
     ];
@@ -2893,6 +3073,155 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     updateFormCompletion();
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const parcelInput = document.getElementById('id_parcel_number');
+    const fetchBtn = document.getElementById('registryFetchBtn');
+    const statusEl = document.getElementById('registryFetchStatus');
+    const countySelect = document.getElementById('id_county');
+    const subcountySelect = document.getElementById('id_subcounty');
+    const ownerName = document.getElementById('id_owner_full_name');
+    const ownerId = document.getElementById('id_owner_id_number');
+    const ownerKra = document.getElementById('id_owner_kra_pin_number');
+    const registrationSection = document.getElementById('id_registration_section');
+    const searchRef = document.getElementById('id_search_reference_number');
+    const searchDate = document.getElementById('id_search_certificate_date');
+    const areaInput = document.getElementById('id_area');
+    const areaUnit = document.getElementById('id_area_unit');
+    const ownershipType = document.getElementById('id_ownership_type');
+    const landTypeSelect = document.getElementById('id_land_type');
+    const subdivisionCheck = document.getElementById('id_is_subdivision');
+    const spousalCheck = document.getElementById('id_spousal_consent');
+    const originalParcelRow = document.getElementById('originalParcelRow');
+    const originalParcelInput = document.getElementById('id_original_parcel_number');
+    const docSurveyMap = document.getElementById('docSurveyMap');
+    const docSpousalConsent = document.getElementById('docSpousalConsent');
+    const docLcbConsent = document.getElementById('docLcbConsent');
+    const docPlupa1 = document.getElementById('docPlupa1');
+    const docRentClearance = document.getElementById('docRentClearance');
+    const docConsentTransfer = document.getElementById('docConsentTransfer');
+
+    function lockRegistryFields(lock, lockRegistrationSection = lock) {
+        [ownerName, ownerId, ownerKra].forEach(el => {
+            if (el) el.readOnly = lock;
+        });
+        if (registrationSection) {
+            registrationSection.readOnly = lockRegistrationSection;
+        }
+        if (areaInput) {
+            areaInput.readOnly = lock && !(subdivisionCheck && subdivisionCheck.checked);
+        }
+    }
+
+    function toggleSubdivision() {
+        if (!subdivisionCheck) return;
+        if (subdivisionCheck.checked) {
+            originalParcelRow.style.display = '';
+            if (originalParcelInput && parcelInput && !originalParcelInput.value) {
+                originalParcelInput.value = parcelInput.value;
+            }
+            if (areaInput) areaInput.readOnly = false;
+        } else {
+            originalParcelRow.style.display = 'none';
+            if (areaInput && areaInput.dataset.registryValue) {
+                areaInput.value = areaInput.dataset.registryValue;
+                areaInput.readOnly = true;
+            }
+        }
+    }
+
+    function setDocRequirement(card, required) {
+        if (!card) return;
+        card.style.display = required ? '' : 'none';
+        const badge = card.querySelector('.doc-badge');
+        if (badge) {
+            badge.classList.toggle('bg-danger', required);
+            badge.classList.toggle('bg-secondary', !required);
+            badge.textContent = required ? 'Required' : 'Conditional';
+        }
+    }
+
+    function updateDocRequirements() {
+        const landType = landTypeSelect ? landTypeSelect.value : '';
+        const tenure = ownershipType ? ownershipType.value : '';
+        const isSubdivision = subdivisionCheck ? subdivisionCheck.checked : false;
+        const spousal = spousalCheck ? spousalCheck.checked : false;
+
+        setDocRequirement(docSurveyMap, isSubdivision);
+        setDocRequirement(docPlupa1, isSubdivision);
+        setDocRequirement(docLcbConsent, landType === 'agricultural');
+        setDocRequirement(docRentClearance, tenure === 'leasehold');
+        setDocRequirement(docConsentTransfer, tenure === 'leasehold');
+        setDocRequirement(docSpousalConsent, spousal);
+    }
+
+    async function fetchRegistry() {
+        const parcel = (parcelInput && parcelInput.value || '').trim();
+        if (!parcel) {
+            statusEl.textContent = 'Enter a parcel number first.';
+            statusEl.className = 'text-danger';
+            return;
+        }
+        statusEl.textContent = 'Fetching registry data...';
+        statusEl.className = 'text-muted';
+        try {
+            const resp = await fetch(`/api/registry-lookup/?parcel_number=${encodeURIComponent(parcel)}`);
+            const data = await resp.json();
+            if (!data.verified) {
+                statusEl.textContent = data.message || 'Registry lookup failed.';
+                statusEl.className = 'text-danger';
+                return;
+            }
+            const record = data.record || {};
+            if (record.county && countySelect) {
+                countySelect.value = record.county;
+                countySelect.dispatchEvent(new Event('change'));
+            }
+            if (record.subcounty && subcountySelect) {
+                setTimeout(() => {
+                    subcountySelect.value = record.subcounty;
+                    subcountySelect.disabled = false;
+                }, 0);
+            }
+            if (ownerName) ownerName.value = record.registered_owner_name || '';
+            if (ownerId) ownerId.value = record.owner_id_number || '';
+            if (ownerKra) ownerKra.value = record.owner_kra_pin || '';
+            if (registrationSection) registrationSection.value = record.registration_section || '';
+            if (searchRef && record.search_reference_number) searchRef.value = record.search_reference_number;
+            if (searchDate && record.search_certificate_date) searchDate.value = record.search_certificate_date;
+            if (record.acreage_ha && areaInput) {
+                const acres = (parseFloat(record.acreage_ha) * 2.47105).toFixed(2);
+                areaInput.value = acres;
+                areaInput.dataset.registryValue = acres;
+                if (areaUnit) areaUnit.value = 'acres';
+            }
+            if (record.land_type && ownershipType) {
+                if (record.land_type === 'FREEHOLD') ownershipType.value = 'freehold';
+                if (record.land_type === 'LEASEHOLD') ownershipType.value = 'leasehold';
+            }
+            lockRegistryFields(true, Boolean(record.registration_section));
+            toggleSubdivision();
+            updateDocRequirements();
+            statusEl.textContent = record.registration_section
+                ? 'Registry data loaded.'
+                : 'Registry data loaded (registration section missing).';
+            statusEl.className = 'text-success';
+        } catch (err) {
+            statusEl.textContent = 'Registry lookup failed.';
+            statusEl.className = 'text-danger';
+        }
+    }
+
+    if (fetchBtn) fetchBtn.addEventListener('click', fetchRegistry);
+    if (parcelInput) parcelInput.addEventListener('blur', fetchRegistry);
+    if (subdivisionCheck) subdivisionCheck.addEventListener('change', toggleSubdivision);
+    if (subdivisionCheck) subdivisionCheck.addEventListener('change', updateDocRequirements);
+    if (ownershipType) ownershipType.addEventListener('change', updateDocRequirements);
+    if (landTypeSelect) landTypeSelect.addEventListener('change', updateDocRequirements);
+    if (spousalCheck) spousalCheck.addEventListener('change', updateDocRequirements);
+    updateDocRequirements();
 });
 </script>
 {% endblock %}

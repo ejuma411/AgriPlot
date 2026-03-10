@@ -126,6 +126,8 @@ class ArdhisasaService:
     
     def _get_owner_id_number(self, plot):
         """Get owner ID number from plot's owner"""
+        if getattr(plot, 'owner_id_number', None):
+            return plot.owner_id_number
         if plot.agent:
             return plot.agent.id_number
         elif plot.landowner:

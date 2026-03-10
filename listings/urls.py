@@ -92,6 +92,7 @@ urlpatterns = [
     # API endpoints
     path("api/request-contact/<int:plot_id>/", views.request_contact_details, name="request_contact"),
     path("api/log-phone-view/<int:plot_id>/", views.log_phone_view, name="log_phone_view"),
+    path("api/registry-lookup/", views.registry_lookup, name="registry_lookup"),
     path("get-subcounties/", views.get_subcounties, name="get_subcounties"),
 
     # Admin verification (canonical routes)
@@ -101,6 +102,7 @@ urlpatterns = [
     path("verify/verification/history/<int:plot_id>/", views_admin.plot_verification_history, name="verification_history"),
     path("verify/system-construction/", views_admin.system_construction_journal, name="system_construction_journal"),
     path("verify/registry/", views_admin.registry_parcels, name="registry_parcels"),
+    path("verify/registry/mismatches/", views_admin.registry_mismatches, name="registry_mismatches"),
 
     # Legacy admin route compatibility
     path("verify/dashboard/", RedirectView.as_view(pattern_name="listings:verification_dashboard", permanent=True)),

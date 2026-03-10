@@ -33,8 +33,56 @@
     </div>
 </div>
 
+<div class="admin-card mb-3">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-flag me-2" style="color: #dc3545;"></i>
+            Flagged Parcels
+        </h5>
+        <a href="{% url 'listings:registry_mismatches' %}" class="btn btn-sm btn-outline-danger">
+            View Mismatch Report
+        </a>
+    </div>
+    <div class="admin-card-body">
+        {% if flagged_parcels %}
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Parcel Number</th>
+                        <th>Mismatch Attempts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in flagged_parcels %}
+                    <tr>
+                        <td>{{ row.parcel_number }}</td>
+                        <td><span class="badge bg-danger">{{ row.attempts }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-muted">No flagged parcels yet.</div>
+        {% endif %}
+        {% if flagged_total %}
+        <div class="mt-2 text-muted">Total flagged parcels: {{ flagged_total }}</div>
+        {% endif %}
+    </div>
+</div>
+
 <!-- Stats Grid -->
 <div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-search"></i></div>
+        <div class="stat-value">{{ stats.pending_registry_search|default:0 }}</div>
+        <div class="stat-label">Registry Search Pending</div>
+        <div class="stat-trend">
+            <span>Awaiting registry check</span>
+        </div>
+    </div>
+
     <div class="stat-card">
         <div class="stat-icon"><i class="fas fa-clock"></i></div>
         <div class="stat-value">{{ stats.pending_review|default:0 }}</div>

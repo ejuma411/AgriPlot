@@ -754,10 +754,16 @@
                     </div>
 
                     <div class="d-grid gap-2">
-                        <button type="submit" name="action" value="approve" class="btn btn-success btn-lg" 
-                                onclick="return confirm('Are you sure you want to APPROVE this plot?')">
-                            <i class="fas fa-check-circle me-2"></i> Approve Plot
+                        {% if admin_ready %}
+                        <button type="submit" name="action" value="publish" class="btn btn-success btn-lg"
+                                onclick="return confirm('Are you sure you want to PUBLISH this plot?')">
+                            <i class="fas fa-check-circle me-2"></i> Publish Plot
                         </button>
+                        {% else %}
+                        <button type="button" class="btn btn-outline-secondary btn-lg" disabled>
+                            <i class="fas fa-hourglass-half me-2"></i> Awaiting Final Readiness
+                        </button>
+                        {% endif %}
                         
                         <button type="submit" name="action" value="request_changes" class="btn btn-warning btn-lg"
                                 onclick="return confirm('Request changes from the Seller?')">

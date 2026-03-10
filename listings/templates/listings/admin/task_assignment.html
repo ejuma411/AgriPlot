@@ -162,7 +162,8 @@
                     <tr>
                         <td>
                             <span class="badge 
-                                {% if task.verification_type == 'document_review' %}bg-info
+                                {% if task.verification_type == 'registry_search' %}bg-secondary
+                                {% elif task.verification_type == 'document_review' %}bg-info
                                 {% elif task.verification_type == 'extension_review' %}bg-success
                                 {% elif task.verification_type == 'surveyor_inspection' %}bg-warning
                                 {% endif %} p-2">
@@ -190,13 +191,19 @@
                         </td>
                         <td>{{ task.assigned_at|timesince }} ago</td>
                         <td>
-                            <button class="btn btn-sm btn-success assign-btn" 
-                                    data-task-id="{{ task.id }}"
-                                    data-task-type="{{ task.get_verification_type_display }}"
-                                    data-plot-title="{{ task.plot.title }}"
-                                    data-plot-county="{{ task.plot.county }}">
-                                <i class="fas fa-user-plus me-1"></i> Assign
-                            </button>
+                            {% if task.verification_type == 'registry_search' %}
+                                <button class="btn btn-sm btn-outline-secondary" disabled>
+                                    <i class="fas fa-cog me-1"></i> Automated
+                                </button>
+                            {% else %}
+                                <button class="btn btn-sm btn-success assign-btn" 
+                                        data-task-id="{{ task.id }}"
+                                        data-task-type="{{ task.get_verification_type_display }}"
+                                        data-plot-title="{{ task.plot.title }}"
+                                        data-plot-county="{{ task.plot.county }}">
+                                    <i class="fas fa-user-plus me-1"></i> Assign
+                                </button>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}
@@ -238,7 +245,8 @@
                     <tr>
                         <td>
                             <span class="badge 
-                                {% if task.verification_type == 'document_review' %}bg-info
+                                {% if task.verification_type == 'registry_search' %}bg-secondary
+                                {% elif task.verification_type == 'document_review' %}bg-info
                                 {% elif task.verification_type == 'extension_review' %}bg-success
                                 {% elif task.verification_type == 'surveyor_inspection' %}bg-warning
                                 {% endif %} p-2">

@@ -24,18 +24,10 @@ class MockArdhisasaClient:
         import time
         time.sleep(1.5)  # Simulate network delay
 
-        # If a registry plot exists with this parcel number, return a deterministic success
-        try:
-            from listings.models import Plot
-            registry_plot = Plot.objects.filter(
-                parcel_number__iexact=title_number,
-                is_registry_record=True
-            ).first()
-        except Exception:
-            registry_plot = None
-
-        if registry_plot:
-            return self._generate_from_registry(registry_plot)
+        # If a mock registry record exists with this parcel number, return a deterministic success
+        record = self._lookup_registry(title_number)
+        if record:
+            return self._generate_from_registry_record(record)
 
         # Strict registry match: if no registry plot, fail search
         return self._generate_not_found(title_number)
@@ -56,26 +48,46 @@ class MockArdhisasaClient:
                 'message': 'Owner name does not match registry records'
             }
         
-        # Default to success for mock runs
-        if random.random() < 0.98:
+        record = self._lookup_registry(title_number)
+        if record:
+            if owner_name and record.registered_owner_name.strip().lower() != (owner_name or "").strip().lower():
+                return {
+                    'success': True,
+                    'verified': False,
+                    'title_number': title_number,
+                    'registered_owner': record.registered_owner_name,
+                    'message': 'Owner name does not match registry records'
+                }
+            if owner_id_number and record.owner_id_number.strip().lower() != (owner_id_number or "").strip().lower():
+                return {
+                    'success': True,
+                    'verified': False,
+                    'title_number': title_number,
+                    'registered_owner': record.registered_owner_name,
+                    'message': 'Owner ID does not match registry records'
+                }
             return {
                 'success': True,
                 'verified': True,
                 'title_number': title_number,
-                'registered_owner': owner_name or "JOHN DOE",
-                'id_number': owner_id_number,
+                'registered_owner': record.registered_owner_name,
+                'id_number': record.owner_id_number,
                 'ownership_percentage': 100,
                 'verification_date': timezone.now().isoformat(),
                 'message': 'Ownership verified successfully'
             }
-        else:
-            return {
-                'success': True,
-                'verified': False,
-                'title_number': title_number,
-                'registered_owner': "JANE SMITH",
-                'message': 'Owner name does not match registry records'
-            }
+
+        # Default to success for mock runs if no registry exists
+        return {
+            'success': True,
+            'verified': True,
+            'title_number': title_number,
+            'registered_owner': owner_name or "JOHN DOE",
+            'id_number': owner_id_number,
+            'ownership_percentage': 100,
+            'verification_date': timezone.now().isoformat(),
+            'message': 'Ownership verified successfully'
+        }
     
     def get_encumbrances(self, title_number):
         """
@@ -83,18 +95,11 @@ class MockArdhisasaClient:
         """
         time.sleep(1)
 
-        # Use registry record if present for deterministic encumbrance simulation
-        try:
-            from listings.models import Plot
-            registry_plot = Plot.objects.filter(
-                parcel_number__iexact=title_number,
-                is_registry_record=True
-            ).first()
-        except Exception:
-            registry_plot = None
-
-        if registry_plot:
-            if registry_plot.encumbrances:
+        # Use mock registry record if present for deterministic encumbrance simulation
+        record = self._lookup_registry(title_number)
+        if record:
+            has_issue = bool(record.is_charged or record.has_caution)
+            if has_issue:
                 return {
                     'success': True,
                     'title_number': title_number,
@@ -105,10 +110,16 @@ class MockArdhisasaClient:
                             'amount': '1,500,000',
                             'registration_date': (timezone.now() - timedelta(days=120)).isoformat(),
                             'status': 'Active',
-                            'details': registry_plot.encumbrance_details or 'Encumbrance noted in registry record'
+                            'details': 'Encumbrance noted in registry record'
                         }
                     ],
-                    'caveats': [],
+                    'caveats': [
+                        {
+                            'lodged_by': 'Registry Simulation',
+                            'reason': 'Caution on title' if record.has_caution else '',
+                            'date': (timezone.now() - timedelta(days=45)).isoformat()
+                        }
+                    ] if record.has_caution else [],
                     'has_encumbrances': True
                 }
             return {
@@ -156,36 +167,34 @@ class MockArdhisasaClient:
             'message': 'Title verified successfully'
         }
 
-    def _generate_from_registry(self, plot):
-        """Generate deterministic response from a registry plot record."""
-        area_hectares = None
-        if plot.area_acres:
-            area_hectares = round(plot.area_acres / 2.47105, 2)
-        owner_name = plot.owner_full_name or None
-        if not owner_name:
-            if plot.agent:
-                owner_name = plot.agent.user.get_full_name() or plot.agent.user.username
-            elif plot.landowner:
-                owner_name = plot.landowner.user.get_full_name() or plot.landowner.user.username
-
+    def _generate_from_registry_record(self, record):
+        """Generate deterministic response from a mock registry record."""
+        area_hectares = float(record.acreage_ha) if record.acreage_ha else 0
         return {
             'success': True,
             'status': 'verified',
-            'title_number': plot.parcel_number,
-            'parcel_number': plot.parcel_number,
-            'owner_name': owner_name or "UNKNOWN",
-            'owner_id': getattr(plot.agent, 'id_number', None) or "12345678",
+            'title_number': record.parcel_number,
+            'parcel_number': record.parcel_number,
+            'owner_name': record.registered_owner_name,
+            'owner_id': record.owner_id_number,
             'area_hectares': area_hectares or 0,
             'registration_date': (timezone.now() - timedelta(days=800)).isoformat(),
-            'land_use': plot.get_land_type_display() if plot.land_type else 'Agricultural',
-            'lease_term': '99 years',
+            'land_use': 'Agricultural',
+            'lease_term': 'Freehold' if record.land_type == 'FREEHOLD' else 'Leasehold',
             'lease_expiry': (timezone.now() + timedelta(days=1200)).isoformat(),
             'verified': True,
             'verification_date': timezone.now().isoformat(),
             'search_reference': f"SR{random.randint(100000, 999999)}",
-            'has_encumbrances': bool(plot.encumbrances),
+            'has_encumbrances': bool(record.is_charged or record.has_caution),
             'message': 'Title verified successfully (registry match)'
         }
+
+    def _lookup_registry(self, parcel_number):
+        try:
+            from registry_mock.models import MockLandRegistry
+            return MockLandRegistry.objects.filter(parcel_number__iexact=parcel_number).first()
+        except Exception:
+            return None
     
     def _generate_with_encumbrances(self, title_number, plot_details=None):
         """Generate response with encumbrances"""

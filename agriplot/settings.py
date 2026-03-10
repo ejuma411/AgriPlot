@@ -136,6 +136,7 @@ INSTALLED_APPS = [
 
     # Local Apps
     "listings",
+    "registry_mock",
 ]
 
 MIDDLEWARE = [

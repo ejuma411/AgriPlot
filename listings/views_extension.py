@@ -331,7 +331,9 @@ def conduct_surveyor_inspection(request, task_id):
             # Save plot images uploaded by surveyor
             try:
                 from .models import PlotImage
-                images = request.FILES.getlist('plot_images')
+                images = form.cleaned_data.get('plot_images') or []
+                if not isinstance(images, (list, tuple)):
+                    images = [images]
                 for img in images:
                     PlotImage.objects.create(
                         plot=plot,

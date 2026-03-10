@@ -26,6 +26,15 @@ class VerificationService:
         
         tasks_created = []
         
+        # Task 0: Registry Search (Ardhisasa / title search)
+        registry_task, created = VerificationTask.objects.get_or_create(
+            plot=plot,
+            verification_type='registry_search',
+            defaults={'status': 'pending'}
+        )
+        if created:
+            tasks_created.append('registry_search')
+
         # Task 1: Document Review (always required)
         doc_task, created = VerificationTask.objects.get_or_create(
             plot=plot,
@@ -34,7 +43,6 @@ class VerificationService:
         )
         if created:
             tasks_created.append('document_review')
-        # Extension/Surveyor tasks will be created after API verification completes.
         
         # Log the creation
         VerificationLog.objects.create(
@@ -104,6 +112,10 @@ class VerificationService:
             available_officers = list(available_officers_qs)
         except NotSupportedError:
             # SQLite does not support JSON contains lookups in this form.
+            logger.warning(
+                "Falling back to in-Python county filtering. "
+                "For production on PostgreSQL, prefer ArrayField for assigned_counties."
+            )
             available_officers = [
                 officer for officer in ExtensionOfficer.objects.filter(
                     is_active=True,
@@ -158,6 +170,10 @@ class VerificationService:
         try:
             available_surveyors = list(available_surveyors_qs)
         except NotSupportedError:
+            logger.warning(
+                "Falling back to in-Python county filtering. "
+                "For production on PostgreSQL, prefer ArrayField for assigned_counties."
+            )
             available_surveyors = [
                 surveyor for surveyor in LandSurveyor.objects.filter(
                     is_active=True,
@@ -192,22 +208,49 @@ class VerificationService:
         return None
 
     @staticmethod
-    def after_api_verification(plot, assigned_by=None):
+    def after_api_verification(plot, assigned_by=None, registry_data=None):
         """
         After API verification succeeds, move to document review.
         Surveyor task is created only after document review is approved.
         """
         logger.info(f"Post-API assignment start for plot {plot.id} (land_type={plot.land_type})")
-        doc_task, _ = VerificationTask.objects.get_or_create(
+        # Ensure registry search + document review tasks exist
+        VerificationService.create_verification_tasks(plot, initiated_by=assigned_by)
+
+        registry_task = VerificationTask.objects.filter(
             plot=plot,
-            verification_type='document_review',
-            defaults={'status': 'pending'}
-        )
+            verification_type='registry_search'
+        ).first()
+        if registry_task and registry_task.status != 'completed':
+            registry_task.status = 'completed'
+            registry_task.completed_at = timezone.now()
+            registry_task.approved = True
+            registry_task.notes = "Registry (Ardhisasa) check completed."
+            registry_task.save()
+
+        # Flag encumbrances if registry data indicates a charge/caution
+        if registry_data:
+            encumbrance_result = registry_data.get('encumbrance_result') if isinstance(registry_data, dict) else None
+            search_result = registry_data.get('search_result') if isinstance(registry_data, dict) else None
+            has_encumbrance = False
+            if isinstance(encumbrance_result, dict):
+                has_encumbrance = bool(encumbrance_result.get('is_charged') or encumbrance_result.get('has_caution'))
+            if isinstance(search_result, dict) and search_result.get('encumbrances'):
+                has_encumbrance = True
+            if has_encumbrance and not plot.encumbrances:
+                plot.encumbrances = True
+                plot.save(update_fields=['encumbrances'])
+
+        doc_task = VerificationTask.objects.filter(
+            plot=plot,
+            verification_type='document_review'
+        ).first()
+
         VerificationLog.objects.create(
             plot=plot,
             verified_by=assigned_by,
             verification_type='task_pending',
-            comment="Document review pending after API verification."
+            comment="Registry check passed. Awaiting Document Review."
         )
         return doc_task
     
@@ -224,7 +267,7 @@ class VerificationService:
     @staticmethod
     def required_task_types(plot):
         """Return required verification task types for a plot."""
-        required = ['document_review', 'surveyor_inspection']
+        required = ['registry_search', 'document_review', 'surveyor_inspection']
         if plot.land_type == 'agricultural':
             required.append('extension_review')
         return required
@@ -376,18 +419,50 @@ class VerificationService:
                     comment=f"Approval blocked. Missing tasks: {missing_types}, reports: {missing_reports}"
                 )
             else:
-                # Auto-approve when required reports exist
-                VerificationService.finalize_verification_if_ready(task.plot, completed_by=completed_by)
-                
-                # Plot is now verified! 🎉
-                # You could add a 'is_verified' field to Plot model or just use verification status
+                # All required checks are complete; wait for final admin publish
+                ready = VerificationService.finalize_verification_if_ready(
+                    task.plot,
+                    completed_by=completed_by
+                )
+                if ready:
+                    VerificationLog.objects.create(
+                        plot=task.plot,
+                        verified_by=completed_by,
+                        verification_type='admin_review',
+                        comment="All verification checks passed. Awaiting final admin approval."
+                    )
         
         return task
 
     @staticmethod
+    def complete_document_review(task_id, reviewer, status, comments, review_metadata=None):
+        """
+        Finalizes the document review and triggers field verification if approved.
+        """
+        task = VerificationTask.objects.get(id=task_id)
+        approved = status == 'approved'
+        task.status = 'completed'
+        task.completed_at = timezone.now()
+        task.notes = comments
+        task.approved = approved
+        if review_metadata:
+            task.review_metadata = review_metadata
+        task.save()
+
+        VerificationLog.objects.create(
+            plot=task.plot,
+            verified_by=reviewer,
+            verification_type='document_review',
+            comment=f"Review {status}: {comments}"
+        )
+
+        # Use existing workflow for status updates and downstream assignment
+        return VerificationService.complete_task(task_id, reviewer, comments, approved)
+
+    @staticmethod
     def finalize_verification_if_ready(plot, completed_by=None):
         """
-        Auto-approve a plot once required reports exist for the parcel.
+        Move to admin review once required reports exist for the parcel.
         Agricultural plots require both SurveyorReport and ExtensionReport.
         Non-agricultural plots require SurveyorReport only.
         """
@@ -417,8 +492,8 @@ class VerificationService:
                 document_uploaded_at=timezone.now()
             )
 
-        verification.update_stage('approved', {
-            'auto_approved': True,
+        verification.update_stage('admin_review', {
+            'ready_for_publish': True,
             'completed_by': completed_by.username if completed_by else 'system',
             'completed_at': timezone.now().isoformat()
         })
@@ -426,8 +501,8 @@ class VerificationService:
         VerificationLog.objects.create(
             plot=plot,
             verified_by=completed_by,
-            verification_type='auto_approved',
-            comment="Auto-approved after surveyor and extension reports were submitted."
+            verification_type='admin_review',
+            comment="Ready for final admin approval after required reports were submitted."
         )
         return True
     
@@ -551,6 +626,7 @@ class VerificationService:
             'in_progress_tasks': tasks.filter(status='in_progress').count(),
             'completed_tasks': tasks.filter(status='completed').count(),
             'tasks_by_type': {
+                'registry_search': tasks.filter(verification_type='registry_search').first(),
                 'document_review': tasks.filter(verification_type='document_review').first(),
                 'extension_review': tasks.filter(verification_type='extension_review').first(),
                 'surveyor_inspection': tasks.filter(verification_type='surveyor_inspection').first(),
@@ -587,7 +663,11 @@ class VerificationService:
                 })
 
             # After API verification, assign the next role in the chain
-            VerificationService.after_api_verification(plot, assigned_by=None)
+            VerificationService.after_api_verification(
+                plot,
+                assigned_by=None,
+                registry_data=verification_data
+            )
         else:
             content_type = ContentType.objects.get_for_model(Plot)
             verification = VerificationStatus.objects.filter(

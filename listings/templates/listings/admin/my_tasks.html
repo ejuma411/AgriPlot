@@ -225,7 +225,8 @@
                     <div class="task-card">
                         <div class="task-header">
                             <span class="badge 
-                                {% if task.verification_type == 'document_review' %}bg-info
+                                {% if task.verification_type == 'registry_search' %}bg-secondary
+                                {% elif task.verification_type == 'document_review' %}bg-info
                                 {% elif task.verification_type == 'extension_review' %}bg-success
                                 {% elif task.verification_type == 'surveyor_inspection' %}bg-warning
                                 {% endif %} p-2">
@@ -304,7 +305,11 @@
                                     </a>
                                 {% endif %}
                             {% endif %}
-                            {% if task.verification_type == 'extension_review' %}
+                            {% if task.verification_type == 'registry_search' %}
+                                <button class="btn btn-outline-secondary w-100" disabled>
+                                    <i class="fas fa-cog me-2"></i>Automated Task
+                                </button>
+                            {% elif task.verification_type == 'extension_review' %}
                                 <a href="{% url 'listings:conduct_extension_review' task.id %}" class="btn btn-success w-100">
                                     <i class="fas fa-seedling me-2"></i>Open Extension Review
                                 </a>

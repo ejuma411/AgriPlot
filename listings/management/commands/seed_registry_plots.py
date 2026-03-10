@@ -2,7 +2,16 @@ from django.core.management.base import BaseCommand
 from django.core.files.base import ContentFile
 from django.contrib.auth.models import User
 from django.utils import timezone
-from listings.models import Plot, LandownerProfile
+from listings.models import (
+    Plot,
+    LandownerProfile,
+    LandSurveyor,
+    ExtensionOfficer,
+    VerificationTask,
+    SurveyorReport,
+    ExtensionReport,
+)
+from listings.verification_service import VerificationService
 from listings.kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 import random
 import uuid
@@ -26,10 +35,16 @@ class Command(BaseCommand):
             default=0.2,
             help="Fraction of plots to mark with encumbrances (default: 0.2)",
         )
+        parser.add_argument(
+            "--with-reports",
+            action="store_true",
+            help="Create sample surveyor and extension reports for seeded plots",
+        )
 
     def handle(self, *args, **options):
         count = options["count"]
         encumbrance_rate = options["encumbrance_rate"]
+        with_reports = options["with_reports"]
 
         user, _ = User.objects.get_or_create(
             username="registry_owner",
@@ -73,6 +88,7 @@ class Command(BaseCommand):
         created = 0
         attempts = 0
         max_attempts = count * 5
+        created_plots = []
 
         while created < count and attempts < max_attempts:
             attempts += 1
@@ -100,6 +116,7 @@ class Command(BaseCommand):
                 landowner=landowner,
                 owner_full_name=f"{user.first_name} {user.last_name}".strip() or "Registry Owner",
                 owner_id_number=str(random.randint(10000000, 99999999)),
+                owner_kra_pin_number=f"A{random.randint(100000000, 999999999)}",
                 spousal_consent=bool(random.random() < 0.5),
                 listing_type="sale",
                 land_type="agricultural",
@@ -131,8 +148,153 @@ class Command(BaseCommand):
             try:
                 plot.save()
                 created += 1
+                created_plots.append(plot)
                 self.stdout.write(self.style.SUCCESS(f"Created registry plot: {plot.title} ({plot.parcel_number})"))
             except Exception as e:
                 self.stdout.write(self.style.WARNING(f"Skipped plot due to error: {e}"))
+
+        if with_reports and created_plots:
+            surveyor_user, _ = User.objects.get_or_create(
+                username="registry_surveyor",
+                defaults={
+                    "email": "registry_surveyor@example.com",
+                    "first_name": "Registry",
+                    "last_name": "Surveyor",
+                },
+            )
+            extension_user, _ = User.objects.get_or_create(
+                username="registry_extension",
+                defaults={
+                    "email": "registry_extension@example.com",
+                    "first_name": "Registry",
+                    "last_name": "Officer",
+                },
+            )
+
+            surveyor, _ = LandSurveyor.objects.get_or_create(
+                user=surveyor_user,
+                defaults={
+                    "license_number": "LSB/REG/001",
+                    "designation": "Licensed Land Surveyor",
+                    "station": "Nairobi",
+                    "qualifications": "BSc Surveying",
+                    "years_of_experience": 8,
+                    "phone": "+254700000001",
+                    "office_address": "Survey of Kenya HQ",
+                    "assigned_counties": KENYA_COUNTIES[:5],
+                    "verified": True,
+                },
+            )
+
+            officer, _ = ExtensionOfficer.objects.get_or_create(
+                user=extension_user,
+                defaults={
+                    "employee_id": "EXT/REG/001",
+                    "designation": "Agricultural Officer",
+                    "department": "Ministry of Agriculture",
+                    "station": "Nairobi",
+                    "qualifications": "BSc Agriculture",
+                    "years_of_experience": 6,
+                    "phone": "+254700000002",
+                    "office_address": "County Agriculture Office",
+                    "assigned_counties": KENYA_COUNTIES[:5],
+                    "verified": True,
+                },
+            )
+
+            for plot in created_plots:
+                # Surveyor task and report
+                surveyor_task, created_task = VerificationTask.objects.get_or_create(
+                    plot=plot,
+                    verification_type="surveyor_inspection",
+                    defaults={
+                        "status": "completed",
+                        "assigned_to": surveyor_user,
+                        "completed_at": timezone.now(),
+                        "approved": True,
+                    },
+                )
+                if created_task:
+                    surveyor_task.status = "completed"
+                    surveyor_task.completed_at = timezone.now()
+                    surveyor_task.approved = True
+                    surveyor_task.save(update_fields=["status", "completed_at", "approved"])
+
+                if not SurveyorReport.objects.filter(task=surveyor_task).exists():
+                    report = SurveyorReport(
+                        task=surveyor_task,
+                        surveyor=surveyor,
+                        plot=plot,
+                        visit_date=timezone.now(),
+                        boundary_confirmed=True,
+                        acreage_confirmed=True,
+                        encumbrances_found=plot.encumbrances,
+                        encumbrance_details=plot.encumbrance_details,
+                        beacon_status="all_present",
+                        rim_map_sheet_no=f"RIM-{random.randint(100, 999)}",
+                        ground_acreage=Decimal(str(round(random.uniform(2.0, 20.0), 4))),
+                        deed_area=Decimal(str(round(random.uniform(2.0, 20.0), 4))),
+                        lsb_license_number=surveyor.license_number,
+                        encroachment_found=bool(random.random() < 0.2),
+                        encroachment_details="Minor boundary overlap on eastern edge",
+                        recommendation="approve",
+                    )
+                    report.mutation_form.save(
+                        f"mutation_form_{uuid.uuid4().hex}.pdf",
+                        ContentFile(b"Dummy mutation form"),
+                        save=False,
+                    )
+                    report.beacon_certificate.save(
+                        f"beacon_cert_{uuid.uuid4().hex}.pdf",
+                        ContentFile(b"Dummy beacon certificate"),
+                        save=False,
+                    )
+                    report.save()
+
+                # Extension task and report
+                extension_task, created_task = VerificationTask.objects.get_or_create(
+                    plot=plot,
+                    verification_type="extension_review",
+                    defaults={
+                        "status": "completed",
+                        "assigned_to": extension_user,
+                        "completed_at": timezone.now(),
+                        "approved": True,
+                    },
+                )
+                if created_task:
+                    extension_task.status = "completed"
+                    extension_task.completed_at = timezone.now()
+                    extension_task.approved = True
+                    extension_task.save(update_fields=["status", "completed_at", "approved"])
+
+                if not ExtensionReport.objects.filter(task=extension_task).exists():
+                    ExtensionReport.objects.create(
+                        task=extension_task,
+                        officer=officer,
+                        plot=plot,
+                        visit_date=timezone.now(),
+                        weather_conditions="Clear",
+                        soil_ph=Decimal("6.5"),
+                        soil_classification="Red Volcanic",
+                        soil_texture="loamy",
+                        soil_drainage="good",
+                        topography="gentle",
+                        current_land_use="Mixed subsistence crops",
+                        water_source_verified="Borehole",
+                        water_quality="good",
+                        irrigation_system="Drip",
+                        power_access="grid",
+                        zoning_status="agricultural",
+                        lcb_zone=True,
+                        lcb_approval_potential="likely",
+                        recommended_crops="Maize, Beans",
+                        improvement_suggestions="Add soil organic matter",
+                        overall_suitability="highly_suitable",
+                        recommendation="approve",
+                        comments="Suitable for commercial agriculture.",
+                    )
+
+                VerificationService.finalize_verification_if_ready(plot)
 
         self.stdout.write(self.style.SUCCESS(f"Done. Created {created} registry plot(s)."))

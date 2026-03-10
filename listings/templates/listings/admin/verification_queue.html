@@ -121,6 +121,12 @@
                             {% endif %}
                         </td>
                         <td>
+                            {% if plot.registry_task %}
+                            <span class="badge {% if plot.registry_task.status == 'completed' %}bg-success{% else %}bg-warning{% endif %}"
+                                  title="Registry Search {{ plot.registry_task.get_status_display }}">
+                                <i class="fas fa-search"></i>
+                            </span>
+                            {% endif %}
                             <span class="badge {% if plot.title_deed %}bg-success{% else %}bg-danger{% endif %}" 
                                   title="{% if plot.title_deed %}Title Deed Uploaded{% else %}Missing Title Deed{% endif %}">
                                 <i class="fas fa-file-contract"></i>

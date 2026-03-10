@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.contrib.contenttypes.models import ContentType  # ✅ Add this import
@@ -303,6 +304,16 @@ class Plot(models.Model):
         db_index=True,
         help_text="Parcel/Title/LR number (e.g., REGISTRY/BLOCK/PARCEL or LR 1234/567)"
     )
+    is_subdivision = models.BooleanField(
+        default=False,
+        help_text="True when listing is for a portion of a larger parcel"
+    )
+    original_parcel_number = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        help_text="Original parcel number when listing a subdivision"
+    )
     registration_section = models.CharField(
         max_length=150,
         blank=True,
@@ -328,6 +339,42 @@ class Plot(models.Model):
         max_length=50,
         blank=True,
         help_text="National ID number of the registered owner"
+    )
+    owner_kra_pin_number = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="KRA PIN number of the registered owner"
+    )
+    registry_owner_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Owner name fetched from registry"
+    )
+    registry_owner_id_number = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Owner ID fetched from registry"
+    )
+    registry_owner_kra_pin = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Owner KRA PIN fetched from registry"
+    )
+    registry_area_ha = models.DecimalField(
+        max_digits=12,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Area (hectares) fetched from registry"
+    )
+    registry_land_type = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="Title type fetched from registry (FREEHOLD/LEASEHOLD)"
+    )
+    registry_has_encumbrances = models.BooleanField(
+        default=False,
+        help_text="Encumbrance status fetched from registry"
     )
     spousal_consent = models.BooleanField(
         default=False,
@@ -458,6 +505,24 @@ class Plot(models.Model):
         blank=True,
         help_text="Land rent clearance certificate"
     )
+    lcb_consent_doc = models.FileField(
+        upload_to="documents/lcb_consents/",
+        null=True,
+        blank=True,
+        help_text="Land Control Board consent (agricultural land)"
+    )
+    plupa1_form = models.FileField(
+        upload_to="documents/plupa1_forms/",
+        null=True,
+        blank=True,
+        help_text="PLUPA 1 / PPA 1 approval form (subdivision or change of use)"
+    )
+    consent_to_transfer = models.FileField(
+        upload_to="documents/consent_to_transfer/",
+        null=True,
+        blank=True,
+        help_text="Consent to transfer for leasehold land"
+    )
     
     landowner_id_doc = models.FileField(  # ✅ Changed from landowner_id
         upload_to="documents/landowner_ids/",
@@ -572,13 +637,19 @@ class Plot(models.Model):
         """Check if plot has all required documents"""
         required_docs = [
             'title_deed',
-            'survey_map',
             'official_search',
             'landowner_id_doc',
             'kra_pin',
             'rates_clearance',
-            'rent_clearance',
         ]
+        if self.spousal_consent:
+            required_docs.append('spousal_consent_doc')
+        if self.land_type == 'agricultural':
+            required_docs.append('lcb_consent_doc')
+        if self.is_subdivision:
+            required_docs.extend(['survey_map', 'plupa1_form'])
+        if self.ownership_type == 'leasehold':
+            required_docs.extend(['rent_clearance', 'consent_to_transfer'])
         for doc_field in required_docs:
             if not getattr(self, doc_field):
                 return False
@@ -618,6 +689,8 @@ class VerificationDocument(models.Model):
         ('spousal_consent', "Spousal Consent"),
         ('survey_plan', "Survey Plan"),
         ('lcb_consent', "LCB Consent"),
+        ('plupa1_form', "PLUPA 1 / PPA 1"),
+        ('consent_to_transfer', "Consent to Transfer"),
     ]
 
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="verification_docs")
@@ -1057,6 +1130,7 @@ class PricingSuggestion(models.Model):
 class VerificationTask(models.Model):
     """Assign verification tasks to staff (document review, extension review, surveyor)."""
     TASK_TYPE_CHOICES = [
+        ('registry_search', 'Registry Search'),
         ('document_review', 'Document Review'),
         ('extension_review', 'Extension Officer Review'),
         ('surveyor_inspection', 'Land Surveyor Inspection'),
@@ -1090,6 +1164,7 @@ class VerificationTask(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
     approved = models.BooleanField(null=True, blank=True)  # True/False/None
+    review_metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:
         ordering = ['-assigned_at']
@@ -1398,7 +1473,12 @@ class ExtensionOfficer(models.Model):
     office_address = models.TextField(blank=True)
     
     # Verification jurisdiction
-    assigned_counties = models.JSONField(default=list, help_text="List of counties they can verify")
+    assigned_counties = ArrayField(
+        models.CharField(max_length=100),
+        default=list,
+        blank=True,
+        help_text="List of counties they can verify"
+    )
     max_daily_tasks = models.IntegerField(default=5, help_text="Maximum tasks per day")
     
     # Status
@@ -1592,7 +1672,12 @@ class LandSurveyor(models.Model):
     office_address = models.TextField(blank=True)
 
     # Verification jurisdiction
-    assigned_counties = models.JSONField(default=list, help_text="List of counties they can verify")
+    assigned_counties = ArrayField(
+        models.CharField(max_length=100),
+        default=list,
+        blank=True,
+        help_text="List of counties they can verify"
+    )
     max_daily_tasks = models.IntegerField(default=5, help_text="Maximum tasks per day")
 
     # Status
