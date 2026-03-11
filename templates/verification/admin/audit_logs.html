@@ -32,14 +32,7 @@
                     <span class="d-inline d-md-none">CSV</span>
                     <span class="d-none d-md-inline">CSV</span>
                 </a>
-                <a href="{% url 'verification:audit_logs_export' %}?format=json{% if base_querystring %}&{{ base_querystring }}{% endif %}" 
-                   class="btn btn-outline-secondary"
-                   title="Export as JSON">
-                    <i class="fas fa-file-code me-2" aria-hidden="true"></i>
-                    <span class="d-inline d-md-none">JSON</span>
-                    <span class="d-none d-md-inline">JSON</span>
-                </a>
-                <a href="{% url 'verification:audit_logs_export' %}?format=pdf{% if base_querystring %}&{{ base_querystring }}{% endif %}" 
+                <a href="{% url 'verification:audit_logs_export_pdf' %}{% if base_querystring %}?{{ base_querystring }}{% endif %}" 
                    class="btn btn-outline-secondary"
                    title="Export as PDF">
                     <i class="fas fa-file-pdf me-2" aria-hidden="true"></i>

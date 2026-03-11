@@ -95,9 +95,9 @@
         </div>
         <div class="page-header-actions">
             {% if request.user.is_superuser %}
-            <button class="btn btn-outline-primary no-print" onclick="window.print()">
-                <i class="fas fa-print me-2"></i>Print / Save PDF
-            </button>
+            <a class="btn btn-outline-primary no-print" href="{% url 'verification:system_construction_journal_pdf' %}">
+                <i class="fas fa-file-pdf me-2"></i>Export PDF
+            </a>
             {% endif %}
         </div>
     </div>

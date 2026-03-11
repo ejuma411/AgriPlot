@@ -9,6 +9,7 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.http import JsonResponse, HttpResponse
 from django.core.paginator import Paginator
 from django.core.exceptions import PermissionDenied
+from django.template.loader import get_template
 from django.conf import settings
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
@@ -293,6 +294,59 @@ def system_construction_journal(request):
         "data_file": str(data_file),
     }
     return render(request, "verification/admin/system_construction_journal.html", context)
+
+
+@staff_member_required
+def system_construction_journal_pdf(request):
+    """Export system construction journal as a PDF."""
+    if not request.user.is_superuser:
+        raise PermissionDenied
+
+    try:
+        from weasyprint import HTML, CSS
+        from weasyprint.text.fonts import FontConfiguration
+    except Exception as exc:
+        logger.error("WeasyPrint not available: %s", exc)
+        return HttpResponse("PDF export is unavailable. Install WeasyPrint.", status=500)
+
+    data_file = Path(settings.BASE_DIR) / "verification" / "data" / "system_construction_journal.json"
+    entries = []
+    if data_file.exists():
+        try:
+            entries = json.loads(data_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            messages.error(request, "Journal data file is not valid JSON.")
+    else:
+        messages.warning(request, "Journal data file is missing. Create it to display entries.")
+
+    context = {
+        "entries": entries,
+        "export_date": timezone.now(),
+        "total_count": len(entries),
+    }
+
+    template = get_template("verification/admin/system_construction_journal_pdf.html")
+    html_string = template.render(context)
+    font_config = FontConfiguration()
+
+    pdf_file = HTML(string=html_string).write_pdf(
+        stylesheets=[
+            CSS(
+                string="""
+                @page {
+                    size: A4 landscape;
+                    margin: 1.2cm;
+                }
+                """
+            )
+        ],
+        font_config=font_config,
+    )
+
+    response = HttpResponse(pdf_file, content_type="application/pdf")
+    filename = f"system_construction_journal_{timezone.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @staff_member_required

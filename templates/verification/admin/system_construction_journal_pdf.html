@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>System Construction Journal - {{ export_date|date:"Y-m-d H:i" }}</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: "Helvetica", "Arial", sans-serif;
+            color: #1f2937;
+            font-size: 10px;
+            line-height: 1.4;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            border-bottom: 2px solid #111827;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .title {
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .meta {
+            font-size: 10px;
+            color: #6b7280;
+        }
+        .summary {
+            margin-bottom: 12px;
+            font-size: 11px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #e5e7eb;
+            padding: 6px 8px;
+            vertical-align: top;
+            word-break: break-word;
+        }
+        th {
+            background: #f3f4f6;
+            font-weight: 700;
+            text-align: left;
+        }
+        .status {
+            font-weight: 700;
+        }
+        .status-done { color: #0f766e; }
+        .status-partial { color: #b45309; }
+        .status-started { color: #1d4ed8; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="title">AgriPlot — System Construction Journal</div>
+        <div class="meta">Generated {{ export_date|date:"Y-m-d H:i" }}</div>
+    </div>
+
+    <div class="summary">
+        Total entries: <strong>{{ total_count }}</strong>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 9%;">Date</th>
+                <th style="width: 15%;">Module / Feature</th>
+                <th style="width: 30%;">Work Done</th>
+                <th style="width: 20%;">Evidence</th>
+                <th style="width: 10%;">Status</th>
+                <th style="width: 16%;">Next Step</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                <td><strong>{{ entry.date }}</strong></td>
+                <td>{{ entry.module }}</td>
+                <td>{{ entry.work_done }}</td>
+                <td>{{ entry.evidence }}</td>
+                <td class="status
+                    {% if entry.status|lower == 'done' %}status-done
+                    {% elif entry.status|lower == 'partial' %}status-partial
+                    {% elif entry.status|lower == 'started' %}status-started
+                    {% endif %}">
+                    {{ entry.status }}
+                </td>
+                <td>{{ entry.next_step }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6">No journal entries found.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

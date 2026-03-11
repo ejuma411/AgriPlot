@@ -1383,13 +1383,13 @@
                         {% endif %}
                     </button>
                 </div>
-                <div class="topbar-profile" onclick="location.href='{% url 'listings:profile_management' %}'" role="button" tabindex="0">
+                {% comment %} <div class="topbar-profile" onclick="location.href='{% url 'listings:profile_management' %}'" role="button" tabindex="0">
                     <div class="profile-avatar">
                         {{ request.user.get_full_name|default:request.user.username|first|upper }}
                     </div>
                     <span class="profile-name">{{ request.user.get_full_name|default:request.user.username|truncatechars:15 }}</span>
                     <i class="fas fa-chevron-down"></i>
-                </div>
+                </div> {% endcomment %}
             </div>
         </div>
 

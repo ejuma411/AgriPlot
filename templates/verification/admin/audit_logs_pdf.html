@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>AgriPlot Audit Logs - {{ export_date|date:"Y-m-d H:i" }}</title>
+    <style>
+        /* Global Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            line-height: 1.4;
+            color: #333;
+            background: white;
+            padding: 20px;
+        }
+        
+        /* Header Section */
+        .pdf-header {
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #2c3e50;
+        }
+        
+        .header-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .header-title h1 {
+            font-size: 24px;
+            color: #2c3e50;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        
+        .header-title .date {
+            font-size: 12px;
+            color: #7f8c8d;
+            background: #ecf0f1;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+        
+        /* Company Info */
+        .company-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .company-details h2 {
+            font-size: 18px;
+            color: #34495e;
+            margin-bottom: 5px;
+        }
+        
+        .company-details p {
+            font-size: 11px;
+            color: #7f8c8d;
+        }
+        
+        .badge {
+            background: #27ae60;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Filter Summary */
+        .filter-summary {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 12px 15px;
+            margin-bottom: 25px;
+            font-size: 11px;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .filter-summary strong {
+            color: #2c3e50;
+            margin-right: 10px;
+        }
+        
+        .filter-items {
+            display: inline-flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-item {
+            background: white;
+            padding: 3px 10px;
+            border-radius: 15px;
+            border: 1px solid #bdc3c7;
+            color: #34495e;
+        }
+        
+        /* Stats Section */
+        .stats-section {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .stat-box {
+            flex: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        
+        .stat-box:nth-child(2) {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .stat-box:nth-child(3) {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .stat-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        
+        .stat-value {
+            font-size: 22px;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+        
+        .stat-sub {
+            font-size: 9px;
+            opacity: 0.8;
+            margin-top: 3px;
+        }
+        
+        /* Table Styles */
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 10px;
+            table-layout: fixed;
+        }
+        
+        .audit-table th {
+            background: #34495e;
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 10px 6px;
+            border: 1px solid #2c3e50;
+            font-size: 9px;
+        }
+        
+        .audit-table td {
+            padding: 8px 6px;
+            border: 1px solid #e0e0e0;
+            vertical-align: top;
+            word-wrap: break-word;
+        }
+        
+        .audit-table tbody tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        .audit-table tbody tr:hover {
+            background-color: #f5f5f5;
+        }
+        
+        /* Column Widths */
+        .col-time { width: 12%; }
+        .col-user { width: 15%; }
+        .col-action { width: 12%; }
+        .col-object { width: 12%; }
+        .col-ip { width: 10%; }
+        .col-agent { width: 22%; }
+        .col-extra { width: 17%; }
+        
+        /* Badge Styles */
+        .action-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        
+        .badge-create { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .badge-update { background: #cce5ff; color: #004085; border: 1px solid #b8daff; }
+        .badge-delete { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .badge-login { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .badge-default { background: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
+        
+        /* User Info */
+        .user-info {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .user-email {
+            font-size: 8px;
+            color: #7f8c8d;
+            margin-top: 2px;
+        }
+        
+        /* Object Info */
+        .object-type {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .object-id {
+            display: inline-block;
+            background: #e9ecef;
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 8px;
+            margin-left: 3px;
+        }
+        
+        /* IP Address */
+        .ip-address {
+            font-family: monospace;
+            background: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        
+        /* User Agent */
+        .user-agent {
+            color: #666;
+            font-size: 8px;
+            line-height: 1.3;
+        }
+        
+        /* Extra Data */
+        .extra-data {
+            background: #f8f9fa;
+            border-left: 2px solid #6c757d;
+            padding: 4px;
+            font-family: monospace;
+            font-size: 8px;
+            white-space: pre-wrap;
+            max-height: 60px;
+            overflow: hidden;
+            border-radius: 3px;
+        }
+        
+        /* Footer */
+        .pdf-footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+            font-size: 8px;
+            color: #7f8c8d;
+            text-align: center;
+        }
+        
+        .pdf-footer .legal {
+            margin-top: 5px;
+            color: #95a5a6;
+        }
+        
+        /* Watermark for confidential */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-45deg);
+            font-size: 60px;
+            color: rgba(200, 200, 200, 0.1);
+            white-space: nowrap;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        
+        /* No data message */
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+            font-style: italic;
+        }
+        
+        /* Page break handling */
+        .page-break {
+            page-break-after: always;
+        }
+        
+        /* Responsive table for PDF */
+        @media print {
+            body {
+                padding: 0;
+            }
+            
+            .audit-table {
+                page-break-inside: auto;
+            }
+            
+            tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
+            }
+            
+            thead {
+                display: table-header-group;
+            }
+            
+            tfoot {
+                display: table-footer-group;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Confidential Watermark -->
+    <div class="watermark">CONFIDENTIAL</div>
+    
+    <!-- Header -->
+    <div class="pdf-header">
+        <div class="header-title">
+            <h1>🔐 AgriPlot Audit Trail Report</h1>
+            <span class="date">Generated: {{ export_date|date:"F j, Y H:i:s" }}</span>
+        </div>
+        
+        <div class="company-info">
+            <div class="company-details">
+                <h2>AgriPlot Verification System</h2>
+                <p>Security & Compliance Department • Audit ID: AUD-{{ export_date|date:"YmdHis" }}</p>
+            </div>
+            <span class="badge">COMPLIANCE READY</span>
+        </div>
+        
+        <!-- Filter Summary -->
+        {% if filter_summary %}
+        <div class="filter-summary">
+            <strong>Applied Filters:</strong>
+            <div class="filter-items">
+                {% for filter_item in filter_summary %}
+                <span class="filter-item">{{ filter_item }}</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Stats Summary -->
+        <div class="stats-section">
+            <div class="stat-box">
+                <div class="stat-label">Total Records</div>
+                <div class="stat-value">{{ total_count }}</div>
+                <div class="stat-sub">audit entries</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Date Range</div>
+                <div class="stat-value">
+                    {% if first_log %}
+                        {{ first_log.created_at|date:"Y-m-d" }}
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+                <div class="stat-sub">to {% if last_log %}{{ last_log.created_at|date:"Y-m-d" }}{% endif %}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-label">Page Size</div>
+                <div class="stat-value">{{ display_count }}</div>
+                <div class="stat-sub">records displayed</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Audit Trail Table -->
+    <table class="audit-table">
+        <thead>
+            <tr>
+                <th class="col-time">Timestamp</th>
+                <th class="col-user">User</th>
+                <th class="col-action">Action</th>
+                <th class="col-object">Object</th>
+                <th class="col-ip">IP Address</th>
+                <th class="col-agent">User Agent</th>
+                <th class="col-extra">Additional Data</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td class="col-time">
+                    <div>{{ log.created_at|date:"Y-m-d" }}</div>
+                    <div style="font-size: 8px; color: #666;">{{ log.created_at|date:"H:i:s" }}</div>
+                </td>
+                <td class="col-user">
+                    {% if log.user %}
+                        <div class="user-info">{{ log.user.get_full_name|default:log.user.username }}</div>
+                        <div class="user-email">{{ log.user.email|default:"" }}</div>
+                    {% else %}
+                        <span style="color: #999;">System</span>
+                    {% endif %}
+                </td>
+                <td class="col-action">
+                    <span class="action-badge 
+                        {% if 'CREATE' in log.action %}badge-create
+                        {% elif 'UPDATE' in log.action %}badge-update
+                        {% elif 'DELETE' in log.action %}badge-delete
+                        {% elif 'LOGIN' in log.action %}badge-login
+                        {% else %}badge-default{% endif %}">
+                        {{ log.get_action_display|default:log.action }}
+                    </span>
+                </td>
+                <td class="col-object">
+                    {% if log.object_type %}
+                        <span class="object-type">{{ log.object_type }}</span>
+                        {% if log.object_id %}
+                            <span class="object-id">#{{ log.object_id }}</span>
+                        {% endif %}
+                    {% else %}
+                        <span style="color: #999;">—</span>
+                    {% endif %}
+                </td>
+                <td class="col-ip">
+                    {% if log.ip_address %}
+                        <span class="ip-address">{{ log.ip_address }}</span>
+                    {% else %}
+                        <span style="color: #999;">—</span>
+                    {% endif %}
+                </td>
+                <td class="col-agent">
+                    {% if log.user_agent %}
+                        <div class="user-agent">{{ log.user_agent|truncatechars:80 }}</div>
+                    {% else %}
+                        <span style="color: #999;">—</span>
+                    {% endif %}
+                </td>
+                <td class="col-extra">
+                    {% if log.extra %}
+                        <div class="extra-data">
+                            {% if log.extra.items %}
+                                {% for key, value in log.extra.items %}
+                                    <strong>{{ key }}:</strong> {{ value }}<br>
+                                {% endfor %}
+                            {% else %}
+                                {{ log.extra|pprint|truncatechars:100 }}
+                            {% endif %}
+                        </div>
+                    {% else %}
+                        <span style="color: #999;">—</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7" class="no-data">
+                    <strong>No audit records found</strong><br>
+                    <span style="color: #999;">Try adjusting your filter criteria</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- Footer with legal notice -->
+    <div class="pdf-footer">
+        <div>This report contains confidential information intended for authorized personnel only.</div>
+        <div class="legal">
+            © {% now "Y" %} AgriPlot Verification System. All rights reserved. | 
+            Report ID: AUD-{{ export_date|date:"YmdHis" }} | 
+            Page <span class="page-number"></span>
+        </div>
+    </div>
+</body>
+</html>

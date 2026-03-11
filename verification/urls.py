@@ -43,6 +43,8 @@ urlpatterns = [
     path("notifications/mark/<int:notification_id>/", views_admin.mark_notification_read, name="mark_notification_read"),
     path("notifications/mark-all/", views_admin.mark_all_notifications_read, name="mark_all_notifications_read"),
 
+    path('audit-logs/export/pdf/', views.audit_logs_export_pdf, name='audit_logs_export_pdf'),
+    
     # Extension officer routes
     path(
         "extension/",
@@ -76,6 +78,7 @@ urlpatterns = [
     path("analytics/export/", views_admin.export_report, name="export_report"),
     path("verify/audit-logs/", views_admin.audit_logs, name="audit_logs"),
     path("verify/audit-logs/export/", views_admin.export_audit_logs, name="audit_logs_export"),
+    path("verify/system-construction/export/", views_admin.system_construction_journal_pdf, name="system_construction_journal_pdf"),
 
     # Test endpoints (remove in production)
     path("test/ardhisasa/<int:plot_id>/", views_admin.trigger_ardhisasa, name="test_ardhisasa"),
