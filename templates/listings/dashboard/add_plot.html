@@ -57,14 +57,23 @@
             </div>
         </div>
 
+        <div class="alert alert-info d-flex align-items-start gap-2" role="alert">
+            <i class="fas fa-info-circle mt-1"></i>
+            <div>
+                <strong>Important:</strong> Use the official <strong>parcel number</strong> from the land registry when creating a listing.
+                This helps verification and prevents delays.
+            </div>
+        </div>
+
         <!-- Main Content Grid -->
         <div class="dashboard-content">
             <div class="content-left">
                 <!-- Progress Indicator -->
                 <div class="card mb-4">
                     <div class="card-body p-0">
-                        <div class="progress-indicator">
-                            <div class="progress-step active" data-step="1">
+                        <!-- Desktop Progress Indicator (visible on md and up) -->
+                        <div class="progress-indicator desktop-only">
+                            <div class="progress-step" data-step="1">
                                 <span class="step-number">1</span>
                                 <span class="step-label">Basic Info</span>
                             </div>
@@ -73,23 +82,31 @@
                                 <span class="step-label">Ownership</span>
                             </div>
                             <div class="progress-step" data-step="3">
-                                <span class="step-number">4</span
+                                <span class="step-number">3</span>
+                                <span class="step-label">Listing</span>
                             </div>
                             <div class="progress-step" data-step="4">
-                                <span class="step-number">5</span>
+                                <span class="step-number">4</span>
                                 <span class="step-label">Infrastructure</span>
                             </div>
                             <div class="progress-step" data-step="5">
-                                <span class="step-number">6</span>
+                                <span class="step-number">5</span>
                                 <span class="step-label">Documents</span>
                             </div>
                             <div class="progress-step" data-step="6">
-                                <span class="step-number">7</span>
-                                <span class="step-label">Location</span>
-                            </div>
-                            <div class="progress-step" data-step="7">
-                                <span class="step-number">7</span>
+                                <span class="step-number">6</span>
                                 <span class="step-label">Agreement</span>
+                            </div>
+                        </div>
+
+                        <!-- Mobile Progress Indicator (visible only on mobile) -->
+                        <div class="mobile-progress mobile-only">
+                            <div class="mobile-progress-header">
+                                <span class="current-step-label">Step <span id="mobileCurrentStep">1</span> of 6</span>
+                                <span class="current-step-name" id="mobileStepName">Basic Info</span>
+                            </div>
+                            <div class="mobile-progress-bar">
+                                <div class="mobile-progress-fill" id="mobileProgressFill" style="width: 16%"></div>
                             </div>
                         </div>
                     </div>
@@ -210,6 +227,39 @@
                                 </div>
                                 
                                 <div class="form-fields">
+                                    <!-- Parcel Number (top priority) -->
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.parcel_number.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-hashtag me-2"></i>Parcel Number
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.parcel_number }}
+                                                {% if form.parcel_number.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.parcel_number.errors }}</div>
+                                                {% endif %}
+                                                <div class="mt-2 d-flex gap-2 align-items-center">
+                                                    <button type="button" class="btn btn-outline-primary btn-sm" id="registryFetchBtn">
+                                                        <i class="fas fa-search me-1"></i>Fetch Registry Data
+                                                    </button>
+                                                    <small id="registryFetchStatus" class="text-muted"></small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.parcel_number.help_text }}</small>
+                                                {% if request.user.is_staff and mismatch_count != None %}
+                                                <div class="mt-2">
+                                                    <span class="badge {% if mismatch_count > 0 %}bg-danger{% else %}bg-success{% endif %}">
+                                                        Mismatch attempts: {{ mismatch_count }}
+                                                    </span>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+
                                     <!-- Title -->
                                     <div class="form-row mb-4">
                                         <div class="row">
@@ -431,37 +481,6 @@
                                             </div>
                                             <div class="col-md-3">
                                                 <small class="text-muted">Required for matrimonial property</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-row mb-4">
-                                        <div class="row">
-                                            <div class="col-md-3">
-                                                <label for="{{ form.parcel_number.id_for_label }}" class="form-label required">
-                                                    <i class="fas fa-hashtag me-2"></i>Parcel Number
-                                                </label>
-                                            </div>
-                                            <div class="col-md-6">
-                                                {{ form.parcel_number }}
-                                                {% if form.parcel_number.errors %}
-                                                <div class="invalid-feedback d-block">{{ form.parcel_number.errors }}</div>
-                                                {% endif %}
-                                                <div class="mt-2 d-flex gap-2 align-items-center">
-                                                    <button type="button" class="btn btn-outline-primary btn-sm" id="registryFetchBtn">
-                                                        <i class="fas fa-search me-1"></i>Fetch Registry Data
-                                                    </button>
-                                                    <small id="registryFetchStatus" class="text-muted"></small>
-                                                </div>
-                                            </div>
-                                            <div class="col-md-3">
-                                                <small class="text-muted">{{ form.parcel_number.help_text }}</small>
-                                                {% if request.user.is_staff and mismatch_count != None %}
-                                                <div class="mt-2">
-                                                    <span class="badge {% if mismatch_count > 0 %}bg-danger{% else %}bg-success{% endif %}">
-                                                        Mismatch attempts: {{ mismatch_count }}
-                                                    </span>
-                                                </div>
-                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
@@ -2688,6 +2707,154 @@
             width: 100%;
         }
     }
+
+/* Progress Indicator Updates */
+.progress-indicator {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: relative;
+    padding: 2rem 2rem 1.5rem;
+}
+
+.progress-indicator::before {
+    content: '';
+    position: absolute;
+    top: 2.25rem;
+    left: 3rem;
+    right: 3rem;
+    height: 3px;
+    background: var(--gray-300);
+    z-index: 0;
+    border-radius: 10px;
+}
+
+.progress-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    z-index: 1;
+    flex: 1;
+}
+
+.step-number {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid var(--gray-300);
+    color: var(--gray-600);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    transition: all 0.3s ease;
+    font-size: 1.1rem;
+}
+
+.progress-step.active .step-number {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    transform: scale(1.15);
+    box-shadow: 0 4px 12px rgba(6, 145, 50, 0.3);
+}
+
+.progress-step.completed .step-number {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    position: relative;
+}
+
+.progress-step.completed .step-number::after {
+    content: '\f00c';
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    font-size: 0.9rem;
+}
+
+.progress-step.completed .step-number span {
+    display: none;
+}
+
+.step-label {
+    font-size: 0.85rem;
+    color: var(--gray-600);
+    text-align: center;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.progress-step.active .step-label {
+    color: var(--primary);
+    font-weight: 600;
+}
+
+.progress-step.completed .step-label {
+    color: var(--primary);
+}
+
+/* Mobile Progress */
+.mobile-progress {
+    padding: 1.5rem;
+    background: linear-gradient(135deg, var(--primary) 0%, #0b9810 100%);
+    border-radius: 0.5rem;
+}
+
+.mobile-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.current-step-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.current-step-name {
+    color: white;
+    font-weight: 600;
+    font-size: 1rem;
+}
+
+.mobile-progress-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.mobile-progress-fill {
+    height: 100%;
+    background: white;
+    border-radius: 10px;
+    transition: width 0.3s ease;
+}
+
+/* Responsive Utilities */
+.desktop-only {
+    display: flex;
+}
+
+.mobile-only {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .desktop-only {
+        display: none;
+    }
+    
+    .mobile-only {
+        display: block;
+    }
+}
 </style>
 
 <script>
@@ -3054,7 +3221,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (!allChecked) {
                 e.preventDefault();
-                alert('Please agree to all terms and conditions');
+                AgriPlotUI.showToast({ message: 'Please agree to all terms and conditions', type: 'warning' });
                 return false;
             }
             
@@ -3222,6 +3389,92 @@ document.addEventListener('DOMContentLoaded', function() {
     if (landTypeSelect) landTypeSelect.addEventListener('change', updateDocRequirements);
     if (spousalCheck) spousalCheck.addEventListener('change', updateDocRequirements);
     updateDocRequirements();
+});
+
+// Progress tracking functionality
+document.addEventListener('DOMContentLoaded', function() {
+    function updateProgressSteps() {
+        const steps = document.querySelectorAll('.progress-step');
+        const mobileCurrentStep = document.getElementById('mobileCurrentStep');
+        const mobileStepName = document.getElementById('mobileStepName');
+        const mobileProgressFill = document.getElementById('mobileProgressFill');
+        
+        // Calculate which step is active based on form completion
+        const requiredFields = document.querySelectorAll('.form-label.required');
+        let completed = 0;
+        let currentStep = 1;
+        
+        requiredFields.forEach(label => {
+            const forAttr = label.getAttribute('for');
+            if (forAttr) {
+                const input = document.getElementById(forAttr);
+                if (input) {
+                    if (input.type === 'checkbox') {
+                        if (input.checked) completed++;
+                    } else if (input.type === 'file') {
+                        if (input.files.length > 0) completed++;
+                    } else if (input.value && input.value.trim()) {
+                        completed++;
+                    }
+                }
+            }
+        });
+        
+        // Add county and subcounty
+        const countySelect = document.getElementById('id_county');
+        const subcountySelect = document.getElementById('id_subcounty');
+        if (countySelect && countySelect.value) completed += 2;
+        if (subcountySelect && subcountySelect.value) completed += 2;
+        
+        // Add agreement checkboxes
+        ['accuracyCheck', 'documentCheck', 'termsCheck'].forEach(id => {
+            const checkbox = document.getElementById(id);
+            if (checkbox && checkbox.checked) completed += 2;
+        });
+        
+        const totalRequired = requiredFields.length + 10;
+        const percent = Math.min(Math.round((completed / totalRequired) * 100), 100);
+        
+        // Determine current step based on completion percentage
+        if (percent >= 90) currentStep = 6;
+        else if (percent >= 75) currentStep = 5;
+        else if (percent >= 60) currentStep = 4;
+        else if (percent >= 40) currentStep = 3;
+        else if (percent >= 20) currentStep = 2;
+        else currentStep = 1;
+        
+        // Update step classes
+        steps.forEach((step, index) => {
+            const stepNum = index + 1;
+            step.classList.remove('active', 'completed');
+            
+            if (stepNum < currentStep) {
+                step.classList.add('completed');
+            } else if (stepNum === currentStep) {
+                step.classList.add('active');
+            }
+        });
+        
+        // Update mobile indicator
+        if (mobileCurrentStep) mobileCurrentStep.textContent = currentStep;
+        if (mobileStepName) {
+            const stepNames = ['Basic Info', 'Ownership', 'Listing', 'Infrastructure', 'Documents', 'Agreement'];
+            mobileStepName.textContent = stepNames[currentStep - 1];
+        }
+        if (mobileProgressFill) {
+            mobileProgressFill.style.width = ((currentStep / 6) * 100) + '%';
+        }
+    }
+    
+    // Add event listeners
+    const form = document.getElementById('plotForm');
+    if (form) {
+        form.addEventListener('input', updateProgressSteps);
+        form.addEventListener('change', updateProgressSteps);
+    }
+    
+    // Initialize
+    updateProgressSteps();
 });
 </script>
 {% endblock %}

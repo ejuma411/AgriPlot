@@ -12,10 +12,10 @@
             <p class="page-header-subtitle">Track document review, extension reports, and surveyor inspections</p>
         </div>
         <div class="page-header-actions">
-            <a href="{% url 'listings:home' %}" class="btn">
+            <a href="{% url 'listings:home' %}" class="btn" data-analytics="admin_back_home">
                 <i class="fas fa-home me-2"></i>Back to Home
             </a>
-            <a href="{% url 'verification:verification_dashboard' %}" class="btn">
+            <a href="{% url 'verification:verification_dashboard' %}" class="btn" data-analytics="admin_back_dashboard">
                 <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
             </a>
         </div>
@@ -25,28 +25,28 @@
     <div class="admin-tabs">
         <ul class="nav nav-tabs" role="tablist">
             <li class="nav-item">
-                <a href="?filter=all" class="nav-link {% if current_filter == 'all' %}active{% endif %}">
+                <a href="?filter=all" class="nav-link {% if current_filter == 'all' %}active{% endif %}" data-analytics="queue_filter_all">
                     <i class="fas fa-list"></i> <span>All</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a href="?filter=pending" class="nav-link {% if current_filter == 'pending' %}active{% endif %}">
+                <a href="?filter=pending" class="nav-link {% if current_filter == 'pending' %}active{% endif %}" data-analytics="queue_filter_pending">
                     <i class="fas fa-clock"></i> <span>Document Pending</span>
                     {% if stats.pending_review %}<span class="badge bg-danger">{{ stats.pending_review }}</span>{% endif %}
                 </a>
             </li>
             <li class="nav-item">
-                <a href="?filter=in_progress" class="nav-link {% if current_filter == 'in_progress' %}active{% endif %}">
+                <a href="?filter=in_progress" class="nav-link {% if current_filter == 'in_progress' %}active{% endif %}" data-analytics="queue_filter_in_progress">
                     <i class="fas fa-sync-alt"></i> <span>In Progress</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a href="?filter=approved" class="nav-link {% if current_filter == 'approved' %}active{% endif %}">
+                <a href="?filter=approved" class="nav-link {% if current_filter == 'approved' %}active{% endif %}" data-analytics="queue_filter_approved">
                     <i class="fas fa-check-circle"></i> <span>Approved</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a href="?filter=rejected" class="nav-link {% if current_filter == 'rejected' %}active{% endif %}">
+                <a href="?filter=rejected" class="nav-link {% if current_filter == 'rejected' %}active{% endif %}" data-analytics="queue_filter_rejected">
                     <i class="fas fa-times-circle"></i> <span>Rejected</span>
                 </a>
             </li>
@@ -71,17 +71,20 @@
     <div class="admin-card-body">
         {% if plots %}
         <div class="table-responsive">
-            <table class="admin-table queue-table">
+            <table class="admin-table queue-table" aria-describedby="queueTableCaption">
+                <caption id="queueTableCaption" class="visually-hidden">
+                    Verification queue for plots and documents awaiting review.
+                </caption>
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Title</th>
-                        <th>Location</th>
-                        <th>Seller</th>
-                        <th>Submitted</th>
-                        <th>Status</th>
-                        <th>Documents</th>
-                        <th>Actions</th>
+                        <th scope="col">ID</th>
+                        <th scope="col">Title</th>
+                        <th scope="col">Location</th>
+                        <th scope="col">Seller</th>
+                        <th scope="col">Submitted</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Documents</th>
+                        <th scope="col">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -89,9 +92,9 @@
                     <tr>
                         <td><strong>#{{ plot.id }}</strong></td>
                         <td>
-                            <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank">
-                                {{ plot.title|truncatechars:30 }}
-                            </a>
+                                <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank" rel="noopener" data-analytics="queue_view_plot">
+                                    {{ plot.title|truncatechars:30 }}
+                                </a>
                         </td>
                         <td>{{ plot.county|default:plot.location|truncatechars:20 }}</td>
                         <td>
@@ -146,10 +149,10 @@
                         </td>
                         <td>
                             <div class="btn-group" style="gap: 0.25rem;">
-                                <a href="{% url 'verification:review_plot' plot.id %}" class="btn btn-sm btn-primary">
+                                <a href="{% url 'verification:review_plot' plot.id %}" class="btn btn-sm btn-primary" aria-label="Review plot {{ plot.title }}" data-analytics="queue_review_plot">
                                     <i class="fas fa-search"></i>
                                 </a>
-                                <a href="{% url 'verification:verification_history' plot.id %}" class="btn btn-sm btn-info">
+                                <a href="{% url 'verification:verification_history' plot.id %}" class="btn btn-sm btn-info" aria-label="View verification history for {{ plot.title }}" data-analytics="queue_verification_history">
                                     <i class="fas fa-history"></i>
                                 </a>
                             </div>

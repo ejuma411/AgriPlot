@@ -108,9 +108,22 @@ class VerificationStatus(models.Model):
     class Meta:
         db_table = "listings_verificationstatus"
         unique_together = [["content_type", "object_id"]]
+        verbose_name_plural="Verification Statuses"
 
     def __str__(self):
-        return f"Verification for {self.content_object} - {self.get_current_stage_display()}"
+        model_class = self.content_type.model_class() if self.content_type_id else None
+        if not model_class:
+            return f"Verification (missing model) - {self.get_current_stage_display()}"
+
+        try:
+            content_object = model_class._base_manager.filter(pk=self.object_id).first()
+        except Exception:
+            content_object = None
+
+        if not content_object:
+            return f"Verification for missing {self.content_type} #{self.object_id} - {self.get_current_stage_display()}"
+
+        return f"Verification for {content_object} - {self.get_current_stage_display()}"
 
     def update_stage(self, stage, details=None):
         original_stage = self.current_stage

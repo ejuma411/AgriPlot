@@ -13,7 +13,7 @@ from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
 from django.db.models.functions import TruncMonth
-from django.http import Http404, JsonResponse
+from django.http import Http404, JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404, resolve_url
 from django.template.loader import render_to_string
 from django.core.exceptions import DisallowedHost, ValidationError
@@ -22,6 +22,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
 from .models import SitePage
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 import json
 import os
 import uuid
@@ -1726,6 +1728,33 @@ def log_phone_view(request, plot_id):
             'success': False,
             'error': 'Failed to log phone view'
         }, status=500)
+
+
+@csrf_exempt
+@require_POST
+def track_ux_event(request):
+    """Lightweight UX analytics endpoint (privacy-respecting)."""
+    try:
+        payload = json.loads(request.body.decode("utf-8") or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    event = payload.get("event")
+    allowed_events = {"page_view", "form_submit", "cta_click", "toast_shown"}
+    if event not in allowed_events:
+        return JsonResponse({"error": "Invalid event"}, status=400)
+
+    user = request.user if getattr(request, "user", None) and request.user.is_authenticated else None
+    analytics_logger = logging.getLogger("listings.analytics")
+    analytics_logger.info(
+        "ux_event=%s user_id=%s path=%s data=%s",
+        event,
+        getattr(user, "id", None),
+        payload.get("path"),
+        {k: v for k, v in payload.items() if k not in {"event", "path"}},
+    )
+
+    return HttpResponse(status=204)
 
 
 # ============ LANDOWNER SUCCESS ============

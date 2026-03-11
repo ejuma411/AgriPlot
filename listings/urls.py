@@ -48,6 +48,7 @@ urlpatterns = [
     path("api/request-contact/<int:plot_id>/", views.request_contact_details, name="request_contact"),
     path("api/log-phone-view/<int:plot_id>/", views.log_phone_view, name="log_phone_view"),
     path("api/registry-lookup/", views.registry_lookup, name="registry_lookup"),
+    path("analytics/track/", views.track_ux_event, name="track_ux_event"),
     path("get-subcounties/", views.get_subcounties, name="get_subcounties"),
 
     # Backward compatibility redirects

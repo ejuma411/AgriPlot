@@ -19,7 +19,8 @@
         </div>
         <div class="page-header-actions d-flex flex-wrap gap-2">
             <a href="{% url 'verification:verification_dashboard' %}" 
-               class="btn btn-outline-primary flex-fill flex-md-grow-0">
+               class="btn btn-outline-primary flex-fill flex-md-grow-0"
+               data-analytics="audit_dashboard_home">
                 <i class="fas fa-chart-pie me-2" aria-hidden="true"></i>
                 <span class="d-inline d-md-none">Home</span>
                 <span class="d-none d-md-inline">Dashboard</span>
@@ -27,14 +28,16 @@
             <div class="btn-group flex-fill flex-md-grow-0" role="group" aria-label="Export options">
                 <a href="{% url 'verification:audit_logs_export' %}?format=csv{% if base_querystring %}&{{ base_querystring }}{% endif %}" 
                    class="btn btn-outline-secondary"
-                   title="Export as CSV">
+                   title="Export as CSV"
+                   data-analytics="audit_export_csv">
                     <i class="fas fa-file-csv me-2" aria-hidden="true"></i>
                     <span class="d-inline d-md-none">CSV</span>
                     <span class="d-none d-md-inline">CSV</span>
                 </a>
                 <a href="{% url 'verification:audit_logs_export_pdf' %}{% if base_querystring %}?{{ base_querystring }}{% endif %}" 
                    class="btn btn-outline-secondary"
-                   title="Export as PDF">
+                   title="Export as PDF"
+                   data-analytics="audit_export_pdf">
                     <i class="fas fa-file-pdf me-2" aria-hidden="true"></i>
                     <span class="d-inline d-md-none">PDF</span>
                     <span class="d-none d-md-inline">PDF</span>
@@ -57,7 +60,7 @@
         <form method="get" class="row g-3" id="audit-filter-form">
             <!-- Mobile Filter Toggle (visible only on small screens) -->
             <div class="col-12 d-md-none mb-2">
-                <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false">
+                <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
                     <i class="fas fa-filter me-2"></i>Toggle Filters
                 </button>
             </div>
@@ -161,11 +164,11 @@
             <!-- Filter Actions - Always visible -->
             <div class="col-12">
                 <div class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center">
-                    <button class="btn btn-primary flex-fill" type="submit">
+                    <button class="btn btn-primary flex-fill" type="submit" data-analytics="audit_apply_filters">
                         <i class="fas fa-filter me-2" aria-hidden="true"></i>
                         Apply Filters
                     </button>
-                    <a class="btn btn-outline-secondary flex-fill" href="{% url 'verification:audit_logs' %}">
+                    <a class="btn btn-outline-secondary flex-fill" href="{% url 'verification:audit_logs' %}" data-analytics="audit_clear_filters">
                         <i class="fas fa-times me-2" aria-hidden="true"></i>
                         Clear All
                     </a>
@@ -272,7 +275,10 @@
         <!-- Desktop Table View (hidden on mobile) -->
         <div class="d-none d-md-block">
             <div class="table-responsive">
-                <table class="admin-table admin-table-hover mb-0">
+                <table class="admin-table admin-table-hover mb-0" aria-describedby="auditTableCaption">
+                    <caption id="auditTableCaption" class="visually-hidden">
+                        Audit log entries including user, action, and IP address details.
+                    </caption>
                     <thead>
                         <tr>
                             <th scope="col">Timestamp</th>
@@ -330,7 +336,9 @@
                                     <button class="btn btn-sm btn-outline-secondary" 
                                             type="button"
                                             data-bs-toggle="modal" 
-                                            data-bs-target="#extraModal{{ log.id }}">
+                                            data-bs-target="#extraModal{{ log.id }}"
+                                            aria-controls="extraModal{{ log.id }}"
+                                            aria-label="View additional details for audit entry {{ log.id }}">
                                         <i class="fas fa-eye me-1" aria-hidden="true"></i>
                                         View
                                     </button>

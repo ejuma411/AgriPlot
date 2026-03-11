@@ -174,12 +174,12 @@
                     const confirmPassword = form.querySelector('input[name="confirm_password"]').value;
                     if (newPassword !== confirmPassword) {
                         e.preventDefault();
-                        alert('Passwords do not match');
+                        AgriPlotUI.showToast({ message: 'Passwords do not match', type: 'warning' });
                         return false;
                     }
                     if (newPassword.length < 8) {
                         e.preventDefault();
-                        alert('Password must be at least 8 characters');
+                        AgriPlotUI.showToast({ message: 'Password must be at least 8 characters', type: 'warning' });
                         return false;
                     }
                 });

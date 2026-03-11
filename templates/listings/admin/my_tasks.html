@@ -508,11 +508,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     window.location.reload();
                 } else {
-                    alert(data.message || 'Failed to assign task.');
+                    AgriPlotUI.showToast({ message: data.message || 'Failed to assign task.', type: 'danger' });
                     this.disabled = false;
                 }
             } catch (err) {
-                alert('Failed to assign task.');
+                AgriPlotUI.showToast({ message: 'Failed to assign task.', type: 'danger' });
                 this.disabled = false;
             }
         });

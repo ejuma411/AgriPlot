@@ -518,12 +518,12 @@ function assignTask() {
     console.log('Assigning task:', taskId, 'to user:', userId);
     
     if (!taskId) {
-        alert('Error: No task selected');
+        AgriPlotUI.showToast({ message: 'Error: No task selected', type: 'danger' });
         return;
     }
     
     if (!userId) {
-        alert('Please select an officer');
+        AgriPlotUI.showToast({ message: 'Please select an officer', type: 'warning' });
         return;
     }
     
@@ -562,18 +562,19 @@ function assignTask() {
             closeCustomModal();
             
             // Show success message
-            alert(data.message || 'Task assigned successfully!');
+            AgriPlotUI.showToast({ message: data.message || 'Task assigned successfully!', type: 'success' });
+            AgriPlotUI.trackEvent('cta_click', { cta: 'assign_task' });
             
             // Reload page to show updated data
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            AgriPlotUI.showToast({ message: 'Error: ' + (data.message || 'Unknown error'), type: 'danger' });
         }
     })
     .catch(error => {
         console.error('Error:', error);
         document.getElementById('customLoadingSpinner').style.display = 'none';
-        alert('An error occurred while assigning the task. Please check the console for details.');
+        AgriPlotUI.showToast({ message: 'An error occurred while assigning the task. Please check the console for details.', type: 'danger' });
     });
 }
 
@@ -751,12 +752,12 @@ function assignTask() {
     console.log('Assigning task:', taskId, 'to user:', userId);
     
     if (!taskId) {
-        alert('Error: No task selected');
+        AgriPlotUI.showToast({ message: 'Error: No task selected', type: 'danger' });
         return;
     }
     
     if (!userId) {
-        alert('Please select an extension officer');
+        AgriPlotUI.showToast({ message: 'Please select an extension officer', type: 'warning' });
         return;
     }
     
@@ -795,18 +796,19 @@ function assignTask() {
             closeCustomModal();
             
             // Show success message
-            alert(data.message || 'Task assigned successfully!');
+            AgriPlotUI.showToast({ message: data.message || 'Task assigned successfully!', type: 'success' });
+            AgriPlotUI.trackEvent('cta_click', { cta: 'assign_extension_task' });
             
             // Reload page to show updated data
             location.reload();
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            AgriPlotUI.showToast({ message: 'Error: ' + (data.message || 'Unknown error'), type: 'danger' });
         }
     })
     .catch(error => {
         console.error('Error:', error);
         document.getElementById('customLoadingSpinner').style.display = 'none';
-        alert('An error occurred while assigning the task. Please check the console for details.');
+        AgriPlotUI.showToast({ message: 'An error occurred while assigning the task. Please check the console for details.', type: 'danger' });
     });
 }
 

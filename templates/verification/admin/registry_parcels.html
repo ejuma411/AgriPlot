@@ -15,15 +15,15 @@
 
 <div class="admin-card mb-4">
     <div class="admin-card-body">
-        <form method="get" class="row g-3 align-items-center">
+        <form method="get" class="row g-3 align-items-center" aria-label="Search registry parcels">
             <div class="col-md-6">
-                <input type="text" name="q" class="form-control" placeholder="Search parcel, section, county, subcounty" value="{{ query }}">
+                <input type="text" name="q" class="form-control" placeholder="Search parcel, section, county, subcounty" value="{{ query }}" aria-label="Search parcel, section, county, subcounty">
             </div>
             <div class="col-md-3">
-                <button type="submit" class="btn btn-primary">
+                <button type="submit" class="btn btn-primary" data-analytics="registry_parcel_search">
                     <i class="fas fa-search me-2"></i>Search
                 </button>
-                <a href="{% url 'verification:registry_parcels' %}" class="btn btn-outline-secondary ms-2">Reset</a>
+                <a href="{% url 'verification:registry_parcels' %}" class="btn btn-outline-secondary ms-2" data-analytics="registry_parcel_reset">Reset</a>
             </div>
             <div class="col-md-3 text-end text-muted">
                 Total: {{ total|intcomma }}
@@ -40,14 +40,17 @@
     </div>
     <div class="admin-card-body p-0">
         <div class="table-responsive">
-            <table class="table align-middle mb-0">
+            <table class="table align-middle mb-0" aria-describedby="registryParcelsCaption">
+                <caption id="registryParcelsCaption" class="visually-hidden">
+                    Registry parcel list with location and encumbrance status.
+                </caption>
                 <thead>
                     <tr>
-                        <th>Parcel Number</th>
-                        <th>Registration Section</th>
-                        <th>County / Subcounty</th>
-                        <th>Area</th>
-                        <th>Encumbrances</th>
+                        <th scope="col">Parcel Number</th>
+                        <th scope="col">Registration Section</th>
+                        <th scope="col">County / Subcounty</th>
+                        <th scope="col">Area</th>
+                        <th scope="col">Encumbrances</th>
                     </tr>
                 </thead>
                 <tbody>

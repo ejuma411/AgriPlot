@@ -65,9 +65,9 @@
                 </div>
 
                 {% if messages %}
-                    <div class="auth-messages">
+                    <div class="auth-messages" role="status" aria-live="polite" aria-atomic="true">
                         {% for message in messages %}
-                            <div class="auth-alert alert-{{ message.tags }}">{{ message }}</div>
+                            <div class="auth-alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
                         {% endfor %}
                     </div>
                 {% endif %}

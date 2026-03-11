@@ -80,24 +80,42 @@ class VerificationStatusAdmin(admin.ModelAdmin):
     )
 
     def content_object_display(self, obj):
-        if obj.content_object:
-            if hasattr(obj.content_object, "user"):
-                user = obj.content_object.user
-                return format_html(
-                    "<strong>{}</strong><br><small>{} - {}</small>",
-                    user.get_full_name() or user.username,
-                    obj.content_object.__class__.__name__,
-                    obj.content_type,
-                )
-            if hasattr(obj.content_object, "title"):
-                return format_html(
-                    "<strong>{}</strong><br><small>Plot #{} - {}</small>",
-                    obj.content_object.title,
-                    obj.content_object.id,
-                    obj.content_object.location,
-                )
-            return str(obj.content_object)
-        return "-"
+        model_class = obj.content_type.model_class() if obj.content_type_id else None
+        if not model_class:
+            return format_html(
+                "<span class='text-muted'>Missing model: {}.{}</span>",
+                obj.content_type.app_label if obj.content_type_id else "unknown",
+                obj.content_type.model if obj.content_type_id else "unknown",
+            )
+
+        try:
+            content_object = model_class._base_manager.filter(pk=obj.object_id).first()
+        except Exception:
+            content_object = None
+
+        if not content_object:
+            return format_html(
+                "<span class='text-muted'>Missing object #{} ({})</span>",
+                obj.object_id,
+                obj.content_type,
+            )
+
+        if hasattr(content_object, "user"):
+            user = content_object.user
+            return format_html(
+                "<strong>{}</strong><br><small>{} - {}</small>",
+                user.get_full_name() or user.username,
+                content_object.__class__.__name__,
+                obj.content_type,
+            )
+        if hasattr(content_object, "title"):
+            return format_html(
+                "<strong>{}</strong><br><small>Plot #{} - {}</small>",
+                content_object.title,
+                content_object.id,
+                content_object.location,
+            )
+        return str(content_object)
 
     content_object_display.short_description = "Content Object"
 
@@ -425,4 +443,3 @@ class SoilReportAdmin(admin.ModelAdmin):
     list_display = ("plot", "verification_status", "created_at")
     list_filter = ("verification_status", "created_at")
     search_fields = ("plot__title", "lab_id")
-

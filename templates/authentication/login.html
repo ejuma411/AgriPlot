@@ -9,14 +9,26 @@
 <form method="POST" class="auth-form" id="loginForm">
     {% csrf_token %}
 
+    {% if form.non_field_errors %}
+        <div class="auth-alert alert-error" role="alert">
+            {{ form.non_field_errors }}
+        </div>
+    {% endif %}
+
     <label for="username">Username or Email</label>
     <input type="text" id="username" name="username" required autofocus />
+    {% if form.username.errors %}
+        <div class="auth-alert alert-error" role="alert">{{ form.username.errors }}</div>
+    {% endif %}
 
     <label for="password">Password</label>
     <div class="password-wrap">
         <input type="password" id="password" name="password" required />
         <button type="button" class="password-toggle" onclick="togglePassword()">Show</button>
     </div>
+    {% if form.password.errors %}
+        <div class="auth-alert alert-error" role="alert">{{ form.password.errors }}</div>
+    {% endif %}
 
     <div class="auth-row">
         <label class="auth-check">

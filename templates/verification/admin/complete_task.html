@@ -626,7 +626,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!allChecked || !allFilled) {
             e.preventDefault();
-            alert('Please complete all required document checks and extracted fields before submitting.');
+            AgriPlotUI.showToast({ message: 'Please complete all required document checks and extracted fields before submitting.', type: 'warning' });
             return false;
         }
     });

@@ -1410,7 +1410,8 @@ a:hover {
         if (requestContactBtn) {
             requestContactBtn.addEventListener('click', function() {
                 // In a real application, this would send a request to the server
-                alert('Contact request sent. The owner/agent will contact you shortly.');
+                AgriPlotUI.showToast({ message: 'Contact request sent. The owner/agent will contact you shortly.', type: 'success' });
+                AgriPlotUI.trackEvent('cta_click', { cta: 'request_contact_modal' });
                 contactModal.hide();
             });
         }
@@ -1553,8 +1554,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const messageBody = document.getElementById('messageBody');
             if (messageBody && messageBody.value.trim().length < 10) {
                 e.preventDefault();
-                alert('Please write a more detailed message (at least 10 characters).');
+                messageBody.setAttribute('aria-invalid', 'true');
+                AgriPlotUI.showToast({ message: 'Please write a more detailed message (at least 10 characters).', type: 'warning' });
                 messageBody.focus();
+            } else if (messageBody) {
+                messageBody.removeAttribute('aria-invalid');
             }
         });
     }
@@ -1575,12 +1579,13 @@ document.addEventListener('DOMContentLoaded', function() {
             const time = document.getElementById('visitTime').value;
             
             if (date && time) {
-                alert('Visit request sent for ' + date + ' at ' + time);
+                AgriPlotUI.showToast({ message: `Visit request sent for ${date} at ${time}.`, type: 'success' });
+                AgriPlotUI.trackEvent('cta_click', { cta: 'schedule_visit', date, time });
                 visitForm.reset();
                 const modal = bootstrap.Modal.getInstance(document.getElementById('scheduleVisitModal'));
                 if (modal) modal.hide();
             } else {
-                alert('Please select both date and time.');
+                AgriPlotUI.showToast({ message: 'Please select both date and time.', type: 'warning' });
             }
         });
     }
@@ -1596,13 +1601,14 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert(data.message || 'Contact request sent. The owner/agent will contact you shortly.');
+                AgriPlotUI.showToast({ message: data.message || 'Contact request sent. The owner/agent will contact you shortly.', type: 'success' });
+                AgriPlotUI.trackEvent('cta_click', { cta: 'request_contact_api' });
             } else {
-                alert(data.error || 'Failed to send request. Please try again.');
+                AgriPlotUI.showToast({ message: data.error || 'Failed to send request. Please try again.', type: 'danger' });
             }
         })
         .catch(() => {
-            alert('Failed to send request. Please try again.');
+            AgriPlotUI.showToast({ message: 'Failed to send request. Please try again.', type: 'danger' });
         });
     };
     

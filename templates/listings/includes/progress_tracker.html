@@ -1,0 +1,14 @@
+<div class="progress-tracker" aria-label="Add plot progress">
+    <ol class="progress-steps">
+        {% if is_superuser %}
+            <li><a href="#admin-assignment" data-analytics="progress_admin_assignment">Admin Assignment</a></li>
+        {% endif %}
+        <li><a href="#basic-info" data-analytics="progress_basic_info">Basic Info</a></li>
+        <li><a href="#ownership-details" data-analytics="progress_ownership_details">Ownership</a></li>
+        <li><a href="#listing-details" data-analytics="progress_listing_details">Listing</a></li>
+        <li><a href="#pricing-details" data-analytics="progress_pricing_details">Pricing</a></li>
+        <li><a href="#amenities-details" data-analytics="progress_amenities_details">Amenities</a></li>
+        <li><a href="#document-uploads" data-analytics="progress_documents">Documents</a></li>
+        <li><a href="#listing-agreement" data-analytics="progress_agreement">Agreement</a></li>
+    </ol>
+</div>

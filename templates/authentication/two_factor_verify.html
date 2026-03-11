@@ -11,6 +11,10 @@
         <h3 class="auth-panel-title">Verify</h3>
         <form method="POST" class="auth-form">
             {% csrf_token %}
+
+            {% if form.non_field_errors %}
+                <div class="auth-alert alert-error" role="alert">{{ form.non_field_errors }}</div>
+            {% endif %}
             <label>Method</label>
             <select name="method" required>
                 {% if 'totp' in available_methods %}
@@ -29,6 +33,9 @@
 
             <label>Code</label>
             {{ form.code }}
+            {% if form.code.errors %}
+                <div class="auth-alert alert-error" role="alert">{{ form.code.errors }}</div>
+            {% endif %}
 
             <button type="submit" class="auth-btn">Verify</button>
         </form>

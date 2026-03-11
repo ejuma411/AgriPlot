@@ -95,7 +95,7 @@
         </div>
         <div class="page-header-actions">
             {% if request.user.is_superuser %}
-            <a class="btn btn-outline-primary no-print" href="{% url 'verification:system_construction_journal_pdf' %}">
+            <a class="btn btn-outline-primary no-print" href="{% url 'verification:system_construction_journal_pdf' %}" data-analytics="journal_export_pdf">
                 <i class="fas fa-file-pdf me-2"></i>Export PDF
             </a>
             {% endif %}

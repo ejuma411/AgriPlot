@@ -1284,7 +1284,7 @@
                 messageCard.style.pointerEvents = 'none';
                 
                 // Show confirmation
-                alert('Message marked for deletion. This feature requires backend implementation.');
+                AgriPlotUI.showToast({ message: 'Message marked for deletion. This feature requires backend implementation.', type: 'info' });
                 messageCard.style.opacity = '1';
                 messageCard.style.pointerEvents = 'auto';
             }
@@ -1294,21 +1294,21 @@
     function copyReplyToClipboard() {
         const replyText = document.getElementById('replyMessage').value;
         if (replyText.trim() === '') {
-            alert('Please type a message first');
+            AgriPlotUI.showToast({ message: 'Please type a message first', type: 'warning' });
             return;
         }
         
         navigator.clipboard.writeText(replyText).then(() => {
-            alert('Message copied to clipboard. You can paste it in your email client.');
+            AgriPlotUI.showToast({ message: 'Message copied to clipboard. You can paste it in your email client.', type: 'success' });
         }).catch(() => {
-            alert('Failed to copy. Please try again.');
+            AgriPlotUI.showToast({ message: 'Failed to copy. Please try again.', type: 'danger' });
         });
     }
 
     function replyFromModal() {
         const replyText = document.getElementById('replyMessage').value;
         if (replyText.trim() === '') {
-            alert('Please type a message');
+            AgriPlotUI.showToast({ message: 'Please type a message', type: 'warning' });
             return;
         }
         copyReplyToClipboard();

@@ -12,7 +12,7 @@
             <p class="page-header-subtitle">{{ plot.title }}</p>
         </div>
         <div class="page-header-actions">
-            <a href="{% url 'verification:review_plot' plot.id %}" class="btn">
+            <a href="{% url 'verification:review_plot' plot.id %}" class="btn" data-analytics="history_back_review">
                 <i class="fas fa-arrow-left me-2"></i>Back to Review
             </a>
         </div>
@@ -32,19 +32,19 @@
             <div class="admin-card-body">
                 <table class="details-table">
                     <tr>
-                        <th>Title:</th>
+                        <th scope="row">Title:</th>
                         <td>{{ plot.title }}</td>
                     </tr>
                     <tr>
-                        <th>ID:</th>
+                        <th scope="row">ID:</th>
                         <td>#{{ plot.id }}</td>
                     </tr>
                     <tr>
-                        <th>Location:</th>
+                        <th scope="row">Location:</th>
                         <td>{{ plot.county|default:plot.location }}</td>
                     </tr>
                     <tr>
-                        <th>Seller:</th>
+                        <th scope="row">Seller:</th>
                         <td>
                             {% if plot.agent and plot.agent.user %}
                                 {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
@@ -56,7 +56,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <th>Created:</th>
+                        <th scope="row">Created:</th>
                         <td>{{ plot.created_at|date:"M d, Y H:i" }}</td>
                     </tr>
                 </table>
@@ -85,7 +85,7 @@
                         <div class="mt-3">
                             <strong>Progress:</strong>
                             <div class="progress mt-2">
-                                <div class="progress-bar" role="progressbar" style="width: {{ verification.progress_percentage }}%;">
+                                <div class="progress-bar" role="progressbar" style="width: {{ verification.progress_percentage }}%;" aria-valuenow="{{ verification.progress_percentage }}" aria-valuemin="0" aria-valuemax="100">
                                     {{ verification.progress_percentage }}%
                                 </div>
                             </div>
@@ -133,9 +133,9 @@
             </div>
             <div class="admin-card-body">
                 {% if logs %}
-                    <div class="timeline">
+                    <div class="timeline" role="list" aria-label="Verification history timeline">
                         {% for log in logs %}
-                            <div class="timeline-item">
+                            <div class="timeline-item" role="listitem">
                                 <div class="timeline-badge 
                                     {% if log.verification_type == 'approval' %}bg-success
                                     {% elif log.verification_type == 'rejection' %}bg-danger

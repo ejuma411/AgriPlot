@@ -1,0 +1,155 @@
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const plotForm = document.getElementById('plotForm');
+    const completionPercent = document.getElementById('completionPercent');
+    const completionBar = document.getElementById('completionBar');
+
+    function updateFormCompletion() {
+        if (!plotForm) return;
+        const fields = plotForm.querySelectorAll('input, select, textarea');
+        let requiredCount = 0;
+        let completedCount = 0;
+
+        fields.forEach(field => {
+            if (field.type === 'hidden' || field.disabled) return;
+            if (field.hasAttribute('required')) {
+                requiredCount += 1;
+                if (field.type === 'checkbox' || field.type === 'radio') {
+                    if (field.checked) completedCount += 1;
+                } else if (field.value && field.value.trim() !== '') {
+                    completedCount += 1;
+                }
+            }
+        });
+
+        const percent = requiredCount ? Math.round((completedCount / requiredCount) * 100) : 0;
+        if (completionPercent) completionPercent.textContent = `${percent}%`;
+        if (completionBar) completionBar.style.width = `${percent}%`;
+    }
+
+    if (plotForm) {
+        plotForm.addEventListener('input', updateFormCompletion);
+        plotForm.addEventListener('change', updateFormCompletion);
+    }
+
+    updateFormCompletion();
+
+    // Mobile sidebar toggle
+    const mobileToggle = document.getElementById('mobileMenuToggle');
+    const sidebar = document.querySelector('.dashboard-sidebar');
+    if (mobileToggle && sidebar) {
+        mobileToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('show');
+        });
+    }
+
+    // Subcounty loader
+    const countySelect = document.getElementById('id_county');
+    const subcountySelect = document.getElementById('id_subcounty');
+    const subcountyLoading = document.getElementById('subcounty-loading');
+    const subcountyFeedback = document.getElementById('subcounty-feedback');
+
+    if (countySelect && subcountySelect) {
+        countySelect.addEventListener('change', () => {
+            const county = countySelect.value;
+            if (!county) {
+                subcountySelect.innerHTML = '<option value="">Select sub-county</option>';
+                subcountySelect.disabled = true;
+                return;
+            }
+            if (subcountyLoading) subcountyLoading.style.display = 'inline-flex';
+            fetch(`/get-subcounties/?county=${encodeURIComponent(county)}`)
+                .then(res => res.json())
+                .then(data => {
+                    const subcounties = data.subcounties || [];
+                    subcountySelect.innerHTML = '<option value="">Select sub-county</option>';
+                    subcounties.forEach(name => {
+                        const opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        subcountySelect.appendChild(opt);
+                    });
+                    subcountySelect.disabled = false;
+                    if (subcountyFeedback) {
+                        subcountyFeedback.textContent = subcounties.length ? '' : 'No sub-counties found.';
+                    }
+                })
+                .catch(() => {
+                    if (subcountyFeedback) subcountyFeedback.textContent = 'Unable to load sub-counties.';
+                })
+                .finally(() => {
+                    if (subcountyLoading) subcountyLoading.style.display = 'none';
+                });
+        });
+    }
+
+    // Subdivision toggle
+    const subdivisionCheckbox = document.getElementById('{{ form.is_subdivision.id_for_label|default:"id_is_subdivision" }}');
+    const originalParcelRow = document.getElementById('originalParcelRow');
+    if (subdivisionCheckbox && originalParcelRow) {
+        const toggle = () => {
+            originalParcelRow.style.display = subdivisionCheckbox.checked ? 'block' : 'none';
+        };
+        subdivisionCheckbox.addEventListener('change', toggle);
+        toggle();
+    }
+
+    // Registry lookup
+    const registryBtn = document.getElementById('registryFetchBtn');
+    const registryStatus = document.getElementById('registryFetchStatus');
+    if (registryBtn) {
+        registryBtn.addEventListener('click', () => {
+            const parcelInput = document.getElementById('{{ form.parcel_number.id_for_label|default:"id_parcel_number" }}');
+            const parcelNumber = parcelInput ? parcelInput.value.trim() : '';
+            if (!parcelNumber) {
+                if (registryStatus) registryStatus.textContent = 'Enter a parcel number first.';
+                return;
+            }
+            if (registryStatus) registryStatus.textContent = 'Checking registry...';
+            AgriPlotUI?.trackEvent?.('cta_click', { cta: 'registry_lookup' });
+            fetch(`/api/registry-lookup/?parcel_number=${encodeURIComponent(parcelNumber)}`)
+                .then(res => res.json().then(data => ({ ok: res.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok || !data.verified) {
+                        if (registryStatus) registryStatus.textContent = data.message || 'Registry lookup failed.';
+                        return;
+                    }
+                    if (registryStatus) registryStatus.textContent = data.message || 'Registry data found.';
+                })
+                .catch(() => {
+                    if (registryStatus) registryStatus.textContent = 'Registry lookup failed. Try again.';
+                });
+        });
+    }
+
+    // File preview
+    const filePreviewMap = {
+        '{{ form.title_deed.id_for_label }}': 'titleDeedPreview',
+        '{{ form.official_search.id_for_label }}': 'officialSearchPreview',
+        '{{ form.survey_map.id_for_label }}': 'surveyMapPreview',
+        '{{ form.spousal_consent_doc.id_for_label }}': 'spousalConsentPreview',
+        '{{ form.landowner_id_doc.id_for_label }}': 'landownerIdPreview',
+        '{{ form.kra_pin.id_for_label }}': 'kraPinPreview',
+        '{{ form.soil_report.id_for_label }}': 'soilReportPreview',
+        '{{ form.rates_clearance.id_for_label }}': 'ratesClearancePreview',
+        '{{ form.lcb_consent_doc.id_for_label }}': 'lcbConsentPreview',
+        '{{ form.plupa1_form.id_for_label }}': 'plupa1Preview',
+        '{{ form.consent_to_transfer.id_for_label }}': 'consentTransferPreview',
+        '{{ form.rent_clearance.id_for_label }}': 'rentClearancePreview',
+    };
+
+    Object.entries(filePreviewMap).forEach(([inputId, previewId]) => {
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+        if (!input || !preview) return;
+        input.addEventListener('change', () => {
+            const file = input.files && input.files[0];
+            if (!file) {
+                preview.textContent = '';
+                return;
+            }
+            preview.textContent = `${file.name} (${Math.round(file.size / 1024)} KB)`;
+        });
+    });
+});
+</script>

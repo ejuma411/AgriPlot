@@ -1,0 +1,39 @@
+<aside class="dashboard-sidebar" aria-label="Dashboard navigation">
+    <div class="sidebar-brand">
+        <i class="fas fa-leaf" aria-hidden="true"></i>
+        <span>AgriPlot</span>
+    </div>
+
+    <nav class="sidebar-nav">
+        <a href="{% url 'listings:staff_dashboard' %}" class="nav-item" data-analytics="sidebar_dashboard">
+            <i class="fas fa-home" aria-hidden="true"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="{% url 'listings:my_plots' %}" class="nav-item" data-analytics="sidebar_my_plots">
+            <i class="fas fa-list" aria-hidden="true"></i>
+            <span>My Plots</span>
+        </a>
+        <a href="{% url 'listings:add_plot' %}" class="nav-item active" data-analytics="sidebar_add_plot">
+            <i class="fas fa-plus-circle" aria-hidden="true"></i>
+            <span>Add New Plot</span>
+        </a>
+        <a href="{% url 'listings:buyer_interests' %}" class="nav-item" data-analytics="sidebar_messages">
+            <i class="fas fa-envelope" aria-hidden="true"></i>
+            <span>Messages</span>
+        </a>
+        <a href="{% url 'listings:profile_management' %}" class="nav-item" data-analytics="sidebar_profile">
+            <i class="fas fa-user-circle" aria-hidden="true"></i>
+            <span>Profile</span>
+        </a>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="user-info">
+            <div class="user-avatar">{{ request.user.get_full_name|first|upper }}</div>
+            <div class="user-details">
+                <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
+                <p class="user-role">{{ profile_type|default:"User" }}</p>
+            </div>
+        </div>
+    </div>
+</aside>

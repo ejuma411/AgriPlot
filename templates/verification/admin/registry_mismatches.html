@@ -9,24 +9,27 @@
             <h2 class="mb-1">Registry Mismatch Report</h2>
             <p class="text-muted mb-0">Failed registry verification attempts</p>
         </div>
-        <form method="get" class="d-flex gap-2">
-            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search parcel or owner">
-            <button class="btn btn-outline-primary" type="submit">Search</button>
+        <form method="get" class="d-flex gap-2" aria-label="Search registry mismatches">
+            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search parcel or owner" aria-label="Search parcel or owner">
+            <button class="btn btn-outline-primary" type="submit" data-analytics="registry_mismatch_search">Search</button>
         </form>
     </div>
 
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-striped mb-0">
+                <table class="table table-striped mb-0" aria-describedby="registryMismatchCaption">
+                    <caption id="registryMismatchCaption" class="visually-hidden">
+                        Registry mismatch attempts including parcel number and owner information.
+                    </caption>
                     <thead class="table-light">
                         <tr>
-                            <th>Parcel Number</th>
-                            <th>Provided Owner</th>
-                            <th>Provided ID</th>
-                            <th>User</th>
-                            <th>Reason</th>
-                            <th>Attempted At</th>
+                            <th scope="col">Parcel Number</th>
+                            <th scope="col">Provided Owner</th>
+                            <th scope="col">Provided ID</th>
+                            <th scope="col">User</th>
+                            <th scope="col">Reason</th>
+                            <th scope="col">Attempted At</th>
                         </tr>
                     </thead>
                     <tbody>

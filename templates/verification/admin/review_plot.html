@@ -1261,12 +1261,12 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (action === 'reject' && !notes) {
             e.preventDefault();
-            alert('Please provide a reason for rejection in the notes.');
+            AgriPlotUI.showToast({ message: 'Please provide a reason for rejection in the notes.', type: 'warning' });
         }
         
         if (action === 'request_changes' && !notes) {
             e.preventDefault();
-            alert('Please specify what changes are needed in the notes.');
+            AgriPlotUI.showToast({ message: 'Please specify what changes are needed in the notes.', type: 'warning' });
         }
     });
 });
@@ -1292,17 +1292,18 @@ function triggerArdhisasa() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('✅ Ardhisasa verification started successfully! The page will reload to show results.');
+            AgriPlotUI.showToast({ message: 'Ardhisasa verification started successfully! The page will reload to show results.', type: 'success' });
+            AgriPlotUI.trackEvent('cta_click', { cta: 'ardhisasa_verification' });
             location.reload();
         } else {
-            alert('❌ Error: ' + data.error);
+            AgriPlotUI.showToast({ message: 'Error: ' + data.error, type: 'danger' });
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to start verification. Please try again.');
+        AgriPlotUI.showToast({ message: 'Failed to start verification. Please try again.', type: 'danger' });
         btn.innerHTML = originalText;
         btn.disabled = false;
     });

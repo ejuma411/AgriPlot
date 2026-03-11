@@ -18,12 +18,62 @@
     <link rel="stylesheet" href="{% static 'css/styles.css' %}">
 
     <style>
+        :root {
+            color-scheme: light;
+        }
+
         /* Base template styles for header and footer visibility */
         body {
             display: flex;
             flex-direction: column;
             min-height: 100vh;
             background: var(--ag-sand-100);
+        }
+
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 16px;
+            background: #1f8b4c;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            z-index: 2000;
+            transition: top 0.2s ease;
+        }
+
+        .skip-link:focus {
+            top: 12px;
+            outline: 3px solid #f0b429;
+            outline-offset: 2px;
+        }
+
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible,
+        textarea:focus-visible {
+            outline: 3px solid #1f8b4c;
+            outline-offset: 2px;
+        }
+
+        .required-indicator {
+            color: #dc3545;
+            margin-left: 0.25rem;
+            font-weight: 700;
+        }
+
+        .toast-container {
+            z-index: 2000;
+        }
+
+        .toast {
+            border: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+
+        .toast-header {
+            border-bottom: none;
         }
 
         /* Header/Navbar Styles */
@@ -275,8 +325,11 @@
 </head>
 <body>
 
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<div id="ag-live-region" class="visually-hidden" aria-live="polite" aria-atomic="true"></div>
+
 <!-- Navigation Bar -->
-<nav class="navbar navbar-expand-lg sticky-top">
+<nav class="navbar navbar-expand-lg sticky-top" aria-label="Primary navigation">
     <div class="container-fluid px-3 px-md-4">
         <!-- Brand Logo -->
         <a class="navbar-brand fw-bold d-flex align-items-center gap-2" href="{% url 'listings:home' %}">
@@ -305,7 +358,7 @@
                     <!-- Dashboard Link - Routes to appropriate dashboard -->
                     {% if not user.profile.role == 'buyer' %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'listings:dashboard_router' %}">
+                        <a class="nav-link" href="{% url 'listings:dashboard_router' %}" data-analytics="nav_dashboard">
                             <i class="fas fa-chart-line me-1"></i> Dashboard
                             {% if user.is_superuser and stats.pending_review %}
                                 <span class="badge bg-danger ms-1">{{ stats.pending_review }}</span>
@@ -324,7 +377,7 @@
                                 <i class="fas fa-shield-alt me-1"></i> Admin
                             </a>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'verification:verification_queue' %}">
+                                <li><a class="dropdown-item" href="{% url 'verification:verification_queue' %}" data-analytics="admin_verification_queue">
                                     <i class="fas fa-list me-2"></i>Verification Queue
                                     {% if stats.pending_review %}<span class="badge bg-danger">{{ stats.pending_review }}</span>{% endif %}
                                 </a></li>
@@ -374,7 +427,7 @@
                                 <li><a class="dropdown-item" href="{% url 'listings:my_plots' %}">
                                     <i class="fas fa-list me-2"></i>My Plots
                                 </a></li>
-                                <li><a class="dropdown-item" href="{% url 'listings:add_plot' %}">
+                                <li><a class="dropdown-item" href="{% url 'listings:add_plot' %}" data-analytics="cta_add_plot">
                                     <i class="fas fa-plus-circle me-2"></i>Add New Plot
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'listings:buyer_interests' %}">
@@ -438,7 +491,7 @@
 </nav>
 
 <!-- Main Content -->
-<main class="main-content">
+<main id="main-content" class="main-content" tabindex="-1">
     {% block content %}
     <!-- page-specific content will go here -->
     {% endblock %}
@@ -505,6 +558,72 @@
 
 <!-- Custom JS -->
 <script>
+    window.AgriPlotUI = window.AgriPlotUI || {};
+
+    AgriPlotUI.showToast = function({ message, type = 'info', delay = 4500 } = {}) {
+        const container = document.getElementById('ag-toast-container');
+        if (!container) return;
+
+        const toastEl = document.createElement('div');
+        toastEl.className = `toast align-items-center text-bg-${type} border-0`;
+        toastEl.setAttribute('role', 'status');
+        toastEl.setAttribute('aria-live', 'polite');
+        toastEl.setAttribute('aria-atomic', 'true');
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">${message}</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+
+        container.appendChild(toastEl);
+        const toast = new bootstrap.Toast(toastEl, { delay });
+        toast.show();
+        AgriPlotUI.trackEvent('toast_shown', { type });
+
+        toastEl.addEventListener('hidden.bs.toast', () => {
+            toastEl.remove();
+        });
+    };
+
+    AgriPlotUI.trackEvent = function(eventName, payload = {}) {
+        if (navigator.doNotTrack === "1") return;
+        const csrftoken = AgriPlotUI.getCookie('csrftoken');
+        const body = JSON.stringify({
+            event: eventName,
+            path: window.location.pathname,
+            timestamp: new Date().toISOString(),
+            ...payload,
+        });
+
+        if (navigator.sendBeacon) {
+            const blob = new Blob([body], { type: 'application/json' });
+            navigator.sendBeacon('/analytics/track/', blob);
+            return;
+        }
+
+        fetch('/analytics/track/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrftoken,
+            },
+            credentials: 'same-origin',
+            body,
+        }).catch(() => {});
+    };
+
+    AgriPlotUI.getCookie = function(name) {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.startsWith(name + '=')) {
+                return decodeURIComponent(cookie.substring(name.length + 1));
+            }
+        }
+        return null;
+    };
+
     // Active nav link highlighting
     document.addEventListener('DOMContentLoaded', function() {
         const navLinks = document.querySelectorAll('.navbar-nav .nav-link');
@@ -514,6 +633,7 @@
             const href = link.getAttribute('href');
             if (currentPath === href || currentPath.startsWith(href + '/')) {
                 link.classList.add('active');
+                link.setAttribute('aria-current', 'page');
             }
         });
     });
@@ -532,7 +652,59 @@
             });
         });
     });
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const requiredFields = document.querySelectorAll('input[required], select[required], textarea[required]');
+        requiredFields.forEach(field => {
+            field.setAttribute('aria-required', 'true');
+            if (field.id) {
+                const label = document.querySelector(`label[for="${field.id}"]`);
+                if (label && !label.querySelector('.required-indicator')) {
+                    const indicator = document.createElement('span');
+                    indicator.className = 'required-indicator';
+                    indicator.textContent = '*';
+                    label.appendChild(indicator);
+                }
+            }
+        });
+
+        document.querySelectorAll('form').forEach(form => {
+            form.addEventListener('submit', () => {
+                AgriPlotUI.trackEvent('form_submit', {
+                    form_id: form.id || null,
+                    form_action: form.getAttribute('action') || null,
+                });
+            });
+        });
+
+        document.addEventListener('invalid', event => {
+            event.target.setAttribute('aria-invalid', 'true');
+        }, true);
+
+        document.addEventListener('input', event => {
+            if (event.target.hasAttribute('aria-invalid')) {
+                if (event.target.checkValidity()) {
+                    event.target.removeAttribute('aria-invalid');
+                }
+            }
+        });
+
+        document.querySelectorAll('[data-analytics]').forEach(element => {
+            element.addEventListener('click', () => {
+                AgriPlotUI.trackEvent('cta_click', {
+                    cta: element.getAttribute('data-analytics'),
+                    text: element.textContent.trim().slice(0, 80),
+                });
+            });
+        });
+
+        AgriPlotUI.trackEvent('page_view', {
+            referrer: document.referrer || null,
+        });
+    });
 </script>
+
+<div id="ag-toast-container" class="toast-container position-fixed top-0 end-0 p-3" aria-live="polite" aria-atomic="true"></div>
 
 {% block extra_js %}{% endblock %}
 

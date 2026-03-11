@@ -314,8 +314,8 @@ ARDHISASA_MODE = os.environ.get("ARDHISASA_MODE", "mock")  # mock | live
 REQUIRE_CONTACT_VERIFICATION = _env_bool("REQUIRE_CONTACT_VERIFICATION", default=False)
 REQUIRE_2FA_FOR_LISTING = _env_bool("REQUIRE_2FA_FOR_LISTING", default=False)
 REQUIRE_DOCUMENT_VERIFICATION = _env_bool("REQUIRE_DOCUMENT_VERIFICATION", default=False)
-REQUIRE_2FA = _env_bool("REQUIRE_2FA", default=True)
-REQUIRE_2FA_ENROLLMENT = _env_bool("REQUIRE_2FA_ENROLLMENT", default=True)
+REQUIRE_2FA = _env_bool("REQUIRE_2FA", default=False)
+REQUIRE_2FA_ENROLLMENT = _env_bool("REQUIRE_2FA_ENROLLMENT", default=False)
 
 # Rate limiting
 PLOT_CREATE_RATE_LIMIT = int(os.environ.get("PLOT_CREATE_RATE_LIMIT", "0"))

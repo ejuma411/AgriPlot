@@ -27,6 +27,9 @@
             {% csrf_token %}
             <label>Authenticator Code</label>
             {{ form.code }}
+            {% if form.code.errors %}
+                <div class="auth-alert alert-error" role="alert">{{ form.code.errors }}</div>
+            {% endif %}
             <button type="submit" class="auth-btn">Enable 2FA</button>
         </form>
         <p class="text-muted">Tip: Keep your backup codes somewhere offline.</p>
