@@ -135,6 +135,11 @@ INSTALLED_APPS = [
     "formtools",
 
     # Local Apps
+    "accounts",
+    "authentication",
+    "security",
+    "verification",
+    "notifications",
     "listings",
     "registry_mock",
 ]
@@ -147,7 +152,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "listings.middleware.EnforceTwoFactorEnrollmentMiddleware",
+    "security.middleware.EnforceTwoFactorEnrollmentMiddleware",
 ]
 
 ROOT_URLCONF = "agriplot.urls"

@@ -1,0 +1,643 @@
+{% extends "listings/admin/base_admin.html" %}
+{% load static %}
+
+{% block title %}Complete Task: {{ task.get_verification_type_display }}{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="page-header-title">
+            <h1><i class="fas fa-check-circle me-2"></i>Complete Task</h1>
+            <p class="page-header-subtitle">{{ task.get_verification_type_display }} for {{ plot.title }}</p>
+        </div>
+        <div class="page-header-actions">
+            <a href="{% url 'verification:my_tasks' %}" class="btn">
+                <i class="fas fa-arrow-left me-2"></i>Back to My Tasks
+            </a>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column: Task Info -->
+    <div class="col-md-4 mb-4">
+        <!-- Task Information Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-info-circle me-2"></i>Task Information
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <table class="details-table">
+                    <tr>
+                        <th>Task Type:</th>
+                        <td>
+                            <span class="badge 
+                                {% if task.verification_type == 'document_review' %}bg-info
+                                {% elif task.verification_type == 'extension_review' %}bg-success
+                                {% elif task.verification_type == 'surveyor_inspection' %}bg-warning
+                                {% endif %} p-2">
+                                {{ task.get_verification_type_display }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Assigned:</th>
+                        <td>{{ task.assigned_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Time Elapsed:</th>
+                        <td>{{ task.assigned_at|timesince }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Plot Details Card -->
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-map-marker-alt me-2"></i>Plot Details
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <table class="details-table">
+                    <tr>
+                        <th>Title:</th>
+                        <td>{{ plot.title }}</td>
+                    </tr>
+                    <tr>
+                        <th>ID:</th>
+                        <td>#{{ plot.id }}</td>
+                    </tr>
+                    <tr>
+                        <th>Location:</th>
+                        <td>
+                            {% if plot.county %}
+                                {{ plot.county }}{% if plot.subcounty %} - {{ plot.subcounty }}{% endif %}
+                            {% else %}
+                                {{ plot.location }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Area:</th>
+                        <td>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Parcel Number:</th>
+                        <td>{{ plot.parcel_number|default:"Not provided" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Registration Section:</th>
+                        <td>{{ plot.registration_section|default:"Not provided" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Land Type:</th>
+                        <td>{{ plot.get_land_type_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>Listing Type:</th>
+                        <td>{{ plot.get_listing_type_display }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <!-- Document Status Card -->
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-file-alt me-2"></i>Document Status
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <ul class="document-checklist">
+                    <li class="{% if plot.title_deed %}completed{% endif %}">
+                        <i class="fas {% if plot.title_deed %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Title Deed
+                        {% if not plot.title_deed %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.official_search %}completed{% endif %}">
+                        <i class="fas {% if plot.official_search %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Official Search
+                        {% if not plot.official_search %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.survey_map %}completed{% endif %}">
+                        <i class="fas {% if plot.survey_map %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Survey Map / Mutation
+                        {% if not plot.survey_map %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.landowner_id_doc %}completed{% endif %}">
+                        <i class="fas {% if plot.landowner_id_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Landowner ID
+                        {% if not plot.landowner_id_doc %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.kra_pin %}completed{% endif %}">
+                        <i class="fas {% if plot.kra_pin %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        KRA PIN
+                        {% if not plot.kra_pin %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.rates_clearance %}completed{% endif %}">
+                        <i class="fas {% if plot.rates_clearance %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Rates Clearance
+                        {% if not plot.rates_clearance %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.rent_clearance %}completed{% endif %}">
+                        <i class="fas {% if plot.rent_clearance %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Rent Clearance
+                        {% if not plot.rent_clearance %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                    <li class="{% if plot.spousal_consent_doc %}completed{% endif %}">
+                        <i class="fas {% if plot.spousal_consent_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
+                        Spousal Consent
+                        {% if not plot.spousal_consent_doc %}<small class="text-danger">(Missing)</small>{% endif %}
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Task Completion Form -->
+    <div class="col-md-8 mb-4">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title">
+                    <i class="fas fa-clipboard-check me-2"></i>Task Completion Form
+                </h5>
+            </div>
+            <div class="admin-card-body">
+                <form method="POST" id="completeTaskForm">
+                    {% csrf_token %}
+                    
+                    <!-- Task Type Specific Questions -->
+                    {% if task.verification_type == 'document_review' %}
+                        <div class="verification-section mb-4">
+                            <h6 class="section-subtitle">Split-Screen Validation</h6>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-light">
+                                            <strong>Seller Uploads</strong>
+                                        </div>
+                                        <div class="card-body small">
+                                            <div><strong>Title Deed:</strong>
+                                                {% if plot.title_deed %}
+                                                    <a href="{{ plot.title_deed.url }}" target="_blank">Open</a>
+                                                {% else %}
+                                                    <span class="text-danger">Missing</span>
+                                                {% endif %}
+                                            </div>
+                                            <div><strong>Official Search:</strong>
+                                                {% if plot.official_search %}
+                                                    <a href="{{ plot.official_search.url }}" target="_blank">Open</a>
+                                                {% else %}
+                                                    <span class="text-danger">Missing</span>
+                                                {% endif %}
+                                            </div>
+                                            <div><strong>ID Document:</strong>
+                                                {% if plot.landowner_id_doc %}
+                                                    <a href="{{ plot.landowner_id_doc.url }}" target="_blank">Open</a>
+                                                {% else %}
+                                                    <span class="text-danger">Missing</span>
+                                                {% endif %}
+                                            </div>
+                                            <div><strong>KRA PIN:</strong>
+                                                {% if plot.kra_pin %}
+                                                    <a href="{{ plot.kra_pin.url }}" target="_blank">Open</a>
+                                                {% else %}
+                                                    <span class="text-danger">Missing</span>
+                                                {% endif %}
+                                            </div>
+                                            <div><strong>Rates Clearance:</strong>
+                                                {% if plot.rates_clearance %}
+                                                    <a href="{{ plot.rates_clearance.url }}" target="_blank">Open</a>
+                                                {% else %}
+                                                    <span class="text-muted">Not provided</span>
+                                                {% endif %}
+                                            </div>
+                                            <div><strong>Rent Clearance:</strong>
+                                                {% if plot.rent_clearance %}
+                                                    <a href="{{ plot.rent_clearance.url }}" target="_blank">Open</a>
+                                                {% else %}
+                                                    <span class="text-muted">Not provided</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-light">
+                                            <strong>Seller Form Data</strong>
+                                        </div>
+                                        <div class="card-body small">
+                                            <div><strong>Registered Owner:</strong> {{ plot.owner_full_name|default:"-" }}</div>
+                                            <div><strong>Owner ID:</strong> {{ plot.owner_id_number|default:"-" }}</div>
+                                            <div><strong>KRA PIN:</strong> {{ plot.owner_kra_pin_number|default:"-" }}</div>
+                                            <div><strong>Parcel No:</strong> {{ plot.parcel_number|default:"-" }}</div>
+                                            <div><strong>Reg. Section:</strong> {{ plot.registration_section|default:"-" }}</div>
+                                            <div><strong>Search Ref:</strong> {{ plot.search_reference_number|default:"-" }}</div>
+                                            <div><strong>Search Date:</strong> {{ plot.search_certificate_date|date:"M d, Y"|default:"-" }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header bg-light">
+                                            <strong>Registry Data</strong>
+                                        </div>
+                                        <div class="card-body small">
+                                            <div><strong>Owner Name:</strong> {{ registry_data.owner_name|default:"-" }}</div>
+                                            <div><strong>Parcel No:</strong> {{ registry_data.parcel_number|default:"-" }}</div>
+                                            <div><strong>Title No:</strong> {{ registry_data.title_number|default:"-" }}</div>
+                                            <div><strong>Search Ref:</strong> {{ registry_data.search_reference|default:"-" }}</div>
+                                            <div><strong>Encumbrance:</strong> {{ registry_data.encumbrance_result|default:"-" }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="verification-section mb-4">
+                            <h6 class="section-subtitle">Document Verification Checklist</h6>
+                            <div class="checklist-group">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_title" name="check_title" required>
+                                    <label class="form-check-label" for="check_title">
+                                        <strong>Title Deed</strong><br>
+                                        <small class="text-muted">Verify that the title deed is clear, authentic, and matches the plot details</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_search" name="check_search" required>
+                                    <label class="form-check-label" for="check_search">
+                                        <strong>Official Search</strong><br>
+                                        <small class="text-muted">Verify that the official search is recent (within 30 days) and matches title deed</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_id" name="check_id" required>
+                                    <label class="form-check-label" for="check_id">
+                                        <strong>Landowner ID</strong><br>
+                                        <small class="text-muted">Verify that the ID matches the name on title deed and is valid</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_kra" name="check_kra" required>
+                                    <label class="form-check-label" for="check_kra">
+                                        <strong>KRA PIN</strong><br>
+                                        <small class="text-muted">Verify that the KRA PIN matches the landowner's name</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_name_match" name="check_name_match" required>
+                                    <label class="form-check-label" for="check_name_match">
+                                        <strong>Name Match (ID vs Title)</strong><br>
+                                        <small class="text-muted">Exact name match between ID and Title Deed (including middle names)</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_seal_signature" name="check_seal_signature" required>
+                                    <label class="form-check-label" for="check_seal_signature">
+                                        <strong>Seal & Signature</strong><br>
+                                        <small class="text-muted">Title Deed has Ministry of Lands seal and Registrar signature</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_rates_clearance" name="check_rates_clearance" required>
+                                    <label class="form-check-label" for="check_rates_clearance">
+                                        <strong>Rates Clearance</strong><br>
+                                        <small class="text-muted">County rates clearance certificate (last 3 months)</small>
+                                    </label>
+                                </div>
+                                {% if plot.ownership_type == 'leasehold' %}
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_rent_clearance" name="check_rent_clearance" required>
+                                    <label class="form-check-label" for="check_rent_clearance">
+                                        <strong>Rent Clearance</strong><br>
+                                        <small class="text-muted">National government land rent clearance (last 3 months)</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_consent_transfer" name="check_consent_transfer" required>
+                                    <label class="form-check-label" for="check_consent_transfer">
+                                        <strong>Consent to Transfer</strong><br>
+                                        <small class="text-muted">Required approval for leasehold transfer</small>
+                                    </label>
+                                </div>
+                                {% endif %}
+                                {% if plot.land_type == 'agricultural' %}
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_lcb_consent" name="check_lcb_consent" required>
+                                    <label class="form-check-label" for="check_lcb_consent">
+                                        <strong>LCB Consent</strong><br>
+                                        <small class="text-muted">Land Control Board consent for agricultural land</small>
+                                    </label>
+                                </div>
+                                {% endif %}
+                                {% if plot.is_subdivision %}
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_mutation_form" name="check_mutation_form" required>
+                                    <label class="form-check-label" for="check_mutation_form">
+                                        <strong>Mutation Form / Survey Map</strong><br>
+                                        <small class="text-muted">Approved mutation form for subdivision</small>
+                                    </label>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_plupa1" name="check_plupa1" required>
+                                    <label class="form-check-label" for="check_plupa1">
+                                        <strong>PLUPA 1 / PPA 1</strong><br>
+                                        <small class="text-muted">County approval for subdivision/change of use</small>
+                                    </label>
+                                </div>
+                                {% endif %}
+                                {% if plot.spousal_consent %}
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_spousal_consent" name="check_spousal_consent" required>
+                                    <label class="form-check-label" for="check_spousal_consent">
+                                        <strong>Spousal Consent</strong><br>
+                                        <small class="text-muted">Affidavit confirming spousal consent</small>
+                                    </label>
+                                </div>
+                                {% endif %}
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="checkbox" id="check_search_recency" name="check_search_recency" required>
+                                    <label class="form-check-label" for="check_search_recency">
+                                        <strong>Search Recency</strong><br>
+                                        <small class="text-muted">Official Search Certificate dated within 30 days</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="verification-section mb-4">
+                            <h6 class="section-subtitle">Extracted Document Details</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Registered Owner Name (from Title/Official Search)</label>
+                                    <input type="text" class="form-control" name="owner_name_extracted" value="{{ form_data.owner_name_extracted|default:'' }}" required>
+                                    <small class="text-muted">Must match user name: <strong>{{ expected_owner_name }}</strong></small>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">National ID Number (from ID)</label>
+                                    <input type="text" class="form-control" name="id_number_extracted" value="{{ form_data.id_number_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">KRA PIN (from KRA Certificate)</label>
+                                    <input type="text" class="form-control" name="kra_pin_extracted" value="{{ form_data.kra_pin_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Title Number (from Title Deed)</label>
+                                    <input type="text" class="form-control" name="title_number_extracted" value="{{ form_data.title_number_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Parcel/Plot Number (from Title)</label>
+                                    <input type="text" class="form-control" name="parcel_number_extracted" value="{{ form_data.parcel_number_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Official Search Reference</label>
+                                    <input type="text" class="form-control" name="search_ref_extracted" value="{{ form_data.search_ref_extracted|default:'' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Official Search Date</label>
+                                    <input type="date" class="form-control" name="search_date_extracted" value="{{ form_data.search_date_extracted|default:'' }}">
+                                    <small class="text-muted">Should be within 30 days</small>
+                                </div>
+                            </div>
+                            <div class="form-check mt-2">
+                                <input class="form-check-input" type="checkbox" id="confirm_doc_match" name="confirm_doc_match" required>
+                                <label class="form-check-label" for="confirm_doc_match">
+                                    I confirm extracted details match the uploads, form data, and registry data.
+                                </label>
+                            </div>
+                        </div>
+                    {% elif task.verification_type == 'extension_review' %}
+                        <div class="verification-section mb-4">
+                            <h6 class="section-subtitle">Agricultural Assessment</h6>
+                            <div class="mb-3">
+                                <label class="form-label">Soil Type Verification</label>
+                                <select class="form-select" name="soil_verified" required>
+                                    <option value="">Select...</option>
+                                    <option value="yes">✅ Confirmed - Matches description</option>
+                                    <option value="partial">⚠️ Partial Match - Some discrepancies</option>
+                                    <option value="no">❌ Does Not Match</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Crop Suitability Assessment</label>
+                                <select class="form-select" name="crop_assessment" required>
+                                    <option value="">Select...</option>
+                                    <option value="excellent">🌟 Excellent for stated crops</option>
+                                    <option value="good">👍 Good for stated crops</option>
+                                    <option value="fair">👌 Fair - Some limitations</option>
+                                    <option value="poor">👎 Poor - Not suitable</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Additional Recommendations</label>
+                                <textarea class="form-control" name="crop_recommendations" rows="3" 
+                                          placeholder="Suggest alternative crops or improvements..."></textarea>
+                            </div>
+                        </div>
+                    {% elif task.verification_type == 'surveyor_inspection' %}
+                        <div class="verification-section mb-4">
+                            <h6 class="section-subtitle">Site Inspection Form</h6>
+                            <div class="mb-3">
+                                <label class="form-label">GPS Coordinates Verification</label>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <div class="input-group">
+                                            <span class="input-group-text">Lat</span>
+                                            <input type="text" class="form-control" name="verified_lat" placeholder="{{ plot.latitude }}">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <div class="input-group">
+                                            <span class="input-group-text">Lng</span>
+                                            <input type="text" class="form-control" name="verified_lng" placeholder="{{ plot.longitude }}">
+                                        </div>
+                                    </div>
+                                </div>
+                                <small class="text-muted">Enter actual GPS readings from site visit</small>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Boundary Confirmation</label>
+                                <select class="form-select" name="boundary_status" required>
+                                    <option value="">Select...</option>
+                                    <option value="clear">✅ Clear boundaries - Marked/Beaconed</option>
+                                    <option value="partial">⚠️ Partially clear - Needs demarcation</option>
+                                    <option value="dispute">❌ Boundary dispute suspected</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Site Photos</label>
+                                <input type="file" class="form-control" name="site_photos" multiple accept="image/*">
+                                <small class="text-muted">Upload photos from site visit</small>
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <!-- Common Fields -->
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Task Notes</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="4" 
+                                  placeholder="Enter your findings, observations, and recommendations..." required></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label d-block">Decision</label>
+                        <div class="btn-group w-100" role="group">
+                            <input type="radio" class="btn-check" name="approved" id="approve" value="true" autocomplete="off" required>
+                            <label class="btn btn-outline-success" for="approve">
+                                <i class="fas fa-check-circle me-2"></i>Approve
+                            </label>
+
+                            <input type="radio" class="btn-check" name="approved" id="reject" value="false" autocomplete="off">
+                            <label class="btn btn-outline-danger" for="reject">
+                                <i class="fas fa-times-circle me-2"></i>Reject
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span id="submitText">Submit Task Completion</span>
+                            <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
+                        </button>
+                        <a href="{% url 'verification:my_tasks' %}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .details-table {
+        width: 100%;
+    }
+
+    .details-table th {
+        text-align: left;
+        padding: 0.5rem 0;
+        color: var(--secondary);
+        font-weight: 500;
+        width: 40%;
+    }
+
+    .details-table td {
+        padding: 0.5rem 0;
+    }
+
+    .document-checklist {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .document-checklist li {
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #e9ecef;
+        display: flex;
+        align-items: center;
+    }
+
+    .document-checklist li:last-child {
+        border-bottom: none;
+    }
+
+    .verification-section {
+        background: var(--light);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .section-subtitle {
+        color: var(--primary);
+        font-weight: 600;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+
+    .checklist-group {
+        max-height: 300px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+    }
+
+    .form-check {
+        padding: 0.75rem;
+        background: white;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .form-check-input:checked {
+        background-color: var(--success);
+        border-color: var(--success);
+    }
+
+    .btn-group {
+        gap: 0.5rem;
+    }
+
+    .btn-group .btn {
+        border-radius: 8px !important;
+        padding: 1rem;
+    }
+
+    .input-group-text {
+        background: var(--light);
+        border: 1px solid #e9ecef;
+    }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('completeTaskForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitText = document.getElementById('submitText');
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    
+    {% if task.verification_type == 'document_review' %}
+    // Validate that all checkboxes are checked for document review
+    form.addEventListener('submit', function(e) {
+        const checkboxes = document.querySelectorAll('.form-check-input');
+        const requiredInputs = form.querySelectorAll('input[required], select[required], textarea[required]');
+        let allChecked = true;
+        
+        checkboxes.forEach(cb => {
+            if (!cb.checked) {
+                allChecked = false;
+            }
+        });
+
+        let allFilled = true;
+        requiredInputs.forEach(input => {
+            if (input.type === 'radio') return;
+            if (!input.value) {
+                allFilled = false;
+            }
+        });
+        
+        if (!allChecked || !allFilled) {
+            e.preventDefault();
+            alert('Please complete all required document checks and extracted fields before submitting.');
+            return false;
+        }
+    });
+    {% endif %}
+    
+    // Show loading state on submit
+    form.addEventListener('submit', function() {
+        submitBtn.disabled = true;
+        submitText.textContent = 'Submitting...';
+        loadingSpinner.classList.remove('d-none');
+    });
+});
+</script>
+{% endblock %}

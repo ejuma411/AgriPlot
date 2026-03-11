@@ -1,0 +1,15 @@
+{% extends "authentication/auth_base.html" %}
+{% block title %}Register Seller{% endblock %}
+
+{% block content %}
+<p class="auth-kicker">Role Selection</p>
+<h2 class="auth-title">Landowner Registration</h2>
+<p class="auth-subtitle">Choose the role that matches your verification path.</p>
+
+<div class="portal-signup">
+    <div class="auth-chip-row">
+        <a href="{% url 'listings:register_landowner' %}">Landowner</a>
+        <a href="{% url 'listings:register_agent' %}">Agent</a>
+    </div>
+</div>
+{% endblock %}

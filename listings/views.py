@@ -29,7 +29,7 @@ from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from .utils import log_audit
 from django.contrib.contenttypes.models import ContentType
 from registry_mock.services import verify_with_registry
-from .notification_service import NotificationService
+from notifications.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
@@ -52,367 +52,45 @@ from .utils import log_audit
 logger = logging.getLogger(__name__)
 
 wizard_file_storage = FileSystemStorage(location='/tmp/agriplot_uploads')
-
-
-# ============ LANDOWNER WIZARD ============
-FORMS = [
-    ("personal", LandownerStep1Form),
-    ("verification", LandownerStep2Form),
-    ("documents", LandownerStep3Form),
-    ("confirmation", LandownerStep4Form),
-]
-
-TEMPLATES = {
-    "personal": "auth/landowner_wizard_step.html",
-    "verification": "auth/landowner_wizard_step.html",
-    "documents": "auth/landowner_wizard_step.html",
-    "confirmation": "auth/landowner_wizard_step.html",
-}
-
-
-class LandownerWizard(SessionWizardView):
-    form_list = FORMS
-    file_storage = wizard_file_storage
-
-    def get_template_names(self):
-        return [TEMPLATES[self.steps.current]]
-
-    def get_context_data(self, form, **kwargs):
-        context = super().get_context_data(form=form, **kwargs)
-        total = self.steps.count
-        current_index = self.steps.step1
-        context['progress_percent'] = int((current_index / total) * 100)
-        context['step_labels'] = [
-            {'key': 'personal', 'label': 'Account'},
-            {'key': 'verification', 'label': 'Contact'},
-            {'key': 'documents', 'label': 'Documents'},
-            {'key': 'confirmation', 'label': 'Confirm'},
-        ]
-        return context
-
-    def post(self, *args, **kwargs):
-        """Allow save & resume without clearing wizard state."""
-        request = self.request
-        if request.POST.get('save_resume'):
-            messages.success(request, "Progress saved. You can resume this registration later.")
-            return redirect('listings:home')
-        if request.POST.get('reset_wizard'):
-            self.storage.reset()
-            messages.info(request, "Registration progress cleared.")
-            return redirect('listings:register_landowner')
-        return super().post(*args, **kwargs)
-
-    def dispatch(self, request, *args, **kwargs):
-        # If already logged in, use upgrade flow
-        if request.user.is_authenticated:
-            messages.info(request, "You already have an account. Use the landowner upgrade form.")
-            return redirect('listings:register_landowner_upgrade')
-        return super().dispatch(request, *args, **kwargs)
-
-    def done(self, form_list, **kwargs):
-        """Process wizard forms and send OTP for registration"""
-        try:
-            step1 = self.get_cleaned_data_for_step("personal") or {}
-            step2 = self.get_cleaned_data_for_step("verification") or {}
-            step3 = self.get_cleaned_data_for_step("documents") or {}
-
-            phone = step2.get("phone") or step1.get("phone")
-            if not phone:
-                messages.error(self.request, "Phone number is required.")
-                return redirect('listings:register_landowner')
-
-            # Store registration data in session for OTP flow
-            self.request.session['reg_data'] = {
-                'username': step1.get('username'),
-                'email': step1.get('email'),
-                'first_name': step1.get('first_name'),
-                'last_name': step1.get('last_name'),
-                'password': step1.get('password1'),
-                'role': 'landowner',
-                'phone': phone,
-                'address': f"{step2.get('region', '')}, {step2.get('city', '')}".strip(", "),
-            }
-            self.request.session['reg_phone'] = phone
-
-            # Store uploaded files temporarily for OTP flow
-            stored_files = {}
-            for field_name in ['national_id', 'kra_pin', 'title_deed', 'land_search', 'lcb_consent']:
-                file_obj = step3.get(field_name)
-                if not file_obj:
-                    continue
-                try:
-                    file_obj.seek(0)
-                except Exception:
-                    pass
-                file_path = default_storage.save(
-                    f"tmp/landowner_{uuid.uuid4().hex}_{file_obj.name}",
-                    file_obj
-                )
-                stored_files[field_name] = file_path
-
-            self.request.session['reg_files'] = stored_files
-
-            from .views_otp import send_otp_verification
-            return send_otp_verification(self.request)
-        except Exception as e:
-            messages.error(self.request, f"Error creating account: {str(e)}")
-            return redirect('listings:register_choice')
-
-
-# ============ AUTHENTICATION & REGISTRATION ============
-def custom_logout(request):
-    logout(request)
-    return redirect('listings:home')
-
-
-def _safe_next_url(request, fallback='listings:home'):
-    """Allow only local redirects from ?next=..."""
-    next_url = request.GET.get("next") or request.POST.get("next")
-    try:
-        current_host = request.get_host()
-    except DisallowedHost:
-        return resolve_url(fallback)
-    if next_url and url_has_allowed_host_and_scheme(
-        next_url,
-        allowed_hosts={current_host},
-        require_https=request.is_secure(),
-    ):
-        return next_url
-    return resolve_url(fallback)
-
-
-def _store_registration_files(files, field_names):
-    """Persist uploaded files temporarily and return storage paths."""
-    stored = {}
-    for field in field_names:
-        upload = files.get(field)
-        if not upload:
-            continue
-        filename = f"registration_uploads/{uuid.uuid4().hex}_{upload.name}"
-        stored[field] = default_storage.save(filename, upload)
-    return stored
-
-
-
-
-class CustomLoginView(LoginView):
-    template_name = "auth/login.html"
-
-def register_choice(request):
-    """Registration entrypoint: only buyer registration is allowed."""
-    return redirect('listings:register_buyer')
-
-
-def register_buyer(request):
-    role = request.GET.get('role')
-    if request.method == "GET" and role:
-        role = role.strip().lower()
-        if role == 'landowner':
-            return redirect('listings:register_landowner')
-        if role == 'agent':
-            return redirect('listings:register_agent')
-        if role in ('extension', 'extension_officer'):
-            if request.user.is_authenticated:
-                return redirect('listings:request_extension_officer')
-            request.session['reg_target_role'] = 'extension_officer'
-        if role in ('surveyor', 'land_surveyor'):
-            if request.user.is_authenticated:
-                return redirect('listings:request_land_surveyor')
-            request.session['reg_target_role'] = 'land_surveyor'
-
-    if request.method == "POST":
-        form = BuyerRegistrationForm(request.POST)
-        if form.is_valid():
-            # Store registration data in session
-            request.session['reg_data'] = {
-                'username': form.cleaned_data['username'],
-                'email': form.cleaned_data['email'],
-                'first_name': form.cleaned_data['first_name'],
-                'last_name': form.cleaned_data['last_name'],
-                'password': form.cleaned_data['password1'],
-                'role': 'buyer',
-                'phone': form.cleaned_data['phone']
-            }
-            request.session['reg_phone'] = form.cleaned_data['phone']
-            
-            # Redirect to OTP verification
-            from .views_otp import send_otp_verification
-            return send_otp_verification(request)
-    else:
-        form = BuyerRegistrationForm()
-    
-    return render(request, "auth/register_buyer.html", {"form": form})
-
-def register_landowner(request):
-    """Upgrade an existing user to landowner."""
-    if not request.user.is_authenticated:
-        messages.info(request, "Please complete the landowner registration wizard.")
-        return redirect('listings:register_landowner')
-
-    landowner_profile = LandownerProfile.objects.filter(user=request.user).first()
-    if request.method == "POST":
-        form = LandownerUpgradeForm(request.POST, request.FILES, instance=landowner_profile)
-        if form.is_valid():
-            try:
-                profile, _ = Profile.objects.get_or_create(user=request.user)
-                profile.role = 'landowner'
-                profile.save()
-                form.save(user=request.user)
-                messages.success(request, "Landowner documents submitted. Please wait for verification.")
-                return redirect(_safe_next_url(request))
-            except Exception as e:
-                messages.error(request, "Error submitting landowner details.")
-                logger.error(f"Landowner upgrade error: {str(e)}")
-    else:
-        form = LandownerUpgradeForm(instance=landowner_profile)
-
-    return render(request, "auth/register_landowner.html", {"form": form})
-
-
-def register_agent(request):
-    """Register as agent (new user) or upgrade (existing user)."""
-    if not request.user.is_authenticated:
-        if request.method == "POST":
-            form = AgentRegistrationForm(request.POST, request.FILES)
-            if form.is_valid():
-                request.session['reg_data'] = {
-                    'username': form.cleaned_data['username'],
-                    'email': form.cleaned_data['email'],
-                    'first_name': form.cleaned_data['first_name'],
-                    'last_name': form.cleaned_data['last_name'],
-                    'password': form.cleaned_data['password1'],
-                    'role': 'agent',
-                    'phone': form.cleaned_data['phone'],
-                    'id_number': form.cleaned_data['id_number'],
-                    'license_number': form.cleaned_data['license_number'],
-                }
-                request.session['reg_phone'] = form.cleaned_data['phone']
-                request.session['reg_files'] = _store_registration_files(
-                    request.FILES,
-                    ['license_doc', 'kra_pin', 'practicing_certificate', 'good_conduct', 'professional_indemnity']
-                )
-                from .views_otp import send_otp_verification
-                return send_otp_verification(request)
-        else:
-            form = AgentRegistrationForm()
-        return render(request, "auth/register_agent.html", {"form": form})
-
-    agent_profile = Agent.objects.filter(user=request.user).first()
-    if request.method == "POST":
-        form = AgentUpgradeForm(request.POST, request.FILES, instance=agent_profile)
-        if form.is_valid():
-            try:
-                profile, _ = Profile.objects.get_or_create(user=request.user)
-                profile.role = 'agent'
-                profile.save()
-                form.save(user=request.user)
-                messages.success(request, "Agent documents submitted. Please wait for verification.")
-                return redirect(_safe_next_url(request))
-            except Exception as e:
-                messages.error(request, "Error submitting agent details.")
-                logger.error(f"Agent upgrade error: {str(e)}")
-    else:
-        form = AgentUpgradeForm(instance=agent_profile)
-
-    return render(request, "auth/register_agent.html", {"form": form})
-
-
-def register_landowner_simple(request):
-    """Backward-compatibility alias for the landowner registration path."""
-    return redirect('listings:register_landowner_upgrade')
+from accounts.views_dashboard import (  # noqa: E402
+    buyer_interests,
+    dashboard_analytics,
+    dashboard_router,
+    my_plots,
+    plot_verification_detail,
+    staff_dashboard,
+    update_interest_status,
+)
+from accounts.views_profile import (  # noqa: E402
+    account_settings,
+    profile_edit,
+    profile_management,
+)
+from accounts.views_registration import (  # noqa: E402
+    _safe_next_url,
+    register_agent,
+    register_buyer,
+    register_choice,
+    register_landowner,
+    register_landowner_simple,
+)
+from accounts.views_wizard import FORMS, LandownerWizard  # noqa: E402
+from notifications.views import notifications_inbox  # noqa: E402
 
 
 @login_required
 def request_extension_officer(request):
-    """Allow a user to request extension officer role (pending approval)"""
-    try:
-        existing = request.user.extension_officer
-        messages.info(request, "You already have an extension officer profile.")
-        return redirect('listings:extension_dashboard')
-    except ExtensionOfficer.DoesNotExist:
-        existing = None
+    from verification.views import request_extension_officer as verification_view
 
-    if request.method == "POST":
-        form = ExtensionOfficerProfileForm(request.POST, instance=existing)
-        if form.is_valid():
-            profile = form.save(commit=False)
-            profile.user = request.user
-            profile.verified = False
-            profile.is_active = False
-            profile.save()
-            messages.success(request, "Request submitted. An admin will review your details.")
-            try:
-                from .notification_service import NotificationService
-                NotificationService.notify_role_request(
-                    request.user,
-                    "Extension Officer",
-                    details={"station": profile.station, "counties": profile.assigned_counties}
-                )
-            except Exception as e:
-                logger.error(f"Role request notification failed: {e}")
-            return redirect('listings:profile_management')
-    else:
-        form = ExtensionOfficerProfileForm(instance=existing)
-
-    context = {
-        "form": form,
-        "role_label": "Extension Officer",
-        "requirements": [
-            "Official employee ID",
-            "Designation and department",
-            "Station/assigned office",
-            "Qualifications and specializations",
-            "Phone and office address",
-            "Assigned counties and max daily tasks",
-        ],
-    }
-    return render(request, "listings/request_role.html", context)
+    return verification_view(request)
 
 
 @login_required
 def request_land_surveyor(request):
-    """Allow a user to request land surveyor role (pending approval)"""
-    try:
-        existing = request.user.land_surveyor
-        messages.info(request, "You already have a land surveyor profile.")
-        return redirect('listings:surveyor_dashboard')
-    except LandSurveyor.DoesNotExist:
-        existing = None
+    from verification.views import request_land_surveyor as verification_view
 
-    if request.method == "POST":
-        form = LandSurveyorProfileForm(request.POST, instance=existing)
-        if form.is_valid():
-            profile = form.save(commit=False)
-            profile.user = request.user
-            profile.verified = False
-            profile.is_active = False
-            profile.save()
-            messages.success(request, "Request submitted. An admin will review your details.")
-            try:
-                from .notification_service import NotificationService
-                NotificationService.notify_role_request(
-                    request.user,
-                    "Land Surveyor",
-                    details={"station": profile.station, "counties": profile.assigned_counties}
-                )
-            except Exception as e:
-                logger.error(f"Role request notification failed: {e}")
-            return redirect('listings:profile_management')
-    else:
-        form = LandSurveyorProfileForm(instance=existing)
+    return verification_view(request)
 
-    context = {
-        "form": form,
-        "role_label": "Land Surveyor",
-        "requirements": [
-            "Professional license number",
-            "Designation and station",
-            "Qualifications and experience",
-            "Phone and office address",
-            "Assigned counties and max daily tasks",
-        ],
-    }
-    return render(request, "listings/request_role.html", context)
 
 
 # ============ PUBLIC PAGES ============
@@ -1035,12 +713,12 @@ def add_plot(request):
                         logger.info(f"Current stage: {verification.current_stage}")
                         # Q5: Create verification tasks (document review, extension, surveyor) at submission
                         try:
-                            from .verification_service import VerificationService
+                            from verification.verification_service import VerificationService
                             tasks_created = VerificationService.create_verification_tasks(
                                 plot, initiated_by=request.user
                             )
                             logger.info(f"Created verification tasks for plot {plot.id}: {tasks_created}")
-                            from .notification_service import NotificationService
+                            from notifications.notification_service import NotificationService
                             NotificationService.notify_plot_submitted(plot)
                             # Trigger mock Ardhisasa verification for title search
                             try:
@@ -1251,7 +929,7 @@ from .forms import PlotForm
 from .models import Plot, Agent, LandownerProfile, VerificationTask, VerificationStatus, VerificationLog
 from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from .utils import log_audit
-from .verification_service import VerificationService
+from verification.verification_service import VerificationService
 
 # Get loggers
 logger = logging.getLogger(__name__)
@@ -1669,647 +1347,7 @@ def upload_verification_doc(request, plot_id):
 
 
 # ============ DASHBOARD VIEWS ============
-@login_required
-def staff_dashboard(request):
-    """Dashboard for agents/landowners with optional staff features"""
-    
-    # Start timing for performance monitoring
-    import time
-    start_time = time.time()
-    
-    logger.info(f"=== STAFF DASHBOARD STARTED === User: {request.user.username}")
-    
-    # Determine user type
-    is_agent = hasattr(request.user, 'agent')
-    is_landowner = hasattr(request.user, 'landownerprofile')
-    is_staff = request.user.is_staff or request.user.is_superuser
-    is_extension = hasattr(request.user, 'extension_officer')
-    is_surveyor = hasattr(request.user, 'land_surveyor')
-
-    if is_extension and not request.user.is_superuser:
-        return redirect('listings:extension_dashboard')
-    if is_surveyor and not request.user.is_superuser:
-        return redirect('listings:surveyor_dashboard')
-    if not (is_agent or is_landowner or is_staff or request.user.is_superuser):
-        messages.error(request, "You don't have access to this dashboard.")
-        return redirect('listings:home')
-    
-    # Get base context
-    context = {
-        'is_agent': is_agent,
-        'is_landowner': is_landowner,
-        'profile_type': "Agent" if is_agent else "Landowner",
-        'profile': request.user.agent if is_agent else request.user.landownerprofile if is_landowner else None,
-    }
-    
-    # Get user's plots
-    if is_agent:
-        plots = Plot.objects.filter(agent=request.user.agent)
-    elif is_landowner:
-        plots = Plot.objects.filter(landowner=request.user.landownerprofile)
-    elif request.user.is_superuser:
-        plots = Plot.objects.all()
-    else:
-        plots = Plot.objects.none()
-    
-    # Get content type for Plot
-    plot_content_type = ContentType.objects.get_for_model(Plot)
-    
-    # Calculate metrics by querying VerificationStatus directly
-    total_plots = plots.count()
-    
-    # Get plot IDs for this user
-    plot_ids = plots.values_list('id', flat=True)
-    
-    verification_map = {}
-    if plot_ids:
-        statuses = VerificationStatus.objects.filter(
-            content_type=plot_content_type,
-            object_id__in=plot_ids
-        )
-        for status in statuses:
-            verification_map[status.object_id] = status
-
-    # Attach to plots
-    for plot in plots:
-        plot.verification_status = verification_map.get(plot.id)
-
-    # Get verification statuses for these plots
-    verification_statuses = VerificationStatus.objects.filter(
-        content_type=plot_content_type,
-        object_id__in=plot_ids
-    )
-    
-    # Count by status
-    verified_plots = verification_statuses.filter(current_stage='approved').count()
-    in_review_plots = verification_statuses.filter(current_stage='admin_review').count()
-    pending_plots = verification_statuses.filter(current_stage='document_uploaded').count()
-    rejected_plots = verification_statuses.filter(current_stage='rejected').count()
-    
-    # Get user's verification status (for their account)
-    if is_agent:
-        verification = VerificationStatus.objects.filter(
-            content_type=ContentType.objects.get_for_model(Agent),
-            object_id=request.user.agent.id
-        ).first()
-    elif is_landowner:
-        verification = VerificationStatus.objects.filter(
-            content_type=ContentType.objects.get_for_model(LandownerProfile),
-            object_id=request.user.landownerprofile.id
-        ).first()
-    else:
-        verification = None
-
-    recent_interests = list(
-        UserInterest.objects.filter(plot__in=plots).order_by('-created_at')[:5]
-    )
-    
-    context.update({
-        'total_plots': total_plots,
-        'verified_plots': verified_plots,
-        'in_review_plots': in_review_plots,
-        'pending_plots': pending_plots,
-        'rejected_plots': rejected_plots,
-        'verified_percentage': (verified_plots / total_plots * 100) if total_plots > 0 else 0,
-        'in_review_percentage': (in_review_plots / total_plots * 100) if total_plots > 0 else 0,
-        'pending_percentage': (pending_plots / total_plots * 100) if total_plots > 0 else 0,
-        'rejected_percentage': (rejected_plots / total_plots * 100) if total_plots > 0 else 0,
-        'plots': plots.order_by('-created_at')[:6],
-        'recent_interests': recent_interests,
-        'verification': verification,
-        'recent_interests_count': len(recent_interests),
-    })
-    
-    # Add staff-specific data if user is staff
-    if is_staff:
-        # Staff stats
-        context['stats'] = {
-            'pending_review': VerificationStatus.objects.filter(
-                content_type=plot_content_type,
-                current_stage='document_uploaded'
-            ).count(),
-        }
-        
-        # Task stats
-        context['task_stats'] = {
-            'pending': VerificationTask.objects.filter(status='pending').count(),
-        }
-        
-        # My tasks count
-        context['my_tasks_count'] = VerificationTask.objects.filter(
-            assigned_to=request.user,
-            status='in_progress'
-        ).count()
-    
-    # Add extension officer data
-    if is_extension:
-        context['extension_tasks_count'] = VerificationTask.objects.filter(
-            assigned_to=request.user,
-            status='in_progress',
-            verification_type='extension_review'
-        ).count()
-    
-    # Calculate processing time
-    processing_time = time.time() - start_time
-    logger.info(f"Dashboard loaded in {processing_time:.2f} seconds")
-    logger.info(f"=== STAFF DASHBOARD ENDED === User: {request.user.username}")
-    
-    return render(request, 'listings/dashboard/staff_dashboard.html', context)
-
-
-@login_required
-def my_plots(request):
-    """View all plots with verification status"""
-    is_agent = hasattr(request.user, 'agent')
-    is_landowner = hasattr(request.user, 'landownerprofile')
-    
-    if not (is_agent or is_landowner or request.user.is_superuser):
-        messages.error(request, "You need to be a landowner or agent to view plots.")
-        return redirect('listings:home')
-    
-    if is_agent:
-        plots = Plot.objects.filter(agent=request.user.agent)
-    elif is_landowner:
-        plots = Plot.objects.filter(landowner=request.user.landownerprofile)
-    else:
-        plots = Plot.objects.all()
-    
-    # Filtering
-    status_filter = request.GET.get('status', 'all')
-    if status_filter != 'all':
-        verification_stage = 'document_uploaded' if status_filter == 'pending' else status_filter
-        plots = plots.filter(verification__current_stage=verification_stage)
-    
-    # Search
-    search_query = request.GET.get('search', '')
-    if search_query:
-        plots = plots.filter(
-            Q(title__icontains=search_query) |
-            Q(location__icontains=search_query)
-        )
-    
-    # Pagination
-    paginator = Paginator(plots.order_by('-created_at'), 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    # Status counts for filters
-    status_counts = {
-        'all': plots.count(),
-        'approved': plots.filter(verification__current_stage='approved').count(),
-        'admin_review': plots.filter(verification__current_stage='admin_review').count(),
-        'pending': plots.filter(verification__current_stage='document_uploaded').count(),
-        'rejected': plots.filter(verification__current_stage='rejected').count(),
-    }
-    
-    context = {
-        'page_obj': page_obj,
-        'status_filter': status_filter,
-        'search_query': search_query,
-        'status_counts': status_counts,
-        'total_plots': plots.count(),
-        'is_agent': is_agent,
-        'is_landowner': is_landowner,
-    }
-    
-    return render(request, 'listings/dashboard/my_plots.html', context)
-
-
-@login_required
-def plot_verification_detail(request, plot_id):
-    """Detailed view of plot verification status"""
-    plot = get_object_or_404(Plot, id=plot_id)
-    
-    # Check permission
-    is_agent = hasattr(request.user, 'agent') and plot.agent == request.user.agent
-    is_landowner = hasattr(request.user, 'landownerprofile') and plot.landowner == request.user.landownerprofile
-    
-    if not (is_agent or is_landowner or request.user.is_staff or request.user.is_superuser):
-        messages.error(request, "You don't have permission to view this plot.")
-        return redirect('listings:home')
-    
-    # ✅ FIX: Get or create verification status
-    verification, created = VerificationStatus.objects.get_or_create(
-        content_type=ContentType.objects.get_for_model(Plot),
-        object_id=plot.id,
-        defaults={
-            'current_stage': 'document_uploaded',
-            'document_uploaded_at': timezone.now()
-        }
-    )
-    
-    if created:
-        logger.info(f"Created missing verification status for plot {plot.id}")
-    
-    # Get required documents status
-    has_title_deed = bool(plot.title_deed)
-    has_official_search = bool(plot.official_search)
-    has_landowner_id = bool(plot.landowner_id_doc)
-    has_kra_pin = bool(plot.kra_pin)
-    has_soil_report = bool(plot.soil_report)
-    
-    # Get verification documents
-    verification_docs = plot.verification_docs.all()
-    verification_logs = VerificationLog.objects.filter(
-        plot=plot
-    ).select_related('verified_by').order_by('-created_at')[:50]
-
-    profile_type = "Buyer"
-    if hasattr(request.user, 'agent'):
-        profile_type = "Agent"
-    elif hasattr(request.user, 'landownerprofile'):
-        profile_type = "Landowner"
-    elif hasattr(request.user, 'extension_officer'):
-        profile_type = "Extension Officer"
-    elif hasattr(request.user, 'land_surveyor'):
-        profile_type = "Land Surveyor"
-    
-    context = {
-        'plot': plot,
-        'verification': verification,  # ✅ Pass the verification object
-        'verification_status': verification,
-        'has_title_deed': has_title_deed,
-        'has_official_search': has_official_search,
-        'has_landowner_id': has_landowner_id,
-        'has_kra_pin': has_kra_pin,
-        'has_soil_report': has_soil_report,
-        'verification_docs': verification_docs,
-        'documents_complete': all([has_title_deed, has_official_search, has_landowner_id, has_kra_pin]),
-        'verification_logs': verification_logs,
-        'profile_type': profile_type,
-    }
-    
-    return render(request, 'listings/dashboard/plot_verification_detail.html', context)
-
-@login_required
-def buyer_interests(request):
-    """Manage buyer interests for plots"""
-    is_agent = hasattr(request.user, 'agent')
-    is_landowner = hasattr(request.user, 'landownerprofile')
-    
-    if not (is_agent or is_landowner):
-        messages.error(request, "Only agents and landowners can view buyer interests.")
-        return redirect('listings:home')
-    
-    if is_agent:
-        interests = UserInterest.objects.filter(plot__agent=request.user.agent)
-    else:
-        interests = UserInterest.objects.filter(plot__landowner=request.user.landownerprofile)
-    
-    # Filter by status
-    status_filter = request.GET.get('status', 'all')
-    if status_filter != 'all':
-        interests = interests.filter(status=status_filter)
-    
-    # Search
-    search_query = request.GET.get('search', '')
-    if search_query:
-        interests = interests.filter(
-            Q(user__username__icontains=search_query) |
-            Q(plot__title__icontains=search_query) |
-            Q(message__icontains=search_query)
-        )
-    
-    # Pagination
-    paginator = Paginator(interests.order_by('-created_at'), 10)
-    page_number = request.GET.get('page')
-    page_obj = paginator.get_page(page_number)
-    
-    # Status counts
-    status_counts = {
-        'all': interests.count(),
-        'pending': interests.filter(status='pending').count(),
-        'contacted': interests.filter(status='contacted').count(),
-        'scheduled': interests.filter(status='scheduled').count(),
-        'rejected': interests.filter(status='rejected').count(),
-        'accepted': interests.filter(status='accepted').count(),
-    }
-    
-    context = {
-        'page_obj': page_obj,
-        'status_filter': status_filter,
-        'search_query': search_query,
-        'status_counts': status_counts,
-    }
-    
-    return render(request, 'listings/dashboard/buyer_interests.html', context)
-
-
-@login_required
-def notifications_inbox(request):
-    """User notifications inbox."""
-    if request.method == "POST":
-        action = request.POST.get("action")
-        if action == "mark_all":
-            NotificationService.mark_all_as_read(request.user)
-            messages.success(request, "All notifications marked as read.")
-            return redirect('listings:notifications_inbox')
-
-    notifications = Notification.objects.filter(user=request.user).order_by('-created_at')[:200]
-    unread_count = Notification.objects.filter(user=request.user, is_read=False).count()
-
-    return render(request, 'listings/dashboard/notifications.html', {
-        'notifications': notifications,
-        'unread_count': unread_count,
-        'page_title': 'Notifications'
-    })
-
-
-@login_required
-def update_interest_status(request, interest_id):
-    """Update buyer interest status"""
-    interest = get_object_or_404(UserInterest, id=interest_id)
-    
-    # Check permission
-    is_agent = hasattr(request.user, 'agent') and interest.plot.agent == request.user.agent
-    is_landowner = hasattr(request.user, 'landownerprofile') and interest.plot.landowner == request.user.landownerprofile
-    
-    if not (is_agent or is_landowner or request.user.is_superuser):
-        messages.error(request, "You don't have permission to update this interest.")
-        return redirect('listings:home')
-    
-    if request.method == 'POST':
-        new_status = request.POST.get('status')
-        notes = request.POST.get('notes', '')
-        
-        if new_status in dict(UserInterest.STATUS_CHOICES).keys():
-            interest.status = new_status
-            if notes:
-                interest.notes = notes
-            interest.save()
-            messages.success(request, f"Interest status updated to {interest.get_status_display()}.")
-        else:
-            messages.error(request, "Invalid status.")
-    
-    return redirect('listings:buyer_interests')
-
-
-def _build_profile_context(user):
-    profile, _ = Profile.objects.get_or_create(user=user)
-    agent = getattr(user, 'agent', None)
-    landowner = getattr(user, 'landownerprofile', None)
-    extension_officer = getattr(user, 'extension_officer', None)
-    land_surveyor = getattr(user, 'land_surveyor', None)
-
-    is_landowner = landowner is not None
-    is_agent = agent is not None
-    is_extension = extension_officer is not None
-    is_surveyor = land_surveyor is not None
-
-    profile_type = "Buyer"
-    if is_agent:
-        profile_type = "Agent"
-    elif is_landowner:
-        profile_type = "Landowner"
-    elif is_extension:
-        profile_type = "Extension Officer"
-    elif is_surveyor:
-        profile_type = "Land Surveyor"
-
-    two_factor_enabled = False
-    if hasattr(user, "two_factor_settings"):
-        two_factor_enabled = user.two_factor_settings.is_enabled
-    elif profile:
-        two_factor_enabled = profile.has_2fa_enabled
-
-    def _doc(label, filefield):
-        if not filefield:
-            return None
-        return {
-            'label': label,
-            'name': filefield.name.split('/')[-1] if filefield.name else label,
-            'url': filefield.url,
-        }
-
-    role_requests = []
-    if agent:
-        docs = list(filter(None, [
-            _doc('License Document', agent.license_doc),
-            _doc('KRA PIN', agent.kra_pin),
-            _doc('Practicing Certificate', agent.practicing_certificate),
-            _doc('Good Conduct', agent.good_conduct),
-            _doc('Professional Indemnity', agent.professional_indemnity),
-        ]))
-        role_requests.append({
-            'role': 'Agent',
-            'verified': agent.verified,
-            'is_active': True,
-            'docs': docs,
-        })
-
-    if landowner:
-        docs = list(filter(None, [
-            _doc('National ID', landowner.national_id),
-            _doc('KRA PIN', landowner.kra_pin),
-            _doc('Title Deed', landowner.title_deed),
-            _doc('Land Search', landowner.land_search),
-            _doc('LCB Consent', landowner.lcb_consent),
-        ]))
-        role_requests.append({
-            'role': 'Landowner',
-            'verified': landowner.verified,
-            'is_active': True,
-            'docs': docs,
-        })
-
-    if extension_officer:
-        role_requests.append({
-            'role': 'Extension Officer',
-            'verified': extension_officer.verified,
-            'is_active': extension_officer.is_active,
-            'docs': [],
-        })
-
-    if land_surveyor:
-        role_requests.append({
-            'role': 'Land Surveyor',
-            'verified': land_surveyor.verified,
-            'is_active': land_surveyor.is_active,
-            'docs': [],
-        })
-
-    total_plots = 0
-    verified_plots = 0
-    pending_inquiries = 0
-    if is_agent:
-        total_plots = Plot.objects.filter(agent=agent).count()
-        pending_inquiries = UserInterest.objects.filter(plot__agent=agent, status='pending').count()
-    elif is_landowner:
-        total_plots = Plot.objects.filter(landowner=landowner).count()
-        pending_inquiries = UserInterest.objects.filter(plot__landowner=landowner, status='pending').count()
-
-    return {
-        'is_landowner': is_landowner,
-        'is_agent': is_agent,
-        'is_extension': is_extension,
-        'is_surveyor': is_surveyor,
-        'profile': profile,
-        'agent': agent,
-        'landowner': landowner,
-        'extension_officer': extension_officer,
-        'land_surveyor': land_surveyor,
-        'profile_type': profile_type,
-        'role_requests': role_requests,
-        'two_factor_enabled': two_factor_enabled,
-        'total_plots': total_plots,
-        'verified_plots': verified_plots,
-        'pending_inquiries': pending_inquiries,
-    }
-
-
-@login_required
-def profile_management(request):
-    """Profile view (registered details)"""
-    context = _build_profile_context(request.user)
-    return render(request, 'listings/dashboard/profile_management.html', context)
-
-
-@login_required
-def profile_edit(request):
-    """Edit profile and role details"""
-    context = _build_profile_context(request.user)
-    user = request.user
-    profile = context['profile']
-    agent = context['agent']
-    extension_officer = context['extension_officer']
-    land_surveyor = context['land_surveyor']
-
-    if request.method == 'POST':
-        section = request.POST.get('section')
-        if section == 'account':
-            user.first_name = request.POST.get('first_name', '').strip()
-            user.last_name = request.POST.get('last_name', '').strip()
-            email = request.POST.get('email', '').strip()
-            if email:
-                user.email = email
-            profile.phone = request.POST.get('phone', '').strip()
-            profile.address = request.POST.get('address', '').strip()
-            user.save()
-            profile.save()
-            messages.success(request, "Account details updated successfully.")
-        elif section == 'agent' and agent:
-            agent.phone = request.POST.get('agent_phone', '').strip()
-            agent.license_number = request.POST.get('license_number', '').strip()
-            agent.id_number = request.POST.get('id_number', '').strip()
-            agent.contact_preference = request.POST.get('contact_preference', agent.contact_preference)
-            agent.available_from = request.POST.get('available_from') or agent.available_from
-            agent.available_to = request.POST.get('available_to') or agent.available_to
-            agent.save()
-            messages.success(request, "Agent details updated successfully.")
-        elif section == 'extension_officer' and extension_officer:
-            extension_officer.phone = request.POST.get('officer_phone', '').strip()
-            extension_officer.office_address = request.POST.get('office_address', '').strip()
-            extension_officer.save()
-            messages.success(request, "Extension officer details updated successfully.")
-        elif section == 'land_surveyor' and land_surveyor:
-            land_surveyor.phone = request.POST.get('surveyor_phone', '').strip()
-            land_surveyor.office_address = request.POST.get('surveyor_address', '').strip()
-            land_surveyor.save()
-            messages.success(request, "Surveyor details updated successfully.")
-
-        return redirect('listings:profile_edit')
-
-    return render(request, 'listings/dashboard/profile_edit.html', context)
-
-
-@login_required
-def account_settings(request):
-    """Account settings (security, 2FA, sessions)"""
-    context = _build_profile_context(request.user)
-    user = request.user
-
-    if request.method == 'POST':
-        section = request.POST.get('section')
-        if section == 'change_password':
-            current_password = request.POST.get('current_password', '')
-            new_password = request.POST.get('new_password', '')
-            confirm_password = request.POST.get('confirm_password', '')
-            if not user.check_password(current_password):
-                messages.error(request, "Current password is incorrect.")
-            elif new_password != confirm_password:
-                messages.error(request, "New passwords do not match.")
-            elif len(new_password) < 8:
-                messages.error(request, "New password must be at least 8 characters.")
-            else:
-                user.set_password(new_password)
-                user.save()
-                update_session_auth_hash(request, user)
-                messages.success(request, "Password updated successfully.")
-        return redirect('listings:account_settings')
-
-    return render(request, 'listings/dashboard/settings.html', context)
-
-
-@login_required
-def dashboard_analytics(request):
-    """Analytics dashboard for agents/landowners"""
-    is_agent = hasattr(request.user, 'agent')
-    is_landowner = hasattr(request.user, 'landownerprofile')
-    
-    if not (is_agent or is_landowner):
-        messages.error(request, "Only agents and landowners can view analytics.")
-        return redirect('listings:home')
-    
-    if is_agent:
-        plots = Plot.objects.filter(agent=request.user.agent)
-        total_interests = UserInterest.objects.filter(plot__agent=request.user.agent).count()
-    else:
-        plots = Plot.objects.filter(landowner=request.user.landownerprofile)
-        total_interests = UserInterest.objects.filter(plot__landowner=request.user.landownerprofile).count()
-    
-    # Monthly plot additions
-    monthly_stats = plots.annotate(
-        month=TruncMonth('created_at')
-    ).values('month').annotate(
-        count=Count('id')
-    ).order_by('month')
-    
-    # Price distribution
-    price_ranges = {
-        'Under 1M': plots.filter(price__lt=1000000).count(),
-        '1M - 5M': plots.filter(price__gte=1000000, price__lt=5000000).count(),
-        '5M - 10M': plots.filter(price__gte=5000000, price__lt=10000000).count(),
-        '10M+': plots.filter(price__gte=10000000).count(),
-    }
-    
-    # Listing type distribution
-    listing_type_stats = {
-        'For Sale': plots.filter(listing_type='sale').count(),
-        'For Lease': plots.filter(listing_type='lease').count(),
-        'Both': plots.filter(listing_type='both').count(),
-    }
-    
-    # Land type distribution
-    land_type_stats = plots.values('land_type').annotate(
-        count=Count('id')
-    ).order_by('-count')
-    
-    # Location distribution
-    location_stats = plots.values('location').annotate(
-        count=Count('id')
-    ).order_by('-count')[:10]
-    
-    context = {
-        'monthly_stats': list(monthly_stats),
-        'price_ranges': price_ranges,
-        'listing_type_stats': listing_type_stats,
-        'land_type_stats': list(land_type_stats),
-        'location_stats': list(location_stats),
-        'total_interests': total_interests,
-        'total_plots': plots.count(),
-        'avg_price': plots.aggregate(avg=Avg('price'))['avg'] or 0,
-        'avg_area': 0,
-    }
-
-    # Normalize average area to acres for analytics
-    try:
-        area_values = [p.area_acres for p in plots if p.area_acres]
-        if area_values:
-            context['avg_area'] = sum(area_values) / len(area_values)
-    except Exception:
-        context['avg_area'] = 0
-    
-    return render(request, 'listings/dashboard/analytics.html', context)
+# Moved to accounts/ + notifications/ apps.
 
 
 # ============ VERIFICATION ADMIN ============
@@ -2318,7 +1356,7 @@ def verification_dashboard(request):
     """Legacy entrypoint; canonical dashboard lives in views_admin."""
     if not (request.user.is_staff or request.user.is_superuser):
         return redirect('listings:home')
-    return redirect('listings:verification_dashboard')
+    return redirect('verification:verification_dashboard')
 
 
 @login_required
@@ -2358,7 +1396,7 @@ def review_plot(request, plot_id):
             notes = request.POST.get('notes', '')
             
             if action == 'approve':
-                from .verification_service import VerificationService
+                from verification.verification_service import VerificationService
                 missing_reports = VerificationService.has_required_reports(plot)
                 required_types = set(VerificationService.required_task_types(plot))
                 existing_types = set(
@@ -2370,7 +1408,7 @@ def review_plot(request, plot_id):
                         request,
                         f"Cannot approve. Missing tasks: {missing_types} | Missing reports: {missing_reports}"
                     )
-                    return redirect('listings:review_plot', plot_id=plot.id)
+                    return redirect('verification:review_plot', plot_id=plot.id)
                 verification.current_stage = 'approved'
                 verification.approved_at = timezone.now()
                 verification.stage_details['approved_by'] = request.user.username
@@ -2382,7 +1420,7 @@ def review_plot(request, plot_id):
                 
                 # Notify plot owner
                 try:
-                    from .notification_service import NotificationService
+                    from notifications.notification_service import NotificationService
                     plot_owner = plot.agent.user if plot.agent else plot.landowner.user
                     NotificationService.create_notification(
                         user=plot_owner,
@@ -2399,7 +1437,7 @@ def review_plot(request, plot_id):
             elif action == 'reject':
                 if not notes:
                     messages.error(request, "Please provide a reason for rejection.")
-                    return redirect('listings:review_plot', plot_id=plot.id)
+                    return redirect('verification:review_plot', plot_id=plot.id)
                 
                 verification.current_stage = 'rejected'
                 verification.rejected_at = timezone.now()
@@ -2412,7 +1450,7 @@ def review_plot(request, plot_id):
                 
                 # Notify plot owner
                 try:
-                    from .notification_service import NotificationService
+                    from notifications.notification_service import NotificationService
                     plot_owner = plot.agent.user if plot.agent else plot.landowner.user
                     NotificationService.create_notification(
                         user=plot_owner,
@@ -2429,7 +1467,7 @@ def review_plot(request, plot_id):
             elif action == 'request_changes':
                 if not notes:
                     messages.error(request, "Please specify what changes are needed.")
-                    return redirect('listings:review_plot', plot_id=plot.id)
+                    return redirect('verification:review_plot', plot_id=plot.id)
                 
                 verification.current_stage = 'document_uploaded'  # Back to pending
                 verification.stage_details['change_requests'] = notes
@@ -2441,7 +1479,7 @@ def review_plot(request, plot_id):
                 
                 # Notify plot owner
                 try:
-                    from .notification_service import NotificationService
+                    from notifications.notification_service import NotificationService
                     NotificationService.notify_changes_requested(plot, request.user, notes)
                 except Exception as e:
                     logger.error(f"Error sending change request notification: {str(e)}")
@@ -2458,7 +1496,7 @@ def review_plot(request, plot_id):
                 comment=notes
             )
             
-            return redirect('listings:verification_queue')
+            return redirect('verification:verification_queue')
         
         # Handle form submissions for detailed verification
         vform = PlotVerificationStatusForm(request.POST, instance=verification)
@@ -2481,7 +1519,7 @@ def review_plot(request, plot_id):
                          extra={'plot_id': plot.id})
             
             messages.success(request, f"Plot verification status updated to {verification.get_current_stage_display()}.")
-            return redirect('listings:verification_dashboard')
+            return redirect('verification:verification_queue')
         else:
             messages.error(request, "Please correct the errors below.")
     else:
@@ -2834,128 +1872,4 @@ def admin_approve_verification(request, verification_id):
     })
 
 
-# listings/views.py
-
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
-from django.contrib import messages
-
-@login_required
-def dashboard_router(request):
-    """
-    Route users to their appropriate dashboard based on role
-    """
-    user = request.user
-    
-    # Check if user is staff/admin
-    if user.is_superuser or user.is_staff:
-        return redirect('listings:verification_dashboard')
-    
-    # Check if user is extension officer
-    if hasattr(user, 'extension_officer'):
-        return redirect('listings:extension_dashboard')
-
-    # Check if user is land surveyor
-    if hasattr(user, 'land_surveyor'):
-        return redirect('listings:surveyor_dashboard')
-    
-    # Check if user is agent or landowner
-    if hasattr(user, 'agent') or hasattr(user, 'landownerprofile'):
-        return redirect('listings:staff_dashboard')
-    
-    # Check if user is buyer (has profile with role='buyer')
-    if hasattr(user, 'profile') and user.profile.role == 'buyer':
-        return redirect('listings:home')  # Buyer goes to marketplace
-    
-    # Default fallback
-    return redirect('listings:home')
-
-# listings/views.py
-
-from .services.sms_service import TextSMSService
-import random
-
-def generate_otp():
-    return str(random.randint(100000, 999999))
-
-@login_required
-def verify_phone(request):
-    """Send OTP to user's phone"""
-    if request.method == 'POST':
-        phone = request.POST.get('phone')
-        otp = generate_otp()
-        
-        # Store OTP in session or database
-        request.session['phone_otp'] = otp
-        request.session['phone_otp_expiry'] = (timezone.now() + timedelta(minutes=10)).isoformat()
-        
-        # Send SMS
-        sms = TextSMSService()
-        result = sms.send_otp(phone, otp)
-        
-        if result['success']:
-            messages.success(request, "OTP sent to your phone")
-            return redirect('listings:confirm_otp')
-        else:
-            messages.error(request, f"Failed to send OTP: {result['error']}")
-    
-    return render(request, 'listings/verify_phone.html')
-
-
-def contact_support(request):
-    """Simple contact support page"""
-    support_email = 'agriplotconnect@gmail.com'
-    support_phone = '+254 718 810 503'
-
-    if request.method == "POST":
-        form = SupportTicketForm(request.POST)
-        if form.is_valid():
-            ticket = form.save(commit=False)
-            if request.user.is_authenticated:
-                ticket.user = request.user
-            ticket.save()
-
-            # Notify admins by email
-            try:
-                admins = User.objects.filter(is_staff=True)
-                for admin in admins:
-                    NotificationService.send_email(
-                        recipient=admin.email,
-                        subject=f"New Support Ticket: {ticket.subject}",
-                        template='support_ticket_admin',
-                        context={
-                            'admin': admin,
-                            'ticket': ticket,
-                            'site_url': settings.SITE_URL,
-                        }
-                    )
-            except Exception as e:
-                logger.error(f"Support ticket admin email failed: {e}")
-
-            # Confirm to user
-            try:
-                NotificationService.send_email(
-                    recipient=ticket.email,
-                    subject="Support Ticket Received",
-                    template='support_ticket_received',
-                    context={'ticket': ticket}
-                )
-            except Exception as e:
-                logger.error(f"Support ticket user email failed: {e}")
-
-            messages.success(request, "Support request submitted. We will get back to you shortly.")
-            return redirect('listings:contact_support')
-    else:
-        initial = {}
-        if request.user.is_authenticated:
-            initial = {
-                'name': request.user.get_full_name() or request.user.username,
-                'email': request.user.email,
-            }
-        form = SupportTicketForm(initial=initial)
-
-    return render(request, 'listings/contact_support.html', {
-        'support_email': support_email,
-        'support_phone': support_phone,
-        'form': form
-    })
+# Phone verification and support flows moved out of listings.

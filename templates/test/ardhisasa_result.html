@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Ardhisasa Test Result{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header {% if result.success %}bg-success{% else %}bg-danger{% endif %} text-white">
+                    <h3>Ardhisasa API Test Result</h3>
+                    <p>Plot: {{ plot.title }} (ID: {{ plot.id }})</p>
+                </div>
+                <div class="card-body">
+                    {% if result.success %}
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle"></i>
+                            Verification Successful!
+                        </div>
+                        
+                        <h4>Title Search Results</h4>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Title Number</th>
+                                <td>{{ result.verification_data.title_number|default:result.verification_data.search_result.title_number }}</td>
+                            </tr>
+                            <tr>
+                                <th>Owner Name</th>
+                                <td>{{ result.verification_data.search_result.owner_name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Parcel Number</th>
+                                <td>{{ result.verification_data.search_result.parcel_number }}</td>
+                            </tr>
+                            <tr>
+                                <th>Search Reference</th>
+                                <td>{{ result.verification_data.search_result.search_reference }}</td>
+                            </tr>
+                        </table>
+                        
+                        <h4>Ownership Verification</h4>
+                        <table class="table table-bordered">
+                            <tr>
+                                <th>Verified</th>
+                                <td>
+                                    {% if result.verification_data.ownership_result.verified %}
+                                        <span class="badge bg-success">Yes</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">No</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                        
+                        <h4>Encumbrance Check</h4>
+                        <pre>{{ result.verification_data.encumbrance_result|pprint }}</pre>
+                        
+                    {% else %}
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Verification Failed: {{ result.error }}
+                        </div>
+                    {% endif %}
+                    
+                    <hr>
+                    
+                    <h4>Full API Response</h4>
+                    <pre>{{ result|pprint }}</pre>
+                    
+                    <a href="{% url 'verification:verification_dashboard' %}" class="btn btn-primary">
+                        Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

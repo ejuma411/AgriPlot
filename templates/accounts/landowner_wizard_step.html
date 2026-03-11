@@ -1,0 +1,271 @@
+{% extends "authentication/auth_base.html" %}
+{% block title %}LandOwner Registration{% endblock %}
+
+{% block content %}
+<p class="auth-kicker">Guided Registration</p>
+<h2 class="auth-title">Landowner Registration — Step {{ wizard.steps.step1 }} of {{ wizard.steps.count }}</h2>
+
+<p class="auth-subtitle">
+    {% if wizard.steps.current == 'personal' %}
+        Create your account details to get started.
+    {% elif wizard.steps.current == 'verification' %}
+        Provide your contact information for verification and updates.
+    {% elif wizard.steps.current == 'documents' %}
+        Upload required landowner documents for verification.
+    {% elif wizard.steps.current == 'confirmation' %}
+        Confirm your agreement to proceed.
+    {% endif %}
+</p>
+
+{% if wizard.steps.current == 'documents' %}
+<div class="hint-box">
+    <strong>Upload guidelines:</strong>
+    <ul>
+        <li>Accepted: PDF, JPG, JPEG, PNG</li>
+        <li>Max size: 10MB per file</li>
+        <li>Required: National ID, KRA PIN, Title Deed, Land Search</li>
+    </ul>
+</div>
+{% endif %}
+
+{% if wizard.steps.current == 'verification' %}
+<div class="hint-box">
+    <strong>Contact hints:</strong>
+    <ul>
+        <li>Use a Kenyan number (e.g., 0712345678 or +254712345678)</li>
+        <li>Enter the main region and city of residence</li>
+    </ul>
+</div>
+{% endif %}
+
+{% if wizard.steps.current == 'personal' %}
+<div class="hint-box">
+    <strong>Account hints:</strong>
+    <ul>
+        <li>Use a valid email for OTP and future alerts</li>
+        <li>Choose a strong password (8+ characters)</li>
+    </ul>
+</div>
+{% endif %}
+
+<div class="wizard-steps">
+    {% for step in step_labels %}
+        <div class="wizard-step {% if step.key == wizard.steps.current %}active{% elif forloop.counter0 < wizard.steps.step1 %}done{% endif %}">
+            <span class="step-index">{{ forloop.counter }}</span>
+            <span class="step-label">{{ step.label }}</span>
+        </div>
+    {% endfor %}
+</div>
+
+<div class="progress-bar">
+    <div class="progress" style="width: {{ progress_percent }}%;"></div>
+</div>
+
+
+<form method="POST" enctype="multipart/form-data" class="auth-form">
+    {% csrf_token %}
+    {{ wizard.management_form }}
+
+    <div id="clientErrors" class="client-errors" style="display:none;"></div>
+
+    {% for field in wizard.form %}
+        <div class="form-group">
+            <label>{{ field.label }}</label>
+            {% if field.help_text %}
+                <div class="small text-muted" style="margin-bottom: 6px;">{{ field.help_text }}</div>
+            {% endif %}
+            {{ field }}
+            <small style="color:red">{{ field.errors }}</small>
+            <div class="field-error small text-danger" style="display:none;"></div>
+        </div>
+    {% endfor %}
+
+    <div class="wizard-actions">
+        {% if wizard.steps.prev %}
+        <button class="auth-btn auth-btn--ghost" type="submit" name="wizard_goto_step" value="{{ wizard.steps.prev }}">
+            Back
+        </button>
+        {% else %}
+            <span></span>
+        {% endif %}
+        <button class="auth-btn auth-btn--danger" type="submit" name="reset_wizard" value="1">
+            Cancel &amp; Reset
+        </button>
+        <button class="auth-btn auth-btn--outline" type="submit" name="save_resume" value="1">
+            Save &amp; Resume
+        </button>
+        <button class="auth-btn" type="submit" id="wizardNext">
+            {% if wizard.steps.last %}Finish{% else %}Next{% endif %}
+        </button>
+    </div>
+</form>
+
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hint-box {
+        background: rgba(255, 255, 255, 0.8);
+        border: 1px dashed rgba(14, 45, 35, 0.18);
+        border-radius: 14px;
+        padding: 12px 16px;
+        margin: 12px 0 18px;
+        font-size: 0.9rem;
+        color: #405048;
+    }
+    .hint-box ul {
+        margin: 8px 0 0 18px;
+    }
+    .client-errors {
+        background: #fceaea;
+        color: #b83b3b;
+        border: 1px solid #f3b3b3;
+        border-radius: 12px;
+        padding: 10px 12px;
+        margin-bottom: 12px;
+        font-size: 0.9rem;
+    }
+    .wizard-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .wizard-actions > * {
+        width: 100%;
+    }
+    .wizard-steps {
+        display: flex;
+        gap: 12px;
+        margin: 12px 0 16px;
+        flex-wrap: wrap;
+    }
+    .wizard-step {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.75);
+        color: #405048;
+        font-size: 0.9rem;
+        border: 1px solid rgba(14, 45, 35, 0.12);
+    }
+    .wizard-step .step-index {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(14, 45, 35, 0.1);
+        color: #0e2d23;
+        font-weight: 700;
+        font-size: 0.8rem;
+    }
+    .wizard-step.active {
+        background: rgba(54, 95, 68, 0.12);
+        color: #0e2d23;
+        border: 1px solid rgba(54, 95, 68, 0.3);
+    }
+    .wizard-step.active .step-index {
+        background: #0e2d23;
+        color: #fff;
+    }
+    .wizard-step.done {
+        background: rgba(29, 63, 110, 0.12);
+        color: #1d3f6e;
+    }
+    .wizard-step.done .step-index {
+        background: #1d3f6e;
+        color: #fff;
+    }
+    .progress-bar {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(14, 45, 35, 0.1);
+        overflow: hidden;
+    }
+    .progress-bar .progress {
+        height: 100%;
+        background: linear-gradient(90deg, #365f44, #0e2d23);
+        border-radius: inherit;
+    }
+    @media (max-width: 640px) {
+        .wizard-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const steps = document.querySelectorAll('.fade-step');
+    steps.forEach(step => {
+        step.style.opacity = 0;
+        step.style.transition = 'opacity 0.5s ease-in-out';
+        setTimeout(() => step.style.opacity = 1, 100);
+    });
+
+    const form = document.querySelector("form");
+    const nextBtn = document.getElementById("wizardNext");
+    const errorBox = document.getElementById("clientErrors");
+    if (form && nextBtn) {
+        form.addEventListener("submit", function(e) {
+            const action = document.activeElement;
+            if (action && action.name === "wizard_goto_step") {
+                return;
+            }
+            if (action && action.name === "save_resume") {
+                return;
+            }
+            const requiredFields = form.querySelectorAll("[required]");
+            let firstInvalid = null;
+            let messages = [];
+            requiredFields.forEach((field) => {
+                const isFile = field.type === "file";
+                const empty = isFile ? !field.files || field.files.length === 0 : !field.value.trim();
+                if (empty && !firstInvalid) {
+                    firstInvalid = field;
+                }
+                if (empty) {
+                    const label = field.closest(".form-group")?.querySelector("label");
+                    if (label) {
+                        messages.push(`${label.textContent.trim()} is required.`);
+                    }
+                }
+                // Client-side file type/size checks
+                if (isFile && field.files && field.files.length > 0) {
+                    const file = field.files[0];
+                    const allowed = [".pdf", ".jpg", ".jpeg", ".png"];
+                    const name = file.name.toLowerCase();
+                    const extOk = allowed.some(ext => name.endsWith(ext));
+                    const sizeOk = file.size <= (10 * 1024 * 1024);
+                    if (!extOk || !sizeOk) {
+                        messages.push(`${field.previousElementSibling?.textContent || 'File'} must be PDF/JPG/PNG and ≤10MB.`);
+                        if (!firstInvalid) firstInvalid = field;
+                    }
+                }
+            });
+            if (firstInvalid) {
+                e.preventDefault();
+                firstInvalid.focus();
+                if (errorBox) {
+                    errorBox.innerHTML = messages.slice(0, 3).map(m => `<div>${m}</div>`).join("");
+                    errorBox.style.display = "block";
+                }
+                // Inline per-field error message
+                const errorDiv = firstInvalid.closest(".form-group")?.querySelector(".field-error");
+                if (errorDiv && messages.length) {
+                    errorDiv.textContent = messages[0];
+                    errorDiv.style.display = "block";
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

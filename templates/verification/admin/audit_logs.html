@@ -1,0 +1,692 @@
+{% extends "verification/admin/base_admin.html" %}
+{% load static %}
+
+{% block title %}Audit Logs | Security & Compliance - AgriPlot Admin{% endblock %}
+
+{% block admin_content %}
+<!-- Page Header with Mobile-First Approach -->
+<div class="page-header">
+    <div class="page-header-content flex-column flex-md-row">
+        <div class="page-header-title mb-3 mb-md-0">
+            <h1 class="h2 mb-2">
+                <i class="fas fa-shield-alt me-2" aria-hidden="true"></i>
+                Audit Logs
+            </h1>
+            <p class="page-header-subtitle mb-0">
+                Complete security trail of system activities and user actions
+                <span class="badge bg-secondary ms-2 d-inline-block d-md-inline mt-1 mt-md-0">Compliance Ready</span>
+            </p>
+        </div>
+        <div class="page-header-actions d-flex flex-wrap gap-2">
+            <a href="{% url 'verification:verification_dashboard' %}" 
+               class="btn btn-outline-primary flex-fill flex-md-grow-0">
+                <i class="fas fa-chart-pie me-2" aria-hidden="true"></i>
+                <span class="d-inline d-md-none">Home</span>
+                <span class="d-none d-md-inline">Dashboard</span>
+            </a>
+            <div class="btn-group flex-fill flex-md-grow-0" role="group" aria-label="Export options">
+                <a href="{% url 'verification:audit_logs_export' %}?format=csv{% if base_querystring %}&{{ base_querystring }}{% endif %}" 
+                   class="btn btn-outline-secondary"
+                   title="Export as CSV">
+                    <i class="fas fa-file-csv me-2" aria-hidden="true"></i>
+                    <span class="d-inline d-md-none">CSV</span>
+                    <span class="d-none d-md-inline">CSV</span>
+                </a>
+                <a href="{% url 'verification:audit_logs_export' %}?format=json{% if base_querystring %}&{{ base_querystring }}{% endif %}" 
+                   class="btn btn-outline-secondary"
+                   title="Export as JSON">
+                    <i class="fas fa-file-code me-2" aria-hidden="true"></i>
+                    <span class="d-inline d-md-none">JSON</span>
+                    <span class="d-none d-md-inline">JSON</span>
+                </a>
+                <a href="{% url 'verification:audit_logs_export' %}?format=pdf{% if base_querystring %}&{{ base_querystring }}{% endif %}" 
+                   class="btn btn-outline-secondary"
+                   title="Export as PDF">
+                    <i class="fas fa-file-pdf me-2" aria-hidden="true"></i>
+                    <span class="d-inline d-md-none">PDF</span>
+                    <span class="d-none d-md-inline">PDF</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Responsive Filter Section -->
+<div class="admin-card mb-4">
+    <div class="admin-card-header d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2">
+        <h5 class="admin-card-title mb-0">
+            <i class="fas fa-sliders-h me-2" aria-hidden="true"></i>
+            Filter Audit Records
+        </h5>
+        <span class="badge bg-info ms-sm-auto">{{ total_count }} total records</span>
+    </div>
+    <div class="admin-card-body">
+        <form method="get" class="row g-3" id="audit-filter-form">
+            <!-- Mobile Filter Toggle (visible only on small screens) -->
+            <div class="col-12 d-md-none mb-2">
+                <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false">
+                    <i class="fas fa-filter me-2"></i>Toggle Filters
+                </button>
+            </div>
+            
+            <!-- Filter Fields - Collapsible on mobile -->
+            <div class="collapse d-md-block" id="filterCollapse">
+                <div class="row g-3">
+                    <!-- Primary Filters Row - Responsive grid -->
+                    <div class="col-12 col-sm-6 col-md-3">
+                        <label for="action-filter" class="form-label fw-medium">Action Type</label>
+                        <select name="action" id="action-filter" class="form-select">
+                            <option value="">All actions</option>
+                            {% for value, label in action_choices %}
+                                <option value="{{ value }}" {% if filters.action == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-12 col-sm-6 col-md-3">
+                        <label for="user-filter" class="form-label fw-medium">User</label>
+                        <input type="text" 
+                               name="user" 
+                               id="user-filter"
+                               value="{{ filters.user }}" 
+                               class="form-control" 
+                               placeholder="Username or email">
+                    </div>
+                    
+                    <div class="col-12 col-sm-6 col-md-2">
+                        <label for="ip-filter" class="form-label fw-medium">IP Address</label>
+                        <input type="text" 
+                               name="ip" 
+                               id="ip-filter"
+                               value="{{ filters.ip }}" 
+                               class="form-control" 
+                               placeholder="e.g., 192.168.1.1">
+                    </div>
+                    
+                    <div class="col-12 col-sm-6 col-md-2">
+                        <label for="object-type-filter" class="form-label fw-medium">Object Type</label>
+                        <input type="text" 
+                               name="object_type" 
+                               id="object-type-filter"
+                               value="{{ filters.object_type }}" 
+                               class="form-control" 
+                               placeholder="e.g., Plot, User">
+                    </div>
+                    
+                    <div class="col-12 col-md-2">
+                        <label for="object-id-filter" class="form-label fw-medium">Object ID</label>
+                        <input type="text" 
+                               name="object_id" 
+                               id="object-id-filter"
+                               value="{{ filters.object_id }}" 
+                               class="form-control" 
+                               placeholder="ID number">
+                    </div>
+
+                    <!-- Secondary Filters Row -->
+                    <div class="col-12 col-sm-6 col-md-3">
+                        <label for="date-from" class="form-label fw-medium">Date From</label>
+                        <input type="date" 
+                               name="date_from" 
+                               id="date-from"
+                               value="{{ filters.date_from }}" 
+                               class="form-control">
+                    </div>
+                    
+                    <div class="col-12 col-sm-6 col-md-3">
+                        <label for="date-to" class="form-label fw-medium">Date To</label>
+                        <input type="date" 
+                               name="date_to" 
+                               id="date-to"
+                               value="{{ filters.date_to }}" 
+                               class="form-control">
+                    </div>
+                    
+                    <div class="col-12 col-md-4">
+                        <label for="search-filter" class="form-label fw-medium">Free Text Search</label>
+                        <input type="text" 
+                               name="q" 
+                               id="search-filter"
+                               value="{{ filters.q }}" 
+                               class="form-control" 
+                               placeholder="Search in actions, users, objects...">
+                    </div>
+                    
+                    <div class="col-12 col-md-2">
+                        <label for="per-page" class="form-label fw-medium">Per page</label>
+                        <select name="per_page" id="per-page" class="form-select">
+                            <option value="25" {% if filters.per_page == 25 %}selected{% endif %}>25</option>
+                            <option value="50" {% if filters.per_page == 50 %}selected{% endif %}>50</option>
+                            <option value="100" {% if filters.per_page == 100 %}selected{% endif %}>100</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter Actions - Always visible -->
+            <div class="col-12">
+                <div class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center">
+                    <button class="btn btn-primary flex-fill" type="submit">
+                        <i class="fas fa-filter me-2" aria-hidden="true"></i>
+                        Apply Filters
+                    </button>
+                    <a class="btn btn-outline-secondary flex-fill" href="{% url 'verification:audit_logs' %}">
+                        <i class="fas fa-times me-2" aria-hidden="true"></i>
+                        Clear All
+                    </a>
+                    <span class="text-muted small ms-sm-3 mt-2 mt-sm-0 text-center text-sm-start">
+                        <i class="fas fa-info-circle me-1" aria-hidden="true"></i>
+                        Active filters: {{ active_filters_count|default:"0" }}
+                    </span>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Responsive Analytics Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card h-100">
+            <div class="stat-card-body d-flex align-items-center gap-3 p-3">
+                <div class="stat-card-icon bg-primary bg-opacity-10 p-3 rounded">
+                    <i class="fas fa-database text-primary" aria-hidden="true"></i>
+                </div>
+                <div class="stat-card-content flex-grow-1">
+                    <span class="stat-card-label d-block small text-muted">Total Records</span>
+                    <span class="stat-card-value h3 mb-0">{{ total_count|default:"0" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card h-100">
+            <div class="stat-card-body d-flex align-items-center gap-3 p-3">
+                <div class="stat-card-icon bg-info bg-opacity-10 p-3 rounded">
+                    <i class="fas fa-clock text-info" aria-hidden="true"></i>
+                </div>
+                <div class="stat-card-content flex-grow-1">
+                    <span class="stat-card-label d-block small text-muted">Last 24 Hours</span>
+                    <span class="stat-card-value h3 mb-0">{{ last_24h|default:"0" }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card h-100">
+            <div class="stat-card-body d-flex align-items-center gap-3 p-3">
+                <div class="stat-card-icon bg-success bg-opacity-10 p-3 rounded">
+                    <i class="fas fa-chart-line text-success" aria-hidden="true"></i>
+                </div>
+                <div class="stat-card-content flex-grow-1">
+                    <span class="stat-card-label d-block small text-muted">Most Frequent</span>
+                    <span class="stat-card-value h5 mb-0">
+                        {% if action_counts %}
+                            {{ action_counts.0.action|truncatechars:10 }}
+                            <small class="text-muted d-block d-sm-inline d-lg-block">({{ action_counts.0.count }})</small>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-12 col-sm-6 col-lg-3">
+        <div class="stat-card h-100">
+            <div class="stat-card-body d-flex align-items-center gap-3 p-3">
+                <div class="stat-card-icon bg-warning bg-opacity-10 p-3 rounded">
+                    <i class="fas fa-user text-warning" aria-hidden="true"></i>
+                </div>
+                <div class="stat-card-content flex-grow-1">
+                    <span class="stat-card-label d-block small text-muted">Most Active</span>
+                    <span class="stat-card-value h5 mb-0">
+                        {% if top_users %}
+                            {{ top_users.0.user__username|default:"System"|truncatechars:8 }}
+                            <small class="text-muted d-block d-sm-inline d-lg-block">({{ top_users.0.count }})</small>
+                        {% else %}
+                            —
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Responsive Audit Logs Table -->
+<div class="admin-card">
+    <div class="admin-card-header d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2">
+        <h5 class="admin-card-title mb-0">
+            <i class="fas fa-history me-2" aria-hidden="true"></i>
+            Audit Trail
+            <span class="badge bg-secondary ms-2">{{ page_obj.paginator.count }} records</span>
+        </h5>
+        <div class="admin-card-tools ms-sm-auto">
+            <span class="text-muted small">
+                <i class="fas fa-sync-alt me-1" aria-hidden="true"></i>
+                <span class="d-none d-sm-inline">Updated in real-time</span>
+            </span>
+        </div>
+    </div>
+    
+    <div class="admin-card-body p-0">
+        <!-- Desktop Table View (hidden on mobile) -->
+        <div class="d-none d-md-block">
+            <div class="table-responsive">
+                <table class="admin-table admin-table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th scope="col">Timestamp</th>
+                            <th scope="col">User</th>
+                            <th scope="col">Action</th>
+                            <th scope="col">Object</th>
+                            <th scope="col">IP</th>
+                            <th scope="col">Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td class="text-nowrap">
+                                <span class="fw-medium">{{ log.created_at|date:"Y-m-d H:i:s" }}</span>
+                                <small class="text-muted d-block">{{ log.created_at|timesince }} ago</small>
+                            </td>
+                            <td>
+                                {% if log.user %}
+                                    <div class="fw-medium">{{ log.user.get_full_name|default:log.user.username }}</div>
+                                    <small class="text-muted">{{ log.user.email|truncatechars:20 }}</small>
+                                {% else %}
+                                    <span class="badge bg-secondary">System</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge 
+                                    {% if 'CREATE' in log.action %}bg-success
+                                    {% elif 'UPDATE' in log.action %}bg-info
+                                    {% elif 'DELETE' in log.action %}bg-danger
+                                    {% elif 'LOGIN' in log.action %}bg-primary
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ log.get_action_display|default:log.action|truncatechars:15 }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if log.object_type %}
+                                    <span class="fw-medium">{{ log.object_type }}</span>
+                                    {% if log.object_id %}
+                                        <span class="badge bg-light text-dark">#{{ log.object_id }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.ip_address %}
+                                    <code>{{ log.ip_address }}</code>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if log.extra %}
+                                    <button class="btn btn-sm btn-outline-secondary" 
+                                            type="button"
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#extraModal{{ log.id }}">
+                                        <i class="fas fa-eye me-1" aria-hidden="true"></i>
+                                        View
+                                    </button>
+                                    
+                                    <!-- Modal for extra data (better mobile experience) -->
+                                    <div class="modal fade" id="extraModal{{ log.id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-scrollable">
+                                            <div class="modal-content">
+                                                <div class="modal-header">
+                                                    <h5 class="modal-title">Additional Data</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body">
+                                                    <pre class="bg-light p-3 rounded small mb-0"><code>{{ log.extra|pprint }}</code></pre>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="empty-state">
+                                    <i class="fas fa-search fa-3x text-muted mb-3" aria-hidden="true"></i>
+                                    <h5 class="text-muted">No audit logs found</h5>
+                                    <p class="text-muted small">Try adjusting your filters</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Mobile Card View (visible only on mobile) -->
+        <div class="d-md-none">
+            {% for log in logs %}
+            <div class="mobile-audit-card p-3 border-bottom">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <span class="badge 
+                            {% if 'CREATE' in log.action %}bg-success
+                            {% elif 'UPDATE' in log.action %}bg-info
+                            {% elif 'DELETE' in log.action %}bg-danger
+                            {% elif 'LOGIN' in log.action %}bg-primary
+                            {% else %}bg-secondary{% endif %} mb-2">
+                            {{ log.get_action_display|default:log.action|truncatechars:20 }}
+                        </span>
+                        <div class="fw-medium">{{ log.created_at|date:"Y-m-d H:i:s" }}</div>
+                        <small class="text-muted">{{ log.created_at|timesince }} ago</small>
+                    </div>
+                    {% if log.extra %}
+                    <button class="btn btn-sm btn-outline-secondary" 
+                            type="button"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#extraModal{{ log.id }}_mobile">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <!-- Mobile Modal -->
+                    <div class="modal fade" id="extraModal{{ log.id }}_mobile" tabindex="-1" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Additional Data</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <pre class="bg-light p-3 rounded small mb-0"><code>{{ log.extra|pprint }}</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="row g-2 mb-2">
+                    <div class="col-6">
+                        <small class="text-muted d-block">User</small>
+                        <span>
+                            {% if log.user %}
+                                {{ log.user.get_full_name|default:log.user.username }}
+                            {% else %}
+                                System
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Object</small>
+                        <span>
+                            {% if log.object_type %}
+                                {{ log.object_type }}{% if log.object_id %} #{{ log.object_id }}{% endif %}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="row g-2">
+                    <div class="col-6">
+                        <small class="text-muted d-block">IP Address</small>
+                        <span class="text-break">{{ log.ip_address|default:"—" }}</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">User Agent</small>
+                        <span class="small text-break">{{ log.user_agent|default:"—"|truncatechars:30 }}</span>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3" aria-hidden="true"></i>
+                <p class="text-muted">No audit logs found</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Responsive Pagination -->
+{% if page_obj.paginator.num_pages > 1 %}
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-4 gap-3">
+    <div class="text-muted small order-2 order-sm-1">
+        Showing <span class="fw-medium">{{ page_obj.start_index }}</span> 
+        to <span class="fw-medium">{{ page_obj.end_index }}</span> 
+        of <span class="fw-medium">{{ page_obj.paginator.count }}</span>
+    </div>
+    
+    <nav aria-label="Audit logs pagination" class="order-1 order-sm-2">
+        <ul class="pagination pagination-responsive mb-0">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if base_querystring %}&{{ base_querystring }}{% endif %}" aria-label="First">
+                        <i class="fas fa-angle-double-left" aria-hidden="true"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if base_querystring %}&{{ base_querystring }}{% endif %}" aria-label="Previous">
+                        <i class="fas fa-angle-left" aria-hidden="true"></i>
+                    </a>
+                </li>
+            {% endif %}
+            
+            {% for num in page_obj.paginator.page_range %}
+                {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %} d-none d-sm-block">
+                        <a class="page-link" href="?page={{ num }}{% if base_querystring %}&{{ base_querystring }}{% endif %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+            
+            <!-- Mobile page indicator -->
+            <li class="page-item d-sm-none">
+                <span class="page-link disabled">Page {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
+            </li>
+            
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if base_querystring %}&{{ base_querystring }}{% endif %}" aria-label="Next">
+                        <i class="fas fa-angle-right" aria-hidden="true"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if base_querystring %}&{{ base_querystring }}{% endif %}" aria-label="Last">
+                        <i class="fas fa-angle-double-right" aria-hidden="true"></i>
+                    </a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
+<!-- Responsive Styles -->
+<style>
+/* Mobile-First Base Styles */
+:root {
+    --spacing-xs: 0.5rem;
+    --spacing-sm: 0.75rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+}
+
+/* Stat Cards */
+.stat-card {
+    background: white;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+    height: 100%;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    border-color: #dee2e6;
+}
+
+.stat-card-icon {
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+/* Mobile Audit Cards */
+.mobile-audit-card {
+    background: white;
+    transition: background-color 0.2s ease;
+}
+
+.mobile-audit-card:hover {
+    background-color: #f8f9fa;
+}
+
+.mobile-audit-card:last-child {
+    border-bottom: none !important;
+}
+
+/* Responsive Pagination */
+.pagination-responsive {
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.pagination-responsive .page-link {
+    min-width: 2.5rem;
+    text-align: center;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-xl);
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Text Utilities */
+.text-break {
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Touch-friendly buttons on mobile */
+@media (max-width: 768px) {
+    .btn, 
+    .page-link {
+        padding: 0.6rem 1rem;
+        font-size: 1rem;
+    }
+    
+    .form-control,
+    .form-select {
+        font-size: 16px; /* Prevents zoom on iOS */
+    }
+    
+    .stat-card-icon {
+        width: 2.5rem;
+        height: 2.5rem;
+        font-size: 1rem;
+    }
+    
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+}
+
+/* Tablet Adjustments */
+@media (min-width: 768px) and (max-width: 992px) {
+    .stat-card-value {
+        font-size: 1.25rem;
+    }
+    
+    .admin-table {
+        font-size: 0.9rem;
+    }
+}
+
+/* Print Styles */
+@media print {
+    .page-header-actions,
+    .admin-card-header .badge,
+    .btn,
+    .modal,
+    .pagination,
+    [data-bs-toggle="modal"] {
+        display: none !important;
+    }
+    
+    .admin-card {
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+    }
+    
+    .stat-card {
+        border: 1px solid #ddd !important;
+        break-inside: avoid;
+    }
+    
+    table {
+        break-inside: auto;
+    }
+    
+    tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+    
+    .badge {
+        border: 1px solid #000 !important;
+        color: #000 !important;
+        background: transparent !important;
+    }
+}
+</style>
+
+<!-- Add Bootstrap JS for modal functionality (if not already included) -->
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle responsive filter toggle state
+    const filterCollapse = document.getElementById('filterCollapse');
+    if (filterCollapse) {
+        // Remember filter state across page reloads on mobile
+        if (localStorage.getItem('filterCollapseOpen') === 'true' && window.innerWidth < 768) {
+            filterCollapse.classList.add('show');
+        }
+        
+        filterCollapse.addEventListener('shown.bs.collapse', function() {
+            localStorage.setItem('filterCollapseOpen', 'true');
+        });
+        
+        filterCollapse.addEventListener('hidden.bs.collapse', function() {
+            localStorage.setItem('filterCollapseOpen', 'false');
+        });
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

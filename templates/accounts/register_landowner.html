@@ -1,0 +1,33 @@
+{% extends "authentication/auth_base.html" %}
+{% block title %}Register Landowner{% endblock %}
+
+{% block content %}
+<p class="auth-kicker">Landowner Verification</p>
+<h2 class="auth-title">Create Landowner Account</h2>
+<p class="auth-subtitle">Submit landowner documents for verification.</p>
+
+<form method="POST" enctype="multipart/form-data" class="auth-form">
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+    <div class="portal-alert alert-error">
+        {% for error in form.non_field_errors %}
+            {{ error }}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% for field in form %}
+        <div class="form-group">
+            <label>{{ field.label }}</label>
+            {% if field.help_text %}
+                <div class="small text-muted">{{ field.help_text }}</div>
+            {% endif %}
+            {{ field }}
+            <small class="text-error">{{ field.errors }}</small>
+        </div>
+    {% endfor %}
+
+    <button class="auth-btn">Submit for Verification</button>
+</form>
+{% endblock %}

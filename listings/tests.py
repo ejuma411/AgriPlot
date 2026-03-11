@@ -5,7 +5,7 @@ from django.urls import reverse
 from unittest.mock import patch
 
 from .models import Agent, ContactRequest, Plot
-from .verification_service import VerificationService
+from verification.verification_service import VerificationService
 from .views import _safe_next_url, staff_dashboard, verification_progress
 
 
@@ -83,4 +83,4 @@ class ListingsRegressionTests(TestCase):
     def test_legacy_verify_dashboard_redirects_to_canonical(self):
         response = self.client.get("/verify/dashboard/")
         self.assertEqual(response.status_code, 301)
-        self.assertIn(reverse("listings:verification_dashboard"), response["Location"])
+        self.assertIn(reverse("verification:verification_dashboard"), response["Location"])

@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+
+{% block title %}{% if task.verification_type == 'surveyor_inspection' %}Surveyor Inspection{% else %}Extension Review{% endif %} - {{ plot.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-3">{% if task.verification_type == 'surveyor_inspection' %}Surveyor Inspection{% else %}Extension Review{% endif %}</h2>
+    <p class="text-muted mb-4">
+        Task: {{ task.get_verification_type_display }} | Plot: {{ plot.title }}
+    </p>
+
+    <form method="POST" enctype="multipart/form-data" class="card shadow-sm">
+        <div class="card-body">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger">
+                {% for error in form.non_field_errors %}{{ error }}{% endfor %}
+            </div>
+            {% endif %}
+
+            {% if task.verification_type == 'extension_review' %}
+            <h5 class="mt-2">Visit Details</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Visit date</label>
+                    {{ form.visit_date }}
+                    <small class="text-danger">{{ form.visit_date.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Weather conditions</label>
+                    {{ form.weather_conditions }}
+                    <small class="text-danger">{{ form.weather_conditions.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Soil Assessment</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Soil pH</label>
+                    {{ form.soil_ph }}
+                    <small class="text-danger">{{ form.soil_ph.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Soil Classification</label>
+                    {{ form.soil_classification }}
+                    {% if form.soil_classification.help_text %}<small class="text-muted d-block">{{ form.soil_classification.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.soil_classification.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Soil texture</label>
+                    {{ form.soil_texture }}
+                    <small class="text-danger">{{ form.soil_texture.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Soil depth</label>
+                    {{ form.soil_depth }}
+                    {% if form.soil_depth.help_text %}<small class="text-muted d-block">{{ form.soil_depth.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.soil_depth.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Soil drainage</label>
+                    {{ form.soil_drainage }}
+                    <small class="text-danger">{{ form.soil_drainage.errors }}</small>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label">Soil analysis notes</label>
+                    {{ form.soil_analysis_notes }}
+                    {% if form.soil_analysis_notes.help_text %}<small class="text-muted d-block">{{ form.soil_analysis_notes.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.soil_analysis_notes.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Crop Assessment</h5>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label">Current land use</label>
+                    {{ form.current_land_use }}
+                    {% if form.current_land_use.help_text %}<small class="text-muted d-block">{{ form.current_land_use.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.current_land_use.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Existing crops</label>
+                    {{ form.existing_crops }}
+                    {% if form.existing_crops.help_text %}<small class="text-muted d-block">{{ form.existing_crops.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.existing_crops.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Crop health</label>
+                    {{ form.crop_health }}
+                    <small class="text-danger">{{ form.crop_health.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Pest issues</label>
+                    {{ form.pest_issues }}
+                    <small class="text-danger">{{ form.pest_issues.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Disease issues</label>
+                    {{ form.disease_issues }}
+                    <small class="text-danger">{{ form.disease_issues.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Water Assessment</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Water source (verified)</label>
+                    {{ form.water_source_verified }}
+                    <small class="text-danger">{{ form.water_source_verified.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Water quality</label>
+                    {{ form.water_quality }}
+                    <small class="text-danger">{{ form.water_quality.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Irrigation system</label>
+                    {{ form.irrigation_system }}
+                    <small class="text-danger">{{ form.irrigation_system.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Power access</label>
+                    {{ form.power_access }}
+                    <small class="text-danger">{{ form.power_access.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Site photos</label>
+                    {{ form.site_photos }}
+                    {% if form.site_photos.help_text %}<small class="text-muted d-block">{{ form.site_photos.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.site_photos.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Zoning & LCB</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Topography</label>
+                    {{ form.topography }}
+                    <small class="text-danger">{{ form.topography.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Zoning status</label>
+                    {{ form.zoning_status }}
+                    <small class="text-danger">{{ form.zoning_status.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">LCB approval potential</label>
+                    {{ form.lcb_approval_potential }}
+                    <small class="text-danger">{{ form.lcb_approval_potential.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <div class="form-check mt-4">
+                        {{ form.lcb_zone }}
+                        <label class="form-check-label">Subject to LCB consent</label>
+                    </div>
+                    <small class="text-danger">{{ form.lcb_zone.errors }}</small>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label">Topography summary</label>
+                    {{ form.topography_summary }}
+                    {% if form.topography_summary.help_text %}<small class="text-muted d-block">{{ form.topography_summary.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.topography_summary.errors }}</small>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label">Project feasibility note</label>
+                    {{ form.project_feasibility_note }}
+                    {% if form.project_feasibility_note.help_text %}<small class="text-muted d-block">{{ form.project_feasibility_note.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.project_feasibility_note.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Recommendations</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Recommended crops</label>
+                    {{ form.recommended_crops }}
+                    <small class="text-danger">{{ form.recommended_crops.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Improvement suggestions</label>
+                    {{ form.improvement_suggestions }}
+                    <small class="text-danger">{{ form.improvement_suggestions.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Overall suitability</label>
+                    {{ form.overall_suitability }}
+                    <small class="text-danger">{{ form.overall_suitability.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Recommendation</label>
+                    {{ form.recommendation }}
+                    <small class="text-danger">{{ form.recommendation.errors }}</small>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label">Comments</label>
+                    {{ form.comments }}
+                    <small class="text-danger">{{ form.comments.errors }}</small>
+                </div>
+            </div>
+            {% else %}
+            <h5 class="mt-2">Visit Details</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Visit date</label>
+                    {{ form.visit_date }}
+                    <small class="text-danger">{{ form.visit_date.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">GPS latitude</label>
+                    {{ form.gps_latitude }}
+                    <small class="text-danger">{{ form.gps_latitude.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">GPS longitude</label>
+                    {{ form.gps_longitude }}
+                    <small class="text-danger">{{ form.gps_longitude.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Boundary & Size Verification</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Boundary confirmed</label>
+                    {{ form.boundary_confirmed }}
+                    <small class="text-danger">{{ form.boundary_confirmed.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Acreage confirmed</label>
+                    {{ form.acreage_confirmed }}
+                    <small class="text-danger">{{ form.acreage_confirmed.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Ground acreage (measured)</label>
+                    {{ form.ground_acreage }}
+                    <small class="text-danger">{{ form.ground_acreage.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Deed area (stated)</label>
+                    {{ form.deed_area }}
+                    <small class="text-danger">{{ form.deed_area.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">RIM map sheet no.</label>
+                    {{ form.rim_map_sheet_no }}
+                    <small class="text-danger">{{ form.rim_map_sheet_no.errors }}</small>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label">Boundary markers</label>
+                    {{ form.boundary_markers }}
+                    {% if form.boundary_markers.help_text %}<small class="text-muted d-block">{{ form.boundary_markers.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.boundary_markers.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Beacon status</label>
+                    {{ form.beacon_status }}
+                    <small class="text-danger">{{ form.beacon_status.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">LSB license number</label>
+                    {{ form.lsb_license_number }}
+                    <small class="text-danger">{{ form.lsb_license_number.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Beacon certificate</label>
+                    {{ form.beacon_certificate }}
+                    <small class="text-danger">{{ form.beacon_certificate.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Mutation form / survey plan</label>
+                    {{ form.mutation_form }}
+                    <small class="text-danger">{{ form.mutation_form.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Boundary verification report</label>
+                    {{ form.boundary_report }}
+                    <small class="text-danger">{{ form.boundary_report.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Plot Images</h5>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label">Surveyor Photos</label>
+                    {{ form.plot_images }}
+                    {% if form.plot_images.help_text %}<small class="text-muted d-block">{{ form.plot_images.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.plot_images.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Encumbrances</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Encumbrances found</label>
+                    {{ form.encumbrances_found }}
+                    <small class="text-danger">{{ form.encumbrances_found.errors }}</small>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label">Encumbrance details</label>
+                    {{ form.encumbrance_details }}
+                    <small class="text-danger">{{ form.encumbrance_details.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Encroachment Check</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <div class="form-check mt-2">
+                        {{ form.encroachment_found }}
+                        <label class="form-check-label">Encroachment found</label>
+                    </div>
+                    <small class="text-danger">{{ form.encroachment_found.errors }}</small>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label">Encroachment details</label>
+                    {{ form.encroachment_details }}
+                    <small class="text-danger">{{ form.encroachment_details.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Topography & Access</h5>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label">Topography notes</label>
+                    {{ form.topography_notes }}
+                    {% if form.topography_notes.help_text %}<small class="text-muted d-block">{{ form.topography_notes.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.topography_notes.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Access road</label>
+                    {{ form.access_road }}
+                    {% if form.access_road.help_text %}<small class="text-muted d-block">{{ form.access_road.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.access_road.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Utilities available</label>
+                    {{ form.utilities_available }}
+                    {% if form.utilities_available.help_text %}<small class="text-muted d-block">{{ form.utilities_available.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.utilities_available.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Subdivision & Mutation</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Subdivision required</label>
+                    {{ form.subdivision_required }}
+                    <small class="text-danger">{{ form.subdivision_required.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Mutation required</label>
+                    {{ form.mutation_required }}
+                    <small class="text-danger">{{ form.mutation_required.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Price Review</h5>
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Price realistic</label>
+                    {{ form.price_realistic }}
+                    <small class="text-danger">{{ form.price_realistic.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Suggested price per acre</label>
+                    {{ form.suggested_price_per_acre }}
+                    <small class="text-danger">{{ form.suggested_price_per_acre.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Suggested sale price</label>
+                    {{ form.suggested_sale_price }}
+                    <small class="text-danger">{{ form.suggested_sale_price.errors }}</small>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="form-label">Price review notes</label>
+                    {{ form.price_review_notes }}
+                    <small class="text-danger">{{ form.price_review_notes.errors }}</small>
+                </div>
+            </div>
+
+            <h5 class="mt-2">Final Notes</h5>
+            <div class="row">
+                <div class="col-12 mb-3">
+                    <label class="form-label">Notes</label>
+                    {{ form.notes }}
+                    <small class="text-danger">{{ form.notes.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Recommendation</label>
+                    {{ form.recommendation }}
+                    <small class="text-danger">{{ form.recommendation.errors }}</small>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-footer bg-white">
+            <button type="submit" class="btn btn-success">
+                {% if task.verification_type == 'surveyor_inspection' %}Submit Inspection{% else %}Submit Review{% endif %}
+            </button>
+            <a href="{% if task.verification_type == 'surveyor_inspection' %}{% url 'verification:surveyor_dashboard' %}{% else %}{% url 'verification:extension_dashboard' %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
