@@ -310,6 +310,39 @@ footer a.text-muted:hover {
     align-items: center;
 }
 
+.quick-filters {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(217, 209, 193, 0.85);
+}
+
+.quick-apply {
+    display: flex;
+    align-items: flex-end;
+}
+
+.quick-apply-btn {
+    width: 100%;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid transparent;
+    background: var(--ag-green-700);
+    color: #fff;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--ag-transition);
+}
+
+.quick-apply-btn:hover {
+    background: var(--ag-green-900);
+}
+
 .search-field {
     position: relative;
     min-width: 0;
@@ -387,6 +420,10 @@ footer a.text-muted:hover {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 12px;
+}
+
+.advanced-filters .filters-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .filter-group label {
@@ -1117,6 +1154,14 @@ footer a.text-muted:hover {
         width: 100%;
     }
 
+    .quick-filters {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .quick-apply {
+        display: none;
+    }
+
     .filters-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1154,6 +1199,9 @@ footer a.text-muted:hover {
 @media (max-width: 768px) {
     .hero-market {
         min-height: 560px;
+    }
+    .quick-filters {
+        grid-template-columns: 1fr;
     }
     .filters-grid {
         grid-template-columns: 1fr;
