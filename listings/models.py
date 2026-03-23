@@ -5,6 +5,13 @@ from django.db import models
 
 
 class Plot(models.Model):
+    MARKET_STATUS_CHOICES = [
+        ("available", "Available"),
+        ("reserved", "Reserved"),
+        ("leased", "Leased"),
+        ("sold", "Sold"),
+    ]
+
     LISTING_TYPE_CHOICES = [
         ("sale", "For Sale"),
         ("lease", "For Lease"),
@@ -158,6 +165,12 @@ class Plot(models.Model):
     listing_type = models.CharField(
         max_length=10, choices=LISTING_TYPE_CHOICES, default="sale"
     )
+    market_status = models.CharField(
+        max_length=20, choices=MARKET_STATUS_CHOICES, default="available"
+    )
+    lease_start_date = models.DateField(null=True, blank=True)
+    lease_end_date = models.DateField(null=True, blank=True)
+    availability_notes = models.TextField(blank=True)
     land_type = models.CharField(
         max_length=20, choices=LAND_TYPE_CHOICES, default="agricultural"
     )
@@ -231,6 +244,7 @@ class Plot(models.Model):
 
     has_buildings = models.BooleanField(default=False)
     building_description = models.TextField(blank=True)
+    other_amenities = models.TextField(blank=True)
 
     fencing = models.CharField(
         max_length=50, choices=FENCING_CHOICES, null=True, blank=True
@@ -393,6 +407,18 @@ class Plot(models.Model):
                 "Provide encumbrance details when encumbrances are marked as present."
             )
 
+        if self.market_status == "leased":
+            if not self.lease_start_date or not self.lease_end_date:
+                raise ValidationError(
+                    "Lease start and end dates are required when the plot is marked as leased."
+                )
+            if self.lease_end_date <= self.lease_start_date:
+                raise ValidationError("Lease end date must be after the lease start date.")
+
+        if self.market_status == "sold":
+            if self.lease_start_date or self.lease_end_date:
+                raise ValidationError("Sold plots cannot keep lease date windows.")
+
     def save(self, *args, **kwargs):
         self.full_clean()
         super().save(*args, **kwargs)
@@ -418,10 +444,28 @@ class Plot(models.Model):
             required_docs.extend(["survey_map", "plupa1_form"])
         if self.ownership_type == "leasehold":
             required_docs.extend(["rent_clearance", "consent_to_transfer"])
-        for doc_field in required_docs:
-            if not getattr(self, doc_field):
-                return False
-        return True
+        return all(bool(getattr(self, doc, None)) for doc in required_docs)
+
+    @property
+    def has_active_lease(self):
+        return (
+            self.market_status == "leased"
+            and self.lease_start_date is not None
+            and self.lease_end_date is not None
+        )
+
+    @property
+    def availability_summary(self):
+        if self.market_status == "sold":
+            return "This land has already been sold."
+        if self.has_active_lease:
+            return (
+                f"This land is already leased from "
+                f"{self.lease_start_date:%b %d, %Y} to {self.lease_end_date:%b %d, %Y}."
+            )
+        if self.market_status == "reserved":
+            return "This land is currently reserved."
+        return "This land is currently available."
 
 
 class PlotImage(models.Model):
@@ -672,4 +716,3 @@ __all__ = [
     "LandSurveyor",
     "SurveyorReport",
 ]
-

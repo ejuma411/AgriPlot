@@ -17,6 +17,7 @@ from django.http import Http404, JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404, resolve_url
 from django.template.loader import render_to_string
 from django.core.exceptions import DisallowedHost, ValidationError
+from django.urls import reverse
 from decimal import Decimal
 from django.contrib.contenttypes.models import ContentType
 from django.utils import timezone
@@ -209,6 +210,11 @@ def home(request):
     paginator = Paginator(verified_plots, 15)
     page_number = request.GET.get('page')
     featured_plots = paginator.get_page(page_number)
+    saved_plot_ids = []
+    if request.user.is_authenticated:
+        saved_plot_ids = list(
+            UserInterest.objects.filter(user=request.user).values_list("plot_id", flat=True)
+        )
     
     return render(request, 'listings/home.html', {
         'featured_plots': featured_plots,
@@ -223,6 +229,7 @@ def home(request):
         'filter_land_type': land_type,
         'crop_presets': crop_presets,
         'show_wizard_resume': show_wizard_resume,
+        'saved_plot_ids': saved_plot_ids,
         'active_soil_filters': {
             'ph_min': ph_min, 'ph_max': ph_max, 'om_min': om_min,
             'n_min': n_min, 'p_min': p_min, 'k_min': k_min, 
@@ -448,9 +455,54 @@ def plot_detail(request, id):
         'similar_plots': similar_plots,
         'map_bbox': map_bbox,
         'today': date.today().strftime('%Y-%m-%d'),
+        'can_start_payment': request.user.is_authenticated and not is_owner,
+        'payment_create_url': f"{reverse('payments:create_request')}?plot={plot.id}",
+        'is_saved_plot': (
+            request.user.is_authenticated
+            and UserInterest.objects.filter(user=request.user, plot=plot).exists()
+        ),
+        'availability_summary': plot.availability_summary,
+        'is_lease_locked': plot.market_status == "leased" and plot.listing_type == "lease",
+        'is_sold_plot': plot.market_status == "sold",
     }
     
     return render(request, 'listings/details.html', context)
+
+
+@login_required
+def toggle_saved_plot(request, plot_id):
+    if request.method != "POST":
+        messages.error(request, "Invalid request method.")
+        return redirect("listings:plot_detail", id=plot_id)
+
+    plot = get_object_or_404(Plot, id=plot_id)
+    profile = getattr(request.user, "profile", None)
+    next_url = request.POST.get("next")
+    if not profile or profile.role != "buyer":
+        messages.error(request, "Only buyer accounts can save plots.")
+        if next_url:
+            return redirect(next_url)
+        return redirect("listings:plot_detail", id=plot_id)
+
+    interest, created = UserInterest.objects.get_or_create(
+        user=request.user,
+        plot=plot,
+        defaults={
+            "message": "",
+            "status": "pending",
+            "notes": "Saved by buyer for follow-up.",
+        },
+    )
+
+    if created:
+        messages.success(request, f"{plot.title} was added to your saved plots.")
+    else:
+        interest.delete()
+        messages.info(request, f"{plot.title} was removed from your saved plots.")
+
+    if next_url:
+        return redirect(next_url)
+    return redirect("listings:plot_detail", id=plot_id)
 # ============ PLOT MANAGEMENT ============
 
 import json

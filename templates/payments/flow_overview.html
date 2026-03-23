@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}AgriPlot Payment Flow{% endblock %}
+
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/payments.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="payments-hero payments-hero-flow">
+    <div class="payments-shell">
+        <div class="hero-copy">
+            <span class="hero-kicker">Platform blueprint</span>
+            <h1>AgriPlot payment flow</h1>
+            <p class="hero-lead">The complete marketplace payment idea behind the app: buyer commitment, seller milestones, escrow handling, multi-method checkout, and dispute-ready records all inside one operational layer.</p>
+            <div class="hero-actions">
+                <a href="{{ dashboard_url }}" class="hero-btn hero-btn-primary">Open payments workspace</a>
+                <a href="#methods" class="hero-btn hero-btn-secondary">See payment methods</a>
+            </div>
+        </div>
+        <aside class="hero-panel">
+            <div class="hero-panel-card pulse-card">
+                <span class="panel-label">Why this matters</span>
+                <strong>AgriPlot monetizes trust, not just traffic</strong>
+                <p>The platform becomes the place where money moves only when the next proof point is satisfied.</p>
+            </div>
+            <div class="hero-panel-card">
+                <span class="panel-label">Operating principles</span>
+                <ul class="hero-list">
+                    {% for principle in platform_principles %}
+                    <li>{{ principle }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </aside>
+    </div>
+</section>
+
+<section class="payments-section" id="journey">
+    <div class="payments-shell">
+        <div class="section-heading">
+            <span class="section-kicker">Journey</span>
+            <h2>How the money flow supports the land deal</h2>
+            <p>These checkpoints make AgriPlot commercially important and operationally accountable.</p>
+        </div>
+        <div class="journey-grid">
+            {% for step in journey_steps %}
+            <article class="journey-card">
+                <div class="journey-icon">
+                    <i class="fas {{ step.icon }}"></i>
+                </div>
+                <span class="journey-eyebrow">{{ step.eyebrow }}</span>
+                <h3>{{ step.title }}</h3>
+                <p>{{ step.copy }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="payments-section section-accent">
+    <div class="payments-shell dual-grid">
+        <div>
+            <div class="section-heading compact">
+                <span class="section-kicker">Revenue</span>
+                <h2>Where AgriPlot earns</h2>
+            </div>
+            <div class="chip-list">
+                {% for item in revenue_streams %}
+                <div class="info-chip">{{ item }}</div>
+                {% endfor %}
+            </div>
+        </div>
+        <div>
+            <div class="section-heading compact">
+                <span class="section-kicker">Disputes</span>
+                <h2>What happens when the deal goes sideways</h2>
+            </div>
+            <div class="rule-list">
+                {% for rule in dispute_rules %}
+                <article class="rule-card">
+                    <span class="rule-index">0{{ forloop.counter }}</span>
+                    <p>{{ rule }}</p>
+                </article>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="payments-section" id="methods">
+    <div class="payments-shell">
+        <div class="section-heading">
+            <span class="section-kicker">Methods</span>
+            <h2>Payment methods designed into the workspace</h2>
+            <p>The app is structured to support mobile money, card, bank transfer, wallet balance, and manual escrow operations in one backend.</p>
+        </div>
+        <div class="method-grid">
+            {% for method in method_cards %}
+            <article class="method-card tone-{{ method.tone }}">
+                <h3>{{ method.name }}</h3>
+                <p>{{ method.description }}</p>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

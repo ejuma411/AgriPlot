@@ -24,6 +24,7 @@ from authentication import views_auth
 
 urlpatterns = [
     path("admin/", admin.site.urls),
+    path("payments/", include("payments.urls")),
     path('', include('listings.urls')),
     path('', include('verification.urls')),
     path('login/', views_auth.TwoFactorLoginView.as_view(), name='login'),

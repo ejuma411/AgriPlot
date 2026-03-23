@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Create Payment Request{% endblock %}
+
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/payments.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="payments-section create-page">
+    <div class="payments-shell create-layout">
+        <div class="form-card">
+            <div class="section-heading compact">
+                <span class="section-kicker">New request</span>
+                <h2>Create a payment workflow</h2>
+                <p>Set the amount, pick the payment method, and define the first due date so the transaction has structure from the start.</p>
+            </div>
+            {% if selected_plot %}
+            <div class="workspace-notice mb-3">
+                <strong>Starting from plot:</strong> {{ selected_plot.title }} in {{ selected_plot.location }}
+                <div class="mt-2">{{ selected_plot_availability }}</div>
+            </div>
+            {% endif %}
+            <div class="workspace-notice mb-3">
+                <strong>Amount policy:</strong> buyer checkout amounts are system controlled by transaction type and category so no one can enter arbitrary values.
+                <div class="mt-2" id="amountPolicyHint">Choose a transaction type and category to see the calculated amount.</div>
+            </div>
+            <form method="post" class="payments-form">
+                {% csrf_token %}
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                {% endif %}
+                {% if form.errors %}
+                <div class="workspace-notice mb-3" style="border-color: rgba(176, 42, 55, 0.18); background: rgba(176, 42, 55, 0.06);">
+                    <strong>Please fix the highlighted checkout fields.</strong>
+                    <ul class="hero-list" style="margin-top: 0.75rem;">
+                        {% for field in form %}
+                            {% for error in field.errors %}
+                            <li>{{ field.label }}: {{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                        {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+                <style>
+                    .method-detail-panel {
+                        display: none;
+                        gap: 1rem;
+                        padding: 1rem;
+                        border: 1px solid rgba(15, 74, 46, 0.1);
+                        border-radius: 18px;
+                        background: rgba(247, 243, 232, 0.4);
+                    }
+                </style>
+                {% for field in form %}
+                {% if field.name != 'phone_number' and field.name != 'lease_start_date' and field.name != 'lease_end_date' and field.name != 'due_at' and field.name != 'mpesa_reference' and field.name != 'mpesa_account_reference' and field.name != 'cardholder_name' and field.name != 'card_last4' and field.name != 'bank_name' and field.name != 'bank_account_name' and field.name != 'bank_account_number' and field.name != 'airtel_number' and field.name != 'wallet_identifier' and field.name != 'manual_escrow_notes' %}
+                <div class="field-block {% if field.name == 'escrow_enabled' %}field-inline{% endif %}">
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                    <div class="help-copy">{{ field.help_text }}</div>
+                    {% endif %}
+                    {% for error in field.errors %}
+                    <div class="error-copy">{{ error }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                {% endfor %}
+
+                {% if form.allow_due_at_override %}
+                <div class="field-block">
+                    <label for="{{ form.due_at.id_for_label }}" class="form-label">{{ form.due_at.label }}</label>
+                    {{ form.due_at }}
+                    <div class="help-copy">Finance or operations can adjust this deadline when the transaction needs a custom payment window.</div>
+                    {% for error in form.due_at.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                </div>
+                {% else %}
+                <div class="workspace-notice mb-3">
+                    <strong>Payment deadline:</strong> AgriPlot sets this automatically from the checkout type, so buyers do not need to choose their own deadline.
+                </div>
+                {% endif %}
+
+                <div class="method-detail-panel" data-transaction-panel="lease">
+                    <h3 class="form-label">Lease Period</h3>
+                    <div class="workspace-notice">
+                        These dates are only needed for lease deals. They stay hidden for purchase or service checkout.
+                    </div>
+                    <div class="field-block">
+                        <label for="{{ form.lease_start_date.id_for_label }}" class="form-label">{{ form.lease_start_date.label }}</label>
+                        {{ form.lease_start_date }}
+                        {% for error in form.lease_start_date.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="field-block">
+                        <label for="{{ form.lease_end_date.id_for_label }}" class="form-label">{{ form.lease_end_date.label }}</label>
+                        {{ form.lease_end_date }}
+                        {% for error in form.lease_end_date.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="method-detail-panel" data-method-panel="mpesa_stk,mpesa_paybill">
+                    <h3 class="form-label">Mobile Payment Number</h3>
+                    <div class="field-block">
+                        <label for="{{ form.phone_number.id_for_label }}" class="form-label">{{ form.phone_number.label }}</label>
+                        {{ form.phone_number }}
+                        {% for error in form.phone_number.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="method-detail-panel" data-method-panel="mpesa_stk">
+                    <h3 class="form-label">M-Pesa STK Details</h3>
+                    <div class="workspace-notice">
+                        Enter the M-Pesa number only. When live Daraja STK is connected, AgriPlot will send the push prompt to that phone and the buyer will enter their PIN on the phone, not on this form.
+                    </div>
+                </div>
+
+                <div class="method-detail-panel" data-method-panel="mpesa_paybill">
+                    <h3 class="form-label">M-Pesa Paybill / Till Details</h3>
+                    <div class="workspace-notice">
+                        Paybill / Till is a manual fallback, so we still keep a reference and account code for reconciliation.
+                    </div>
+                    <div class="field-block">
+                        <label for="{{ form.mpesa_reference.id_for_label }}" class="form-label">{{ form.mpesa_reference.label }}</label>
+                        {{ form.mpesa_reference }}
+                        {% for error in form.mpesa_reference.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="field-block">
+                        <label for="{{ form.mpesa_account_reference.id_for_label }}" class="form-label">{{ form.mpesa_account_reference.label }}</label>
+                        {{ form.mpesa_account_reference }}
+                        <div class="help-copy">{{ form.mpesa_account_reference.help_text }}</div>
+                        {% for error in form.mpesa_account_reference.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="method-detail-panel" data-method-panel="card">
+                    <h3 class="form-label">Card Checkout Details</h3>
+                    <div class="field-block">
+                        <label for="{{ form.cardholder_name.id_for_label }}" class="form-label">{{ form.cardholder_name.label }}</label>
+                        {{ form.cardholder_name }}
+                        {% for error in form.cardholder_name.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="field-block">
+                        <label for="{{ form.card_last4.id_for_label }}" class="form-label">{{ form.card_last4.label }}</label>
+                        {{ form.card_last4 }}
+                        <div class="help-copy">{{ form.card_last4.help_text }}</div>
+                        {% for error in form.card_last4.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="method-detail-panel" data-method-panel="bank_transfer">
+                    <h3 class="form-label">Bank Transfer Details</h3>
+                    <div class="field-block">
+                        <label for="{{ form.bank_name.id_for_label }}" class="form-label">{{ form.bank_name.label }}</label>
+                        {{ form.bank_name }}
+                        {% for error in form.bank_name.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="field-block">
+                        <label for="{{ form.bank_account_name.id_for_label }}" class="form-label">{{ form.bank_account_name.label }}</label>
+                        {{ form.bank_account_name }}
+                        {% for error in form.bank_account_name.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                    <div class="field-block">
+                        <label for="{{ form.bank_account_number.id_for_label }}" class="form-label">{{ form.bank_account_number.label }}</label>
+                        {{ form.bank_account_number }}
+                        {% for error in form.bank_account_number.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="method-detail-panel" data-method-panel="airtel_money">
+                    <h3 class="form-label">Airtel Money Details</h3>
+                    <div class="workspace-notice">
+                        Enter the Airtel Money number only. For a live push-style integration, the PIN entry happens on the user's phone after AgriPlot initiates the payment request.
+                    </div>
+                </div>
+
+                <div class="method-detail-panel" data-method-panel="wallet">
+                    <h3 class="form-label">AgriPlot Wallet Details</h3>
+                    <div class="field-block">
+                        <label for="{{ form.wallet_identifier.id_for_label }}" class="form-label">{{ form.wallet_identifier.label }}</label>
+                        {{ form.wallet_identifier }}
+                        {% for error in form.wallet_identifier.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+
+                <div class="method-detail-panel" data-method-panel="manual_escrow">
+                    <h3 class="form-label">Manual Escrow Details</h3>
+                    <div class="field-block">
+                        <label for="{{ form.manual_escrow_notes.id_for_label }}" class="form-label">{{ form.manual_escrow_notes.label }}</label>
+                        {{ form.manual_escrow_notes }}
+                        {% for error in form.manual_escrow_notes.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="hero-btn hero-btn-primary">Create request</button>
+                    <a href="{% url 'payments:dashboard' %}" class="hero-btn hero-btn-secondary hero-btn-light">Back to workspace</a>
+                </div>
+            </form>
+        </div>
+        <aside class="side-panel-stack">
+            <div class="hero-panel-card">
+                <span class="panel-label">Best first use cases</span>
+                <ul class="hero-list">
+                    <li>Viewing fees that qualify buyer intent</li>
+                    <li>Reservation deposits before title and due diligence checks</li>
+                    <li>Verification packages for documents and title search coordination</li>
+                    <li>Escrow deposits released against seller milestones</li>
+                </ul>
+            </div>
+            <div class="hero-panel-card">
+                <span class="panel-label">Methods</span>
+                <div class="mini-method-list">
+                    {% for method in method_cards %}
+                    <div class="mini-method-item">
+                        <strong>{{ method.name }}</strong>
+                        <p>{{ method.description }}</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </aside>
+    </div>
+</section>
+{{ checkout_amounts|json_script:"checkout-amounts" }}
+{{ plot_listing_types|json_script:"plot-listing-types" }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const plot = document.getElementById("id_plot");
+    const transactionType = document.getElementById("id_transaction_type");
+    const category = document.getElementById("id_category");
+    const method = document.getElementById("id_method");
+    const amount = document.getElementById("id_amount");
+    const hint = document.getElementById("amountPolicyHint");
+    const dataNode = document.getElementById("checkout-amounts");
+    const plotTypeNode = document.getElementById("plot-listing-types");
+    const methodPanels = document.querySelectorAll("[data-method-panel]");
+    const transactionPanels = document.querySelectorAll("[data-transaction-panel]");
+
+    if (!transactionType || !category || !method || !amount || !hint || !dataNode || !plotTypeNode) {
+        return;
+    }
+
+    const presets = JSON.parse(dataNode.textContent);
+    const plotListingTypes = JSON.parse(plotTypeNode.textContent);
+
+    function formatKes(value) {
+        const number = Number(value);
+        if (Number.isNaN(number)) {
+            return value;
+        }
+        return "KES " + number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function updateAmount() {
+        const tx = transactionType.value;
+        const cat = category.value;
+        const computed = presets?.[tx]?.[cat] || "";
+        if (computed) {
+            amount.value = computed;
+            hint.textContent = "Calculated checkout amount: " + formatKes(computed) + ".";
+        } else {
+            hint.textContent = "No platform amount is configured for this combination yet.";
+        }
+    }
+
+    function updateMethodPanel() {
+        const selectedMethod = method.value;
+        methodPanels.forEach((panel) => {
+            const supportedMethods = panel.dataset.methodPanel.split(",");
+            panel.style.display = supportedMethods.includes(selectedMethod) ? "grid" : "none";
+        });
+    }
+
+    function syncTransactionTypeFromPlot() {
+        if (!plot) {
+            return;
+        }
+        const listingType = plotListingTypes?.[plot.value];
+        if (listingType === "sale" && transactionType.value !== "purchase") {
+            transactionType.value = "purchase";
+        }
+        if (listingType === "lease" && transactionType.value !== "lease") {
+            transactionType.value = "lease";
+        }
+    }
+
+    function updateTransactionPanels() {
+        const selectedTransaction = transactionType.value;
+        transactionPanels.forEach((panel) => {
+            panel.style.display = panel.dataset.transactionPanel === selectedTransaction ? "grid" : "none";
+        });
+    }
+
+    transactionType.addEventListener("change", updateAmount);
+    transactionType.addEventListener("change", updateTransactionPanels);
+    category.addEventListener("change", updateAmount);
+    method.addEventListener("change", updateMethodPanel);
+    if (plot) {
+        plot.addEventListener("change", function () {
+            syncTransactionTypeFromPlot();
+            updateTransactionPanels();
+            updateAmount();
+        });
+    }
+    syncTransactionTypeFromPlot();
+    updateAmount();
+    updateMethodPanel();
+    updateTransactionPanels();
+});
+</script>
+{% endblock %}

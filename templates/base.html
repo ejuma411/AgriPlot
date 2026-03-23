@@ -155,6 +155,77 @@
             background: rgba(220, 53, 69, 0.1);
         }
 
+        .nav-activity-link {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .nav-activity-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 1.2rem;
+            height: 1.2rem;
+            padding: 0 0.35rem;
+            border-radius: 999px;
+            background: #c2410c;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .notification-dropdown {
+            min-width: 320px;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .notification-dropdown-header {
+            padding: 0.9rem 1rem;
+            background: linear-gradient(135deg, #eef6ef 0%, #ffffff 100%);
+            border-bottom: 1px solid rgba(15, 74, 46, 0.08);
+        }
+
+        .notification-preview-list {
+            max-height: 360px;
+            overflow-y: auto;
+        }
+
+        .notification-preview-item {
+            display: block;
+            padding: 0.85rem 1rem;
+            border-bottom: 1px solid rgba(15, 74, 46, 0.06);
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .notification-preview-item:hover {
+            background: rgba(31, 139, 76, 0.08);
+        }
+
+        .notification-preview-item.unread {
+            background: rgba(31, 139, 76, 0.06);
+        }
+
+        .notification-preview-item strong {
+            display: block;
+            color: var(--ag-green-900);
+            font-size: 0.92rem;
+            margin-bottom: 0.2rem;
+        }
+
+        .notification-preview-item small {
+            color: #6b7280;
+        }
+
+        .notification-dropdown-footer {
+            padding: 0.8rem 1rem;
+            background: #fbfcfb;
+        }
+
         /* Main content with proper spacing */
         .main-content {
             flex: 1;
@@ -352,6 +423,11 @@
                         <i class="fas fa-home me-1"></i> Home
                     </a>
                 </li>
+                {% comment %} <li class="nav-item">
+                    <a class="nav-link" href="{% url 'payments:dashboard' %}">
+                        <i class="fas fa-money-check-dollar me-1"></i> Payments
+                    </a>
+                </li> {% endcomment %}
 
                 <!-- Authenticated User Menu -->
                 {% if user.is_authenticated %}
@@ -418,6 +494,14 @@
                     {% endif %}
 
                     {% if user.agent or user.landownerprofile %}
+                        <li class="nav-item">
+                            <a class="nav-link nav-activity-link" href="{% url 'listings:buyer_interests' %}">
+                                <i class="fas fa-envelope me-1"></i> Messages
+                                {% if nav_unread_buyer_messages_count %}
+                                    <span class="nav-activity-badge">{{ nav_unread_buyer_messages_count }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
                         <!-- Agent/Landowner Quick Links -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="SellerDropdown" role="button" data-bs-toggle="dropdown">
@@ -441,11 +525,51 @@
                     {% if user.profile.role == 'buyer' %}
                         <!-- Buyer Quick Links -->
                         <li class="nav-item">
-                            <a class="nav-link" href="{% url 'listings:home' %}?interested=true">
+                            <a class="nav-link" href="{% url 'listings:saved_plots' %}">
                                 <i class="fas fa-heart me-1"></i> Saved Plots
                             </a>
                         </li>
                     {% endif %}
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle nav-activity-link" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-bell me-1"></i> Notifications
+                            {% if nav_unread_notifications_count %}
+                                <span class="nav-activity-badge">{{ nav_unread_notifications_count }}</span>
+                            {% endif %}
+                        </a>
+                        <div class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationDropdown">
+                            <div class="notification-dropdown-header">
+                                <strong>Notifications</strong>
+                                <div class="text-muted small">
+                                    {% if nav_unread_notifications_count %}
+                                        You have {{ nav_unread_notifications_count }} unread update{{ nav_unread_notifications_count|pluralize }}.
+                                    {% else %}
+                                        You are all caught up.
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="notification-preview-list">
+                                {% for n in nav_recent_notifications %}
+                                    <a class="notification-preview-item {% if not n.is_read %}unread{% endif %}" href="{% url 'listings:notifications_inbox' %}">
+                                        <strong>{{ n.title }}</strong>
+                                        <div class="small text-muted">{{ n.message|truncatechars:100 }}</div>
+                                        <small>{{ n.created_at|timesince }} ago</small>
+                                    </a>
+                                {% empty %}
+                                    <div class="notification-preview-item">
+                                        <strong>No notifications yet</strong>
+                                        <div class="small text-muted">Buyer activity, verification updates, and payment events will show up here.</div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <div class="notification-dropdown-footer">
+                                <a class="btn btn-sm btn-success w-100" href="{% url 'listings:notifications_inbox' %}">
+                                    Open Notification Center
+                                </a>
+                            </div>
+                        </div>
+                    </li>
 
                     <!-- User Profile Dropdown (always last) -->
                     <li class="nav-item dropdown">
@@ -457,9 +581,6 @@
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{% url 'listings:profile_management' %}">
                                 <i class="fas fa-user me-2"></i>Profile
-                            </a></li>
-                            <li><a class="dropdown-item" href="{% url 'listings:notifications_inbox' %}">
-                                <i class="fas fa-bell me-2"></i>Notifications
                             </a></li>
                             <li><a class="dropdown-item" href="{% url 'listings:account_settings' %}">
                                 <i class="fas fa-cog me-2"></i>Settings
@@ -492,6 +613,16 @@
 
 <!-- Main Content -->
 <main id="main-content" class="main-content" tabindex="-1">
+    {% if messages %}
+    <div class="container py-2">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
     {% block content %}
     <!-- page-specific content will go here -->
     {% endblock %}
@@ -521,6 +652,7 @@
                 <ul class="list-unstyled">
                     <li class="mb-2"><a href="{% url 'listings:home' %}" class="text-muted text-decoration-none small">Home</a></li>
                     <li class="mb-2"><a href="{% url 'listings:browse_plots' %}" class="text-muted text-decoration-none small">Browse Plots</a></li>
+                    <li class="mb-2"><a href="{% url 'payments:dashboard' %}" class="text-muted text-decoration-none small">Payments</a></li>
                     <li class="mb-2"><a href="{% url 'listings:how_it_works' %}" class="text-muted text-decoration-none small">How It Works</a></li>
                     <li class="mb-2"><a href="{% url 'listings:contact_us' %}" class="text-muted text-decoration-none small">Contact Us</a></li>
                 </ul>

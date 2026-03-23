@@ -290,6 +290,9 @@ class VerificationService:
         task.completed_at = timezone.now()
         task.notes = notes
         task.approved = approved
+        if task.has_field_benefit and task.benefit_status == "pending":
+            task.benefit_status = "earned"
+            task.benefit_recorded_at = timezone.now()
         task.save()
 
         VerificationLog.objects.create(

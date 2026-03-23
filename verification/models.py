@@ -325,6 +325,22 @@ class VerificationTask(models.Model):
     confirmation_status = models.CharField(
         max_length=20, choices=CONFIRMATION_CHOICES, default="pending"
     )
+    benefit_amount = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    benefit_currency = models.CharField(max_length=10, default="KES")
+    benefit_status = models.CharField(
+        max_length=20,
+        choices=[
+            ("not_applicable", "Not Applicable"),
+            ("pending", "Pending"),
+            ("earned", "Earned"),
+            ("paid", "Paid"),
+        ],
+        default="pending",
+    )
+    benefit_notes = models.TextField(blank=True)
+    benefit_recorded_at = models.DateTimeField(null=True, blank=True)
     deadline_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     notes = models.TextField(blank=True)
@@ -339,6 +355,10 @@ class VerificationTask(models.Model):
         return (
             f"{self.get_verification_type_display()} — Plot {self.plot_id} ({self.status})"
         )
+
+    @property
+    def has_field_benefit(self):
+        return self.verification_type in {"extension_review", "surveyor_inspection"}
 
 
 class VerificationLog(models.Model):
@@ -512,6 +532,15 @@ class ExtensionOfficer(models.Model):
     @property
     def can_accept_tasks(self):
         return self.current_workload < self.max_daily_tasks and self.is_active
+
+    @property
+    def earned_benefits_total(self):
+        return (
+            VerificationTask.objects.filter(
+                assigned_to=self.user, benefit_status__in=["earned", "paid"]
+            ).aggregate(total=models.Sum("benefit_amount"))["total"]
+            or 0
+        )
 
 
 class ExtensionReport(models.Model):
@@ -723,6 +752,15 @@ class LandSurveyor(models.Model):
     @property
     def can_accept_tasks(self):
         return self.current_workload < self.max_daily_tasks and self.is_active
+
+    @property
+    def earned_benefits_total(self):
+        return (
+            VerificationTask.objects.filter(
+                assigned_to=self.user, benefit_status__in=["earned", "paid"]
+            ).aggregate(total=models.Sum("benefit_amount"))["total"]
+            or 0
+        )
 
 
 class SurveyorReport(models.Model):

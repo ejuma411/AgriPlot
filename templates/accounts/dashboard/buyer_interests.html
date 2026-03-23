@@ -2,7 +2,7 @@
 {% load static %}
 {% load plot_extras %}
 
-{% block title %}Messages — AgriPlot Connect{% endblock %}
+{% block title %}Buyer Activity — AgriPlot Connect{% endblock %}
 
 {% block content %}
 <div class="dashboard-wrapper">
@@ -28,7 +28,7 @@
             </a>
             <a href="{% url 'listings:buyer_interests' %}" class="nav-item active">
                 <i class="fas fa-envelope"></i>
-                <span>Messages</span>
+                <span>Buyer Activity</span>
             </a>
             <a href="{% url 'listings:profile_management' %}" class="nav-item">
                 <i class="fas fa-user-circle"></i>
@@ -52,8 +52,8 @@
         <!-- Top Header Bar -->
         <div class="dashboard-topbar">
             <div class="topbar-left">
-                <h1 class="page-title">Messages</h1>
-                <p class="page-subtitle">Manage buyer inquiries and conversations</p>
+                <h1 class="page-title">Buyer Activity</h1>
+                <p class="page-subtitle">Track saved interest, checkout starts, and buyer inquiries in one place.</p>
             </div>
             <div class="topbar-right">
                 <div class="messages-stats">
@@ -80,7 +80,7 @@
                             <div class="filter-group">
                                 <label class="filter-label">Status</label>
                                 <select class="form-select" id="filterStatus">
-                                    <option value="">All Messages</option>
+                                    <option value="">All Activity</option>
                                     <option value="unread">Unread</option>
                                     <option value="read">Read</option>
                                     <option value="replied">Replied</option>
@@ -99,7 +99,7 @@
                             
                             <div class="filter-group search-group">
                                 <label class="filter-label">Search</label>
-                                <input type="text" class="form-control" id="searchInput" placeholder="Search by name or message...">
+                                <input type="text" class="form-control" id="searchInput" placeholder="Search by buyer, plot, or activity...">
                             </div>
                         </div>
                     </div>
@@ -109,7 +109,7 @@
                 <div class="messages-container">
                     {% if buyer_interests %}
                         {% for interest in buyer_interests %}
-                        <div class="message-card {% if not interest.is_read %}unread{% endif %}" data-interest-id="{{ interest.id }}" data-phone="{{ interest.buyer_phone }}">
+                        <div class="message-card {% if not interest.is_read %}unread{% endif %}" data-interest-id="{{ interest.id }}" data-phone="{{ interest.buyer_phone }}" data-plot-id="{{ interest.plot_id_str }}">
                             <div class="message-header">
                                 <div class="message-sender">
                                     <div class="sender-avatar">
@@ -124,6 +124,7 @@
                                     <span class="message-date" title="{{ interest.created_at }}">
                                         {{ interest.created_at|date:"M d, Y" }}
                                     </span>
+                                    <span class="badge bg-light text-dark ms-2">{{ interest.activity_label }}</span>
                                     {% if not interest.is_read %}
                                     <span class="badge bg-primary ms-2">New</span>
                                     {% endif %}
@@ -139,7 +140,7 @@
                                     <strong>Plot:</strong> {{ interest.plot.title }}
                                 </div>
                                 <div class="message-text">
-                                    {{ interest.message|truncatewords:50 }}
+                                    {{ interest.message|default:"Buyer saved this plot for follow-up."|truncatewords:50 }}
                                 </div>
                             </div>
 
@@ -152,7 +153,7 @@
                                         <i class="fas fa-reply me-1"></i>Reply
                                     </button>
                                     <button class="btn-action delete" onclick="deleteMessage({{ interest.id }})">
-                                        <i class="fas fa-trash me-1"></i>Delete
+                                        <i class="fas fa-xmark me-1"></i>Dismiss
                                     </button>
                                 </div>
                                 <div class="message-contact">
@@ -208,8 +209,8 @@
                             <div class="empty-icon">
                                 <i class="fas fa-inbox"></i>
                             </div>
-                            <h5 class="empty-title">No Messages</h5>
-                            <p class="empty-text">You don't have any buyer inquiries yet. When buyers are interested in your plots, their messages will appear here.</p>
+                            <h5 class="empty-title">No Buyer Activity</h5>
+                            <p class="empty-text">You don't have any buyer activity yet. Saved plots, checkout starts, and direct inquiries will appear here.</p>
                             <a href="{% url 'listings:add_plot' %}" class="btn btn-primary mt-3">
                                 <i class="fas fa-plus me-2"></i>Add a Plot
                             </a>
@@ -233,7 +234,7 @@
                                 <i class="fas fa-envelope"></i>
                             </div>
                             <div class="stat-content">
-                                <p class="stat-label">Total Messages</p>
+                            <p class="stat-label">Total Activity</p>
                                 <p class="stat-value">{{ total_messages|default:0 }}</p>
                             </div>
                         </div>
@@ -286,7 +287,7 @@
                                     <h6 class="plot-title">{{ plot.title|truncatewords:5 }}</h6>
                                     <p class="plot-inquiries text-muted">
                                         <i class="fas fa-envelope me-1"></i>
-                                        {{ plot.inquiry_count|default:0 }} inquiries
+                                        {{ plot.inquiry_count|default:0 }} activity items
                                     </p>
                                 </div>
                                 <a href="{% url 'listings:my_plots' %}" class="btn btn-sm btn-outline-primary">View</a>
@@ -1230,8 +1231,7 @@
             }
 
             if (plot) {
-                const plotText = msg.querySelector('.message-plot').textContent;
-                show = show && plotText.includes(plot);
+                show = show && msg.dataset.plotId === plot;
             }
 
             if (search) {
@@ -1244,7 +1244,23 @@
     }
 
     function viewMessage(id) {
-        // Load message details
+        const messageCard = document.querySelector(`[data-interest-id="${id}"]`);
+        if (messageCard) {
+            const senderName = messageCard.querySelector('.sender-name').textContent;
+            const senderEmail = messageCard.querySelector('.sender-email').textContent;
+            const senderPhone = messageCard.dataset.phone || 'N/A';
+            const plotTitle = messageCard.querySelector('.message-plot').textContent.replace('Plot:', '').trim();
+            const messageText = messageCard.querySelector('.message-text').textContent.trim();
+            document.getElementById('messageModalBody').innerHTML = `
+                <div class="mb-3">
+                    <h6 class="mb-2">${senderName}</h6>
+                    <p class="mb-1"><strong>Email:</strong> <a href="mailto:${senderEmail}">${senderEmail}</a></p>
+                    <p class="mb-1"><strong>Phone:</strong> <a href="tel:${senderPhone}">${senderPhone}</a></p>
+                    <p class="mb-3"><strong>Plot:</strong> ${plotTitle}</p>
+                    <div class="bg-light rounded p-3">${messageText || 'No message provided.'}</div>
+                </div>
+            `;
+        }
         const messageModal = new bootstrap.Modal(document.getElementById('messageModal'));
         messageModal.show();
     }
@@ -1280,13 +1296,8 @@
             // Find and remove the message card
             const messageCard = document.querySelector(`[data-interest-id="${id}"]`);
             if (messageCard) {
-                messageCard.style.opacity = '0.5';
-                messageCard.style.pointerEvents = 'none';
-                
-                // Show confirmation
-                AgriPlotUI.showToast({ message: 'Message marked for deletion. This feature requires backend implementation.', type: 'info' });
-                messageCard.style.opacity = '1';
-                messageCard.style.pointerEvents = 'auto';
+                messageCard.style.display = 'none';
+                AgriPlotUI.showToast({ message: 'Activity card dismissed from view.', type: 'success' });
             }
         }
     }

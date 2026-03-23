@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Saved Plots — AgriPlot Connect{% endblock %}
+
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/payments.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="payments-section">
+    <div class="payments-shell">
+        <div class="section-heading">
+            <span class="section-kicker">Buyer shortlist</span>
+            <h2>Saved plots</h2>
+            <p>These are the plots you have shortlisted for follow-up, comparison, and checkout when you are ready.</p>
+        </div>
+
+        <div class="workspace-notice mb-4">
+            <strong>{{ saved_count }}</strong> plot{{ saved_count|pluralize }} saved
+        </div>
+
+        {% if page_obj %}
+        <div class="payment-list">
+            {% for interest in page_obj %}
+            <article class="payment-row">
+                <div class="payment-row-main">
+                    <div class="payment-title-row">
+                        <h3>{{ interest.plot.title }}</h3>
+                        <span class="status-pill status-primary">Saved</span>
+                    </div>
+                    <p>{{ interest.plot.location }}</p>
+                    <div class="payment-meta">
+                        <span>KES {{ interest.plot.price|floatformat:0|intcomma }}</span>
+                        <span>{{ interest.plot.area|floatformat:1 }} {{ interest.plot.get_area_unit_display|default:"Acres" }}</span>
+                        <span>Saved {{ interest.created_at|date:"M d, Y" }}</span>
+                    </div>
+                </div>
+                <div class="payment-row-side">
+                    <a href="{% url 'listings:plot_detail' interest.plot.id %}" class="text-link">Open plot</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state-card">
+            <h3>No saved plots yet</h3>
+            <p>Save a plot from the listing cards or the plot details page and it will appear here.</p>
+            <a href="{% url 'listings:home' %}" class="hero-btn hero-btn-primary">Browse plots</a>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

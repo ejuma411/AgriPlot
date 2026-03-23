@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}{{ payment.internal_reference }}{% endblock %}
+
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/payments.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="payments-section detail-page">
+    <div class="payments-shell">
+        <div class="detail-header">
+            <div>
+                <span class="section-kicker">Payment request</span>
+                <h1 class="detail-title">{{ payment.title }}</h1>
+                <p class="detail-subtitle">{{ payment.internal_reference }} {% if payment.plot %}· {{ payment.plot.title }}{% endif %}</p>
+            </div>
+            <div class="detail-header-side">
+                <span class="status-pill status-{{ payment.status_badge }}">{{ payment.get_status_display }}</span>
+                <strong>KES {{ payment.amount|floatformat:2|intcomma }}</strong>
+            </div>
+        </div>
+
+        <div class="progress-card">
+            <div class="progress-meta">
+                <span>Workflow progress</span>
+                <strong>{{ payment.progress_value }}%</strong>
+            </div>
+            <div class="progress-track">
+                <span class="progress-fill" style="width: {{ payment.progress_value }}%;"></span>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <div class="detail-main">
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>Payment summary</h2>
+                    </div>
+                    <div class="summary-grid">
+                        <div><span>Method</span><strong>{{ payment.get_method_display }}</strong></div>
+                        <div><span>Category</span><strong>{{ payment.get_category_display }}</strong></div>
+                        <div><span>Seller</span><strong>{{ payment.counterparty_label }}</strong></div>
+                        <div><span>Escrow</span><strong>{% if payment.escrow_enabled %}Enabled{% else %}Off{% endif %}</strong></div>
+                        <div><span>Phone</span><strong>{{ payment.phone_number|default:"-" }}</strong></div>
+                        <div><span>Due</span><strong>{% if payment.due_at %}{{ payment.due_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</strong></div>
+                    </div>
+                    {% if payment.description %}
+                    <p class="summary-description">{{ payment.description }}</p>
+                    {% endif %}
+                </section>
+
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>Milestones</h2>
+                    </div>
+                    <div class="milestone-list">
+                        {% for milestone in payment.milestones.all %}
+                        <article class="milestone-item">
+                            <div class="milestone-number">{{ milestone.sequence }}</div>
+                            <div>
+                                <h3>{{ milestone.title }}</h3>
+                                <p>{{ milestone.get_status_display }}{% if milestone.amount %} · KES {{ milestone.amount|floatformat:2|intcomma }}{% endif %}{% if milestone.due_at %} · Due {{ milestone.due_at|date:"M d, Y H:i" }}{% endif %}</p>
+                                {% if milestone.evidence_notes %}
+                                <div class="mini-note">{{ milestone.evidence_notes }}</div>
+                                {% endif %}
+                            </div>
+                        </article>
+                        {% empty %}
+                        <p class="empty-copy">No milestones have been added yet.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>Activity timeline</h2>
+                    </div>
+                    <div class="timeline-list">
+                        {% for event in payment.events.all %}
+                        <article class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div>
+                                <strong>{{ event.message }}</strong>
+                                <p>{{ event.created_at|date:"M d, Y H:i" }}{% if event.actor %} · {{ event.actor.get_full_name|default:event.actor.username }}{% endif %}</p>
+                            </div>
+                        </article>
+                        {% empty %}
+                        <p class="empty-copy">No events recorded yet.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+            </div>
+
+            <aside class="detail-side">
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>Quick actions</h2>
+                    </div>
+                    {% if is_finance_admin %}
+                    <p class="mini-note">Finance-level actions can change settlement state and should be used only after operational review.</p>
+                    {% endif %}
+                    <div class="action-grid">
+                        {% for action, label in transition_actions %}
+                        <form method="post" action="{% url 'payments:transition' payment.pk action %}">
+                            {% csrf_token %}
+                            <button type="submit" class="action-btn">{{ label }}</button>
+                        </form>
+                        {% empty %}
+                        <p class="empty-copy">No actions are currently available for your role at this payment stage.</p>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                {% if can_add_milestone %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>Add milestone</h2>
+                    </div>
+                    <form method="post" action="{% url 'payments:add_milestone' payment.pk %}" class="payments-form compact-form">
+                        {% csrf_token %}
+                        {% for field in milestone_form %}
+                        <div class="field-block">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}
+                            <div class="error-copy">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="hero-btn hero-btn-primary">Add milestone</button>
+                    </form>
+                </section>
+                {% endif %}
+
+                {% if can_open_dispute %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>Open dispute</h2>
+                    </div>
+                    <form method="post" action="{% url 'payments:open_dispute' payment.pk %}" class="payments-form compact-form">
+                        {% csrf_token %}
+                        {% for field in dispute_form %}
+                        <div class="field-block">
+                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% for error in field.errors %}
+                            <div class="error-copy">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% endfor %}
+                        <button type="submit" class="hero-btn hero-btn-secondary hero-btn-dark">Record dispute</button>
+                    </form>
+                    {% if payment_dispute %}
+                    <div class="dispute-summary">
+                        <strong>{{ payment_dispute.get_reason_display }}</strong>
+                        <p>{{ payment_dispute.details }}</p>
+                    </div>
+                    {% endif %}
+                </section>
+                {% endif %}
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

@@ -275,6 +275,40 @@ def plot_verification_detail(request, plot_id):
 
 
 @login_required
+def saved_plots(request):
+    profile = getattr(request.user, "profile", None)
+    is_buyer = bool(profile and profile.role == "buyer")
+    if not (is_buyer or request.user.is_superuser):
+        messages.error(request, "Only buyers can view saved plots.")
+        return redirect("listings:home")
+
+    interests = (
+        UserInterest.objects.filter(user=request.user)
+        .select_related("plot")
+        .order_by("-created_at")
+    )
+
+    search_query = request.GET.get("search", "")
+    if search_query:
+        interests = interests.filter(
+            Q(plot__title__icontains=search_query)
+            | Q(plot__location__icontains=search_query)
+            | Q(notes__icontains=search_query)
+        )
+
+    paginator = Paginator(interests, 12)
+    page_number = request.GET.get("page")
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        "page_obj": page_obj,
+        "search_query": search_query,
+        "saved_count": interests.count(),
+    }
+    return render(request, "accounts/dashboard/saved_plots.html", context)
+
+
+@login_required
 def buyer_interests(request):
     is_agent = hasattr(request.user, "agent")
     is_landowner = hasattr(request.user, "landownerprofile")
@@ -285,8 +319,16 @@ def buyer_interests(request):
 
     if is_agent:
         interests = UserInterest.objects.filter(plot__agent=request.user.agent)
+        available_plots = Plot.objects.filter(agent=request.user.agent).order_by("title")
+        profile_type = "Agent"
     else:
         interests = UserInterest.objects.filter(plot__landowner=request.user.landownerprofile)
+        available_plots = Plot.objects.filter(
+            landowner=request.user.landownerprofile
+        ).order_by("title")
+        profile_type = "Landowner"
+
+    interests = interests.select_related("user", "plot", "user__profile")
 
     status_filter = request.GET.get("status", "all")
     if status_filter != "all":
@@ -304,6 +346,24 @@ def buyer_interests(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    for interest in page_obj.object_list:
+        buyer_name = interest.user.get_full_name() or interest.user.username
+        buyer_email = interest.user.email or "No email provided"
+        buyer_phone = getattr(getattr(interest.user, "profile", None), "phone", "")
+        interest.buyer_name = buyer_name
+        interest.buyer_email = buyer_email
+        interest.buyer_phone = buyer_phone
+        interest.is_read = interest.status != "pending"
+        interest.is_replied = interest.status in {"contacted", "scheduled", "accepted"}
+        interest.plot_id_str = str(interest.plot_id)
+        interest.activity_label = (
+            "Checkout Started"
+            if "checkout" in (interest.message or "").lower()
+            else "Buyer Inquiry"
+            if interest.message
+            else "Saved Interest"
+        )
+
     status_counts = {
         "all": interests.count(),
         "pending": interests.filter(status="pending").count(),
@@ -315,9 +375,24 @@ def buyer_interests(request):
 
     context = {
         "page_obj": page_obj,
+        "buyer_interests": page_obj.object_list,
+        "is_paginated": page_obj.has_other_pages(),
         "status_filter": status_filter,
         "search_query": search_query,
         "status_counts": status_counts,
+        "total_messages": interests.count(),
+        "unread_count": interests.filter(status="pending").count(),
+        "replied_count": interests.filter(
+            status__in=["contacted", "scheduled", "accepted"]
+        ).count(),
+        "popular_plots": (
+            Plot.objects.filter(id__in=interests.values_list("plot_id", flat=True))
+            .annotate(inquiry_count=Count("buyer_interests"))
+            .order_by("-inquiry_count", "-created_at")[:5]
+        ),
+        "available_plots": available_plots,
+        "profile_type": profile_type,
+        "avg_response_time": "Under 24h",
     }
 
     return render(request, "accounts/dashboard/buyer_interests.html", context)

@@ -7,6 +7,7 @@ from .views_dashboard import (
     dashboard_router,
     my_plots,
     plot_verification_detail,
+    saved_plots,
     staff_dashboard,
     update_interest_status,
 )
@@ -39,6 +40,7 @@ urlpatterns = [
     path("dashboard/", dashboard_router, name="dashboard_router"),
     path("staff-dashboard/", staff_dashboard, name="staff_dashboard"),
     path("dashboard/plots/", my_plots, name="my_plots"),
+    path("dashboard/saved-plots/", saved_plots, name="saved_plots"),
     path(
         "dashboard/plot/<int:plot_id>/verification/",
         plot_verification_detail,
@@ -55,4 +57,3 @@ urlpatterns = [
     path("dashboard/settings/", account_settings, name="account_settings"),
     path("dashboard/analytics/", dashboard_analytics, name="dashboard_analytics"),
 ]
-

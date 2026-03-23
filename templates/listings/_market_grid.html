@@ -14,9 +14,19 @@
         <div class="market-card fb-card" data-land-type="{{ plot.land_type }}">
             <div class="fb-image" style="background-image: url('{% if plot.images.first %}{{ plot.images.first.image.url }}{% elif plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
                 <span class="fb-badge">{{ plot.get_land_type_display }}</span>
-                <button class="fb-fav" title="Save plot">
+                {% if request.user.is_authenticated and request.user.profile.role == 'buyer' %}
+                <form method="post" action="{% url 'listings:toggle_saved_plot' plot.id %}" class="fb-fav-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button class="fb-fav" title="{% if plot.id in saved_plot_ids %}Remove saved plot{% else %}Save plot{% endif %}">
+                        <i class="{% if plot.id in saved_plot_ids %}fas{% else %}far{% endif %} fa-heart"></i>
+                    </button>
+                </form>
+                {% elif not request.user.is_authenticated %}
+                <a class="fb-fav" href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" title="Login to save plot">
                     <i class="far fa-heart"></i>
-                </button>
+                </a>
+                {% endif %}
                 <div class="fb-logo">
                     <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot" />
                 </div>
@@ -119,6 +129,10 @@
     height: 4px;
     background: linear-gradient(90deg, #1f7a4d, #2ecc71);
     border-radius: 2px;
+}
+
+.fb-fav-form {
+    margin: 0;
 }
 
 .section-subtitle {

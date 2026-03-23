@@ -689,6 +689,18 @@ class PlotForm(forms.ModelForm):
         widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
         help_text="Describe any buildings or structures"
     )
+
+    other_amenities = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Any other useful infrastructure or amenities, e.g. borehole pump house, irrigation lines, staff quarters, storage shed...',
+            }
+        ),
+        help_text="Optional: list any other amenities not already covered above."
+    )
     
     fencing = forms.ChoiceField(
         choices=Plot.FENCING_CHOICES,
@@ -740,7 +752,7 @@ class PlotForm(forms.ModelForm):
             'price_basis', 'valuation_report', 'price_notes', 'is_price_negotiable', 'lease_basis', 'government_price_proof',
             'has_water', 'water_source', 'has_electricity', 'electricity_meter',
             'has_road_access', 'road_type', 'road_distance_km',
-            'has_buildings', 'building_description', 'fencing',
+            'has_buildings', 'building_description', 'other_amenities', 'fencing',
             'title_deed', 'survey_map', 'spousal_consent_doc',
             'official_search', 'rates_clearance', 'rent_clearance',
             'lcb_consent_doc', 'plupa1_form', 'consent_to_transfer',
@@ -913,6 +925,7 @@ class PlotForm(forms.ModelForm):
         self.fields['lease_basis'].help_text = "How was the lease price determined?"
         self.fields['valuation_report'].help_text = "Optional valuation report (PDF/Image)"
         self.fields['price_notes'].help_text = "Optional notes about market demand or negotiations"
+        self.fields['other_amenities'].help_text = "Optional: mention any extra amenities or access features not captured above."
         self.fields['ownership_type'].help_text = "Legal tenure status"
         self.fields['encumbrance_details'].help_text = "Specify any caveats, loans, or disputes"
         self.fields['title_deed'].help_text = "Upload title deed document (PDF/Image, max 20MB)"
@@ -1309,6 +1322,17 @@ class PlotForm(forms.ModelForm):
         if listing_type in ['lease', 'both']:
             if lease_basis == 'government_set' and not government_price_proof:
                 self.add_error('government_price_proof', 'Government price proof is required for this lease basis.')
+
+        other_amenities = (cleaned_data.get('other_amenities') or '').strip()
+        if other_amenities:
+            normalized_other_amenities = "\n".join(
+                line.strip() for line in other_amenities.splitlines() if line.strip()
+            )
+            if len(normalized_other_amenities) < 3:
+                self.add_error('other_amenities', 'Please provide a bit more detail for other amenities.')
+            cleaned_data['other_amenities'] = normalized_other_amenities
+        else:
+            cleaned_data['other_amenities'] = ''
 
         # Market band validation (guardrails)
         from .models import MarketPriceBand
