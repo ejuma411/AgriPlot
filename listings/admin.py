@@ -70,7 +70,11 @@ class PlotAdmin(admin.ModelAdmin):
         "coordinates_display",
         "price_display",
         "area_with_unit",
+        "effective_usable_area_display",
         "listing_type_display",
+        "market_zone",
+        "pricing_review_display",
+        "market_status_display",
         "land_type_display",
         "verification_display",
         "has_all_documents",
@@ -86,6 +90,8 @@ class PlotAdmin(admin.ModelAdmin):
         "price_basis",
         "lease_basis",
         "listing_type",
+        "market_zone",
+        "market_status",
         "land_type",
         "created_at",
     )
@@ -126,6 +132,7 @@ class PlotAdmin(admin.ModelAdmin):
                     "latitude",
                     "longitude",
                     "listing_type",
+                    "market_zone",
                     "land_type",
                     "land_use_description",
                 )
@@ -159,12 +166,25 @@ class PlotAdmin(admin.ModelAdmin):
                     "government_price_proof",
                     "price_notes",
                     "is_price_negotiable",
+                    "price_review_required",
+                    "pricing_override_reason",
                 )
             },
         ),
         (
             "Pricing (Lease)",
             {"fields": ("lease_price_monthly", "lease_price_yearly", "lease_duration", "lease_terms", "lease_basis")},
+        ),
+        (
+            "Availability",
+            {
+                "fields": (
+                    "market_status",
+                    "lease_start_date",
+                    "lease_end_date",
+                    "availability_notes",
+                )
+            },
         ),
         ("Agricultural Summary (Verified)", {"fields": ("soil_type", "ph_level", "crop_suitability"), "classes": ("collapse",)}),
         (
@@ -224,6 +244,11 @@ class PlotAdmin(admin.ModelAdmin):
 
     area_with_unit.short_description = "Area"
 
+    def effective_usable_area_display(self, obj):
+        return obj.effective_usable_area_display
+
+    effective_usable_area_display.short_description = "Usable Area"
+
     def listing_type_display(self, obj):
         colors = {"sale": "green", "lease": "blue", "both": "purple"}
         color = colors.get(obj.listing_type, "gray")
@@ -238,7 +263,39 @@ class PlotAdmin(admin.ModelAdmin):
     def land_type_display(self, obj):
         return obj.get_land_type_display()
 
+    def market_status_display(self, obj):
+        colors = {
+            "available": "green",
+            "reserved": "#9a6700",
+            "leased": "#0a66c2",
+            "sold": "#b42318",
+        }
+        color = colors.get(obj.market_status, "gray")
+        return format_html(
+            '<span style="color: {}; font-weight: bold;">{}</span>',
+            color,
+            obj.market_status_label,
+        )
+
+    market_status_display.short_description = "Availability"
+
     land_type_display.short_description = "Land Type"
+
+    def pricing_review_display(self, obj):
+        badge = obj.pricing_review_badge
+        colors = {
+            "success": "#027a48",
+            "warning": "#b54708",
+            "danger": "#b42318",
+            "secondary": "#475467",
+        }
+        return format_html(
+            '<span style="color: {}; font-weight: 600;">{}</span>',
+            colors.get(badge["tone"], "#475467"),
+            badge["label"],
+        )
+
+    pricing_review_display.short_description = "Pricing Review"
 
     def price_display(self, obj):
         return f"KES {obj.price:,.0f}"
@@ -574,10 +631,21 @@ class PricingSuggestionAdmin(admin.ModelAdmin):
 
 @admin.register(MarketPriceBand)
 class MarketPriceBandAdmin(admin.ModelAdmin):
-    list_display = ("county", "land_type", "listing_type", "min_price_per_acre", "max_price_per_acre", "effective_from", "effective_to")
-    list_filter = ("county", "land_type", "listing_type")
-    search_fields = ("county",)
-    ordering = ("county", "land_type", "listing_type")
+    list_display = (
+        "county",
+        "subcounty",
+        "market_zone",
+        "land_type",
+        "listing_type",
+        "area_unit",
+        "min_price_per_unit",
+        "max_price_per_unit",
+        "effective_from",
+        "is_active",
+    )
+    list_filter = ("county", "market_zone", "land_type", "listing_type", "area_unit", "is_active")
+    search_fields = ("county", "subcounty", "source")
+    ordering = ("county", "subcounty", "market_zone", "land_type", "listing_type")
     actions = ["seed_default_bands"]
 
     def seed_default_bands(self, request, queryset):

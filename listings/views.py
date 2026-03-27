@@ -36,6 +36,48 @@ from notifications.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
 
+
+def _serialize_pricing_preview(plot, transaction_type):
+    guidance = plot.pricing_guidance(transaction_type)
+    recommendation = plot.pricing_recommendation(transaction_type)
+    payload = {
+        "guide": None,
+        "recommendation": None,
+    }
+    if guidance:
+        band = guidance["band"]
+        entered = guidance.get("entered_price_per_unit")
+        area_value = plot.area_in_unit(band.area_unit)
+        status = "within_guide"
+        if entered is not None:
+            if entered > band.max_price_per_unit:
+                status = "above_guide"
+            elif entered < band.min_price_per_unit:
+                status = "below_guide"
+        payload["guide"] = {
+            "county": band.county,
+            "subcounty": band.subcounty,
+            "market_zone": band.get_market_zone_display(),
+            "area_unit": band.area_unit,
+            "min_price_per_unit": float(band.min_price_per_unit),
+            "max_price_per_unit": float(band.max_price_per_unit),
+            "entered_price_per_unit": float(entered) if entered is not None else None,
+            "total_min_price": float((band.min_price_per_unit * area_value).quantize(Decimal("0.01"))) if area_value else None,
+            "total_max_price": float((band.max_price_per_unit * area_value).quantize(Decimal("0.01"))) if area_value else None,
+            "status": status,
+        }
+    if recommendation:
+        comparable = recommendation.get("comparable_snapshot") or {}
+        payload["recommendation"] = {
+            "suggested_total": float(recommendation["suggested_total"]),
+            "price_range_min": float(recommendation["price_range_min"]) if recommendation.get("price_range_min") is not None else None,
+            "price_range_max": float(recommendation["price_range_max"]) if recommendation.get("price_range_max") is not None else None,
+            "usable_area_display": recommendation["usable_area_display"],
+            "explanation": recommendation["explanation"],
+            "comparable_count": comparable.get("sample_size", 0),
+        }
+    return payload
+
 # Import formtools if you're using it
 try:
     from formtools.wizard.views import SessionWizardView
@@ -200,12 +242,6 @@ def home(request):
     soil_types = Plot.objects.values_list('soil_type', flat=True).distinct()
     common_crops = ['Maize', 'Wheat', 'Coffee', 'Tea', 'Beans', 'Potatoes', 'Sugarcane', 'Rice', 'Vegetables']
 
-    # Wizard resume banner flag
-    show_wizard_resume = any(
-        key.startswith("landownerwizard") or key.startswith("wizard_")
-        for key in request.session.keys()
-    )
-    
     # Pagination
     paginator = Paginator(verified_plots, 15)
     page_number = request.GET.get('page')
@@ -228,7 +264,6 @@ def home(request):
         'filter_listing_type': listing_type,
         'filter_land_type': land_type,
         'crop_presets': crop_presets,
-        'show_wizard_resume': show_wizard_resume,
         'saved_plot_ids': saved_plot_ids,
         'active_soil_filters': {
             'ph_min': ph_min, 'ph_max': ph_max, 'om_min': om_min,
@@ -446,7 +481,34 @@ def plot_detail(request, id):
     can_view_documents = is_owner or (
         request.user.is_authenticated and (request.user.is_staff or request.user.is_superuser)
     )
-    
+
+    current_buyer_deal = None
+    if request.user.is_authenticated and not is_owner:
+        from payments.models import PaymentRequest
+
+        current_buyer_deal = (
+            PaymentRequest.objects.filter(
+                buyer=request.user,
+                plot=plot,
+                transaction_type__in=[
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.TransactionType.LEASE,
+                ],
+            )
+            .exclude(
+                status__in=[
+                    PaymentRequest.Status.REFUNDED,
+                    PaymentRequest.Status.CANCELLED,
+                    PaymentRequest.Status.FAILED,
+                ]
+            )
+            .prefetch_related("closing_steps")
+            .order_by("-created_at")
+            .first()
+        )
+        if current_buyer_deal:
+            current_buyer_deal.ensure_closing_steps()
+
     context = {
         'plot': plot,
         'verification': verification,
@@ -455,15 +517,15 @@ def plot_detail(request, id):
         'similar_plots': similar_plots,
         'map_bbox': map_bbox,
         'today': date.today().strftime('%Y-%m-%d'),
-        'can_start_payment': request.user.is_authenticated and not is_owner,
+        'can_start_payment': request.user.is_authenticated and not is_owner and plot.is_checkout_open,
         'payment_create_url': f"{reverse('payments:create_request')}?plot={plot.id}",
         'is_saved_plot': (
             request.user.is_authenticated
             and UserInterest.objects.filter(user=request.user, plot=plot).exists()
         ),
         'availability_summary': plot.availability_summary,
-        'is_lease_locked': plot.market_status == "leased" and plot.listing_type == "lease",
-        'is_sold_plot': plot.market_status == "sold",
+        'checkout_availability_message': plot.checkout_availability_message,
+        'current_buyer_deal': current_buyer_deal,
     }
     
     return render(request, 'listings/details.html', context)
@@ -914,6 +976,8 @@ def add_plot(request):
     landowners = LandownerProfile.objects.select_related("user").all() if is_superuser else []
     return render(request, "listings/dashboard/add_plot.html", {
         "form": plot_form,
+        "price_band_guidance": getattr(plot_form, "price_band_guidance", {}),
+        "pricing_suggestions": getattr(plot_form, "pricing_suggestions", {}),
         "is_agent": is_agent,
         "is_landowner": is_landowner,
         "profile_type": "Administrator" if is_superuser else ("Agent" if is_agent else "Landowner"),
@@ -937,6 +1001,38 @@ def get_subcounties(request):
             'subcounties': KENYA_SUB_COUNTIES[county]
         })
     return JsonResponse({'subcounties': []})
+
+
+@login_required
+def pricing_preview(request):
+    def _decimal_param(name):
+        value = request.GET.get(name)
+        if value in {None, ""}:
+            return None
+        try:
+            return Decimal(str(value))
+        except Exception:
+            return None
+
+    plot = Plot(
+        county=request.GET.get("county") or None,
+        subcounty=request.GET.get("subcounty") or None,
+        market_zone=request.GET.get("market_zone") or "rural",
+        land_type=request.GET.get("land_type") or None,
+        soil_type=request.GET.get("soil_type") or "",
+        area=_decimal_param("area"),
+        area_unit=request.GET.get("area_unit") or "acres",
+        sale_price=_decimal_param("sale_price"),
+        lease_price_monthly=_decimal_param("lease_price_monthly"),
+        lease_price_yearly=_decimal_param("lease_price_yearly"),
+        listing_type=request.GET.get("listing_type") or "sale",
+    )
+    return JsonResponse(
+        {
+            "sale": _serialize_pricing_preview(plot, "sale"),
+            "lease": _serialize_pricing_preview(plot, "lease"),
+        }
+    )
 
 @login_required
 def registry_lookup(request):
@@ -1305,6 +1401,8 @@ def edit_plot(request, id):
     
     return render(request, 'listings/edit_plot.html', {
         'form': form,
+        'price_band_guidance': getattr(form, "price_band_guidance", {}),
+        'pricing_suggestions': getattr(form, "pricing_suggestions", {}),
         'plot': plot,
         'is_agent': is_agent,
         'is_landowner': is_landowner,

@@ -3,8 +3,19 @@
 
 {% block content %}
 <p class="auth-kicker">Agent Verification</p>
+{% if is_upgrade_flow %}
+<h2 class="auth-title">Upgrade to Agent</h2>
+<p class="auth-subtitle">Submit your professional details to add the agent role to this existing account.</p>
+<div class="auth-note">
+    Your current username, contact details, and password stay the same after this upgrade.
+</div>
+{% else %}
 <h2 class="auth-title">Register Agent Account</h2>
 <p class="auth-subtitle">Join AgriPlot as a licensed agent and submit verification documents.</p>
+<div class="auth-note">
+    Already registered as a buyer? Sign in first and upgrade from your profile so you can keep the same username, saved details, and password.
+</div>
+{% endif %}
 
 <form method="POST" enctype="multipart/form-data" class="auth-form">
     {% csrf_token %}

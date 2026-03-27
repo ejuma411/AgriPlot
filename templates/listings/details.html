@@ -16,11 +16,27 @@
             <p class="hero-location">
                 {% if plot.county %}{{ plot.county }}{% if plot.subcounty %}, {{ plot.subcounty }}{% endif %}{% else %}{{ plot.location }}{% endif %}
             </p>
-            {% if plot.market_status != 'available' %}
-            <div class="alert alert-warning py-2 px-3 mt-3 mb-0">
-                <strong>Status:</strong> {{ availability_summary }}
+            <div class="availability-banner {{ plot.market_status_css }}">
+                <span class="availability-eyebrow">Availability Status</span>
+                <div class="availability-status-line">
+                    <span class="availability-pill">
+                        {{ plot.market_status_label }}
+                    </span>
+                    <span class="availability-mode">
+                        {% if plot.listing_type == 'lease' %}
+                            Lease listing
+                        {% elif plot.listing_type == 'sale' %}
+                            Sale listing
+                        {% else %}
+                            Sale or lease
+                        {% endif %}
+                    </span>
+                </div>
+                <p class="availability-copy mb-0">{{ availability_summary }}</p>
+                {% if not plot.is_checkout_open %}
+                <p class="availability-copy mt-2 mb-0"><strong>{{ checkout_availability_message }}</strong></p>
+                {% endif %}
             </div>
-            {% endif %}
             <div class="hero-stats">
                 <div class="hero-stat">
                     <span class="value">KES {{ plot.price|floatformat:0 }}</span>
@@ -61,11 +77,15 @@
                 <i class="far fa-heart me-2"></i>Login to Save
             </a>
             {% endif %}
-            {% if can_start_payment and not is_lease_locked and not is_sold_plot %}
+            {% if current_buyer_deal %}
+            <a href="{% if current_buyer_deal.next_closing_step %}{% url 'payments:closing_step_workspace' current_buyer_deal.pk current_buyer_deal.next_closing_step.pk %}{% else %}{% url 'payments:detail' current_buyer_deal.pk %}{% endif %}" class="btn hero-btn payment">
+                <i class="fas fa-route me-2"></i>{% if current_buyer_deal.next_closing_step %}{{ current_buyer_deal.next_closing_step.action_cta_label }}{% else %}Continue Transaction{% endif %}
+            </a>
+            {% elif can_start_payment %}
             <a href="{{ payment_create_url }}" class="btn hero-btn payment">
                 <i class="fas fa-credit-card me-2"></i>{% if plot.listing_type == 'lease' %}Start Lease Checkout{% else %}Start Checkout{% endif %}
             </a>
-            {% elif is_lease_locked or is_sold_plot %}
+            {% elif user.is_authenticated and not is_owner and not plot.is_checkout_open %}
             <span class="btn hero-btn payment disabled">
                 <i class="fas fa-ban me-2"></i>Currently Unavailable
             </span>
@@ -839,6 +859,62 @@ a:hover {
 .amenity-chip.no {
     background: #fff1f1;
     color: #c0392b;
+}
+
+.availability-banner {
+    margin-top: 1rem;
+    padding: 1rem 1.1rem;
+    border-radius: 18px;
+    border: 1px solid rgba(15, 74, 46, 0.12);
+}
+
+.availability-banner.is-available {
+    background: rgba(6, 145, 50, 0.14);
+    border-color: rgba(6, 145, 50, 0.22);
+}
+
+.availability-banner.is-reserved {
+    background: rgba(180, 83, 9, 0.12);
+    border-color: rgba(180, 83, 9, 0.22);
+}
+
+.availability-banner.is-leased,
+.availability-banner.is-sold {
+    background: rgba(153, 27, 27, 0.12);
+    border-color: rgba(153, 27, 27, 0.22);
+}
+
+.availability-eyebrow {
+    display: block;
+    font-size: 0.76rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.8;
+    margin-bottom: 0.35rem;
+}
+
+.availability-status-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.45rem;
+}
+
+.availability-pill,
+.availability-mode {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    background: rgba(255, 255, 255, 0.58);
+}
+
+.availability-copy {
+    font-size: 0.96rem;
+    line-height: 1.5;
 }
 
 .gallery-grid {

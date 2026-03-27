@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}{{ step.title }} — AgriPlot Connect{% endblock %}
+
+{% block extra_css %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{% static 'css/payments.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="payments-section">
+    <div class="payments-shell">
+        <div class="section-heading compact">
+            <span class="section-kicker">Transaction workspace</span>
+            <h2>{{ step.action_headline }}</h2>
+            <p>{{ payment.plot.title|default:payment.title }} · {{ payment.internal_reference }}</p>
+        </div>
+
+        <article class="payment-row tone-sand mb-4">
+            <div class="payment-row-main">
+                <div class="payment-title-row">
+                    <h3>{{ payment.buyer_next_step_summary }}</h3>
+                    <span class="status-pill status-{{ payment.status_badge }}">{{ step.get_status_display }}</span>
+                </div>
+                <p>{{ payment.transfer_status_label }} · Responsible: {{ step.responsible_party_label }}</p>
+                <div class="mini-note mt-2">{{ payment.buyer_next_step_instruction }}</div>
+            </div>
+            <div class="payment-row-side">
+                <strong>{{ payment.closing_stage_summary }}</strong>
+                <a href="{% url 'payments:detail' payment.pk %}" class="text-link">Open full tracker</a>
+            </div>
+        </article>
+
+        <div class="detail-grid">
+            <div class="detail-main">
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>What happens in this step</h2>
+                    </div>
+                    <div class="summary-grid mb-3">
+                        <div><span>Status</span><strong>{{ step.get_status_display }}</strong></div>
+                        <div><span>Responsible party</span><strong>{{ step.responsible_party_label }}</strong></div>
+                        <div><span>Required document</span><strong>{{ step.action_document_label }}</strong></div>
+                        <div><span>Current transfer stage</span><strong>{{ payment.transfer_status_label }}</strong></div>
+                    </div>
+                    <div class="workspace-notice mb-3">
+                        <strong>What you should do now</strong>
+                        <div>{{ step.action_where }}</div>
+                    </div>
+                    <div class="workspace-notice mb-3">
+                        <strong>How AgriPlot helps</strong>
+                        <div>{{ step.action_platform_role }}</div>
+                    </div>
+                    <div class="mini-note mb-3">
+                        <strong>Your way forward</strong>
+                        <div>{{ step.buyer_instruction }}</div>
+                    </div>
+                    <div class="mini-note mb-3">
+                        <strong>Reality check</strong>
+                        <div>{{ step.action_support_label }}</div>
+                    </div>
+                    {% if step.guidance %}
+                    <div class="mini-note mb-3">
+                        <strong>AgriPlot guidance</strong>
+                        <div>{{ step.guidance }}</div>
+                    </div>
+                    {% endif %}
+                    {% if step.notes %}
+                    <div class="mini-note mt-3">{{ step.notes }}</div>
+                    {% endif %}
+                    {% if step.document %}
+                    <div class="mini-note mt-3">Supporting document: <a href="{{ step.document.url }}" target="_blank" rel="noopener">Open file</a></div>
+                    {% endif %}
+                </section>
+
+                {% if can_update_closing_steps %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>Update this step</h2>
+                    </div>
+                    <form method="post" action="{% url 'payments:update_closing_step' payment.pk step.pk %}" class="payments-form" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="field-grid two-col">
+                            <div class="field-block">
+                                <label class="form-label" for="id_status">Status</label>
+                                {{ closing_step_form.status }}
+                            </div>
+                            <div class="field-block">
+                                <label class="form-label" for="id_document">Document</label>
+                                {{ closing_step_form.document }}
+                            </div>
+                        </div>
+                        <div class="field-block">
+                            <label class="form-label" for="id_notes">Notes</label>
+                            {{ closing_step_form.notes }}
+                        </div>
+                        <button type="submit" class="hero-btn hero-btn-primary">Save step update</button>
+                    </form>
+                </section>
+                {% endif %}
+            </div>
+
+            <aside class="detail-sidebar">
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>Step navigation</h2>
+                    </div>
+                    <div class="payment-list">
+                        {% if previous_step %}
+                        <article class="payment-row">
+                            <div class="payment-row-main">
+                                <h3>Previous</h3>
+                                <p>{{ previous_step.title }}</p>
+                            </div>
+                            <div class="payment-row-side">
+                                <a href="{% url 'payments:closing_step_workspace' payment.pk previous_step.pk %}" class="text-link">Open</a>
+                            </div>
+                        </article>
+                        {% endif %}
+                        {% if next_step %}
+                        <article class="payment-row">
+                            <div class="payment-row-main">
+                                <h3>Next</h3>
+                                <p>{{ next_step.title }}</p>
+                            </div>
+                            <div class="payment-row-side">
+                                <a href="{% url 'payments:closing_step_workspace' payment.pk next_step.pk %}" class="text-link">Open</a>
+                            </div>
+                        </article>
+                        {% endif %}
+                    </div>
+                </section>
+            </aside>
+        </div>
+    </div>
+</section>
+{% endblock %}

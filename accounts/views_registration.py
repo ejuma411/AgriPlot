@@ -55,6 +55,7 @@ def register_choice(request):
 
 def register_buyer(request):
     role = request.GET.get("role")
+    requested_role = "buyer"
     if request.method == "GET" and role:
         role = role.strip().lower()
         if role == "landowner":
@@ -62,12 +63,14 @@ def register_buyer(request):
         if role == "agent":
             return redirect("listings:register_agent")
         if role in ("extension", "extension_officer"):
+            requested_role = "extension_officer"
             if request.user.is_authenticated:
-                return redirect("listings:request_extension_officer")
+                return redirect("verification:request_extension_officer")
             request.session["reg_target_role"] = "extension_officer"
         if role in ("surveyor", "land_surveyor"):
+            requested_role = "land_surveyor"
             if request.user.is_authenticated:
-                return redirect("listings:request_land_surveyor")
+                return redirect("verification:request_land_surveyor")
             request.session["reg_target_role"] = "land_surveyor"
 
     if request.method == "POST":
@@ -90,7 +93,14 @@ def register_buyer(request):
     else:
         form = BuyerRegistrationForm()
 
-    return render(request, "accounts/register_buyer.html", {"form": form})
+    return render(
+        request,
+        "accounts/register_buyer.html",
+        {
+            "form": form,
+            "requested_role": requested_role,
+        },
+    )
 
 
 @login_required
@@ -99,7 +109,7 @@ def register_landowner(request):
     landowner_profile = LandownerProfile.objects.filter(user=request.user).first()
     if request.method == "POST":
         form = LandownerUpgradeForm(
-            request.POST, request.FILES, instance=landowner_profile
+            request.POST, request.FILES, instance=landowner_profile, user=request.user
         )
         if form.is_valid():
             try:
@@ -116,9 +126,16 @@ def register_landowner(request):
                 messages.error(request, "Error submitting landowner details.")
                 logger.error("Landowner upgrade error: %s", exc)
     else:
-        form = LandownerUpgradeForm(instance=landowner_profile)
+        form = LandownerUpgradeForm(instance=landowner_profile, user=request.user)
 
-    return render(request, "accounts/register_landowner.html", {"form": form})
+    return render(
+        request,
+        "accounts/register_landowner.html",
+        {
+            "form": form,
+            "is_upgrade_flow": request.user.is_authenticated,
+        },
+    )
 
 
 def register_agent(request):
@@ -154,11 +171,23 @@ def register_agent(request):
                 return send_otp_verification(request)
         else:
             form = AgentRegistrationForm()
-        return render(request, "accounts/register_agent.html", {"form": form})
+        return render(
+            request,
+            "accounts/register_agent.html",
+            {
+                "form": form,
+                "is_upgrade_flow": False,
+            },
+        )
 
     agent_profile = Agent.objects.filter(user=request.user).first()
     if request.method == "POST":
-        form = AgentUpgradeForm(request.POST, request.FILES, instance=agent_profile)
+        form = AgentUpgradeForm(
+            request.POST,
+            request.FILES,
+            instance=agent_profile,
+            user=request.user,
+        )
         if form.is_valid():
             try:
                 profile, _ = Profile.objects.get_or_create(user=request.user)
@@ -174,12 +203,18 @@ def register_agent(request):
                 messages.error(request, "Error submitting agent details.")
                 logger.error("Agent upgrade error: %s", exc)
     else:
-        form = AgentUpgradeForm(instance=agent_profile)
+        form = AgentUpgradeForm(instance=agent_profile, user=request.user)
 
-    return render(request, "accounts/register_agent.html", {"form": form})
+    return render(
+        request,
+        "accounts/register_agent.html",
+        {
+            "form": form,
+            "is_upgrade_flow": True,
+        },
+    )
 
 
 def register_landowner_simple(request):
     """Backward-compatibility alias for the landowner registration path."""
     return redirect("listings:register_landowner_upgrade")
-

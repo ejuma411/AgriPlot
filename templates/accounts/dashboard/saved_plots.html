@@ -23,6 +23,60 @@
             <strong>{{ saved_count }}</strong> plot{{ saved_count|pluralize }} saved
         </div>
 
+        {% if active_deals %}
+        <div class="section-heading compact">
+            <span class="section-kicker">Live deals</span>
+            <h2>Transaction tracker</h2>
+            <p>Follow the legal closing steps for your active purchase and lease deals without digging through the whole platform.</p>
+        </div>
+
+        {% if next_action_deal %}
+        <article class="payment-row tone-sand mb-4">
+            <div class="payment-row-main">
+                <div class="payment-title-row">
+                    <h3>Buyer next action</h3>
+                    <span class="status-pill status-{{ next_action_deal.status_badge }}">{{ next_action_deal.transfer_status_label }}</span>
+                </div>
+                <p>{{ next_action_deal.plot.title|default:next_action_deal.title }} · {{ next_action_deal.internal_reference }}</p>
+                <div class="payment-meta">
+                    <span>{{ next_action_deal.buyer_next_step_summary }}</span>
+                    {% if next_action_deal.next_closing_step %}
+                    <span>{{ next_action_deal.next_closing_step.responsible_party_label }}</span>
+                    {% endif %}
+                </div>
+                <div class="mini-note mt-2">{{ next_action_deal.buyer_next_step_instruction }}</div>
+            </div>
+            <div class="payment-row-side">
+                <strong>{{ next_action_deal.closing_stage_summary }}</strong>
+                <a href="{% if next_action_deal.next_closing_step %}{% url 'payments:closing_step_workspace' next_action_deal.pk next_action_deal.next_closing_step.pk %}{% else %}{% url 'payments:detail' next_action_deal.pk %}{% endif %}" class="text-link">Continue this deal</a>
+            </div>
+        </article>
+        {% endif %}
+
+        <div class="payment-list mb-5">
+            {% for deal in active_deals %}
+            <article class="payment-row">
+                <div class="payment-row-main">
+                    <div class="payment-title-row">
+                        <h3>{{ deal.plot.title|default:deal.title }}</h3>
+                        <span class="status-pill status-{{ deal.status_badge }}">{{ deal.get_status_display }}</span>
+                    </div>
+                    <p>{{ deal.internal_reference }} · {{ deal.get_transaction_type_display }} · {{ deal.transfer_status_label }}</p>
+                    <div class="payment-meta">
+                        <span>KES {{ deal.amount|floatformat:2|intcomma }}</span>
+                        <span>{{ deal.closing_progress_value }}% legal completion</span>
+                        <span>{{ deal.counterparty_label }}</span>
+                    </div>
+                    <div class="mini-note mt-2">{{ deal.closing_stage_summary }}</div>
+                </div>
+                <div class="payment-row-side">
+                    <a href="{% url 'payments:detail' deal.pk %}" class="text-link">Open tracker</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% endif %}
+
         {% if page_obj %}
         <div class="payment-list">
             {% for interest in page_obj %}

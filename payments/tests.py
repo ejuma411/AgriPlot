@@ -3,8 +3,12 @@ from django.contrib.auth.models import Group
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
 from django.core import mail
-from django.test import SimpleTestCase, TestCase
+from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
+import hashlib
+import hmac
+import json
+from unittest.mock import patch
 
 from accounts.models import Profile
 from accounts.models import LandownerProfile
@@ -12,7 +16,7 @@ from listings.models import Plot
 from listings.models import UserInterest
 from notifications.models import Notification
 
-from .models import PaymentRequest
+from .models import PaymentClosingStep, PaymentRequest
 from .forms import PaymentRequestForm
 from .permissions import FINANCE_ADMIN_GROUP
 
@@ -101,7 +105,7 @@ class PaymentRequestModelTests(TestCase):
         with self.assertRaisesMessage(ValidationError, "already leased"):
             payment.full_clean()
 
-    def test_release_marks_plot_as_sold_for_purchase(self):
+    def test_release_keeps_purchase_plot_reserved_until_registration_is_complete(self):
         user = get_user_model().objects.create_user(username="buyer4", password="secret123")
         landowner = self._create_landowner_for_plot("purchase_owner")
         plot = Plot.objects.create(
@@ -123,12 +127,76 @@ class PaymentRequestModelTests(TestCase):
             transaction_type=PaymentRequest.TransactionType.PURCHASE,
             status=PaymentRequest.Status.IN_ESCROW,
         )
+        payment.ensure_closing_steps()
+        for code in ["agreement", "lcb_consent", "valuation", "stamp_duty", "completion_docs"]:
+            payment.closing_steps.get(code=code).set_status(
+                PaymentClosingStep.Status.COMPLETED,
+                actor=user,
+            )
 
         payment.apply_transition("release", actor=user)
         plot.refresh_from_db()
-        self.assertEqual(plot.market_status, "sold")
+        self.assertEqual(plot.market_status, "reserved")
+        self.assertIn("Awaiting the statutory closing checklist", plot.availability_notes)
 
-    def test_form_calculates_purchase_reservation_deposit_from_plot_price(self):
+    def test_release_is_blocked_until_required_purchase_closing_steps_are_done(self):
+        user = get_user_model().objects.create_user(username="buyer4c", password="secret123")
+        landowner = self._create_landowner_for_plot("purchase_owner_c")
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Purchase Plot C",
+            location="Naivasha",
+            area=5.0,
+            price="2500000.00",
+            sale_price="2500000.00",
+            listing_type="sale",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=user,
+            plot=plot,
+            title="Purchase deposit",
+            amount="500000.00",
+            method=PaymentRequest.Method.CARD,
+            category=PaymentRequest.Category.ESCROW_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.IN_ESCROW,
+        )
+        payment.ensure_closing_steps()
+
+        with self.assertRaisesMessage(ValidationError, "Complete these legal steps first"):
+            payment.apply_transition("release", actor=user)
+
+    def test_registration_completion_marks_purchase_plot_as_sold(self):
+        user = get_user_model().objects.create_user(username="buyer4b", password="secret123")
+        landowner = self._create_landowner_for_plot("purchase_owner_b")
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Purchase Plot B",
+            location="Naivasha",
+            area=5.0,
+            price="2500000.00",
+            sale_price="2500000.00",
+            listing_type="sale",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=user,
+            plot=plot,
+            title="Purchase deposit",
+            amount="500000.00",
+            method=PaymentRequest.Method.CARD,
+            category=PaymentRequest.Category.ESCROW_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.RELEASED,
+        )
+        payment.ensure_closing_steps()
+        registration_step = payment.closing_steps.get(code="registration")
+
+        registration_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=user)
+
+        plot.refresh_from_db()
+        self.assertEqual(plot.market_status, "reserved")
+
+    def test_form_accepts_manual_test_amount(self):
         landowner = self._create_landowner_for_plot("amount_owner")
         plot = Plot.objects.create(
             landowner=landowner,
@@ -151,7 +219,7 @@ class PaymentRequestModelTests(TestCase):
                 "amount": "1.00",
                 "category": PaymentRequest.Category.RESERVATION_DEPOSIT,
                 "method": PaymentRequest.Method.CARD,
-                "phone_number": "",
+                "phone_number": "254700123456",
                 "lease_start_date": "",
                 "lease_end_date": "",
                 "escrow_enabled": "on",
@@ -160,9 +228,9 @@ class PaymentRequestModelTests(TestCase):
         )
 
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.cleaned_data["amount"], PaymentRequestForm.normalize_amount("50000.00"))
+        self.assertEqual(form.cleaned_data["amount"], PaymentRequestForm.normalize_amount("1.00"))
 
-    def test_form_saves_method_specific_metadata(self):
+    def test_form_forces_mpesa_checkout_and_generates_title(self):
         landowner = self._create_landowner_for_plot("meta_owner")
         plot = Plot.objects.create(
             landowner=landowner,
@@ -180,14 +248,12 @@ class PaymentRequestModelTests(TestCase):
             data={
                 "plot": plot.pk,
                 "transaction_type": PaymentRequest.TransactionType.PURCHASE,
-                "title": "Card payment",
-                "description": "Card checkout",
+                "title": "",
+                "description": "",
                 "amount": "1.00",
                 "category": PaymentRequest.Category.RESERVATION_DEPOSIT,
                 "method": PaymentRequest.Method.CARD,
-                "phone_number": "",
-                "cardholder_name": "Buyer One",
-                "card_last4": "4242",
+                "phone_number": "254700000123",
                 "lease_start_date": "",
                 "lease_end_date": "",
                 "escrow_enabled": "on",
@@ -197,8 +263,19 @@ class PaymentRequestModelTests(TestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
         payment = form.save(commit=False)
-        self.assertEqual(payment.metadata["cardholder_name"], "Buyer One")
-        self.assertEqual(payment.metadata["card_last4"], "4242")
+        self.assertEqual(payment.method, PaymentRequest.Method.MPESA_STK)
+        self.assertIn("Reservation Deposit", payment.title)
+
+    def test_form_limits_choices_to_purchase_and_lease_direct_deals(self):
+        form = PaymentRequestForm(user=None)
+        self.assertEqual(
+            [value for value, _ in form.fields["transaction_type"].choices],
+            [PaymentRequest.TransactionType.PURCHASE, PaymentRequest.TransactionType.LEASE],
+        )
+        self.assertEqual(
+            [value for value, _ in form.fields["category"].choices],
+            [PaymentRequest.Category.RESERVATION_DEPOSIT, PaymentRequest.Category.ESCROW_DEPOSIT],
+        )
 
     def test_mobile_push_methods_only_need_phone_number(self):
         landowner = self._create_landowner_for_plot("mobile_owner")
@@ -273,7 +350,7 @@ class PaymentRequestModelTests(TestCase):
                 "title": "Viewing fee",
                 "description": "Auto deadline test",
                 "amount": "1.00",
-                "category": PaymentRequest.Category.VIEWING_FEE,
+                "category": PaymentRequest.Category.RESERVATION_DEPOSIT,
                 "method": PaymentRequest.Method.MPESA_STK,
                 "phone_number": "254700111999",
                 "lease_start_date": "",
@@ -355,6 +432,7 @@ class PaymentAuthorizationTests(TestCase):
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.status, PaymentRequest.Status.PAID)
 
+    @override_settings(PAYSTACK_ENABLED=False)
     def test_purchase_request_notifies_seller_when_created(self):
         owner_user = self.User.objects.create_user(
             username="notify_owner",
@@ -397,7 +475,11 @@ class PaymentAuthorizationTests(TestCase):
         )
 
         payment = PaymentRequest.objects.latest("created_at")
-        self.assertRedirects(response, reverse("payments:detail", kwargs={"pk": payment.pk}))
+        self.assertRedirects(
+            response,
+            reverse("payments:detail", kwargs={"pk": payment.pk}),
+            fetch_redirect_response=False,
+        )
         self.assertTrue(
             Notification.objects.filter(
                 user=owner_user,
@@ -426,6 +508,185 @@ class PaymentAuthorizationTests(TestCase):
             ).exists()
         )
         self.assertTrue(any("Payment confirmed" in email.subject for email in mail.outbox))
+
+    @override_settings(
+        PAYSTACK_ENABLED=True,
+        PAYSTACK_PUBLIC_KEY="pk_test_x",
+        PAYSTACK_SECRET_KEY="sk_test_x",
+        PAYSTACK_AUTO_RELEASE_TEST_DEALS=True,
+        SITE_URL="http://testserver",
+    )
+    @patch("payments.views.initialize_transaction")
+    def test_create_request_redirects_to_paystack_checkout(self, mock_initialize):
+        owner_user = self.User.objects.create_user(
+            username="paystack_owner",
+            password="secret123",
+            email="owner2@example.com",
+        )
+        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        landowner = LandownerProfile.objects.create(
+            user=owner_user,
+            national_id=SimpleUploadedFile("paystack_id.txt", b"id"),
+            kra_pin=SimpleUploadedFile("paystack_pin.txt", b"pin"),
+        )
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Paystack Plot",
+            location="Nakuru",
+            area=4,
+            price="500000.00",
+            sale_price="500000.00",
+            listing_type="sale",
+        )
+        mock_initialize.return_value = {
+            "reference": "AGP-TESTREF",
+            "access_code": "ACCESS123",
+            "authorization_url": "https://checkout.paystack.com/demo",
+        }
+        self.client.login(username="buyer_auth", password="secret123")
+
+        response = self.client.post(
+            reverse("payments:create_request"),
+            data={
+                "plot": plot.pk,
+                "transaction_type": PaymentRequest.TransactionType.PURCHASE,
+                "amount": "10.00",
+                "category": PaymentRequest.Category.RESERVATION_DEPOSIT,
+                "phone_number": "254700123456",
+                "lease_start_date": "",
+                "lease_end_date": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "https://checkout.paystack.com/demo")
+
+    @override_settings(
+        PAYSTACK_ENABLED=True,
+        PAYSTACK_PUBLIC_KEY="pk_test_x",
+        PAYSTACK_SECRET_KEY="sk_test_x",
+        PAYSTACK_AUTO_RELEASE_TEST_DEALS=True,
+    )
+    @patch("payments.views.verify_transaction")
+    def test_paystack_callback_auto_releases_test_purchase(self, mock_verify):
+        owner_user = self.User.objects.create_user(
+            username="callback_owner",
+            password="secret123",
+        )
+        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        landowner = LandownerProfile.objects.create(
+            user=owner_user,
+            national_id=SimpleUploadedFile("callback_id.txt", b"id"),
+            kra_pin=SimpleUploadedFile("callback_pin.txt", b"pin"),
+        )
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Callback Plot",
+            location="Kitale",
+            area=3,
+            price="800000.00",
+            sale_price="800000.00",
+            listing_type="sale",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=self.buyer,
+            seller=owner_user,
+            plot=plot,
+            title="Reservation Deposit for Purchase: Callback Plot",
+            description="M-Pesa checkout for reservation deposit.",
+            amount="10.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.RESERVATION_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.PENDING,
+            phone_number="254700000444",
+        )
+        mock_verify.return_value = {
+            "status": "success",
+            "gateway_response": "Successful",
+            "paid_at": "2026-03-25T12:00:00Z",
+        }
+
+        self.client.login(username="buyer_auth", password="secret123")
+        response = self.client.get(
+            reverse("payments:paystack_callback"),
+            {"reference": payment.internal_reference},
+        )
+
+        self.assertRedirects(response, reverse("payments:detail", kwargs={"pk": payment.pk}))
+        payment.refresh_from_db()
+        plot.refresh_from_db()
+        self.assertEqual(payment.status, PaymentRequest.Status.RELEASED)
+        self.assertEqual(plot.market_status, "reserved")
+
+    @override_settings(
+        PAYSTACK_ENABLED=True,
+        PAYSTACK_PUBLIC_KEY="pk_test_x",
+        PAYSTACK_SECRET_KEY="sk_test_x",
+        PAYSTACK_AUTO_RELEASE_TEST_DEALS=True,
+    )
+    def test_paystack_webhook_auto_releases_test_purchase(self):
+        owner_user = self.User.objects.create_user(
+            username="webhook_owner",
+            password="secret123",
+        )
+        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        landowner = LandownerProfile.objects.create(
+            user=owner_user,
+            national_id=SimpleUploadedFile("webhook_id.txt", b"id"),
+            kra_pin=SimpleUploadedFile("webhook_pin.txt", b"pin"),
+        )
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Webhook Plot",
+            location="Machakos",
+            area=2,
+            price="650000.00",
+            sale_price="650000.00",
+            listing_type="sale",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=self.buyer,
+            seller=owner_user,
+            plot=plot,
+            title="Reservation Deposit for Purchase: Webhook Plot",
+            description="M-Pesa checkout for reservation deposit.",
+            amount="10.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.RESERVATION_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.PENDING,
+            phone_number="254700000555",
+        )
+        payload = {
+            "event": "charge.success",
+            "data": {
+                "reference": payment.internal_reference,
+                "status": "success",
+                "gateway_response": "Successful",
+                "paid_at": "2026-03-25T12:00:00Z",
+                "channel": "mobile_money",
+            },
+        }
+        raw = json.dumps(payload).encode("utf-8")
+        signature = hmac.new(
+            b"sk_test_x",
+            raw,
+            hashlib.sha512,
+        ).hexdigest()
+
+        response = self.client.post(
+            reverse("payments:paystack_webhook"),
+            data=raw,
+            content_type="application/json",
+            HTTP_X_PAYSTACK_SIGNATURE=signature,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payment.refresh_from_db()
+        plot.refresh_from_db()
+        self.assertEqual(payment.status, PaymentRequest.Status.RELEASED)
+        self.assertEqual(plot.market_status, "reserved")
 
     def test_buyer_can_open_dispute(self):
         self.client.login(username="buyer_auth", password="secret123")

@@ -62,6 +62,19 @@ def user_can_open_dispute(user, payment):
     return PaymentDecision(False, "Only payment participants or finance admins can open disputes.")
 
 
+def user_can_update_closing_steps(user, payment):
+    if not getattr(user, "is_authenticated", False):
+        return PaymentDecision(False, "You need to sign in to update closing steps.")
+    if user_is_finance_admin(user):
+        return PaymentDecision(True)
+    if user == payment.seller:
+        return PaymentDecision(True)
+    return PaymentDecision(
+        False,
+        "Only the seller or a finance admin can update the legal closing checklist.",
+    )
+
+
 def user_can_transition_payment(user, payment, action):
     if not getattr(user, "is_authenticated", False):
         return PaymentDecision(False, "You need to sign in to update payments.")

@@ -7,20 +7,6 @@
 
 <!-- Replace the existing market-search form with this enhanced version -->
 
-{% if show_wizard_resume %}
-<div class="container95" style="margin-top: 16px;">
-    <div class="alert alert-info d-flex align-items-center justify-content-between">
-        <div>
-            <strong>Resume your landowner registration</strong>
-            <div class="small">You have an incomplete landowner wizard. Continue where you left off.</div>
-        </div>
-        <a href="{% url 'listings:register_landowner' %}" class="btn btn-sm btn-primary">
-            Resume
-        </a>
-    </div>
-</div>
-{% endif %}
-
 <section class="hero-market">
     <div class="hero-overlay"></div>
 

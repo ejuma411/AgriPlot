@@ -15,9 +15,9 @@
     <div class="payments-shell create-layout">
         <div class="form-card">
             <div class="section-heading compact">
-                <span class="section-kicker">New request</span>
-                <h2>Create a payment workflow</h2>
-                <p>Set the amount, pick the payment method, and define the first due date so the transaction has structure from the start.</p>
+                <span class="section-kicker">Paystack + M-Pesa</span>
+                <h2>Pay with M-Pesa</h2>
+                <p>Choose whether this is a purchase or lease, enter a small test amount, and continue to Paystack for the M-Pesa payment prompt.</p>
             </div>
             {% if selected_plot %}
             <div class="workspace-notice mb-3">
@@ -26,8 +26,8 @@
             </div>
             {% endif %}
             <div class="workspace-notice mb-3">
-                <strong>Amount policy:</strong> buyer checkout amounts are system controlled by transaction type and category so no one can enter arbitrary values.
-                <div class="mt-2" id="amountPolicyHint">Choose a transaction type and category to see the calculated amount.</div>
+                <strong>Testing mode:</strong> this checkout is currently limited to direct land purchase and lease flows through M-Pesa.
+                <div class="mt-2" id="amountPolicyHint">Enter any small test amount, complete the M-Pesa flow, and verify the deal lifecycle from pending to released.</div>
             </div>
             <form method="post" class="payments-form">
                 {% csrf_token %}
@@ -60,7 +60,7 @@
                     }
                 </style>
                 {% for field in form %}
-                {% if field.name != 'phone_number' and field.name != 'lease_start_date' and field.name != 'lease_end_date' and field.name != 'due_at' and field.name != 'mpesa_reference' and field.name != 'mpesa_account_reference' and field.name != 'cardholder_name' and field.name != 'card_last4' and field.name != 'bank_name' and field.name != 'bank_account_name' and field.name != 'bank_account_number' and field.name != 'airtel_number' and field.name != 'wallet_identifier' and field.name != 'manual_escrow_notes' %}
+                {% if field.name != 'phone_number' and field.name != 'title' and field.name != 'description' and field.name != 'method' and field.name != 'escrow_enabled' and field.name != 'lease_start_date' and field.name != 'lease_end_date' and field.name != 'due_at' and field.name != 'mpesa_reference' and field.name != 'mpesa_account_reference' and field.name != 'cardholder_name' and field.name != 'card_last4' and field.name != 'bank_name' and field.name != 'bank_account_name' and field.name != 'bank_account_number' and field.name != 'airtel_number' and field.name != 'wallet_identifier' and field.name != 'manual_escrow_notes' %}
                 <div class="field-block {% if field.name == 'escrow_enabled' %}field-inline{% endif %}">
                     <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
                     {{ field }}
@@ -73,24 +73,19 @@
                 </div>
                 {% endif %}
                 {% endfor %}
+                {{ form.title }}
+                {{ form.description }}
+                {{ form.method }}
+                {{ form.escrow_enabled }}
 
-                {% if form.allow_due_at_override %}
-                <div class="field-block">
-                    <label for="{{ form.due_at.id_for_label }}" class="form-label">{{ form.due_at.label }}</label>
-                    {{ form.due_at }}
-                    <div class="help-copy">Finance or operations can adjust this deadline when the transaction needs a custom payment window.</div>
-                    {% for error in form.due_at.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                </div>
-                {% else %}
                 <div class="workspace-notice mb-3">
-                    <strong>Payment deadline:</strong> AgriPlot sets this automatically from the checkout type, so buyers do not need to choose their own deadline.
+                    <strong>Payment deadline:</strong> AgriPlot sets this automatically, so the buyer only needs to complete the M-Pesa prompt in time.
                 </div>
-                {% endif %}
 
                 <div class="method-detail-panel" data-transaction-panel="lease">
                     <h3 class="form-label">Lease Period</h3>
                     <div class="workspace-notice">
-                        These dates are only needed for lease deals. They stay hidden for purchase or service checkout.
+                        These dates are only needed for lease deals. They stay hidden for purchase checkout.
                     </div>
                     <div class="field-block">
                         <label for="{{ form.lease_start_date.id_for_label }}" class="form-label">{{ form.lease_start_date.label }}</label>
@@ -104,124 +99,39 @@
                     </div>
                 </div>
 
-                <div class="method-detail-panel" data-method-panel="mpesa_stk,mpesa_paybill">
-                    <h3 class="form-label">Mobile Payment Number</h3>
+                <div class="method-detail-panel" style="display:grid;">
+                    <h3 class="form-label">M-Pesa Number</h3>
+                    <div class="workspace-notice">
+                        We are keeping this simple: enter the M-Pesa number and AgriPlot will hand off to Paystack for the M-Pesa checkout. The buyer enters their PIN on the phone, not on this form.
+                    </div>
                     <div class="field-block">
                         <label for="{{ form.phone_number.id_for_label }}" class="form-label">{{ form.phone_number.label }}</label>
                         {{ form.phone_number }}
+                        {% if form.phone_number.help_text %}
+                        <div class="help-copy">{{ form.phone_number.help_text }}</div>
+                        {% endif %}
                         {% for error in form.phone_number.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
                     </div>
                 </div>
-
-                <div class="method-detail-panel" data-method-panel="mpesa_stk">
-                    <h3 class="form-label">M-Pesa STK Details</h3>
-                    <div class="workspace-notice">
-                        Enter the M-Pesa number only. When live Daraja STK is connected, AgriPlot will send the push prompt to that phone and the buyer will enter their PIN on the phone, not on this form.
-                    </div>
-                </div>
-
-                <div class="method-detail-panel" data-method-panel="mpesa_paybill">
-                    <h3 class="form-label">M-Pesa Paybill / Till Details</h3>
-                    <div class="workspace-notice">
-                        Paybill / Till is a manual fallback, so we still keep a reference and account code for reconciliation.
-                    </div>
-                    <div class="field-block">
-                        <label for="{{ form.mpesa_reference.id_for_label }}" class="form-label">{{ form.mpesa_reference.label }}</label>
-                        {{ form.mpesa_reference }}
-                        {% for error in form.mpesa_reference.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="field-block">
-                        <label for="{{ form.mpesa_account_reference.id_for_label }}" class="form-label">{{ form.mpesa_account_reference.label }}</label>
-                        {{ form.mpesa_account_reference }}
-                        <div class="help-copy">{{ form.mpesa_account_reference.help_text }}</div>
-                        {% for error in form.mpesa_account_reference.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                </div>
-
-                <div class="method-detail-panel" data-method-panel="card">
-                    <h3 class="form-label">Card Checkout Details</h3>
-                    <div class="field-block">
-                        <label for="{{ form.cardholder_name.id_for_label }}" class="form-label">{{ form.cardholder_name.label }}</label>
-                        {{ form.cardholder_name }}
-                        {% for error in form.cardholder_name.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="field-block">
-                        <label for="{{ form.card_last4.id_for_label }}" class="form-label">{{ form.card_last4.label }}</label>
-                        {{ form.card_last4 }}
-                        <div class="help-copy">{{ form.card_last4.help_text }}</div>
-                        {% for error in form.card_last4.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                </div>
-
-                <div class="method-detail-panel" data-method-panel="bank_transfer">
-                    <h3 class="form-label">Bank Transfer Details</h3>
-                    <div class="field-block">
-                        <label for="{{ form.bank_name.id_for_label }}" class="form-label">{{ form.bank_name.label }}</label>
-                        {{ form.bank_name }}
-                        {% for error in form.bank_name.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="field-block">
-                        <label for="{{ form.bank_account_name.id_for_label }}" class="form-label">{{ form.bank_account_name.label }}</label>
-                        {{ form.bank_account_name }}
-                        {% for error in form.bank_account_name.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="field-block">
-                        <label for="{{ form.bank_account_number.id_for_label }}" class="form-label">{{ form.bank_account_number.label }}</label>
-                        {{ form.bank_account_number }}
-                        {% for error in form.bank_account_number.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                </div>
-
-                <div class="method-detail-panel" data-method-panel="airtel_money">
-                    <h3 class="form-label">Airtel Money Details</h3>
-                    <div class="workspace-notice">
-                        Enter the Airtel Money number only. For a live push-style integration, the PIN entry happens on the user's phone after AgriPlot initiates the payment request.
-                    </div>
-                </div>
-
-                <div class="method-detail-panel" data-method-panel="wallet">
-                    <h3 class="form-label">AgriPlot Wallet Details</h3>
-                    <div class="field-block">
-                        <label for="{{ form.wallet_identifier.id_for_label }}" class="form-label">{{ form.wallet_identifier.label }}</label>
-                        {{ form.wallet_identifier }}
-                        {% for error in form.wallet_identifier.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                </div>
-
-                <div class="method-detail-panel" data-method-panel="manual_escrow">
-                    <h3 class="form-label">Manual Escrow Details</h3>
-                    <div class="field-block">
-                        <label for="{{ form.manual_escrow_notes.id_for_label }}" class="form-label">{{ form.manual_escrow_notes.label }}</label>
-                        {{ form.manual_escrow_notes }}
-                        {% for error in form.manual_escrow_notes.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                </div>
                 <div class="form-actions">
-                    <button type="submit" class="hero-btn hero-btn-primary">Create request</button>
+                    <button type="submit" class="hero-btn hero-btn-primary">Continue to Paystack</button>
                     <a href="{% url 'payments:dashboard' %}" class="hero-btn hero-btn-secondary hero-btn-light">Back to workspace</a>
                 </div>
             </form>
         </div>
         <aside class="side-panel-stack">
             <div class="hero-panel-card">
-                <span class="panel-label">Best first use cases</span>
+                <span class="panel-label">How it works</span>
                 <ul class="hero-list">
-                    <li>Viewing fees that qualify buyer intent</li>
-                    <li>Reservation deposits before title and due diligence checks</li>
-                    <li>Verification packages for documents and title search coordination</li>
-                    <li>Escrow deposits released against seller milestones</li>
+                    <li>Buyer chooses purchase or lease</li>
+                    <li>Buyer enters a small test amount</li>
+                    <li>Buyer enters the M-Pesa number</li>
+                    <li>Paystack opens the M-Pesa payment step</li>
                 </ul>
             </div>
             <div class="hero-panel-card">
-                <span class="panel-label">Methods</span>
-                <div class="mini-method-list">
-                    {% for method in method_cards %}
-                    <div class="mini-method-item">
-                        <strong>{{ method.name }}</strong>
-                        <p>{{ method.description }}</p>
-                    </div>
-                    {% endfor %}
-                </div>
+                <span class="panel-label">Test Goal</span>
+                <p class="mb-0 text-muted">This flow is intentionally narrow right now: test that a buyer can successfully buy or lease land, and once released, nobody else can proceed with the same sold or occupied plot.</p>
             </div>
         </aside>
     </div>
@@ -233,15 +143,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const plot = document.getElementById("id_plot");
     const transactionType = document.getElementById("id_transaction_type");
     const category = document.getElementById("id_category");
-    const method = document.getElementById("id_method");
     const amount = document.getElementById("id_amount");
     const hint = document.getElementById("amountPolicyHint");
     const dataNode = document.getElementById("checkout-amounts");
     const plotTypeNode = document.getElementById("plot-listing-types");
-    const methodPanels = document.querySelectorAll("[data-method-panel]");
     const transactionPanels = document.querySelectorAll("[data-transaction-panel]");
 
-    if (!transactionType || !category || !method || !amount || !hint || !dataNode || !plotTypeNode) {
+    if (!transactionType || !category || !amount || !hint || !dataNode || !plotTypeNode) {
         return;
     }
 
@@ -256,24 +164,15 @@ document.addEventListener("DOMContentLoaded", function () {
         return "KES " + number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    function updateAmount() {
+    function updateAmountHint() {
         const tx = transactionType.value;
         const cat = category.value;
-        const computed = presets?.[tx]?.[cat] || "";
-        if (computed) {
-            amount.value = computed;
-            hint.textContent = "Calculated checkout amount: " + formatKes(computed) + ".";
+        const suggested = presets?.[tx]?.[cat] || "";
+        if (suggested) {
+            hint.textContent = "Suggested amount for this flow: " + formatKes(suggested) + ". You can still enter any small test amount for the demo.";
         } else {
-            hint.textContent = "No platform amount is configured for this combination yet.";
+            hint.textContent = "Enter any small test amount you want to use for this transaction.";
         }
-    }
-
-    function updateMethodPanel() {
-        const selectedMethod = method.value;
-        methodPanels.forEach((panel) => {
-            const supportedMethods = panel.dataset.methodPanel.split(",");
-            panel.style.display = supportedMethods.includes(selectedMethod) ? "grid" : "none";
-        });
     }
 
     function syncTransactionTypeFromPlot() {
@@ -296,20 +195,18 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    transactionType.addEventListener("change", updateAmount);
+    transactionType.addEventListener("change", updateAmountHint);
     transactionType.addEventListener("change", updateTransactionPanels);
-    category.addEventListener("change", updateAmount);
-    method.addEventListener("change", updateMethodPanel);
+    category.addEventListener("change", updateAmountHint);
     if (plot) {
         plot.addEventListener("change", function () {
             syncTransactionTypeFromPlot();
             updateTransactionPanels();
-            updateAmount();
+            updateAmountHint();
         });
     }
     syncTransactionTypeFromPlot();
-    updateAmount();
-    updateMethodPanel();
+    updateAmountHint();
     updateTransactionPanels();
 });
 </script>

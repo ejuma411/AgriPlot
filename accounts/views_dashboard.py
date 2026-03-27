@@ -10,6 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from listings.models import ContactRequest, Plot, UserInterest
+from payments.models import PaymentRequest
 from verification.models import VerificationLog, VerificationStatus, VerificationTask
 
 logger = logging.getLogger(__name__)
@@ -168,6 +169,8 @@ def my_plots(request):
     else:
         plots = Plot.objects.all()
 
+    plots = plots.prefetch_related("surveyor_reports", "pricing_suggestions", "soil_reports")
+
     status_filter = request.GET.get("status", "all")
     if status_filter != "all":
         verification_stage = (
@@ -184,6 +187,8 @@ def my_plots(request):
     paginator = Paginator(plots.order_by("-created_at"), 10)
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
+    for plot in page_obj.object_list:
+        plot.sale_pricing_recommendation = plot.pricing_recommendation("sale")
 
     status_counts = {
         "all": plots.count(),
@@ -199,8 +204,10 @@ def my_plots(request):
         "search_query": search_query,
         "status_counts": status_counts,
         "total_plots": plots.count(),
+        "price_review_count": plots.filter(price_review_required=True).count(),
         "is_agent": is_agent,
         "is_landowner": is_landowner,
+        "profile_type": "Agent" if is_agent else "Landowner" if is_landowner else "Administrator",
     }
 
     return render(request, "accounts/dashboard/my_plots.html", context)
@@ -300,10 +307,31 @@ def saved_plots(request):
     page_number = request.GET.get("page")
     page_obj = paginator.get_page(page_number)
 
+    active_deals = list(
+        PaymentRequest.objects.filter(
+            buyer=request.user,
+            transaction_type__in=[
+                PaymentRequest.TransactionType.PURCHASE,
+                PaymentRequest.TransactionType.LEASE,
+            ],
+        )
+        .select_related("plot", "seller")
+        .prefetch_related("closing_steps")
+        .order_by("-created_at")[:6]
+    )
+    for deal in active_deals:
+        deal.ensure_closing_steps()
+
+    next_action_deal = next((deal for deal in active_deals if deal.next_closing_step), None)
+    if not next_action_deal and active_deals:
+        next_action_deal = active_deals[0]
+
     context = {
         "page_obj": page_obj,
         "search_query": search_query,
         "saved_count": interests.count(),
+        "active_deals": active_deals,
+        "next_action_deal": next_action_deal,
     }
     return render(request, "accounts/dashboard/saved_plots.html", context)
 

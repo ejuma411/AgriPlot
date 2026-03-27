@@ -41,6 +41,22 @@
                     <div class="card-heading">
                         <h2>Payment summary</h2>
                     </div>
+                    {% if is_payment_buyer and closing_steps %}
+                    <div class="mini-note mb-3">
+                        <strong>Buyer next step</strong>
+                        <div>{{ payment.buyer_next_step_summary }}</div>
+                        <div class="mt-1">{{ payment.buyer_next_step_instruction }}</div>
+                    </div>
+                    {% endif %}
+                    {% if payment.transaction_type == 'purchase' or payment.transaction_type == 'lease' %}
+                    <div class="mini-note mb-3">
+                        <strong>{{ payment.transfer_status_label }}</strong>
+                        <div>{{ payment.transfer_status_detail }}</div>
+                        {% if payment.plot and payment.plot.availability_notes %}
+                        <div class="mt-1 text-muted">{{ payment.plot.availability_notes }}</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                     <div class="summary-grid">
                         <div><span>Method</span><strong>{{ payment.get_method_display }}</strong></div>
                         <div><span>Category</span><strong>{{ payment.get_category_display }}</strong></div>
@@ -48,6 +64,10 @@
                         <div><span>Escrow</span><strong>{% if payment.escrow_enabled %}Enabled{% else %}Off{% endif %}</strong></div>
                         <div><span>Phone</span><strong>{{ payment.phone_number|default:"-" }}</strong></div>
                         <div><span>Due</span><strong>{% if payment.due_at %}{{ payment.due_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</strong></div>
+                        {% if payment.transaction_type == 'purchase' or payment.transaction_type == 'lease' %}
+                        <div><span>Legal tracker</span><strong>{{ payment.closing_stage_summary }}</strong></div>
+                        <div><span>Transfer stage</span><strong>{{ payment.transfer_status_label }}</strong></div>
+                        {% endif %}
                     </div>
                     {% if payment.description %}
                     <p class="summary-description">{{ payment.description }}</p>
@@ -76,6 +96,72 @@
                     </div>
                 </section>
 
+                {% if closing_steps %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Transaction tracker</h2>
+                            <p class="summary-description mb-0">{{ payment.closing_stage_summary }}</p>
+                        </div>
+                        <strong>{{ payment.closing_progress_value }}%</strong>
+                    </div>
+                    <div class="progress-track mb-3">
+                        <span class="progress-fill" style="width: {{ payment.closing_progress_value }}%;"></span>
+                    </div>
+                    <div class="milestone-list">
+                        {% for step in closing_steps %}
+                        <article class="milestone-item">
+                            <div class="milestone-number">{{ step.sequence }}</div>
+                            <div class="w-100">
+                                <h3>{{ step.title }}</h3>
+                                <p>{{ step.get_status_display }} · Responsible: {{ step.responsible_party_label }}{% if step.document_name %} · Required: {{ step.document_name }}{% endif %}</p>
+                                {% if step.guidance %}
+                                <div class="mini-note">{{ step.guidance }}</div>
+                                {% endif %}
+                                {% if is_payment_buyer %}
+                                <div class="mini-note mt-2"><strong>Your way forward:</strong> {{ step.buyer_instruction }}</div>
+                                {% endif %}
+                                {% if step.notes %}
+                                <div class="mini-note mt-2">{{ step.notes }}</div>
+                                {% endif %}
+                                {% if step.document %}
+                                <div class="mini-note mt-2">
+                                    Supporting document:
+                                    <a href="{{ step.document.url }}" target="_blank" rel="noopener">Open file</a>
+                                </div>
+                                {% endif %}
+                                {% if step.completed_at %}
+                                <div class="mini-note mt-2">Completed {{ step.completed_at|date:"M d, Y H:i" }}{% if step.completed_by %} · {{ step.completed_by.get_full_name|default:step.completed_by.username }}{% endif %}</div>
+                                {% endif %}
+                                {% if can_update_closing_steps %}
+                                <form method="post" action="{% url 'payments:update_closing_step' payment.pk step.pk %}" class="payments-form compact-form mt-3" enctype="multipart/form-data">
+                                    {% csrf_token %}
+                                    <div class="field-block">
+                                        <label class="form-label" for="id_status_{{ step.pk }}">Status</label>
+                                        <select name="status" id="id_status_{{ step.pk }}" class="form-select">
+                                            {% for value, label in closing_step_form.fields.status.choices %}
+                                            <option value="{{ value }}"{% if step.status == value %} selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="field-block">
+                                        <label class="form-label" for="id_notes_{{ step.pk }}">Notes</label>
+                                        <textarea name="notes" id="id_notes_{{ step.pk }}" class="form-control" rows="3" placeholder="Add document refs, meeting dates, or blocker notes.">{{ step.notes }}</textarea>
+                                    </div>
+                                    <div class="field-block">
+                                        <label class="form-label" for="id_document_{{ step.pk }}">Document</label>
+                                        <input type="file" name="document" id="id_document_{{ step.pk }}" class="form-control">
+                                    </div>
+                                    <button type="submit" class="hero-btn hero-btn-secondary">Update step</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
                 <section class="content-card">
                     <div class="card-heading">
                         <h2>Activity timeline</h2>
@@ -101,6 +187,11 @@
                     <div class="card-heading">
                         <h2>Quick actions</h2>
                     </div>
+                    {% if paystack_authorization_url and payment.status == 'pending' %}
+                    <a href="{{ paystack_authorization_url }}" class="hero-btn hero-btn-primary w-100 mb-3">
+                        Continue Paystack Checkout
+                    </a>
+                    {% endif %}
                     {% if is_finance_admin %}
                     <p class="mini-note">Finance-level actions can change settlement state and should be used only after operational review.</p>
                     {% endif %}

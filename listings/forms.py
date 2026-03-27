@@ -217,6 +217,33 @@ class BaseUpgradeForm(forms.ModelForm):
             'readonly': 'readonly',
         })
     )
+    account_phone = forms.CharField(
+        required=False,
+        disabled=True,
+        label="Phone",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'readonly': 'readonly',
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        source_user = self.user
+        instance_user = getattr(getattr(self, "instance", None), "user", None)
+        if source_user is None and instance_user is not None:
+            source_user = instance_user
+
+        profile_phone = ""
+        if source_user is not None and hasattr(source_user, "profile"):
+            profile_phone = source_user.profile.phone or ""
+
+        if source_user is not None:
+            self.fields["username"].initial = source_user.username
+            self.fields["email"].initial = source_user.email
+            self.fields["account_phone"].initial = profile_phone
 
 
 class LandownerUpgradeForm(BaseUpgradeForm):
@@ -240,6 +267,10 @@ class LandownerUpgradeForm(BaseUpgradeForm):
         self.fields['title_deed'].required = True
         self.fields['land_search'].required = True
         self.fields['lcb_consent'].required = False
+        self.order_fields([
+            'username', 'email', 'account_phone', 'national_id',
+            'kra_pin', 'title_deed', 'land_search', 'lcb_consent'
+        ])
         
         # Add help texts
         self.fields['national_id'].help_text = "Upload your national ID (required)"
@@ -300,23 +331,21 @@ class AgentUpgradeForm(BaseUpgradeForm):
     
     class Meta:
         model = Agent
-        fields = ['phone', 'license_number', 'license_doc']
+        fields = ['license_number', 'license_doc']
         widgets = {
-            'phone': forms.TextInput(attrs={'class': 'form-control'}),
             'license_number': forms.TextInput(attrs={'class': 'form-control'}),
             'license_doc': forms.FileInput(attrs={'class': 'form-control'}),
         }
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields['phone'].required = True
         self.fields['license_number'].required = True
         self.fields['license_doc'].required = True
         
         # Reorder fields
         self.order_fields([
-            'username', 'email', 'phone', 'id_number', 'license_number',
-            'license_doc', 'kra_pin', 'practicing_certificate',
+            'username', 'email', 'account_phone', 'id_number',
+            'license_number', 'license_doc', 'kra_pin', 'practicing_certificate',
             'good_conduct', 'professional_indemnity'
         ])
 
@@ -345,6 +374,8 @@ class AgentUpgradeForm(BaseUpgradeForm):
         if user:
             instance.user = user
             instance.id_number = self.cleaned_data.get('id_number', '')
+            if hasattr(user, "profile") and user.profile.phone:
+                instance.phone = user.profile.phone
         
         # Save file fields
         if self.cleaned_data.get('kra_pin'):
@@ -740,7 +771,7 @@ class PlotForm(forms.ModelForm):
     class Meta:
         model = Plot
         fields = [
-            'title', 'county', 'subcounty', 'location', 'area', 'area_unit', 'parcel_number', 'is_subdivision',
+            'title', 'county', 'subcounty', 'market_zone', 'location', 'area', 'area_unit', 'parcel_number', 'is_subdivision',
             'original_parcel_number', 'registration_section',
             'search_certificate_date', 'search_reference_number',
             'owner_full_name', 'owner_id_number', 'owner_kra_pin_number', 'spousal_consent',
@@ -749,7 +780,7 @@ class PlotForm(forms.ModelForm):
             'ownership_type', 'tenure_details', 'encumbrances', 'encumbrance_details',
             'sale_price', 'price_per_acre',
             'lease_price_monthly', 'lease_price_yearly', 'lease_duration', 'lease_terms',
-            'price_basis', 'valuation_report', 'price_notes', 'is_price_negotiable', 'lease_basis', 'government_price_proof',
+            'price_basis', 'valuation_report', 'price_notes', 'is_price_negotiable', 'price_review_required', 'pricing_override_reason', 'lease_basis', 'government_price_proof',
             'has_water', 'water_source', 'has_electricity', 'electricity_meter',
             'has_road_access', 'road_type', 'road_distance_km',
             'has_buildings', 'building_description', 'other_amenities', 'fencing',
@@ -769,6 +800,8 @@ class PlotForm(forms.ModelForm):
                 'min': '0',
                 'step': '0.1'
             }),
+            'market_zone': forms.Select(attrs={'class': 'form-control'}),
+            'pricing_override_reason': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
             'title_deed': forms.ClearableFileInput(attrs={
                 'class': 'form-control',
                 'accept': '.pdf,.jpg,.jpeg,.png'
@@ -914,6 +947,7 @@ class PlotForm(forms.ModelForm):
         self.fields['title'].help_text = "Give your plot a descriptive title"
         self.fields['county'].help_text = "Select the county where your plot is located"
         self.fields['subcounty'].help_text = "Select the specific sub-county"
+        self.fields['market_zone'].help_text = "Tell AgriPlot whether this land is rural, peri-urban, or urban for pricing guidance."
         self.fields['area'].help_text = "Land area value"
         self.fields['area_unit'].help_text = "Select acres or hectares"
         self.fields['parcel_number'].help_text = "Parcel/Title/LR number used for official search"
@@ -925,6 +959,8 @@ class PlotForm(forms.ModelForm):
         self.fields['lease_basis'].help_text = "How was the lease price determined?"
         self.fields['valuation_report'].help_text = "Optional valuation report (PDF/Image)"
         self.fields['price_notes'].help_text = "Optional notes about market demand or negotiations"
+        self.fields['price_review_required'].help_text = "Automatically turned on when your asking price goes beyond the regional guide."
+        self.fields['pricing_override_reason'].help_text = "Explain boreholes, greenhouses, fencing, or any other value additions if you are above the guide."
         self.fields['other_amenities'].help_text = "Optional: mention any extra amenities or access features not captured above."
         self.fields['ownership_type'].help_text = "Legal tenure status"
         self.fields['encumbrance_details'].help_text = "Specify any caveats, loans, or disputes"
@@ -944,6 +980,89 @@ class PlotForm(forms.ModelForm):
             self.fields['consent_to_transfer'].help_text = "Consent to transfer (PDF/Image, max 20MB)"
         self.fields['landowner_id_doc'].help_text = "Landowner's national ID (PDF/Image, max 20MB)"
         self.fields['kra_pin'].help_text = "Landowner's KRA PIN certificate (PDF/Image, max 20MB)"
+        self.fields['price_review_required'].widget = forms.HiddenInput()
+        self.price_band_guidance = {
+            'sale': self._build_price_guidance('sale'),
+            'lease': self._build_price_guidance('lease'),
+        }
+        self.pricing_suggestions = {
+            'sale': self._build_pricing_suggestion('sale'),
+            'lease': self._build_pricing_suggestion('lease'),
+        }
+
+    def _build_price_guidance(self, listing_type):
+        county = self.data.get('county') or getattr(self.instance, 'county', None)
+        subcounty = self.data.get('subcounty') or getattr(self.instance, 'subcounty', None)
+        market_zone = self.data.get('market_zone') or getattr(self.instance, 'market_zone', 'rural')
+        land_type = self.data.get('land_type') or getattr(self.instance, 'land_type', None)
+        if not county or not land_type:
+            return None
+        queryset = MarketPriceBand.objects.filter(
+            county=county,
+            land_type=land_type,
+            listing_type=listing_type,
+            market_zone=market_zone,
+            is_active=True,
+        )
+        band = None
+        if subcounty:
+            band = queryset.filter(subcounty=subcounty).order_by('-effective_from').first()
+        if band is None:
+            band = queryset.filter(subcounty__in=['', None]).order_by('-effective_from').first()
+        if not band:
+            return None
+        return {
+            'county': county,
+            'subcounty': subcounty or '',
+            'market_zone': market_zone,
+            'land_type': land_type,
+            'area_unit': band.area_unit,
+            'min_price_per_unit': band.min_price_per_unit,
+            'max_price_per_unit': band.max_price_per_unit,
+            'source': band.source,
+            'notes': band.notes,
+        }
+
+    def _build_pricing_suggestion(self, listing_type):
+        source = self.instance if getattr(self.instance, "pk", None) else Plot()
+        raw_area = self.data.get('area') or getattr(self.instance, 'area', None)
+        raw_area_unit = self.data.get('area_unit') or getattr(self.instance, 'area_unit', 'acres')
+        raw_county = self.data.get('county') or getattr(self.instance, 'county', None)
+        raw_subcounty = self.data.get('subcounty') or getattr(self.instance, 'subcounty', None)
+        raw_market_zone = self.data.get('market_zone') or getattr(self.instance, 'market_zone', 'rural')
+        raw_land_type = self.data.get('land_type') or getattr(self.instance, 'land_type', None)
+        raw_soil_type = self.data.get('soil_type') or getattr(self.instance, 'soil_type', '')
+        raw_sale_price = self.data.get('sale_price') or getattr(self.instance, 'sale_price', None)
+        raw_lease_yearly = self.data.get('lease_price_yearly') or getattr(self.instance, 'lease_price_yearly', None)
+        raw_lease_monthly = self.data.get('lease_price_monthly') or getattr(self.instance, 'lease_price_monthly', None)
+
+        try:
+            source.area = Decimal(str(raw_area)) if raw_area not in {None, ''} else None
+        except (InvalidOperation, TypeError, ValueError):
+            source.area = None
+
+        source.area_unit = raw_area_unit or 'acres'
+        source.county = raw_county
+        source.subcounty = raw_subcounty
+        source.market_zone = raw_market_zone or 'rural'
+        source.land_type = raw_land_type
+        source.soil_type = raw_soil_type or ''
+        source.listing_type = listing_type
+
+        try:
+            source.sale_price = Decimal(str(raw_sale_price)) if raw_sale_price not in {None, ''} else None
+        except (InvalidOperation, TypeError, ValueError):
+            source.sale_price = None
+        try:
+            source.lease_price_yearly = Decimal(str(raw_lease_yearly)) if raw_lease_yearly not in {None, ''} else None
+        except (InvalidOperation, TypeError, ValueError):
+            source.lease_price_yearly = None
+        try:
+            source.lease_price_monthly = Decimal(str(raw_lease_monthly)) if raw_lease_monthly not in {None, ''} else None
+        except (InvalidOperation, TypeError, ValueError):
+            source.lease_price_monthly = None
+
+        return source.pricing_recommendation(listing_type)
     
     def clean(self):
         """Validate all form data with comprehensive error checking"""
@@ -1254,7 +1373,13 @@ class PlotForm(forms.ModelForm):
         government_price_proof = cleaned_data.get('government_price_proof')
         price_notes = cleaned_data.get('price_notes')
         county = cleaned_data.get('county')
+        subcounty = cleaned_data.get('subcounty')
+        market_zone = cleaned_data.get('market_zone')
         land_type = cleaned_data.get('land_type')
+        pricing_override_reason = cleaned_data.get('pricing_override_reason')
+        cleaned_data['price_review_required'] = False
+        if pricing_override_reason:
+            cleaned_data['pricing_override_reason'] = pricing_override_reason.strip()
         # area and area_unit already captured above for registry alignment checks
 
         def _to_acres(value, unit):
@@ -1335,38 +1460,74 @@ class PlotForm(forms.ModelForm):
             cleaned_data['other_amenities'] = ''
 
         # Market band validation (guardrails)
-        from .models import MarketPriceBand
-        if sale_price and area_acres and county and land_type:
-            band = MarketPriceBand.objects.filter(
+        def _get_band(listing_kind):
+            queryset = MarketPriceBand.objects.filter(
                 county=county,
                 land_type=land_type,
-                listing_type='sale',
-                effective_to__isnull=True
-            ).first()
-            if band:
-                price_per_acre = sale_price / area_acres
-                if price_per_acre < band.min_price_per_acre or price_per_acre > band.max_price_per_acre:
-                    if price_basis != 'valuation_report':
-                        self.add_error(
-                            'sale_price',
-                            f"Sale price per acre is outside market band ({band.min_price_per_acre}-{band.max_price_per_acre}). Upload valuation report or adjust price."
-                        )
+                listing_type=listing_kind,
+                market_zone=market_zone,
+                is_active=True,
+            )
+            band = None
+            if subcounty:
+                band = queryset.filter(subcounty=subcounty).order_by('-effective_from').first()
+            if band is None:
+                band = queryset.filter(subcounty__in=['', None]).order_by('-effective_from').first()
+            return band
 
-        if lease_price_yearly and area_acres and county and land_type:
-            band = MarketPriceBand.objects.filter(
-                county=county,
-                land_type=land_type,
-                listing_type='lease',
-                effective_to__isnull=True
-            ).first()
-            if band:
-                price_per_acre = lease_price_yearly / area_acres
-                if price_per_acre < band.min_price_per_acre or price_per_acre > band.max_price_per_acre:
-                    if lease_basis != 'valuation_report':
-                        self.add_error(
-                            'lease_price_yearly',
-                            f"Lease price per acre is outside market band ({band.min_price_per_acre}-{band.max_price_per_acre}). Upload valuation report or adjust price."
-                        )
+        def _validate_band(listing_kind, entered_value, basis, field_name):
+            if not entered_value or not county or not land_type or not market_zone:
+                return
+            band = _get_band(listing_kind)
+            if not band:
+                return
+            area_in_band_unit = _to_acres(area, area_unit) if band.area_unit == 'acres' else (
+                area if area_unit == 'hectares' else (_to_acres(area, area_unit) / 2.47105 if _to_acres(area, area_unit) else None)
+            )
+            if not area_in_band_unit:
+                return
+            price_per_unit = Decimal(str(entered_value)) / Decimal(str(area_in_band_unit))
+            over_cap = price_per_unit > band.max_price_per_unit
+            below_floor = price_per_unit < band.min_price_per_unit
+            if over_cap:
+                cleaned_data['price_review_required'] = True
+                if not pricing_override_reason:
+                    self.add_error(
+                        'pricing_override_reason',
+                        (
+                            f"Your price exceeds the regional guide for {county}"
+                            f"{' / ' + subcounty if subcounty else ''} ({market_zone.replace('_', ' ')}). "
+                            "Explain the value additions or unique features that justify the higher price."
+                        ),
+                    )
+                if basis != 'valuation_report' or not valuation_report:
+                    self.add_error(
+                        field_name,
+                        (
+                            f"Your price exceeds the regional cap of KES {band.max_price_per_unit:,.2f} per {band.area_unit}. "
+                            "Upload a professional valuation report or reduce the price."
+                        ),
+                    )
+            elif below_floor:
+                self.add_error(
+                    field_name,
+                    (
+                        f"Your price is below the regional guide floor of KES {band.min_price_per_unit:,.2f} per {band.area_unit}. "
+                        "Double-check the entered amount or the plot area."
+                    ),
+                )
+            else:
+                cleaned_data['price_review_required'] = False
+
+        if sale_price and area and county and land_type and listing_type in ['sale', 'both']:
+            _validate_band('sale', sale_price, price_basis, 'sale_price')
+
+        lease_reference_price = lease_price_yearly or (
+            Decimal(str(lease_price_monthly)) * Decimal("12")
+            if lease_price_monthly else None
+        )
+        if lease_reference_price and area and county and land_type and listing_type in ['lease', 'both']:
+            _validate_band('lease', lease_reference_price, lease_basis, 'lease_price_yearly' if lease_price_yearly else 'lease_price_monthly')
         
         # =========================================================================
         # DOCUMENT VALIDATION
@@ -1498,6 +1659,27 @@ class PlotForm(forms.ModelForm):
         
         if commit:
             plot.save()
+            sale_suggestion = plot.pricing_recommendation('sale')
+            if sale_suggestion and plot.listing_type in ['sale', 'both']:
+                latest_suggestion = plot.pricing_suggestions.order_by('-generated_at').first()
+                suggestion_defaults = {
+                    'suggested_price': sale_suggestion['suggested_total'],
+                    'price_range_min': sale_suggestion['price_range_min'] or sale_suggestion['suggested_total'],
+                    'price_range_max': sale_suggestion['price_range_max'] or sale_suggestion['suggested_total'],
+                    'methodology': 'Regional band + comparable blend',
+                    'comparable_plots_used': (
+                        sale_suggestion['comparable_snapshot']['sample_size']
+                        if sale_suggestion.get('comparable_snapshot')
+                        else 0
+                    ),
+                    'explanation': sale_suggestion['explanation'],
+                }
+                if latest_suggestion:
+                    for field_name, field_value in suggestion_defaults.items():
+                        setattr(latest_suggestion, field_name, field_value)
+                    latest_suggestion.save()
+                else:
+                    PricingSuggestion.objects.create(plot=plot, **suggestion_defaults)
             
             # If documents were uploaded, log it
             if docs_uploaded:

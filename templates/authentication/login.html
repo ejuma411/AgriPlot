@@ -41,19 +41,13 @@
     <button type="submit" class="auth-btn">Log In</button>
 </form>
 
-{% if show_wizard_resume %}
-<div class="auth-note">
-    <strong>Resume your landowner registration</strong>
-    <a href="{% url 'listings:register_landowner' %}" class="auth-link-btn">Resume</a>
-</div>
-{% endif %}
-
 <div class="portal-signup">
     <span>Don't have an account?</span>
     <div class="auth-chip-row">
         <a href="{% url 'listings:register_buyer' %}">Buyer</a>
-        <a href="{% url 'listings:register_landowner' %}">Landowner</a>
-        <a href="{% url 'listings:register_agent' %}">Agent</a>
+    </div>
+    <div class="auth-note">
+        Create a buyer account first if you later want to upgrade this same login to landowner, agent, extension officer, or land surveyor.
     </div>
 </div>
 {% endblock %}

@@ -39,6 +39,10 @@
                 <span>In escrow</span>
                 <strong>{{ stats.escrow_count }}</strong>
             </article>
+            <article class="stat-card">
+                <span>Purchase trackers</span>
+                <strong>{{ stats.purchase_tracker_count }}</strong>
+            </article>
         </div>
     </div>
     {% if show_scope_notice %}
@@ -88,6 +92,9 @@
                         <span>{{ payment.get_category_display }}</span>
                         <span>{{ payment.counterparty_label }}</span>
                     </div>
+                    {% if payment.transaction_type == 'purchase' or payment.transaction_type == 'lease' %}
+                    <p class="mb-0 mt-2"><strong>{{ payment.transfer_status_label }}</strong> · {{ payment.closing_stage_summary }}</p>
+                    {% endif %}
                 </div>
                 <div class="payment-row-side">
                     <strong>KES {{ payment.amount|floatformat:2|intcomma }}</strong>

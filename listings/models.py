@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
@@ -16,6 +18,12 @@ class Plot(models.Model):
         ("sale", "For Sale"),
         ("lease", "For Lease"),
         ("both", "For Sale & Lease"),
+    ]
+
+    MARKET_ZONE_CHOICES = [
+        ("rural", "Rural"),
+        ("peri_urban", "Peri-Urban"),
+        ("urban", "Urban"),
     ]
 
     LEASE_DURATION_CHOICES = [
@@ -165,6 +173,9 @@ class Plot(models.Model):
     listing_type = models.CharField(
         max_length=10, choices=LISTING_TYPE_CHOICES, default="sale"
     )
+    market_zone = models.CharField(
+        max_length=20, choices=MARKET_ZONE_CHOICES, default="rural"
+    )
     market_status = models.CharField(
         max_length=20, choices=MARKET_STATUS_CHOICES, default="available"
     )
@@ -200,6 +211,8 @@ class Plot(models.Model):
     )
     price_notes = models.TextField(blank=True)
     is_price_negotiable = models.BooleanField(default=True)
+    price_review_required = models.BooleanField(default=False)
+    pricing_override_reason = models.TextField(blank=True)
 
     lease_price_monthly = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
@@ -384,6 +397,34 @@ class Plot(models.Model):
         return self.area
 
     @property
+    def latest_surveyor_report(self):
+        if not self.pk:
+            return None
+        return self.surveyor_reports.order_by("-submitted_at").first()
+
+    @property
+    def effective_usable_area_acres(self):
+        report = self.latest_surveyor_report
+        if report and report.acreage_confirmed:
+            if report.ground_acreage and report.ground_acreage > 0:
+                return report.ground_acreage
+            if report.deed_area and report.deed_area > 0:
+                return report.deed_area
+        return self.area_acres
+
+    @property
+    def effective_usable_area_display(self):
+        usable_area = self.effective_usable_area_acres
+        if usable_area is None:
+            return "Not verified yet"
+        source = (
+            "surveyor verified"
+            if self.latest_surveyor_report and self.latest_surveyor_report.acreage_confirmed
+            else "listing area"
+        )
+        return f"{usable_area:.2f} Acres ({source})"
+
+    @property
     def area_display(self):
         if self.area is None:
             return "Not provided"
@@ -455,6 +496,36 @@ class Plot(models.Model):
         )
 
     @property
+    def market_status_label(self):
+        return self.get_market_status_display()
+
+    @property
+    def market_status_css(self):
+        return {
+            "sold": "is-sold",
+            "leased": "is-leased",
+            "reserved": "is-reserved",
+            "available": "is-available",
+        }.get(self.market_status, "is-available")
+
+    @property
+    def is_checkout_open(self):
+        return self.market_status == "available"
+
+    @property
+    def checkout_availability_message(self):
+        if self.market_status == "sold":
+            return "Checkout is closed because this land has already been sold."
+        if self.has_active_lease:
+            return (
+                "Checkout is closed because this land is already leased from "
+                f"{self.lease_start_date:%b %d, %Y} to {self.lease_end_date:%b %d, %Y}."
+            )
+        if self.market_status == "reserved":
+            return "Checkout is closed because this land is currently reserved."
+        return "Checkout is open for this land."
+
+    @property
     def availability_summary(self):
         if self.market_status == "sold":
             return "This land has already been sold."
@@ -466,6 +537,176 @@ class Plot(models.Model):
         if self.market_status == "reserved":
             return "This land is currently reserved."
         return "This land is currently available."
+
+    @property
+    def pricing_review_status(self):
+        if self.price_review_required:
+            return "review_required"
+        guidance = self.pricing_guidance("sale") if self.listing_type in {"sale", "both"} else None
+        if guidance and guidance.get("entered_price_per_unit") is not None:
+            if guidance["entered_price_per_unit"] > guidance["band"].max_price_per_unit:
+                return "review_required"
+            if guidance["entered_price_per_unit"] < guidance["band"].min_price_per_unit:
+                return "below_guide"
+            return "within_guide"
+        return "no_guide"
+
+    @property
+    def pricing_review_badge(self):
+        mapping = {
+            "review_required": ("Price Review Required", "danger"),
+            "below_guide": ("Below Regional Guide", "warning"),
+            "within_guide": ("Within Regional Guide", "success"),
+            "no_guide": ("No Regional Guide", "secondary"),
+        }
+        label, tone = mapping.get(
+            self.pricing_review_status,
+            ("Pricing Pending", "secondary"),
+        )
+        return {"label": label, "tone": tone}
+
+    def area_in_unit(self, unit):
+        usable_area = self.effective_usable_area_acres
+        if usable_area is None:
+            return None
+        usable_area = Decimal(str(usable_area))
+        if unit == "hectares":
+            return usable_area / Decimal("2.47105")
+        return usable_area
+
+    def sale_price_per_unit(self, unit="acres"):
+        area_value = self.area_in_unit(unit)
+        if not self.sale_price or not area_value:
+            return None
+        if area_value <= 0:
+            return None
+        return self.sale_price / area_value
+
+    def lease_price_per_unit(self, unit="acres"):
+        area_value = self.area_in_unit(unit)
+        if not area_value or area_value <= 0:
+            return None
+        yearly_value = self.lease_price_yearly or (
+            self.lease_price_monthly * 12 if self.lease_price_monthly else None
+        )
+        if not yearly_value:
+            return None
+        return yearly_value / area_value
+
+    def get_market_price_band(self, transaction_type):
+        queryset = MarketPriceBand.objects.filter(
+            county=self.county,
+            land_type=self.land_type,
+            listing_type=transaction_type,
+            market_zone=self.market_zone,
+            is_active=True,
+        )
+        if self.subcounty:
+            exact_band = queryset.filter(subcounty=self.subcounty).order_by("-effective_from").first()
+            if exact_band:
+                return exact_band
+        return queryset.filter(subcounty__in=["", None]).order_by("-effective_from").first()
+
+    def pricing_guidance(self, transaction_type):
+        band = self.get_market_price_band(transaction_type)
+        if not band:
+            return None
+        entered = (
+            self.sale_price_per_unit(band.area_unit)
+            if transaction_type == "sale"
+            else self.lease_price_per_unit(band.area_unit)
+        )
+        return {
+            "band": band,
+            "entered_price_per_unit": entered,
+        }
+
+    def comparable_pricing_snapshot(self, transaction_type="sale"):
+        comparables = []
+
+        if self.pk:
+            for comparable in self.comparables.exclude(price_per_acre__isnull=True):
+                if comparable.price_per_acre and comparable.price_per_acre > 0:
+                    comparables.append(Decimal(str(comparable.price_per_acre)))
+
+        county_query = PriceComparable.objects.filter(verified=True)
+        if self.county:
+            county_query = county_query.filter(location__icontains=self.county)
+        if self.soil_type:
+            county_query = county_query.filter(soil_type__iexact=self.soil_type)
+
+        comparables.extend(
+            Decimal(str(value))
+            for value in county_query.exclude(price_per_acre__isnull=True)
+            .values_list("price_per_acre", flat=True)[:12]
+            if value
+        )
+
+        if not comparables:
+            return None
+
+        average_per_acre = sum(comparables) / Decimal(len(comparables))
+        usable_area = Decimal(str(self.effective_usable_area_acres or self.area_acres or 0))
+        if usable_area <= 0:
+            return None
+
+        if transaction_type == "lease":
+            average_per_unit = average_per_acre / Decimal("12")
+            suggested_total = average_per_unit * usable_area
+        else:
+            average_per_unit = average_per_acre
+            suggested_total = average_per_acre * usable_area
+
+        return {
+            "sample_size": len(comparables),
+            "average_price_per_acre": average_per_acre.quantize(Decimal("0.01")),
+            "suggested_total": suggested_total.quantize(Decimal("0.01")),
+        }
+
+    def pricing_recommendation(self, transaction_type="sale"):
+        band_guidance = self.pricing_guidance(transaction_type)
+        comparable_snapshot = self.comparable_pricing_snapshot(transaction_type)
+        basis_points = []
+        explanation_bits = []
+        min_total = None
+        max_total = None
+
+        if band_guidance:
+            band = band_guidance["band"]
+            area_value = self.area_in_unit(band.area_unit)
+            if area_value:
+                min_total = (
+                    Decimal(str(band.min_price_per_unit)) * Decimal(str(area_value))
+                ).quantize(Decimal("0.01"))
+                max_total = (
+                    Decimal(str(band.max_price_per_unit)) * Decimal(str(area_value))
+                ).quantize(Decimal("0.01"))
+                basis_points.append((min_total + max_total) / Decimal("2"))
+                explanation_bits.append(
+                    f"regional {transaction_type} guide for {band.county}"
+                    f"{' / ' + band.subcounty if band.subcounty else ''} ({band.get_market_zone_display()})"
+                )
+
+        if comparable_snapshot:
+            basis_points.append(comparable_snapshot["suggested_total"])
+            explanation_bits.append(
+                f"{comparable_snapshot['sample_size']} comparable record(s) adjusted to {self.effective_usable_area_display.lower()}"
+            )
+
+        if not basis_points:
+            return None
+
+        suggested_total = (sum(basis_points) / Decimal(len(basis_points))).quantize(Decimal("0.01"))
+        return {
+            "transaction_type": transaction_type,
+            "suggested_total": suggested_total,
+            "price_range_min": min_total,
+            "price_range_max": max_total,
+            "band_guidance": band_guidance,
+            "comparable_snapshot": comparable_snapshot,
+            "usable_area_display": self.effective_usable_area_display,
+            "explanation": "Blended from " + " and ".join(explanation_bits) + ".",
+        }
 
 
 class PlotImage(models.Model):
@@ -620,21 +861,27 @@ class PricingSuggestion(models.Model):
 
 class MarketPriceBand(models.Model):
     county = models.CharField(max_length=100)
+    subcounty = models.CharField(max_length=100, blank=True)
+    market_zone = models.CharField(max_length=20, choices=Plot.MARKET_ZONE_CHOICES, default="rural")
     land_type = models.CharField(max_length=20, choices=Plot.LAND_TYPE_CHOICES)
     listing_type = models.CharField(max_length=10, choices=Plot.LISTING_TYPE_CHOICES)
-    min_price_per_acre = models.DecimalField(max_digits=12, decimal_places=2)
-    max_price_per_acre = models.DecimalField(max_digits=12, decimal_places=2)
+    area_unit = models.CharField(max_length=10, choices=Plot.AREA_UNIT_CHOICES, default="acres")
+    min_price_per_unit = models.DecimalField(max_digits=12, decimal_places=2)
+    max_price_per_unit = models.DecimalField(max_digits=12, decimal_places=2)
     effective_from = models.DateField()
     effective_to = models.DateField(null=True, blank=True)
+    source = models.CharField(max_length=200, blank=True)
+    is_active = models.BooleanField(default=True)
     notes = models.TextField(blank=True)
 
     class Meta:
         indexes = [
-            models.Index(fields=["county", "land_type", "listing_type"]),
+            models.Index(fields=["county", "subcounty", "market_zone", "land_type", "listing_type"]),
         ]
 
     def __str__(self):
-        return f"{self.county} {self.land_type} {self.listing_type} band"
+        location = f"{self.county} / {self.subcounty}" if self.subcounty else self.county
+        return f"{location} {self.market_zone} {self.land_type} {self.listing_type} band"
 
 
 class ComparableSale(models.Model):

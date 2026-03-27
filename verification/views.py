@@ -22,7 +22,11 @@ def request_extension_officer(request):
         existing = None
 
     if request.method == "POST":
-        form = ExtensionOfficerProfileForm(request.POST, instance=existing)
+        form = ExtensionOfficerProfileForm(
+            request.POST,
+            instance=existing,
+            user=request.user,
+        )
         if form.is_valid():
             profile = form.save(commit=False)
             profile.user = request.user
@@ -45,7 +49,7 @@ def request_extension_officer(request):
                 logger.error("Role request notification failed: %s", exc)
             return redirect("listings:profile_management")
     else:
-        form = ExtensionOfficerProfileForm(instance=existing)
+        form = ExtensionOfficerProfileForm(instance=existing, user=request.user)
 
     context = {
         "form": form,
@@ -73,7 +77,11 @@ def request_land_surveyor(request):
         existing = None
 
     if request.method == "POST":
-        form = LandSurveyorProfileForm(request.POST, instance=existing)
+        form = LandSurveyorProfileForm(
+            request.POST,
+            instance=existing,
+            user=request.user,
+        )
         if form.is_valid():
             profile = form.save(commit=False)
             profile.user = request.user
@@ -96,7 +104,7 @@ def request_land_surveyor(request):
                 logger.error("Role request notification failed: %s", exc)
             return redirect("listings:profile_management")
     else:
-        form = LandSurveyorProfileForm(instance=existing)
+        form = LandSurveyorProfileForm(instance=existing, user=request.user)
 
     context = {
         "form": form,

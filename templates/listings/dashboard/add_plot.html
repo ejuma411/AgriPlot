@@ -145,7 +145,7 @@
                             {% csrf_token %}
 
                             {% if is_superuser %}
-                            <div class="form-section mb-5">
+                            <div class="form-section mb-5" id="basicSection">
                                 <div class="section-header mb-4">
                                     <h5 class="section-title d-flex align-items-center">
                                         <span class="section-badge bg-dark">0</span>
@@ -399,16 +399,40 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.market_zone.id_for_label }}" class="form-label required">
+                                                    <i class="fas fa-city me-2"></i>Market Zone
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.market_zone }}
+                                                {% if form.market_zone.errors %}
+                                                <div class="invalid-feedback d-block">{{ form.market_zone.errors }}</div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.market_zone.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- Section 2: Ownership & Legal Status -->
-                            <div class="form-section mb-5">
+                            <div class="form-section mb-5 collapsible-section is-collapsed progressive-section is-locked" id="ownershipSection">
                                 <div class="section-header mb-4">
-                                    <h5 class="section-title d-flex align-items-center">
-                                        <span class="section-badge bg-secondary">2</span>
-                                        <span>Ownership & Legal Status</span>
-                                    </h5>
+                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                        <h5 class="section-title d-flex align-items-center mb-0">
+                                            <span class="section-badge bg-secondary">2</span>
+                                            <span>Ownership & Legal Status</span>
+                                        </h5>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary section-toggle" data-target="ownershipSection" data-open-label="Review Registry Details">
+                                            Review Registry Details
+                                        </button>
+                                    </div>
                                     <p class="section-subtitle text-muted mb-0">Tenure, encumbrances, and legal status</p>
                                 </div>
                                 <div class="form-fields">
@@ -650,7 +674,7 @@
                             </div>
 
                             <!-- Section 3: Listing Details -->
-                            <div class="form-section mb-5">
+                            <div class="form-section mb-5 progressive-section is-locked" id="listingSection">
                                 <div class="section-header mb-4">
                                     <h5 class="section-title d-flex align-items-center">
                                         <span class="section-badge bg-primary">2</span>
@@ -660,6 +684,14 @@
                                 </div>
                                 
                                 <div class="form-fields">
+                                    <div class="workspace-notice mb-4" id="regionalPricingNotice" style="display: none;">
+                                        <strong>Regional pricing guard:</strong>
+                                        <div id="regionalPricingNoticeBody"></div>
+                                    </div>
+                                    <div class="workspace-notice mb-4" id="smartPricingNotice" style="display: none;">
+                                        <strong>Smart pricing suggestion:</strong>
+                                        <div id="smartPricingNoticeBody"></div>
+                                    </div>
                                     <!-- Listing Type -->
                                     <div class="form-row mb-4">
                                         <div class="row">
@@ -856,12 +888,17 @@
                             </div>
 
                             <!-- Pricing Basis -->
-                            <div class="form-section mb-5">
+                            <div class="form-section mb-5 collapsible-section is-collapsed progressive-section is-locked" id="pricingBasisSection">
                                 <div class="section-header mb-4">
-                                    <h5 class="section-title d-flex align-items-center">
-                                        <span class="section-badge bg-secondary">2B</span>
-                                        <span>Price Basis & Valuation</span>
-                                    </h5>
+                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                        <h5 class="section-title d-flex align-items-center mb-0">
+                                            <span class="section-badge bg-secondary">2B</span>
+                                            <span>Price Basis & Valuation</span>
+                                        </h5>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary section-toggle" data-target="pricingBasisSection" data-open-label="Open Price Justification">
+                                            Open Price Justification
+                                        </button>
+                                    </div>
                                     <p class="section-subtitle text-muted mb-0">Document how the price was determined</p>
                                 </div>
                                 <div class="form-fields">
@@ -933,6 +970,29 @@
                                         </div>
                                     </div>
 
+                                    <div class="form-row mb-4">
+                                        <div class="row">
+                                            <div class="col-md-3">
+                                                <label for="{{ form.pricing_override_reason.id_for_label }}" class="form-label">
+                                                    <i class="fas fa-scale-balanced me-2"></i>Override Justification
+                                                </label>
+                                            </div>
+                                            <div class="col-md-6">
+                                                {{ form.pricing_override_reason }}
+                                                {% if form.pricing_override_reason.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    <i class="fas fa-exclamation-circle me-1"></i>
+                                                    {{ form.pricing_override_reason.errors }}
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="col-md-3">
+                                                <small class="text-muted">{{ form.pricing_override_reason.help_text }}</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {{ form.price_review_required }}
+
                                     <div class="form-row mb-2">
                                         <div class="row">
                                             <div class="col-md-3">
@@ -977,12 +1037,17 @@
                             </div>
 
                             <!-- Section 4: Infrastructure -->
-                            <div class="form-section mb-5">
+                            <div class="form-section mb-5 collapsible-section is-collapsed progressive-section is-locked" id="infrastructureSection">
                                 <div class="section-header mb-4">
-                                    <h5 class="section-title d-flex align-items-center">
-                                        <span class="section-badge bg-info">4</span>
-                                        <span>Infrastructure</span>
-                                    </h5>
+                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                        <h5 class="section-title d-flex align-items-center mb-0">
+                                            <span class="section-badge bg-info">4</span>
+                                            <span>Infrastructure</span>
+                                        </h5>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary section-toggle" data-target="infrastructureSection" data-open-label="Add Amenities">
+                                            Add Amenities
+                                        </button>
+                                    </div>
                                     <p class="section-subtitle text-muted mb-0">Amenities and access information</p>
                                 </div>
                                 
@@ -1241,12 +1306,17 @@
                             </div>
 
                             <!-- Section 5: Documents -->
-                            <div class="form-section mb-5">
+                            <div class="form-section mb-5 collapsible-section is-collapsed progressive-section is-locked" id="documentsSection">
                                 <div class="section-header mb-4">
-                                    <h5 class="section-title d-flex align-items-center">
-                                        <span class="section-badge bg-warning">5</span>
-                                        <span>Required Documents</span>
-                                    </h5>
+                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                        <h5 class="section-title d-flex align-items-center mb-0">
+                                            <span class="section-badge bg-warning">5</span>
+                                            <span>Required Documents</span>
+                                        </h5>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary section-toggle" data-target="documentsSection" data-open-label="Upload Documents">
+                                            Upload Documents
+                                        </button>
+                                    </div>
                                     <p class="section-subtitle text-muted mb-0">Upload all required documents</p>
                                 </div>
                                 
@@ -1686,7 +1756,7 @@
                             </div>
 
                             <!-- Section 6: Location / GIS Coordinates -->
-                            <div class="form-section mb-5">
+                            <div class="form-section mb-5 progressive-section is-locked" id="agreementSection">
                                 <div class="section-header mb-4">
                                     <h5 class="section-title d-flex align-items-center">
                                         <span class="section-badge bg-dark">7</span>
@@ -2225,6 +2295,20 @@
         color: var(--gray-600);
         font-size: 0.95rem;
         margin-left: 44px;
+    }
+
+    .collapsible-section .form-fields,
+    .collapsible-section .documents-grid {
+        transition: var(--transition);
+    }
+
+    .progressive-section.is-locked {
+        display: none;
+    }
+
+    .collapsible-section.is-collapsed .form-fields,
+    .collapsible-section.is-collapsed .documents-grid {
+        display: none;
     }
 
     /* Form Row */
@@ -2888,6 +2972,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Sub-counties data (passed from Django view)
     const subCountiesData = {{ sub_counties_json|safe }};
+
+    document.querySelectorAll('.section-toggle').forEach((button) => {
+        const openLabel = button.dataset.openLabel || button.textContent.trim();
+        const section = document.getElementById(button.dataset.target);
+        if (section && section.classList.contains('is-collapsed')) {
+            button.textContent = openLabel;
+        }
+        button.addEventListener('click', () => {
+            if (!section) return;
+            section.classList.toggle('is-collapsed');
+            button.textContent = section.classList.contains('is-collapsed') ? openLabel : 'Hide Section';
+        });
+    });
     
     // Function to update subcounty dropdown
     function updateSubcounties() {
@@ -3089,10 +3186,270 @@ document.addEventListener('DOMContentLoaded', function() {
         salePriceInput.addEventListener('input', calculatePricePerAcre);
         calculatePricePerAcre();
     }
+
+    const listingTypeSelect = document.getElementById('{{ form.listing_type.id_for_label }}');
+    const countyInput = document.getElementById('{{ form.county.id_for_label }}');
+    const subcountyInput = document.getElementById('{{ form.subcounty.id_for_label }}');
+    const marketZoneInput = document.getElementById('{{ form.market_zone.id_for_label }}');
+    const landTypeInput = document.getElementById('{{ form.land_type.id_for_label }}');
+    const soilTypeInput = document.getElementById('{{ form.soil_type.id_for_label }}');
+    const leaseMonthlyInput = document.getElementById('{{ form.lease_price_monthly.id_for_label }}');
+    const leaseYearlyInput = document.getElementById('{{ form.lease_price_yearly.id_for_label }}');
+    const regionalPricingNotice = document.getElementById('regionalPricingNotice');
+    const regionalPricingNoticeBody = document.getElementById('regionalPricingNoticeBody');
+    const smartPricingNotice = document.getElementById('smartPricingNotice');
+    const smartPricingNoticeBody = document.getElementById('smartPricingNoticeBody');
+    let pricingPreviewTimer = null;
+
+    function formatKes(value) {
+        return `KES ${Number(value || 0).toLocaleString('en-KE', { maximumFractionDigits: 0 })}`;
+    }
+
+    function renderGuideLine(label, guide) {
+        if (!guide) {
+            return '';
+        }
+        let toneClass = 'text-success';
+        let statusLine = 'Your current asking price is within the regional guide.';
+        if (guide.status === 'above_guide') {
+            toneClass = 'text-danger';
+            statusLine = 'Your current asking price is above the regional guide and will need justification.';
+        } else if (guide.status === 'below_guide') {
+            toneClass = 'text-warning';
+            statusLine = 'Your current asking price is below the regional guide. Double-check the amount and area.';
+        }
+        const areaLabel = guide.market_zone ? `${guide.market_zone}` : 'Selected zone';
+        return `
+            <div class="mb-2">
+                <strong>${label} market range:</strong>
+                ${formatKes(guide.total_min_price)} - ${formatKes(guide.total_max_price)}
+                <br>
+                <small class="text-muted">
+                    ${guide.county}${guide.subcounty ? ` / ${guide.subcounty}` : ''}, ${areaLabel} · ${formatKes(guide.min_price_per_unit)} - ${formatKes(guide.max_price_per_unit)} per ${guide.area_unit}
+                </small>
+            </div>
+            <small class="${toneClass}">${statusLine}</small>
+        `;
+    }
+
+    function renderSuggestionBlock(label, recommendation) {
+        if (!recommendation) {
+            return '';
+        }
+        const rangeText = recommendation.price_range_min && recommendation.price_range_max
+            ? `Expected range: ${formatKes(recommendation.price_range_min)} - ${formatKes(recommendation.price_range_max)}.`
+            : '';
+        return `
+            <div class="mt-2">
+                ${label}: ${formatKes(recommendation.suggested_total)}.
+                ${rangeText}
+                <br>
+                <small class="text-muted">${recommendation.usable_area_display}. ${recommendation.explanation}</small>
+            </div>
+        `;
+    }
+
+    async function refreshPricingPreview() {
+        if (!regionalPricingNotice || !regionalPricingNoticeBody || !smartPricingNotice || !smartPricingNoticeBody) {
+            return;
+        }
+        const params = new URLSearchParams({
+            county: countyInput?.value || '',
+            subcounty: subcountyInput?.value || '',
+            market_zone: marketZoneInput?.value || '',
+            land_type: landTypeInput?.value || '',
+            soil_type: soilTypeInput?.value || '',
+            area: areaInput?.value || '',
+            area_unit: areaUnitSelect?.value || '',
+            sale_price: salePriceInput?.value || '',
+            lease_price_monthly: leaseMonthlyInput?.value || '',
+            lease_price_yearly: leaseYearlyInput?.value || '',
+            listing_type: listingTypeSelect?.value || '',
+        });
+
+        try {
+            const response = await fetch(`{% url 'listings:pricing_preview' %}?${params.toString()}`);
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+            const listingType = listingTypeSelect?.value || '';
+            const guideParts = [];
+            const suggestionParts = [];
+
+            if (listingType === 'sale' || listingType === 'both') {
+                const saleGuide = renderGuideLine('Sale', data.sale.guide);
+                if (saleGuide) guideParts.push(saleGuide);
+                const saleSuggestion = renderSuggestionBlock('Suggested sale total', data.sale.recommendation);
+                if (saleSuggestion) suggestionParts.push(saleSuggestion);
+            }
+            if (listingType === 'lease' || listingType === 'both') {
+                const leaseGuide = renderGuideLine('Lease', data.lease.guide);
+                if (leaseGuide) guideParts.push(leaseGuide);
+                const leaseSuggestion = renderSuggestionBlock('Suggested annual lease total', data.lease.recommendation);
+                if (leaseSuggestion) suggestionParts.push(leaseSuggestion);
+            }
+
+            regionalPricingNotice.style.display = guideParts.length ? 'block' : 'none';
+            regionalPricingNoticeBody.innerHTML = guideParts.join('<hr class="my-2">');
+
+            smartPricingNotice.style.display = suggestionParts.length ? 'block' : 'none';
+            smartPricingNoticeBody.innerHTML = suggestionParts.join('');
+        } catch (error) {
+            console.warn('Could not refresh pricing preview.', error);
+        }
+    }
+
+    function queuePricingPreview() {
+        window.clearTimeout(pricingPreviewTimer);
+        pricingPreviewTimer = window.setTimeout(refreshPricingPreview, 250);
+    }
+
+    [
+        countyInput,
+        subcountyInput,
+        marketZoneInput,
+        landTypeInput,
+        soilTypeInput,
+        areaInput,
+        areaUnitSelect,
+        salePriceInput,
+        leaseMonthlyInput,
+        leaseYearlyInput,
+        listingTypeSelect,
+    ].filter(Boolean).forEach((element) => {
+        element.addEventListener('input', queuePricingPreview);
+        element.addEventListener('change', queuePricingPreview);
+    });
+    queuePricingPreview();
+
+    const parcelInput = document.getElementById('{{ form.parcel_number.id_for_label }}');
+    const titleInput = document.getElementById('{{ form.title.id_for_label }}');
+    const ownerNameInput = document.getElementById('{{ form.owner_full_name.id_for_label }}');
+    const ownerIdInput = document.getElementById('{{ form.owner_id_number.id_for_label }}');
+    const searchRef = document.getElementById('{{ form.search_reference_number.id_for_label }}');
+    const ownershipTypeInput = document.getElementById('{{ form.ownership_type.id_for_label }}');
+    const priceBasisInput = document.getElementById('{{ form.price_basis.id_for_label }}');
+    const leaseBasisInput = document.getElementById('{{ form.lease_basis.id_for_label }}');
+
+    const ownershipSection = document.getElementById('ownershipSection');
+    const listingSection = document.getElementById('listingSection');
+    const pricingBasisSection = document.getElementById('pricingBasisSection');
+    const infrastructureSection = document.getElementById('infrastructureSection');
+    const documentsSection = document.getElementById('documentsSection');
+    const agreementSection = document.getElementById('agreementSection');
+
+    function hasValue(element) {
+        return !!(element && String(element.value || '').trim());
+    }
+
+    function hasLeasePrice() {
+        return hasValue(leaseMonthlyInput) || hasValue(leaseYearlyInput);
+    }
+
+    function basicSectionComplete() {
+        return [parcelInput, titleInput, countyInput, subcountyInput, marketZoneInput, areaInput, areaUnitSelect]
+            .every(hasValue);
+    }
+
+    function ownershipSectionComplete() {
+        return [ownerNameInput, ownerIdInput, ownershipTypeInput].every(hasValue);
+    }
+
+    function listingSectionComplete() {
+        const listingType = listingTypeSelect?.value || '';
+        if (!listingType || !hasValue(landTypeInput)) {
+            return false;
+        }
+        if (listingType === 'sale') {
+            return hasValue(salePriceInput);
+        }
+        if (listingType === 'lease') {
+            return hasLeasePrice();
+        }
+        if (listingType === 'both') {
+            return hasValue(salePriceInput) && hasLeasePrice();
+        }
+        return false;
+    }
+
+    function pricingSectionComplete() {
+        const listingType = listingTypeSelect?.value || '';
+        if (listingType === 'sale') {
+            return hasValue(priceBasisInput);
+        }
+        if (listingType === 'lease') {
+            return hasValue(leaseBasisInput);
+        }
+        if (listingType === 'both') {
+            return hasValue(priceBasisInput) && hasValue(leaseBasisInput);
+        }
+        return false;
+    }
+
+    function setSectionUnlocked(section, unlocked) {
+        if (!section) return;
+        const wasLocked = section.classList.contains('is-locked');
+        section.classList.toggle('is-locked', !unlocked);
+        if (unlocked && !section.dataset.unlockedOnce) {
+            section.classList.remove('is-collapsed');
+            section.dataset.unlockedOnce = '1';
+            if (wasLocked) {
+                setTimeout(() => {
+                    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }, 120);
+            }
+        }
+    }
+
+    function updateProgressiveSections() {
+        const basicDone = basicSectionComplete();
+        const ownershipDone = basicDone && ownershipSectionComplete();
+        const listingDone = ownershipDone && listingSectionComplete();
+        const pricingDone = listingDone && pricingSectionComplete();
+
+        setSectionUnlocked(ownershipSection, basicDone);
+        setSectionUnlocked(listingSection, ownershipDone);
+        setSectionUnlocked(pricingBasisSection, listingDone);
+        setSectionUnlocked(infrastructureSection, pricingDone);
+        setSectionUnlocked(documentsSection, pricingDone);
+        setSectionUnlocked(agreementSection, pricingDone);
+    }
+
+    [
+        parcelInput,
+        titleInput,
+        countyInput,
+        subcountyInput,
+        marketZoneInput,
+        areaInput,
+        areaUnitSelect,
+        ownerNameInput,
+        ownerIdInput,
+        ownershipTypeInput,
+        listingTypeSelect,
+        landTypeInput,
+        salePriceInput,
+        leaseMonthlyInput,
+        leaseYearlyInput,
+        priceBasisInput,
+        leaseBasisInput,
+    ].filter(Boolean).forEach((element) => {
+        element.addEventListener('input', updateProgressiveSections);
+        element.addEventListener('change', updateProgressiveSections);
+    });
+    if (parcelInput && searchRef) {
+        parcelInput.addEventListener('input', () => {
+            if (!searchRef.value.trim()) {
+                searchRef.value = parcelInput.value.trim();
+                searchRef.dispatchEvent(new Event('input'));
+                searchRef.dispatchEvent(new Event('change'));
+            }
+        });
+    }
+    updateProgressiveSections();
     
     // Toggle conditional fields based on listing type
-    const listingTypeSelect = document.getElementById('{{ form.listing_type.id_for_label }}');
-    
     function toggleListingTypeFields() {
         const listingType = listingTypeSelect?.value;
         
@@ -3378,7 +3735,9 @@ document.addEventListener('DOMContentLoaded', function() {
             if (ownerId) ownerId.value = record.owner_id_number || '';
             if (ownerKra) ownerKra.value = record.owner_kra_pin || '';
             if (registrationSection) registrationSection.value = record.registration_section || '';
-            if (searchRef && record.search_reference_number) searchRef.value = record.search_reference_number;
+            if (searchRef) {
+                searchRef.value = record.search_reference_number || parcel;
+            }
             if (searchDate && record.search_certificate_date) searchDate.value = record.search_certificate_date;
             if (record.acreage_ha && areaInput) {
                 const acres = (parseFloat(record.acreage_ha) * 2.47105).toFixed(2);
@@ -3390,6 +3749,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (record.land_type === 'FREEHOLD') ownershipType.value = 'freehold';
                 if (record.land_type === 'LEASEHOLD') ownershipType.value = 'leasehold';
             }
+            [ownerName, ownerId, ownerKra, registrationSection, searchRef, searchDate, areaInput, areaUnit, ownershipType].forEach((element) => {
+                if (element) {
+                    element.dispatchEvent(new Event('input'));
+                    element.dispatchEvent(new Event('change'));
+                }
+            });
             lockRegistryFields(true, Boolean(record.registration_section));
             toggleSubdivision();
             updateDocRequirements();

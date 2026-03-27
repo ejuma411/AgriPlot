@@ -8,7 +8,37 @@ from verification.models import (
 )
 
 
-class ExtensionOfficerProfileForm(forms.ModelForm):
+class AccountLinkedRoleRequestForm(forms.ModelForm):
+    username = forms.CharField(
+        required=False,
+        disabled=True,
+        widget=forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}),
+    )
+    email = forms.EmailField(
+        required=False,
+        disabled=True,
+        widget=forms.EmailInput(attrs={"class": "form-control", "readonly": "readonly"}),
+    )
+    account_phone = forms.CharField(
+        required=False,
+        disabled=True,
+        label="Phone",
+        widget=forms.TextInput(attrs={"class": "form-control", "readonly": "readonly"}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        source_user = self.user or getattr(getattr(self, "instance", None), "user", None)
+        if source_user is not None:
+            self.fields["username"].initial = source_user.username
+            self.fields["email"].initial = source_user.email
+            profile = getattr(source_user, "profile", None)
+            self.fields["account_phone"].initial = getattr(profile, "phone", "") or ""
+
+
+class ExtensionOfficerProfileForm(AccountLinkedRoleRequestForm):
     """Form for requesting extension officer role."""
 
     def __init__(self, *args, **kwargs):
@@ -20,6 +50,23 @@ class ExtensionOfficerProfileForm(forms.ModelForm):
         self.fields["assigned_counties"].help_text = "Select one or more counties you can verify."
         self.fields["max_daily_tasks"].required = True
         self.fields["years_of_experience"].required = True
+        self.order_fields(
+            [
+                "username",
+                "email",
+                "account_phone",
+                "employee_id",
+                "designation",
+                "department",
+                "station",
+                "qualifications",
+                "specializations",
+                "years_of_experience",
+                "office_address",
+                "assigned_counties",
+                "max_daily_tasks",
+            ]
+        )
         for field in self.fields.values():
             if not isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs.setdefault("class", "form-control")
@@ -36,7 +83,6 @@ class ExtensionOfficerProfileForm(forms.ModelForm):
             "qualifications",
             "specializations",
             "years_of_experience",
-            "phone",
             "office_address",
             "assigned_counties",
             "max_daily_tasks",
@@ -50,8 +96,17 @@ class ExtensionOfficerProfileForm(forms.ModelForm):
             "max_daily_tasks": forms.NumberInput(attrs={"min": 1, "class": "form-control"}),
         }
 
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        source_user = self.user or getattr(instance, "user", None)
+        profile = getattr(source_user, "profile", None)
+        instance.phone = getattr(profile, "phone", "") or ""
+        if commit:
+            instance.save()
+        return instance
 
-class LandSurveyorProfileForm(forms.ModelForm):
+
+class LandSurveyorProfileForm(AccountLinkedRoleRequestForm):
     """Form for requesting land surveyor role."""
 
     def __init__(self, *args, **kwargs):
@@ -63,6 +118,21 @@ class LandSurveyorProfileForm(forms.ModelForm):
         self.fields["assigned_counties"].help_text = "Select one or more counties you can verify."
         self.fields["max_daily_tasks"].required = True
         self.fields["years_of_experience"].required = True
+        self.order_fields(
+            [
+                "username",
+                "email",
+                "account_phone",
+                "license_number",
+                "designation",
+                "station",
+                "qualifications",
+                "years_of_experience",
+                "office_address",
+                "assigned_counties",
+                "max_daily_tasks",
+            ]
+        )
         for field in self.fields.values():
             if not isinstance(field.widget, forms.CheckboxInput):
                 field.widget.attrs.setdefault("class", "form-control")
@@ -77,7 +147,6 @@ class LandSurveyorProfileForm(forms.ModelForm):
             "station",
             "qualifications",
             "years_of_experience",
-            "phone",
             "office_address",
             "assigned_counties",
             "max_daily_tasks",
@@ -89,6 +158,15 @@ class LandSurveyorProfileForm(forms.ModelForm):
             "years_of_experience": forms.NumberInput(attrs={"min": 0, "class": "form-control"}),
             "max_daily_tasks": forms.NumberInput(attrs={"min": 1, "class": "form-control"}),
         }
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        source_user = self.user or getattr(instance, "user", None)
+        profile = getattr(source_user, "profile", None)
+        instance.phone = getattr(profile, "phone", "") or ""
+        if commit:
+            instance.save()
+        return instance
 
 
 class MultipleFileInput(forms.ClearableFileInput):
@@ -248,4 +326,3 @@ class SurveyorReportForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"rows": 3, "class": "form-control"}),
             "recommendation": forms.Select(attrs={"class": "form-control"}),
         }
-

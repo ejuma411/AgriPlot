@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from listings.models import Plot
 
-from .models import PaymentDispute, PaymentMilestone, PaymentRequest
+from .models import PaymentClosingStep, PaymentDispute, PaymentMilestone, PaymentRequest
 from .permissions import user_is_finance_admin
 
 
@@ -15,6 +15,14 @@ class DateTimePickerInput(forms.DateTimeInput):
 
 
 class PaymentRequestForm(forms.ModelForm):
+    DIRECT_TRANSACTION_CHOICES = [
+        (PaymentRequest.TransactionType.PURCHASE, "Purchase"),
+        (PaymentRequest.TransactionType.LEASE, "Lease"),
+    ]
+    DIRECT_CATEGORY_CHOICES = [
+        (PaymentRequest.Category.RESERVATION_DEPOSIT, "Reservation Deposit"),
+        (PaymentRequest.Category.ESCROW_DEPOSIT, "Escrow Deposit"),
+    ]
     DEFAULT_DUE_WINDOWS = {
         PaymentRequest.Category.VIEWING_FEE: timedelta(hours=24),
         PaymentRequest.Category.RESERVATION_DEPOSIT: timedelta(hours=48),
@@ -139,20 +147,47 @@ class PaymentRequestForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.user = user
         self.selected_plot = selected_plot
-        self.allow_amount_override = user_is_finance_admin(user)
+        self.allow_amount_override = True
         self.allow_due_at_override = user_is_finance_admin(user)
+        self.simple_mpesa_checkout = True
         self.fields["plot"].queryset = Plot.objects.order_by("title")
         self.fields["plot"].required = False
         self.fields["due_at"].required = False
-        self.fields["phone_number"].required = False
+        self.fields["phone_number"].required = True
         self.fields["lease_start_date"].required = False
         self.fields["lease_end_date"].required = False
+        self.fields["transaction_type"].choices = self.DIRECT_TRANSACTION_CHOICES
+        self.fields["category"].choices = self.DIRECT_CATEGORY_CHOICES
+        self.fields["method"].required = False
+        self.fields["method"].initial = PaymentRequest.Method.MPESA_STK
+        self.fields["method"].widget = forms.HiddenInput()
+        self.fields["title"].required = False
+        self.fields["title"].widget = forms.HiddenInput()
+        self.fields["description"].required = False
+        self.fields["description"].widget = forms.HiddenInput()
+        self.fields["escrow_enabled"].required = False
+        self.fields["escrow_enabled"].widget = forms.HiddenInput()
+        self.fields["phone_number"].help_text = (
+            "Use the M-Pesa number that should receive the STK prompt."
+        )
+        self.fields["category"].help_text = (
+            "Choose whether this is a reservation deposit or escrow deposit for the land deal."
+        )
+        self.fields["amount"].help_text = (
+            "For testing, you can enter any small amount you want to use in the demo."
+        )
         if selected_plot is not None:
             self.fields["plot"].initial = selected_plot
             if selected_plot.listing_type == "sale":
                 self.fields["transaction_type"].initial = PaymentRequest.TransactionType.PURCHASE
+                self.fields["transaction_type"].choices = [
+                    (PaymentRequest.TransactionType.PURCHASE, "Purchase")
+                ]
             elif selected_plot.listing_type == "lease":
                 self.fields["transaction_type"].initial = PaymentRequest.TransactionType.LEASE
+                self.fields["transaction_type"].choices = [
+                    (PaymentRequest.TransactionType.LEASE, "Lease")
+                ]
         if self.instance and self.instance.pk:
             metadata = self.instance.metadata or {}
             for field_name in self.METHOD_DETAIL_FIELDS:
@@ -162,24 +197,28 @@ class PaymentRequestForm(forms.ModelForm):
             profile = getattr(user, "profile", None)
             if profile and profile.phone:
                 self.fields["phone_number"].initial = profile.phone
-        computed_amount = self.calculate_amount(
+        default_amount = self.calculate_amount(
             selected_plot or self.initial.get("plot"),
             self.fields["transaction_type"].initial or self.initial.get("transaction_type"),
             self.initial.get("category") or self.fields["category"].initial or self.fields["category"].choices[0][0],
         )
-        if computed_amount is not None:
-            self.fields["amount"].initial = computed_amount
-            self.fields["amount"].help_text = (
-                f"This amount is system calculated for the selected checkout flow: KES {computed_amount}."
-            )
-        if not self.allow_amount_override:
-            self.fields["amount"].widget.attrs["readonly"] = "readonly"
+        if default_amount is not None:
+            self.fields["amount"].initial = default_amount
         if not self.allow_due_at_override:
             self.fields["due_at"].initial = self.calculate_due_at(
                 self.fields["transaction_type"].initial or self.initial.get("transaction_type"),
                 self.initial.get("category") or self.fields["category"].initial or self.fields["category"].choices[0][0],
                 self.initial.get("lease_start_date"),
             )
+
+    @staticmethod
+    def build_title(plot, transaction_type, category):
+        category_label = dict(PaymentRequest.Category.choices).get(category, "Payment")
+        transaction_label = dict(PaymentRequest.TransactionType.choices).get(
+            transaction_type, "Service"
+        )
+        plot_label = plot.title if plot else "AgriPlot"
+        return f"{category_label} for {transaction_label}: {plot_label}"
 
     @classmethod
     def calculate_due_at(cls, transaction_type, category, lease_start_date=None):
@@ -243,16 +282,18 @@ class PaymentRequestForm(forms.ModelForm):
         plot = cleaned_data.get("plot") or self.selected_plot
         transaction_type = cleaned_data.get("transaction_type")
         category = cleaned_data.get("category")
-        method = cleaned_data.get("method")
-        computed_amount = self.calculate_amount(plot, transaction_type, category)
-        if computed_amount is not None:
-            cleaned_data["amount"] = computed_amount
-            self.instance.amount = computed_amount
-        elif not self.allow_amount_override and plot:
-            self.add_error(
-                "amount",
-                "This checkout flow needs a platform-defined amount and could not calculate one yet.",
-            )
+        cleaned_data["method"] = PaymentRequest.Method.MPESA_STK
+        self.instance.method = PaymentRequest.Method.MPESA_STK
+        method = PaymentRequest.Method.MPESA_STK
+        amount = cleaned_data.get("amount")
+        if amount in {None, ""}:
+            self.add_error("amount", "Enter the amount you want to test with.")
+        else:
+            normalized_amount = self.normalize_amount(amount)
+            if normalized_amount <= Decimal("0.00"):
+                self.add_error("amount", "Amount must be greater than zero.")
+            cleaned_data["amount"] = normalized_amount
+            self.instance.amount = normalized_amount
 
         method_requirements = {
             PaymentRequest.Method.MPESA_STK: ["phone_number"],
@@ -281,14 +322,25 @@ class PaymentRequestForm(forms.ModelForm):
             elif cleaned_data.get("phone_number"):
                 cleaned_data["airtel_number"] = cleaned_data["phone_number"]
 
-        if not self.allow_due_at_override:
-            computed_due_at = self.calculate_due_at(
-                transaction_type,
-                category,
-                cleaned_data.get("lease_start_date"),
-            )
-            cleaned_data["due_at"] = computed_due_at
-            self.instance.due_at = computed_due_at
+        computed_due_at = self.calculate_due_at(
+            transaction_type,
+            category,
+            cleaned_data.get("lease_start_date"),
+        )
+        cleaned_data["due_at"] = computed_due_at
+        self.instance.due_at = computed_due_at
+        cleaned_data["title"] = self.build_title(plot, transaction_type, category)
+        cleaned_data["description"] = (
+            f"M-Pesa checkout for {dict(PaymentRequest.Category.choices).get(category, 'payment').lower()}."
+        )
+        cleaned_data["escrow_enabled"] = category in {
+            PaymentRequest.Category.RESERVATION_DEPOSIT,
+            PaymentRequest.Category.ESCROW_DEPOSIT,
+            PaymentRequest.Category.VERIFICATION_PACKAGE,
+        }
+        self.instance.title = cleaned_data["title"]
+        self.instance.description = cleaned_data["description"]
+        self.instance.escrow_enabled = cleaned_data["escrow_enabled"]
 
         cleaned_data["payment_method_metadata"] = {
             field_name: cleaned_data.get(field_name, "")
@@ -345,3 +397,24 @@ class PaymentDisputeForm(forms.ModelForm):
                 }
             ),
         }
+
+
+class PaymentClosingStepForm(forms.ModelForm):
+    class Meta:
+        model = PaymentClosingStep
+        fields = ["status", "notes", "document"]
+        widgets = {
+            "status": forms.Select(attrs={"class": "form-select"}),
+            "notes": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3,
+                    "placeholder": "Add a short update, document reference, or blocker note.",
+                }
+            ),
+            "document": forms.ClearableFileInput(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["notes"].required = False

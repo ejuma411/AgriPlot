@@ -3,8 +3,11 @@
 
 {% block content %}
 <p class="auth-kicker">Landowner Verification</p>
-<h2 class="auth-title">Create Landowner Account</h2>
-<p class="auth-subtitle">Submit landowner documents for verification.</p>
+<h2 class="auth-title">Upgrade to Landowner</h2>
+<p class="auth-subtitle">Submit landowner documents to add the landowner role to this existing account.</p>
+<div class="auth-note">
+    Your buyer account details stay in place, so you keep the same username, saved profile information, and password.
+</div>
 
 <form method="POST" enctype="multipart/form-data" class="auth-form">
     {% csrf_token %}

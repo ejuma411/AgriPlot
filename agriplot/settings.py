@@ -66,6 +66,20 @@ def _env_csv(name: str, default: str = "") -> list:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
+def _normalize_base_url(value: str, default: str = "http://127.0.0.1:8000") -> str:
+    """
+    Normalize a base URL so the rest of the project can safely build absolute links.
+
+    Accepts values with or without a scheme and removes any trailing slash.
+    """
+    raw = (value or default).strip()
+    if not raw:
+        raw = default
+    if not raw.startswith(("http://", "https://")):
+        raw = f"http://{raw}"
+    return raw.rstrip("/")
+
+
 # =============================================================================
 # CORE SECURITY SETTINGS
 # =============================================================================
@@ -282,7 +296,7 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL', 
     'AgriPlot Connect <noreply@agriplot.com>'
 )
-SITE_URL = os.environ.get("SITE_URL", "http://localhost:8000")
+SITE_URL = _normalize_base_url(os.environ.get("SITE_URL"))
 
 
 # =============================================================================
@@ -306,6 +320,25 @@ TEXTSMS_API_URL = os.environ.get(
 ARDHISASA_API_URL = os.environ.get("ARDHISASA_API_URL", "")
 ARDHISASA_API_KEY = os.environ.get("ARDHISASA_API_KEY", "")
 ARDHISASA_MODE = os.environ.get("ARDHISASA_MODE", "mock")  # mock | live
+ARDHISASA_WEBHOOK_URL = os.environ.get(
+    "ARDHISASA_WEBHOOK_URL",
+    f"{SITE_URL}/webhooks/ardhisasa/",
+)
+
+
+# =============================================================================
+# PAYSTACK CONFIGURATION
+# =============================================================================
+
+PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY", "")
+PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
+PAYSTACK_BASE_URL = os.environ.get("PAYSTACK_BASE_URL", "https://api.paystack.co")
+PAYSTACK_CURRENCY = os.environ.get("PAYSTACK_CURRENCY", "KES")
+PAYSTACK_ENABLED = _env_bool("PAYSTACK_ENABLED", default=False)
+PAYSTACK_AUTO_RELEASE_TEST_DEALS = _env_bool(
+    "PAYSTACK_AUTO_RELEASE_TEST_DEALS",
+    default=DEBUG,
+)
 
 
 # =============================================================================

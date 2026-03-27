@@ -365,6 +365,8 @@ def conduct_surveyor_inspection(request, task_id):
             # If surveyor flags price unrealistic, update plot pricing (sale listings)
             if report.price_realistic is False and plot.listing_type in ['sale', 'both']:
                 updated_fields = []
+                plot.price_review_required = True
+                updated_fields.append('price_review_required')
                 if report.suggested_sale_price:
                     plot.sale_price = report.suggested_sale_price
                     updated_fields.append('sale_price')

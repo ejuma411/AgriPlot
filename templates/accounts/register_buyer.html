@@ -4,7 +4,13 @@
 {% block content %}
 <p class="auth-kicker">Buyer Access</p>
 <h2 class="auth-title">Create Buyer Account</h2>
-<p class="auth-subtitle">Register as a buyer to explore verified farmland listings.</p>
+{% if requested_role == "extension_officer" %}
+<p class="auth-subtitle">Create your buyer account first, then continue with your extension officer request using the same username, details, and password.</p>
+{% elif requested_role == "land_surveyor" %}
+<p class="auth-subtitle">Create your buyer account first, then continue with your land surveyor request using the same username, details, and password.</p>
+{% else %}
+<p class="auth-subtitle">Register as a buyer to explore verified farmland listings and later upgrade this same account to landowner, agent, extension officer, or land surveyor.</p>
+{% endif %}
 
 <form method="POST" class="auth-form">
     {% csrf_token %}
@@ -20,6 +26,12 @@
         </div>
     {% endfor %}
 
+    {% if requested_role == "extension_officer" %}
+    <button class="auth-btn">Continue to Extension Officer Request</button>
+    {% elif requested_role == "land_surveyor" %}
+    <button class="auth-btn">Continue to Land Surveyor Request</button>
+    {% else %}
     <button class="auth-btn">Register Buyer</button>
+    {% endif %}
 </form>
 {% endblock %}

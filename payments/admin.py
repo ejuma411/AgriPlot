@@ -1,6 +1,12 @@
 from django.contrib import admin
 
-from .models import PaymentDispute, PaymentEvent, PaymentMilestone, PaymentRequest
+from .models import (
+    PaymentClosingStep,
+    PaymentDispute,
+    PaymentEvent,
+    PaymentMilestone,
+    PaymentRequest,
+)
 
 
 class PaymentMilestoneInline(admin.TabularInline):
@@ -13,6 +19,12 @@ class PaymentEventInline(admin.TabularInline):
     extra = 0
     readonly_fields = ("event_type", "actor", "message", "created_at")
     can_delete = False
+
+
+class PaymentClosingStepInline(admin.TabularInline):
+    model = PaymentClosingStep
+    extra = 0
+    readonly_fields = ("code", "sequence", "completed_at", "completed_by", "created_at", "updated_at")
 
 
 @admin.register(PaymentRequest)
@@ -30,7 +42,7 @@ class PaymentRequestAdmin(admin.ModelAdmin):
     list_filter = ("status", "method", "category", "escrow_enabled", "created_at")
     search_fields = ("internal_reference", "title", "provider_reference", "phone_number")
     raw_id_fields = ("buyer", "seller", "plot")
-    inlines = [PaymentMilestoneInline, PaymentEventInline]
+    inlines = [PaymentClosingStepInline, PaymentMilestoneInline, PaymentEventInline]
 
 
 @admin.register(PaymentDispute)

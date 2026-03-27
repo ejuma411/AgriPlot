@@ -36,15 +36,6 @@ logger = logging.getLogger(__name__)
 class TwoFactorLoginView(LoginView):
     template_name = 'authentication/login.html'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        request = self.request
-        context['show_wizard_resume'] = any(
-            key.startswith("landownerwizard") or key.startswith("wizard_")
-            for key in request.session.keys()
-        )
-        return context
-
     def form_valid(self, form):
         user = form.get_user()
         # Only require 2FA challenge if user has enabled it.

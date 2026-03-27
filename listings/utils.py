@@ -1,8 +1,6 @@
 """
 AgriPlot utilities: audit logging (Q8) and pricing suggestions (Q6).
 """
-from django.db.models import Avg
-from django.utils import timezone
 
 def get_client_ip(request):
     """Extract client IP from request."""
@@ -44,90 +42,21 @@ def suggest_price(plot):
     Suggest sale price based on comparables (Q6).
     Returns dict: suggested_price, min_price, max_price, comparable_count, explanation.
     """
-    from .models import Plot, PriceComparable, PricingSuggestion
-    from decimal import Decimal
+    recommendation = plot.pricing_recommendation("sale")
+    if not recommendation:
+        return {
+            'suggested_price': None,
+            'min_price': None,
+            'max_price': None,
+            'comparable_count': 0,
+            'explanation': 'No comparables or regional guide found yet.',
+        }
 
-    # Prefer comparables from DB; fallback to verified plots in same area/soil
-    location_prefix = (plot.location or '').split(',')[0].strip() if plot.location else None
-    comparables = PriceComparable.objects.filter(
-        verified=True
-    ).filter(
-        location__icontains=location_prefix
-    ) if location_prefix else PriceComparable.objects.filter(verified=True)
-
-    if comparables.exists():
-        avg_per_acre = comparables.aggregate(avg=Avg('price_per_acre'))['avg']
-        if avg_per_acre and plot.area_acres and plot.area_acres > 0:
-            suggested = Decimal(str(plot.area_acres)) * avg_per_acre
-            min_p = suggested * Decimal('0.85')
-            max_p = suggested * Decimal('1.15')
-            PricingSuggestion.objects.create(
-                plot=plot,
-                suggested_price=suggested,
-                price_range_min=min_p,
-                price_range_max=max_p,
-                methodology='Sales comparison (PriceComparable)',
-                comparable_plots_used=comparables.count(),
-                explanation=f'Based on {comparables.count()} comparable sale(s) near {location_prefix or "this area"}.',
-            )
-            return {
-                'suggested_price': suggested,
-                'min_price': min_p,
-                'max_price': max_p,
-                'comparable_count': comparables.count(),
-                'explanation': f'Based on {comparables.count()} comparable sale(s).',
-            }
-
-    # Fallback: same location/soil from verified plots (use sale_price or price)
-    fallback = Plot.objects.filter(
-        listing_type__in=['sale', 'both'],
-        area__gt=0,
-    ).exclude(pk=plot.pk)
-    if location_prefix:
-        fallback = fallback.filter(location__icontains=location_prefix)
-    if plot.soil_type:
-        fallback = fallback.filter(soil_type=plot.soil_type)
-    fallback = fallback[:20]
-
-    if fallback.exists():
-        # Average price per acre from similar plots (normalize area units)
-        ppas = []
-        for item in fallback:
-            area_acres = item.area_acres
-            if not area_acres or not item.sale_price:
-                continue
-            try:
-                ppa = Decimal(str(item.sale_price)) / Decimal(str(area_acres))
-                if ppa > 0:
-                    ppas.append(ppa)
-            except Exception:
-                continue
-        if ppas and plot.area_acres and plot.area_acres > 0:
-            avg_ppa = sum(ppas) / len(ppas)
-            suggested = Decimal(str(plot.area_acres)) * avg_ppa
-            min_p = suggested * Decimal('0.85')
-            max_p = suggested * Decimal('1.15')
-            PricingSuggestion.objects.create(
-                plot=plot,
-                suggested_price=suggested,
-                price_range_min=min_p,
-                price_range_max=max_p,
-                methodology='Similar listings (same area/soil)',
-                comparable_plots_used=len(ppas),
-                explanation=f'Based on {fallback.count()} similar listing(s).',
-            )
-            return {
-                'suggested_price': suggested,
-                'min_price': min_p,
-                'max_price': max_p,
-                'comparable_count': len(ppas),
-                'explanation': f'Based on {fallback.count()} similar listing(s).',
-            }
-
+    comparable_snapshot = recommendation.get("comparable_snapshot") or {}
     return {
-        'suggested_price': None,
-        'min_price': None,
-        'max_price': None,
-        'comparable_count': 0,
-        'explanation': 'No comparables found. Enter your desired price.',
+        'suggested_price': recommendation['suggested_total'],
+        'min_price': recommendation.get('price_range_min'),
+        'max_price': recommendation.get('price_range_max'),
+        'comparable_count': comparable_snapshot.get('sample_size', 0),
+        'explanation': recommendation['explanation'],
     }

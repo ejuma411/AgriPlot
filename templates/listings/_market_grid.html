@@ -14,6 +14,9 @@
         <div class="market-card fb-card" data-land-type="{{ plot.land_type }}">
             <div class="fb-image" style="background-image: url('{% if plot.images.first %}{{ plot.images.first.image.url }}{% elif plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
                 <span class="fb-badge">{{ plot.get_land_type_display }}</span>
+                <span class="fb-status-badge {{ plot.market_status_css }}">
+                    {{ plot.market_status_label }}
+                </span>
                 {% if request.user.is_authenticated and request.user.profile.role == 'buyer' %}
                 <form method="post" action="{% url 'listings:toggle_saved_plot' plot.id %}" class="fb-fav-form">
                     {% csrf_token %}
@@ -40,6 +43,7 @@
                     <span class="fb-price">KES {{ plot.price|floatformat:0|intcomma }}</span>
                     <span class="fb-area">{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
                 </div>
+                <p class="fb-status-copy">{{ plot.availability_summary }}</p>
                 <div class="fb-actions">
                     <a class="fb-cta" href="{% url 'listings:plot_detail' plot.id %}">Explore</a>
                 </div>
@@ -182,6 +186,30 @@
     border-radius: 14px;
 }
 
+.fb-status-badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    padding: 6px 10px;
+    border-radius: 14px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.fb-status-badge.is-available {
+    background: rgba(6, 145, 50, 0.92);
+}
+
+.fb-status-badge.is-reserved {
+    background: rgba(180, 83, 9, 0.92);
+}
+
+.fb-status-badge.is-leased,
+.fb-status-badge.is-sold {
+    background: rgba(153, 27, 27, 0.92);
+}
+
 .fb-fav {
     position: absolute;
     right: 14px;
@@ -245,6 +273,14 @@
 .fb-area {
     font-size: 0.85rem;
     color: #7a8b86;
+}
+
+.fb-status-copy {
+    margin: 0 0 14px;
+    font-size: 0.9rem;
+    color: #4b5563;
+    line-height: 1.45;
+    min-height: 2.6em;
 }
 
 .fb-actions {

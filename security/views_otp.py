@@ -259,9 +259,9 @@ def verify_otp(request):
             
             # Redirect based on role
             if target_role == 'extension_officer':
-                return redirect('listings:request_extension_officer')
+                return redirect('verification:request_extension_officer')
             if target_role == 'land_surveyor':
-                return redirect('listings:request_land_surveyor')
+                return redirect('verification:request_land_surveyor')
             if reg_data['role'] == 'agent':
                 messages.info(request, "Your agent account is pending verification. You'll be able to list plots once verified.")
                 return redirect('listings:dashboard_router')
