@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timedelta
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -13,10 +14,14 @@ class PaymentRequest(models.Model):
         SERVICE = "service", "Service"
 
     class Category(models.TextChoices):
+        COMMITMENT_FEE = "commitment_fee", "Commitment / Verification Fee"
         VIEWING_FEE = "viewing_fee", "Viewing Fee"
         RESERVATION_DEPOSIT = "reservation_deposit", "Reservation Deposit"
+        AGREEMENT_DEPOSIT = "agreement_deposit", "Agreement Deposit"
         VERIFICATION_PACKAGE = "verification_package", "Verification Package"
         ESCROW_DEPOSIT = "escrow_deposit", "Escrow Deposit"
+        STAMP_DUTY = "stamp_duty", "Stamp Duty"
+        COMPLETION_BALANCE = "completion_balance", "Completion Balance"
         SERVICE_FEE = "service_fee", "Service Fee"
 
     class Method(models.TextChoices):
@@ -108,46 +113,40 @@ class PaymentRequest(models.Model):
 
     PURCHASE_CLOSING_STEPS = [
         (
-            "offer",
-            "Offer to Purchase",
-            "Offer / Letter of Intent",
-            "Buyer advocate issues the offer to purchase with the proposed price and completion window.",
+            "due_diligence",
+            "Search & Survey Verified",
+            "Official search and survey pack",
+            "After the buyer pays the commitment fee, AgriPlot locks the plot and delivers the search and survey documents for review.",
         ),
         (
             "agreement",
             "Sale Agreement Signed",
             "Signed Sale Agreement",
-            "Seller advocate drafts the agreement and both parties sign after review.",
+            "Seller advocate drafts the agreement, both parties sign, and the 10% deposit is secured under the legal framework.",
         ),
         (
             "lcb_consent",
             "LCB Consent Obtained",
-            "Land Control Board Consent Letter",
-            "Buyer and seller appear before the Land Control Board and obtain consent to transfer.",
-        ),
-        (
-            "valuation",
-            "Government Valuation Done",
-            "Government Valuation Report",
-            "A government valuer assesses the property for stamp duty purposes.",
+            "LCB / spousal consent pack",
+            "Buyer and seller secure the Land Control Board consent and any required spousal consent before completion can proceed.",
         ),
         (
             "stamp_duty",
             "Stamp Duty Paid",
-            "Stamp Duty Receipt",
-            "Buyer pays stamp duty via KRA iTax/eCitizen after valuation.",
+            "Valuation report and stamp duty receipt",
+            "Government valuation is completed and the buyer clears stamp duty through KRA iTax/eCitizen.",
         ),
         (
             "completion_docs",
-            "Completion Documents Received",
+            "Completion Docs Exchanged",
             "Completion document bundle",
-            "Seller advocate releases title, transfer forms, clearances, IDs, and any spousal consent.",
+            "The buyer clears the remaining balance and the completion documents are exchanged under the lawyers' supervision.",
         ),
         (
             "registration",
-            "Transfer Registered",
+            "Title Registered",
             "New search result / title evidence",
-            "Land Registry records the buyer as proprietor and a fresh registry proof is issued.",
+            "Land Registry records the buyer as proprietor, issues the registry proof, and the transaction is treated as complete.",
         ),
     ]
 
@@ -233,6 +232,52 @@ class PaymentRequest(models.Model):
             self.internal_reference = self.generate_reference()
         super().save(*args, **kwargs)
 
+    @property
+    def workflow_root_id(self):
+        return (self.metadata or {}).get("workflow_root_id")
+
+    @property
+    def workflow_anchor_payment(self):
+        root_id = self.workflow_root_id
+        if not root_id or root_id == self.pk:
+            return self
+        try:
+            return PaymentRequest.objects.get(pk=root_id)
+        except PaymentRequest.DoesNotExist:
+            return self
+
+    @property
+    def workflow_related_payments(self):
+        anchor = self.workflow_anchor_payment
+        candidates = PaymentRequest.objects.filter(
+            buyer=anchor.buyer,
+            plot=anchor.plot,
+            transaction_type=anchor.transaction_type,
+        ).order_by("created_at")
+        related = []
+        for candidate in candidates:
+            candidate_root_id = (candidate.metadata or {}).get("workflow_root_id")
+            if candidate.pk == anchor.pk or candidate_root_id == anchor.pk:
+                related.append(candidate)
+        return related
+
+    @property
+    def workflow_total_requested_amount(self):
+        return sum((payment.amount for payment in self.workflow_related_payments), start=0)
+
+    @property
+    def workflow_total_paid_amount(self):
+        paid_statuses = {
+            self.Status.PAID,
+            self.Status.IN_ESCROW,
+            self.Status.PARTIALLY_RELEASED,
+            self.Status.RELEASED,
+        }
+        return sum(
+            (payment.amount for payment in self.workflow_related_payments if payment.status in paid_statuses),
+            start=0,
+        )
+
     @staticmethod
     def generate_reference():
         return f"AGP-{uuid.uuid4().hex[:8].upper()}"
@@ -300,7 +345,6 @@ class PaymentRequest(models.Model):
             required_codes = {
                 "agreement",
                 "lcb_consent",
-                "valuation",
                 "stamp_duty",
                 "completion_docs",
             }
@@ -363,6 +407,9 @@ class PaymentRequest(models.Model):
         return self.TRANSITION_RULES.get(self.status, set())
 
     def ensure_closing_steps(self):
+        anchor = self.workflow_anchor_payment
+        if anchor.pk != self.pk:
+            return anchor.ensure_closing_steps()
         templates = self.closing_step_templates(self.transaction_type)
         if not templates:
             return
@@ -466,12 +513,449 @@ class PaymentRequest(models.Model):
         ).order_by("sequence").first()
 
     @property
+    def current_assigned_step(self):
+        return self.next_closing_step
+
+    @property
+    def current_assigned_party(self):
+        step = self.current_assigned_step
+        return step.responsible_party_label if step else "Completed"
+
+    @property
+    def current_assignment_message(self):
+        step = self.current_assigned_step
+        if not step:
+            return "All transaction steps are complete."
+        return f"{step.display_title} is now assigned to {step.responsible_party_label}."
+
+    @property
+    def buyer_journey_steps(self):
+        if self.transaction_type not in {self.TransactionType.PURCHASE, self.TransactionType.LEASE}:
+            return []
+
+        is_purchase = self.transaction_type == self.TransactionType.PURCHASE
+        is_agricultural = bool(self.plot and self.plot.land_type == "agricultural")
+
+        def grouped_status(codes):
+            steps = list(self.closing_steps.filter(code__in=codes))
+            if not steps:
+                return "pending"
+            statuses = {step.status for step in steps}
+            if all(status == PaymentClosingStep.Status.COMPLETED for status in statuses):
+                return "completed"
+            if PaymentClosingStep.Status.BLOCKED in statuses:
+                return "blocked"
+            if PaymentClosingStep.Status.IN_PROGRESS in statuses or PaymentClosingStep.Status.COMPLETED in statuses:
+                return "in_progress"
+            return "pending"
+
+        if is_purchase:
+            consent_title = (
+                "LCB Consent Obtained"
+                if is_agricultural
+                else "Transfer Consents Obtained"
+            )
+            consent_summary = (
+                "LCB consent and any required spousal approvals are secured before the transfer can proceed."
+                if is_agricultural
+                else "Required transfer consents, rates/rent clearances, and other seller approvals are secured."
+            )
+            return [
+                {
+                    "status": grouped_status(["due_diligence"]),
+                    "title": "Search & Survey Verified",
+                    "summary": (
+                        "The commitment fee locks the plot and AgriPlot delivers the official search plus survey and soil evidence for review."
+                        if is_agricultural
+                        else "The commitment fee locks the plot and AgriPlot delivers the official search plus verified site documents for review."
+                    ),
+                },
+                {
+                    "title": "Sale Agreement Signed",
+                    "status": grouped_status(["agreement"]),
+                    "summary": "The agreement is signed and the 10% deposit is secured under the legal framework.",
+                },
+                {
+                    "title": consent_title,
+                    "status": grouped_status(["lcb_consent"]),
+                    "summary": consent_summary,
+                },
+                {
+                    "title": "Government Valuation & Stamp Duty",
+                    "status": grouped_status(["stamp_duty"]),
+                    "summary": "Government valuation is completed and stamp duty is paid through the official channels.",
+                },
+                {
+                    "title": "Completion Docs Exchanged",
+                    "status": grouped_status(["completion_docs"]),
+                    "summary": "The remaining balance is cleared and the completion documents are exchanged safely.",
+                },
+                {
+                    "title": "Title Registered",
+                    "status": grouped_status(["registration"]),
+                    "summary": "A fresh registry result confirms the buyer as the new owner and the plot can finally flip to sold.",
+                },
+            ]
+
+        return [
+            {
+                "status": grouped_status(["offer"]),
+                "title": "Lease Offer Confirmed",
+                "summary": "Confirm the lease intent, dates, and intended use before the agreement is drafted.",
+            },
+            {
+                "title": "Lease Agreement",
+                "status": grouped_status(["agreement"]),
+                "summary": "Agree the lease terms and sign the lease agreement.",
+            },
+            {
+                "title": "Payment & Security",
+                "status": grouped_status(["payment_security"]),
+                "summary": "Confirm the agreed lease deposit or rent commitment.",
+            },
+            {
+                "title": "Handover & Activation",
+                "status": grouped_status(["handover"]),
+                "summary": "Record possession, handover details, and activate the lease on AgriPlot.",
+            },
+        ]
+
+    @property
+    def buyer_journey_title(self):
+        if self.transaction_type == self.TransactionType.PURCHASE:
+            if self.plot and self.plot.land_type == "agricultural":
+                return "Simple agricultural purchase journey"
+            return "Simple purchase journey"
+        if self.transaction_type == self.TransactionType.LEASE:
+            if self.plot and self.plot.land_type == "agricultural":
+                return "Simple agricultural lease journey"
+            return "Simple lease journey"
+        return "Buyer journey"
+
+    @property
+    def buyer_journey_intro(self):
+        if self.transaction_type == self.TransactionType.PURCHASE:
+            return "A plain-language view of the real path from checkout to title transfer. The detailed legal tracker stays below."
+        if self.transaction_type == self.TransactionType.LEASE:
+            return "A plain-language view of the lease journey from checkout to handover. The detailed legal tracker stays below."
+        return "A simple view of the transaction journey."
+
+    @property
+    def buyer_journey_progress_value(self):
+        steps = self.buyer_journey_steps
+        if not steps:
+            return 0
+        completed = sum(1 for step in steps if step["status"] == "completed")
+        return int((completed / len(steps)) * 100)
+
+    @property
+    def due_diligence_lock_expires_at(self):
+        if self.transaction_type != self.TransactionType.PURCHASE:
+            return None
+        lock_value = (self.metadata or {}).get("due_diligence_lock_expires_at")
+        if lock_value:
+            parsed = datetime.fromisoformat(lock_value)
+            if timezone.is_naive(parsed):
+                parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+            return parsed
+        if self.paid_at:
+            return self.paid_at + timedelta(days=7)
+        return None
+
+    @property
+    def due_diligence_lock_message(self):
+        lock_expires_at = self.due_diligence_lock_expires_at
+        if not lock_expires_at:
+            return ""
+        return (
+            "This plot is under the due-diligence lock and is being held for this buyer "
+            f"until {timezone.localtime(lock_expires_at):%b %d, %Y %I:%M %p}."
+        )
+
+    @property
+    def due_diligence_documents(self):
+        plot = self.plot
+        if not plot:
+            return []
+        documents = []
+        if getattr(plot, "official_search", None):
+            documents.append(
+                {
+                    "title": "Official Search",
+                    "note": "Registry search showing the current ownership and registered interests.",
+                    "url": plot.official_search.url,
+                }
+            )
+        if getattr(plot, "survey_map", None):
+            documents.append(
+                {
+                    "title": "Survey / Beacon Report",
+                    "note": "Survey map or beacon evidence used during the verification stage.",
+                    "url": plot.survey_map.url,
+                }
+            )
+        if getattr(plot, "soil_report", None):
+            documents.append(
+                {
+                    "title": "Soil / Land Use Report",
+                    "note": "Extension or soil verification evidence for farming-fit review.",
+                    "url": plot.soil_report.url,
+                }
+            )
+        if getattr(plot, "title_deed", None):
+            documents.append(
+                {
+                    "title": "Title Deed Copy",
+                    "note": "Title document supplied during the verification process.",
+                    "url": plot.title_deed.url,
+                }
+            )
+        return documents
+
+    @property
+    def advocate_details(self):
+        metadata = self.metadata or {}
+        return {
+            "buyer_name": metadata.get("buyer_advocate_name", ""),
+            "buyer_phone": metadata.get("buyer_advocate_phone", ""),
+            "seller_name": metadata.get("seller_advocate_name", ""),
+            "seller_phone": metadata.get("seller_advocate_phone", ""),
+        }
+
+    @property
+    def dashboard_process_steps(self):
+        if self.transaction_type != self.TransactionType.PURCHASE:
+            steps = [
+                {
+                    "sequence": "01",
+                    "title": "Confirm Lease Need",
+                    "caption": "Choose the plot and confirm the lease purpose.",
+                    "icon": "01",
+                    "status": "completed" if self.plot_id else "pending",
+                },
+                {
+                    "sequence": "02",
+                    "title": "Connect with AgriPlot",
+                    "caption": "Buyer and seller open the guided lease workspace.",
+                    "icon": "02",
+                    "status": "completed" if self.seller_id else "pending",
+                },
+                {
+                    "sequence": "03",
+                    "title": "Visit the Land",
+                    "caption": "Confirm access, use, and site condition before signing.",
+                    "icon": "03",
+                    "status": "completed" if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED, self.Status.RELEASED} else "pending",
+                },
+                {
+                    "sequence": "04",
+                    "title": "Pay the Commitment",
+                    "caption": "Complete the M-Pesa commitment that opens the lease tracker.",
+                    "icon": "04",
+                    "status": "completed" if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED, self.Status.RELEASED} else "pending",
+                },
+                {
+                    "sequence": "05",
+                    "title": "Review the Lease Pack",
+                    "caption": "Check the verified documents and lease details in AgriPlot.",
+                    "icon": "05",
+                    "status": self._dashboard_status_for_codes(["offer"]),
+                },
+                {
+                    "sequence": "06",
+                    "title": "Sign the Lease Agreement",
+                    "caption": "Upload the executed lease agreement and supporting proof.",
+                    "icon": "06",
+                    "status": self._dashboard_status_for_codes(["agreement"]),
+                },
+                {
+                    "sequence": "07",
+                    "title": "Clear the Lease Security",
+                    "caption": "Complete the rent security or deposit commitment.",
+                    "icon": "07",
+                    "status": self._dashboard_status_for_codes(["payment_security"]),
+                },
+                {
+                    "sequence": "08",
+                    "title": "Get Your Handover",
+                    "caption": "Record possession, boundaries, and activation of the lease.",
+                    "icon": "08",
+                    "status": self._dashboard_status_for_codes(["handover"]),
+                },
+                {
+                    "sequence": "09",
+                    "title": "Use the Land",
+                    "caption": "The lease is active and the property is ready for use.",
+                    "icon": "09",
+                    "status": "completed" if self.status == self.Status.RELEASED else "pending",
+                },
+            ]
+            return self._normalize_dashboard_steps(steps)
+
+        payment_started = self.status in {
+            self.Status.PENDING,
+            self.Status.PAID,
+            self.Status.IN_ESCROW,
+            self.Status.PARTIALLY_RELEASED,
+            self.Status.RELEASED,
+            self.Status.DISPUTED,
+        }
+        commitment_paid = self.status in {
+            self.Status.PAID,
+            self.Status.IN_ESCROW,
+            self.Status.PARTIALLY_RELEASED,
+            self.Status.RELEASED,
+        }
+        due_diligence_status = self._dashboard_status_for_codes(["due_diligence"])
+        agreement_status = self._dashboard_status_for_codes(["agreement"])
+        completion_run_status = self._dashboard_status_for_codes(
+            ["lcb_consent", "stamp_duty", "completion_docs"]
+        )
+        registration_status = self._dashboard_status_for_codes(["registration"])
+
+        steps = [
+            {
+                "sequence": "01",
+                "title": "Identify Your Plot",
+                "caption": "Choose the verified plot that matches your farming or investment goals.",
+                "icon": "01",
+                "status": "completed" if self.plot_id else "pending",
+            },
+            {
+                "sequence": "02",
+                "title": "Connect with AgriPlot",
+                "caption": "Open the legal escrow workflow with the seller, agent, and support team before any commitment fee is paid.",
+                "icon": "02",
+                "status": "completed" if payment_started else "pending",
+            },
+            {
+                "sequence": "03",
+                "title": "Book Site Visit",
+                "caption": "Visit the land and confirm the physical reality before committing fully.",
+                "icon": "03",
+                "status": "completed" if due_diligence_status in {"completed", "current"} else "pending",
+            },
+            {
+                "sequence": "04",
+                "title": "Deposit Booking Fee",
+                "caption": "Pay the commitment fee so the plot is locked and the due-diligence pack is released.",
+                "icon": "04",
+                "status": "completed" if commitment_paid else ("current" if payment_started else "pending"),
+            },
+            {
+                "sequence": "05",
+                "title": "Do Your Due Diligence",
+                "caption": "Review the official search, beacon report, and verification records in your dashboard.",
+                "icon": "05",
+                "status": due_diligence_status,
+            },
+            {
+                "sequence": "06",
+                "title": "Sign Agreement for Sale",
+                "caption": "Seller advocate uploads the agreement and both sides secure the 10% deposit arrangement.",
+                "icon": "06",
+                "status": agreement_status,
+            },
+            {
+                "sequence": "07",
+                "title": "Clear the Remaining Balance",
+                "caption": "Work through the approvals, stamp duty, and completion exchange so the final balance and handover happen in order.",
+                "icon": "07",
+                "status": completion_run_status,
+            },
+            {
+                "sequence": "08",
+                "title": "Get Your Title Deed",
+                "caption": "Registration is completed and the fresh registry proof shows you as the new owner.",
+                "icon": "08",
+                "status": registration_status,
+            },
+            {
+                "sequence": "09",
+                "title": "Develop Your Property",
+                "caption": "The title is in your name and the land is ready for development or productive use.",
+                "icon": "09",
+                "status": "completed" if self.purchase_registration_complete else "pending",
+            },
+        ]
+        return self._normalize_dashboard_steps(steps)
+
+    def _normalize_dashboard_steps(self, steps):
+        normalized = []
+        current_found = False
+        for index, step in enumerate(steps):
+            step_copy = dict(step)
+            step_copy["state_label"] = {
+                "completed": "Completed",
+                "current": "Current",
+                "blocked": "Blocked",
+                "pending": "Pending",
+            }.get(step_copy["status"], "Pending")
+            if current_found:
+                if step_copy["status"] != "completed":
+                    step_copy["status"] = "pending"
+                    step_copy["state_label"] = "Pending"
+                normalized.append(step_copy)
+                continue
+
+            if step_copy["status"] == "completed":
+                normalized.append(step_copy)
+                continue
+
+            if step_copy["status"] == "blocked":
+                current_found = True
+                normalized.append(step_copy)
+                continue
+
+            step_copy["status"] = "current"
+            step_copy["state_label"] = "Current"
+            current_found = True
+            normalized.append(step_copy)
+
+        if not current_found:
+            return normalized
+
+        first_current_index = next(
+            (idx for idx, item in enumerate(normalized) if item["status"] in {"current", "blocked"}),
+            None,
+        )
+        if first_current_index is None:
+            return normalized
+
+        for idx in range(first_current_index + 1, len(normalized)):
+            if normalized[idx]["status"] != "completed":
+                normalized[idx]["status"] = "pending"
+                normalized[idx]["state_label"] = "Pending"
+        return normalized
+
+    def _dashboard_status_for_codes(self, codes):
+        steps = list(self.closing_steps.filter(code__in=codes))
+        if not steps:
+            return "pending"
+        statuses = {step.status for step in steps}
+        if all(status == PaymentClosingStep.Status.COMPLETED for status in statuses):
+            return "completed"
+        if PaymentClosingStep.Status.IN_PROGRESS in statuses or PaymentClosingStep.Status.COMPLETED in statuses:
+            return "current"
+        return "pending"
+
+    @property
+    def _dashboard_site_visit_status(self):
+        if self.transaction_type != self.TransactionType.PURCHASE:
+            return "pending"
+        if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED, self.Status.RELEASED}:
+            if self.next_closing_step and self.next_closing_step.code == "due_diligence":
+                return "current"
+            return "completed"
+        return "pending"
+
+    @property
     def buyer_next_step_summary(self):
         if self.transaction_type not in {self.TransactionType.PURCHASE, self.TransactionType.LEASE}:
             return "Follow the payment milestones in this workspace."
         next_step = self.next_closing_step
         if next_step:
-            return f"Next step: {next_step.title}"
+            return f"Next step: {next_step.display_title}"
         if self.transaction_type == self.TransactionType.PURCHASE:
             return "All legal transfer steps are complete."
         return "All lease handover steps are complete."
@@ -486,14 +970,62 @@ class PaymentRequest(models.Model):
                 return "Keep the stamped transfer documents and final search result for your records."
             return "Keep the signed lease documents and handover record for your records."
         return (
-            f"Go to the transaction tracker below and work on '{next_step.title}'. "
+            f"Open the guided workspace for '{next_step.display_title}'. "
             f"{next_step.buyer_instruction}"
         )
 
+    @property
+    def checkout_guidance_title(self):
+        if self.transaction_type == self.TransactionType.PURCHASE:
+            if self.plot and self.plot.land_type == "agricultural":
+                return "Agricultural land purchase journey"
+            return "Land purchase journey"
+        if self.transaction_type == self.TransactionType.LEASE:
+            if self.plot and self.plot.land_type == "agricultural":
+                return "Agricultural land lease journey"
+            return "Land lease journey"
+        return "Transaction journey"
+
+    @property
+    def checkout_guidance_steps(self):
+        if self.transaction_type == self.TransactionType.PURCHASE:
+            if self.plot and self.plot.land_type == "agricultural":
+                return [
+                    "Pay the commitment fee so AgriPlot can lock the plot and release the verified search and survey pack.",
+                    "Review the due diligence documents, then work with the seller's lawyer on the sale agreement and deposit.",
+                    "Use the tracker for LCB consent, stamp duty, completion, and final registration.",
+                ]
+            return [
+                "Pay the commitment fee so AgriPlot can lock the plot and release the verified search pack.",
+                "Review the due diligence documents, then move to the sale agreement and deposit stage.",
+                "Use the tracker for consents or clearances, stamp duty, completion, and final registration.",
+            ]
+        if self.transaction_type == self.TransactionType.LEASE:
+            if self.plot and self.plot.land_type == "agricultural":
+                return [
+                    "Confirm the verified farming details and intended lease use.",
+                    "Visit the land and verify access, boundaries, and handover expectations.",
+                    "Use the lease tracker to sign the agreement, confirm payment, and complete handover.",
+                ]
+            return [
+                "Confirm the verified site details and intended lease use.",
+                "Visit the site and agree the handover expectations with the owner or agent.",
+                "Use the lease tracker to sign the agreement, confirm payment, and complete handover.",
+            ]
+        return []
+
     def sync_plot_market_state(self):
+        if self.workflow_anchor_payment.pk != self.pk:
+            return
         if not self.plot:
             return
         if self.transaction_type == self.TransactionType.PURCHASE:
+            lock_message = ""
+            if self.due_diligence_lock_expires_at:
+                lock_message = (
+                    f" Due-diligence lock runs until "
+                    f"{timezone.localtime(self.due_diligence_lock_expires_at):%b %d, %Y %I:%M %p}."
+                )
             if self.status == self.Status.RELEASED:
                 self.plot.market_status = "sold" if self.purchase_registration_complete else "reserved"
                 self.plot.lease_start_date = None
@@ -511,7 +1043,7 @@ class PaymentRequest(models.Model):
                 self.plot.lease_start_date = None
                 self.plot.lease_end_date = None
                 self.plot.availability_notes = (
-                    f"Reserved under active purchase transaction {self.internal_reference}."
+                    f"Reserved under active purchase transaction {self.internal_reference}.{lock_message}"
                 )
             elif self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
                 self.plot.market_status = "available"
@@ -670,6 +1202,15 @@ class PaymentClosingStep(models.Model):
         max_length=20, choices=Status.choices, default=Status.PENDING
     )
     notes = models.TextField(blank=True)
+    buyer_confirmed_at = models.DateTimeField(null=True, blank=True)
+    seller_confirmed_at = models.DateTimeField(null=True, blank=True)
+    consent_reference_number = models.CharField(max_length=120, blank=True)
+    meeting_date = models.DateField(null=True, blank=True)
+    official_market_value = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    assessed_stamp_duty = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    original_title_received = models.BooleanField(default=False)
+    seller_id_copy_received = models.BooleanField(default=False)
+    transfer_forms_signed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
     completed_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -689,15 +1230,60 @@ class PaymentClosingStep(models.Model):
         return f"{self.payment.internal_reference} - {self.title}"
 
     @property
+    def display_title(self):
+        plot = self.payment.plot
+        if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE and self.code == "lcb_consent":
+            if plot and plot.land_type == "agricultural":
+                return "Land Control Board & Family Consents"
+            return "Transfer Consents & Seller Clearances"
+        if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE and self.code == "stamp_duty":
+            if plot and plot.market_zone == "rural":
+                return "Rural Valuation & Stamp Duty"
+            if plot and plot.market_zone in {"urban", "peri_urban"}:
+                return "Municipal Valuation & Stamp Duty"
+        return self.title
+
+    @property
+    def display_document_name(self):
+        plot = self.payment.plot
+        if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE and self.code == "lcb_consent":
+            if plot and plot.land_type == "agricultural":
+                return "LCB consent letter and any spousal consent affidavit"
+            return "Consent letters, rates/rent clearance, and any spousal consent"
+        return self.document_name
+
+    @property
+    def display_guidance(self):
+        plot = self.payment.plot
+        if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE and self.code == "lcb_consent":
+            if plot and plot.land_type == "agricultural":
+                return (
+                    "Agricultural land needs Land Control Board consent before the transfer can continue. "
+                    "Capture any spousal consent alongside the board approval."
+                )
+            return (
+                "This step covers the consents and seller clearances needed for non-agricultural transfers, "
+                "including rates, rent, lessor consent where applicable, and any family approvals."
+            )
+        if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE and self.code == "stamp_duty":
+            if plot and plot.market_zone == "rural":
+                return (
+                    "Capture the government valuation and the rural stamp duty evidence before the deal can move to completion."
+                )
+            return (
+                "Capture the government valuation and the municipal or peri-urban stamp duty evidence before the deal can move to completion."
+            )
+        return self.guidance
+
+    @property
     def responsible_party_label(self):
         purchase_map = {
-            "offer": "Buyer / Buyer Advocate",
+            "due_diligence": "Buyer",
             "agreement": "Seller Advocate",
-            "lcb_consent": "Buyer + Seller",
-            "valuation": "Government Valuer / Buyer",
-            "stamp_duty": "Buyer",
-            "completion_docs": "Seller / Seller Advocate",
-            "registration": "Buyer Advocate",
+            "lcb_consent": "Admin / Lawyer",
+            "stamp_duty": "Buyer / Admin",
+            "completion_docs": "Buyer Advocate",
+            "registration": "Registrar / Admin",
         }
         lease_map = {
             "offer": "Buyer / Tenant",
@@ -713,64 +1299,69 @@ class PaymentClosingStep(models.Model):
 
     @property
     def action_summary(self):
+        plot = self.payment.plot
+        is_agricultural = bool(plot and plot.land_type == "agricultural")
         purchase_map = {
-            "offer": {
-                "headline": "Prepare the formal offer to purchase.",
-                "where": "Work with your advocate and send the offer to the seller's advocate.",
-                "document": "Offer to Purchase / Letter of Intent",
-                "platform_role": "AgriPlot keeps this step visible in your tracker and lets you upload proof once it is issued.",
-                "cta_label": "Open Offer Step",
-                "support_label": "Need help? Share the expected terms with your advocate before they draft the offer.",
+            "due_diligence": {
+                "headline": "Review the official search and survey pack.",
+                "where": "After the commitment fee, open the search, survey, and verification reports in AgriPlot and confirm the land is clean enough to proceed.",
+                "document": "Official search and survey pack",
+                "platform_role": "AgriPlot locks the plot, releases the verified documents, and uses this step as the legal green light before the serious legal work starts.",
+                "cta_label": "Review Due Diligence Pack",
+                "support_label": "Do not move to the sale agreement until the verified search and survey evidence make sense for this deal.",
             },
             "agreement": {
-                "headline": "Review and sign the sale agreement.",
-                "where": "Meet or coordinate with your advocate once the seller's advocate shares the agreement.",
+                "headline": "Sign the sale agreement and secure the 10% deposit.",
+                "where": "The seller's lawyer prepares the agreement, both parties sign, and the deposit is secured under the agreed legal arrangement.",
                 "document": "Signed Sale Agreement",
-                "platform_role": "AgriPlot records progress and supporting documents for the deal.",
-                "cta_label": "Review Agreement Step",
-                "support_label": "Confirm the deposit terms, completion period, and land reference before signing.",
+                "platform_role": "AgriPlot tracks the legal lock on the deal so the buyer can see when the agreement and deposit stage is properly completed.",
+                "cta_label": "Review Agreement & Deposit",
+                "support_label": "The agreement step should capture both the executed agreement and the fact that the deposit arrangement is in place.",
             },
             "lcb_consent": {
-                "headline": "Prepare for the Land Control Board meeting.",
-                "where": "Coordinate with the seller and appear at the local Land Control Board with the required IDs.",
-                "document": "LCB Consent Letter",
-                "platform_role": "AgriPlot tracks the consent milestone so the deal does not advance too early.",
-                "cta_label": "Track LCB Consent",
-                "support_label": "Do not release the full purchase amount before this consent is granted.",
-            },
-            "valuation": {
-                "headline": "Follow up on government valuation.",
-                "where": "Confirm the valuer's site visit and keep the valuation reference handy.",
-                "document": "Government Valuation Report",
-                "platform_role": "AgriPlot keeps this dependency visible before stamp duty and completion.",
-                "cta_label": "Track Valuation",
-                "support_label": "The stamp duty amount will depend on the government valuation, not just your agreed price.",
+                "headline": "Secure the statutory green light.",
+                "where": "Coordinate the required transfer consents and clearances for this land type before the deal moves to completion.",
+                "document": "Consent and clearance pack",
+                "platform_role": "AgriPlot keeps the statutory consent milestone visible so the transfer does not move ahead prematurely.",
+                "cta_label": "Track Statutory Consents",
+                "support_label": "Do not release the full purchase amount before the required legal consents are in place.",
             },
             "stamp_duty": {
-                "headline": "Pay stamp duty and keep the receipt.",
-                "where": "Use the KRA iTax / eCitizen flow once valuation is complete.",
-                "document": "Stamp Duty Receipt",
-                "platform_role": "AgriPlot stores the receipt in the transaction trail.",
-                "cta_label": "Upload Stamp Duty Proof",
-                "support_label": "Complete this only after valuation is done so the correct duty is paid.",
+                "headline": "Complete valuation and clear stamp duty.",
+                "where": "The government valuation is entered first, then the buyer clears stamp duty through the KRA / eCitizen process.",
+                "document": "Valuation report and stamp duty receipt",
+                "platform_role": "AgriPlot keeps the tax step locked until the valuation and receipt evidence are both available.",
+                "cta_label": "Upload Valuation & Stamp Duty",
+                "support_label": "Do not treat the tax step as done until the government value and stamp duty receipt are both captured.",
             },
             "completion_docs": {
-                "headline": "Confirm the seller's completion documents.",
-                "where": "Your advocate should review the title, transfer forms, clearances, IDs, and any required consents.",
-                "document": "Completion Document Pack",
-                "platform_role": "AgriPlot keeps both sides aligned on what has been handed over.",
-                "cta_label": "Check Completion Documents",
-                "support_label": "Do not release the final balance until the completion documents are fully confirmed.",
+                "headline": "Exchange the completion papers and clear the remaining balance.",
+                "where": "The buyer's lawyer confirms the original title, signed transfer forms, and ID/KRA copies are all in order before the balance is treated as safely released.",
+                "document": "Completion document pack",
+                "platform_role": "AgriPlot uses the completion checklist to make sure the final money-for-papers exchange is evidence-backed.",
+                "cta_label": "Confirm Completion Exchange",
+                "support_label": "This stage should only finish when the balance and the completion documents line up correctly.",
             },
             "registration": {
-                "headline": "Lodge the transfer for registration.",
-                "where": "Your advocate should submit the transfer through Ardhisasa or the registry and share proof here.",
-                "document": "New Search Result / Registry Proof",
-                "platform_role": "AgriPlot only marks the plot sold after this final registration evidence is completed.",
-                "cta_label": "Track Registration",
-                "support_label": "This is the step that turns a reserved deal into a legally completed transfer on the platform.",
+                "headline": "Register the title transfer and flip the ownership.",
+                "where": "The lawyer or registrar uploads fresh registry proof showing the buyer's name before AgriPlot marks the plot sold.",
+                "document": "Fresh registry search / title proof",
+                "platform_role": "AgriPlot only flips the plot to sold after this final registry evidence is completed.",
+                "cta_label": "Track Title Registration",
+                "support_label": "A successful payment does not equal ownership transfer. The fresh registry search is the final proof.",
             },
         }
+        if is_agricultural and "due_diligence" in purchase_map:
+            purchase_map["due_diligence"]["where"] = (
+                "Review the official search, survey, soil, and zoning findings on AgriPlot before progressing the agricultural land deal."
+            )
+            purchase_map["lcb_consent"]["where"] = (
+                "Coordinate the Land Control Board appearance and make sure any required spousal consent is signed too."
+            )
+            purchase_map["lcb_consent"]["document"] = "LCB / spousal consent pack"
+            purchase_map["lcb_consent"]["support_label"] = (
+                "Do not release the full purchase amount before the Land Control Board consent and related family consents are in place."
+            )
         lease_map = {
             "offer": {
                 "headline": "Confirm the lease terms you want.",
@@ -838,12 +1429,11 @@ class PaymentClosingStep(models.Model):
     @property
     def buyer_instruction(self):
         purchase_map = {
-            "offer": "Ask your advocate to prepare and send the Offer to Purchase to the seller's advocate.",
+            "due_diligence": "Review the verified search, survey, and registry pack on AgriPlot before moving into the sale agreement stage.",
             "agreement": "Review the sale agreement with your advocate and be ready to sign once the seller's advocate shares it.",
             "lcb_consent": "Coordinate with the seller for the Land Control Board meeting and carry your ID documents.",
-            "valuation": "Follow up on the government valuation visit so stamp duty can be assessed correctly.",
-            "stamp_duty": "Pay the stamp duty through KRA/eCitizen and upload the receipt here.",
-            "completion_docs": "Wait for the seller's advocate to hand over the completion documents, then confirm they are complete.",
+            "stamp_duty": "Follow up on the government valuation, pay stamp duty through KRA/eCitizen, and upload the proof here.",
+            "completion_docs": "Wait for the seller's advocate to hand over the completion documents, then confirm they are complete before the balance is released.",
             "registration": "Ask your advocate to lodge the transfer at the registry or Ardhisasa and upload the final proof.",
         }
         lease_map = {
@@ -858,7 +1448,72 @@ class PaymentClosingStep(models.Model):
             return lease_map.get(self.code, "Open this step and follow the guidance provided.")
         return "Open this step and follow the guidance provided."
 
-    def set_status(self, status, actor=None, notes=""):
+    @property
+    def stakeholder_update_label(self):
+        purchase_map = {
+            "due_diligence": "Buyer review confirmation",
+            "agreement": "Seller-side legal upload",
+            "lcb_consent": "Admin / lawyer evidence upload",
+            "stamp_duty": "Buyer and admin tax evidence upload",
+            "completion_docs": "Buyer-side completion checklist",
+            "registration": "Registrar / admin proof upload",
+        }
+        lease_map = {
+            "offer": "Buyer confirmation",
+            "agreement": "Both parties / admin upload",
+            "payment_security": "Buyer proof upload",
+            "handover": "Seller handover confirmation",
+        }
+        if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+            return purchase_map.get(self.code, "Evidence-backed update")
+        if self.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
+            return lease_map.get(self.code, "Evidence-backed update")
+        return "Evidence-backed update"
+
+    @property
+    def completion_requirements(self):
+        requirement_map = {
+            "agreement": ["Executed sale agreement uploaded"],
+            "lcb_consent": ["Consent number entered", "Meeting date entered", "LCB / spousal consent upload"],
+            "stamp_duty": ["Official market value entered", "Calculated stamp duty entered", "Stamp duty receipt uploaded"],
+            "completion_docs": ["Original title received", "Seller ID / KRA copies received", "Transfer forms signed"],
+            "registration": ["New search or registry proof uploaded"],
+        }
+        return requirement_map.get(self.code, [])
+
+    def can_mark_complete_with_current_evidence(self):
+        if self.code == "due_diligence":
+            return True
+        if self.code in {"agreement", "registration"}:
+            return bool(self.document)
+        if self.code == "lcb_consent":
+            return bool(self.document and self.consent_reference_number and self.meeting_date)
+        if self.code == "stamp_duty":
+            return bool(
+                self.document
+                and self.official_market_value is not None
+                and self.assessed_stamp_duty is not None
+            )
+        if self.code == "completion_docs":
+            return bool(
+                self.original_title_received
+                and self.seller_id_copy_received
+                and self.transfer_forms_signed
+            )
+        return True
+
+    def evidence_blocking_reason(self):
+        if self.can_mark_complete_with_current_evidence():
+            return ""
+        requirement_text = ", ".join(self.completion_requirements)
+        return f"This step needs more evidence before it can be completed: {requirement_text}."
+
+    def set_status(self, status, actor=None, notes="", bypass_evidence=False):
+        if status == self.Status.COMPLETED and not bypass_evidence:
+            blocking_reason = self.evidence_blocking_reason()
+            if blocking_reason:
+                raise ValidationError(blocking_reason)
+        previous_status = self.status
         self.status = status
         if notes:
             self.notes = notes
@@ -871,3 +1526,53 @@ class PaymentClosingStep(models.Model):
             self.completed_by = None
         self.save(update_fields=["status", "notes", "completed_at", "completed_by", "updated_at"])
         self.payment.sync_plot_market_state()
+        if previous_status != self.Status.COMPLETED and status == self.Status.COMPLETED:
+            self._auto_assign_next_step(actor=actor)
+
+    def _auto_assign_next_step(self, actor=None):
+        next_step = (
+            self.payment.closing_steps.filter(sequence__gt=self.sequence)
+            .exclude(status=self.Status.COMPLETED)
+            .order_by("sequence")
+            .first()
+        )
+        if not next_step:
+            return
+
+        updated_fields = []
+        if next_step.status == self.Status.PENDING:
+            next_step.status = self.Status.IN_PROGRESS
+            updated_fields.append("status")
+        updated_fields.append("updated_at")
+        next_step.save(update_fields=updated_fields)
+
+        assignment_message = (
+            f"Next transaction step assigned: {next_step.display_title} → "
+            f"{next_step.responsible_party_label}."
+        )
+        self.payment.add_event("closing_step_assigned", assignment_message, actor=actor)
+
+        from django.contrib.auth.models import User
+        from notifications.notification_service import NotificationService
+
+        recipients = []
+        label = next_step.responsible_party_label.lower()
+        if "buyer" in label and self.payment.buyer:
+            recipients.append(self.payment.buyer)
+        if any(token in label for token in ["seller", "agent"]) and self.payment.seller:
+            recipients.append(self.payment.seller)
+        if any(token in label for token in ["admin", "valuer", "government", "operations"]):
+            recipients.extend(
+                User.objects.filter(
+                    models.Q(is_superuser=True) | models.Q(groups__name="Finance Admin")
+                ).distinct()
+            )
+
+        for recipient in {user.pk: user for user in recipients if user}.values():
+            NotificationService.create_notification(
+                user=recipient,
+                notification_type="plot_stage_update",
+                title=f"Next step assigned: {next_step.display_title}",
+                message=assignment_message,
+                plot=self.payment.plot,
+            )

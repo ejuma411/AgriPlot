@@ -75,6 +75,42 @@ def user_can_update_closing_steps(user, payment):
     )
 
 
+def user_can_update_specific_closing_step(user, payment, step):
+    if not getattr(user, "is_authenticated", False):
+        return PaymentDecision(False, "You need to sign in to update this step.")
+    if user_is_finance_admin(user):
+        return PaymentDecision(True)
+
+    active_step = payment.current_assigned_step
+    if active_step and active_step.pk != step.pk and step.status != step.Status.COMPLETED:
+        return PaymentDecision(
+            False,
+            f"Finish the current assigned step first: {active_step.display_title}.",
+        )
+
+    actor_is_buyer = user == payment.buyer
+    actor_is_seller = user == payment.seller
+
+    allowed_map = {
+        "due_diligence": actor_is_buyer,
+        "offer": actor_is_buyer,
+        "agreement": actor_is_buyer or actor_is_seller,
+        "lcb_consent": actor_is_buyer,
+        "stamp_duty": actor_is_buyer,
+        "completion_docs": actor_is_buyer,
+        "registration": actor_is_buyer,
+        "payment_security": actor_is_buyer,
+        "handover": actor_is_seller,
+    }
+    if allowed_map.get(step.code, False):
+        return PaymentDecision(True)
+
+    return PaymentDecision(
+        False,
+        f"Only the assigned stakeholder or a finance admin can update '{step.title}'.",
+    )
+
+
 def user_can_transition_payment(user, payment, action):
     if not getattr(user, "is_authenticated", False):
         return PaymentDecision(False, "You need to sign in to update payments.")

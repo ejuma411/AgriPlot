@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}AgriPlot Payment Flow{% endblock %}
+{% block title %}AgriPlot Legal Escrow Workflow{% endblock %}
 
 {% block extra_css %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,27 +14,35 @@
 <section class="payments-hero payments-hero-flow">
     <div class="payments-shell">
         <div class="hero-copy">
-            <span class="hero-kicker">Platform blueprint</span>
-            <h1>AgriPlot payment flow</h1>
-            <p class="hero-lead">The complete marketplace payment idea behind the app: buyer commitment, seller milestones, escrow handling, multi-method checkout, and dispute-ready records all inside one operational layer.</p>
+            <span class="hero-kicker">Legal escrow workflow</span>
+            <h1>AgriPlot land transfer workflow</h1>
+            <p class="hero-lead">This is the guided Kenyan land-transfer path that starts after a buyer expresses serious intent. The commitment fee opens due diligence first, then the deal moves through agreement, consents, tax, completion, and final registration.</p>
             <div class="hero-actions">
-                <a href="{{ dashboard_url }}" class="hero-btn hero-btn-primary">Open payments workspace</a>
-                <a href="#methods" class="hero-btn hero-btn-secondary">See payment methods</a>
+                <a href="{{ workflow_start_url }}" class="hero-btn hero-btn-primary">{% if selected_plot %}Proceed to Commitment Fee{% else %}Start Legal Workflow{% endif %}</a>
+                <a href="#journey" class="hero-btn hero-btn-secondary">See the steps</a>
             </div>
         </div>
         <aside class="hero-panel">
             <div class="hero-panel-card pulse-card">
                 <span class="panel-label">Why this matters</span>
-                <strong>AgriPlot monetizes trust, not just traffic</strong>
-                <p>The platform becomes the place where money moves only when the next proof point is satisfied.</p>
+                <strong>Checkout should open legal due diligence, not a blind money request</strong>
+                <p>AgriPlot uses the commitment fee to lock the plot, deliver the due diligence pack, and then move the buyer through the real closing sequence.</p>
             </div>
             <div class="hero-panel-card">
-                <span class="panel-label">Operating principles</span>
+                <span class="panel-label">This plot</span>
+                {% if selected_plot %}
+                <strong>{{ selected_plot.title }}</strong>
+                <p>{{ selected_plot.location }} · {{ selected_plot.get_land_type_display }} · {{ selected_plot.get_listing_type_display }}</p>
+                {% if selected_plot.availability_summary %}
+                <p>{{ selected_plot.availability_summary }}</p>
+                {% endif %}
+                {% else %}
                 <ul class="hero-list">
                     {% for principle in platform_principles %}
                     <li>{{ principle }}</li>
                     {% endfor %}
                 </ul>
+                {% endif %}
             </div>
         </aside>
     </div>
@@ -44,20 +52,40 @@
     <div class="payments-shell">
         <div class="section-heading">
             <span class="section-kicker">Journey</span>
-            <h2>How the money flow supports the land deal</h2>
-            <p>These checkpoints make AgriPlot commercially important and operationally accountable.</p>
+            <h2>The 6 legal steps from commitment to title handover</h2>
+            <p>The buyer should understand this flow before any payment begins.</p>
         </div>
         <div class="journey-grid">
-            {% for step in journey_steps %}
             <article class="journey-card">
-                <div class="journey-icon">
-                    <i class="fas {{ step.icon }}"></i>
-                </div>
-                <span class="journey-eyebrow">{{ step.eyebrow }}</span>
-                <h3>{{ step.title }}</h3>
-                <p>{{ step.copy }}</p>
+                <span class="journey-eyebrow">Step 1</span>
+                <h3>Due Diligence Lock</h3>
+                <p>Buyer pays the commitment fee, AgriPlot locks the plot for 7 days, and the official search plus survey or beacon pack is released for review.</p>
             </article>
-            {% endfor %}
+            <article class="journey-card">
+                <span class="journey-eyebrow">Step 2</span>
+                <h3>Sale Agreement</h3>
+                <p>The seller’s lawyer drafts the agreement, both sides capture advocate details, and the 10% deposit arrangement is secured in the legal framework.</p>
+            </article>
+            <article class="journey-card">
+                <span class="journey-eyebrow">Step 3</span>
+                <h3>LCB Consent</h3>
+                <p>For agricultural land, the Land Control Board consent and any spousal approvals must be uploaded before the process moves forward.</p>
+            </article>
+            <article class="journey-card">
+                <span class="journey-eyebrow">Step 4</span>
+                <h3>Valuation &amp; Stamp Duty</h3>
+                <p>The government valuation is recorded and the buyer uploads the KRA or eCitizen stamp duty receipt before the completion exchange can proceed.</p>
+            </article>
+            <article class="journey-card">
+                <span class="journey-eyebrow">Step 5</span>
+                <h3>Completion Exchange</h3>
+                <p>The buyer clears the remaining balance to the legal side while the seller hands over the original title, signed transfer forms, and ID/KRA copies.</p>
+            </article>
+            <article class="journey-card">
+                <span class="journey-eyebrow">Step 6</span>
+                <h3>Registration &amp; Handover</h3>
+                <p>The lawyer lodges the transfer at the registry or Ardhisasa, and only a fresh registry result showing the buyer’s name flips the plot to sold.</p>
+            </article>
         </div>
     </div>
 </section>
@@ -66,46 +94,35 @@
     <div class="payments-shell dual-grid">
         <div>
             <div class="section-heading compact">
-                <span class="section-kicker">Revenue</span>
-                <h2>Where AgriPlot earns</h2>
+                <span class="section-kicker">Lock rules</span>
+                <h2>What stays blocked until evidence is uploaded</h2>
             </div>
             <div class="chip-list">
-                {% for item in revenue_streams %}
-                <div class="info-chip">{{ item }}</div>
-                {% endfor %}
+                <div class="info-chip">LCB consent step stays pending until the consent letter is uploaded.</div>
+                <div class="info-chip">Stamp duty step stays pending until valuation and the tax receipt are both captured.</div>
+                <div class="info-chip">Completion exchange stays pending until the title, RL1 forms, and seller identity pack are confirmed.</div>
+                <div class="info-chip">Registration is the only step that can flip the plot to sold.</div>
             </div>
         </div>
         <div>
             <div class="section-heading compact">
-                <span class="section-kicker">Disputes</span>
-                <h2>What happens when the deal goes sideways</h2>
+                <span class="section-kicker">Next move</span>
+                <h2>What AgriPlot should do from this page</h2>
             </div>
             <div class="rule-list">
-                {% for rule in dispute_rules %}
                 <article class="rule-card">
-                    <span class="rule-index">0{{ forloop.counter }}</span>
-                    <p>{{ rule }}</p>
+                    <span class="rule-index">01</span>
+                    <p>The buyer first understands the legal workflow here instead of landing directly on a payment screen.</p>
                 </article>
-                {% endfor %}
+                <article class="rule-card">
+                    <span class="rule-index">02</span>
+                    <p>Only after this overview should the buyer continue to the commitment-fee checkout.</p>
+                </article>
+                <article class="rule-card">
+                    <span class="rule-index">03</span>
+                    <p>After payment success, AgriPlot should open the Due Diligence workspace, not a generic payment detail page.</p>
+                </article>
             </div>
-        </div>
-    </div>
-</section>
-
-<section class="payments-section" id="methods">
-    <div class="payments-shell">
-        <div class="section-heading">
-            <span class="section-kicker">Methods</span>
-            <h2>Payment methods designed into the workspace</h2>
-            <p>The app is structured to support mobile money, card, bank transfer, wallet balance, and manual escrow operations in one backend.</p>
-        </div>
-        <div class="method-grid">
-            {% for method in method_cards %}
-            <article class="method-card tone-{{ method.tone }}">
-                <h3>{{ method.name }}</h3>
-                <p>{{ method.description }}</p>
-            </article>
-            {% endfor %}
         </div>
     </div>
 </section>

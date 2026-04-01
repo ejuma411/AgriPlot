@@ -41,11 +41,18 @@
                     <div class="card-heading">
                         <h2>Payment summary</h2>
                     </div>
+                    {% if payment.transaction_type == 'purchase' %}
+                    <div class="workspace-notice mb-3">
+                        <strong>Legal escrow workflow</strong>
+                        <div>This checkout opens the Kenyan land-transfer workflow rather than ending at payment. The plot is held for due diligence first, then the agreement, consents, stamp duty, completion exchange, and registry transfer must all be evidenced in order.</div>
+                    </div>
+                    {% endif %}
                     {% if is_payment_buyer and closing_steps %}
                     <div class="mini-note mb-3">
                         <strong>Buyer next step</strong>
                         <div>{{ payment.buyer_next_step_summary }}</div>
                         <div class="mt-1">{{ payment.buyer_next_step_instruction }}</div>
+                        <div class="mt-1">Assigned to: {{ payment.current_assigned_party }}</div>
                     </div>
                     {% endif %}
                     {% if payment.transaction_type == 'purchase' or payment.transaction_type == 'lease' %}
@@ -55,6 +62,27 @@
                         {% if payment.plot and payment.plot.availability_notes %}
                         <div class="mt-1 text-muted">{{ payment.plot.availability_notes }}</div>
                         {% endif %}
+                    </div>
+                    {% endif %}
+                    {% if payment.transaction_type == 'purchase' and payment.due_diligence_lock_message %}
+                    <div class="mini-note mb-3">
+                        <strong>Due diligence lock</strong>
+                        <div>{{ payment.due_diligence_lock_message }}</div>
+                    </div>
+                    {% endif %}
+                    {% if payment.transaction_type == 'purchase' and payment.advocate_details %}
+                    <div class="mini-note mb-3">
+                        <strong>Advocate details</strong>
+                        <div>Buyer advocate: {{ payment.advocate_details.buyer_name|default:"Pending" }}{% if payment.advocate_details.buyer_phone %} · {{ payment.advocate_details.buyer_phone }}{% endif %}</div>
+                        <div>Seller advocate: {{ payment.advocate_details.seller_name|default:"Pending" }}{% if payment.advocate_details.seller_phone %} · {{ payment.advocate_details.seller_phone }}{% endif %}</div>
+                    </div>
+                    {% endif %}
+                    {% if payment.transaction_type == 'purchase' and payment.due_diligence_documents %}
+                    <div class="mini-note mb-3">
+                        <strong>Due diligence pack</strong>
+                        {% for item in payment.due_diligence_documents %}
+                        <div><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a> — {{ item.note }}</div>
+                        {% endfor %}
                     </div>
                     {% endif %}
                     <div class="summary-grid">
@@ -69,10 +97,48 @@
                         <div><span>Transfer stage</span><strong>{{ payment.transfer_status_label }}</strong></div>
                         {% endif %}
                     </div>
+                    {% if payment.workflow_related_payments %}
+                    <div class="mini-note mt-3">
+                        <strong>Recorded deal payments</strong>
+                        <div>Total requested across this deal: KES {{ payment.workflow_total_requested_amount|floatformat:2|intcomma }}</div>
+                        <div>Total paid so far: KES {{ payment.workflow_total_paid_amount|floatformat:2|intcomma }}</div>
+                    </div>
+                    {% endif %}
                     {% if payment.description %}
                     <p class="summary-description">{{ payment.description }}</p>
                     {% endif %}
                 </section>
+
+                {% if payment.workflow_related_payments %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <h2>Deal payment record</h2>
+                    </div>
+                    <div class="payment-list">
+                        {% for related_payment in payment.workflow_related_payments %}
+                        <article class="payment-row">
+                            <div class="payment-row-main">
+                                <div class="payment-title-row">
+                                    <h3>{{ related_payment.get_category_display }}</h3>
+                                    <span class="status-pill status-{{ related_payment.status_badge }}">{{ related_payment.get_status_display }}</span>
+                                </div>
+                                <p>{{ related_payment.internal_reference }}</p>
+                                <div class="payment-meta">
+                                    <span>{{ related_payment.get_method_display }}</span>
+                                    <span>{{ related_payment.created_at|date:"M d, Y H:i" }}</span>
+                                </div>
+                            </div>
+                            <div class="payment-row-side">
+                                <strong>KES {{ related_payment.amount|floatformat:2|intcomma }}</strong>
+                                {% if related_payment.pk != payment.pk %}
+                                <a href="{% url 'payments:detail' related_payment.pk %}" class="text-link">Open</a>
+                                {% endif %}
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
 
                 <section class="content-card">
                     <div class="card-heading">
@@ -113,11 +179,14 @@
                         <article class="milestone-item">
                             <div class="milestone-number">{{ step.sequence }}</div>
                             <div class="w-100">
-                                <h3>{{ step.title }}</h3>
-                                <p>{{ step.get_status_display }} · Responsible: {{ step.responsible_party_label }}{% if step.document_name %} · Required: {{ step.document_name }}{% endif %}</p>
-                                {% if step.guidance %}
-                                <div class="mini-note">{{ step.guidance }}</div>
+                                <h3>{{ step.display_title }}</h3>
+                                <p>{{ step.get_status_display }} · Responsible: {{ step.responsible_party_label }}{% if step.display_document_name %} · Required: {{ step.display_document_name }}{% endif %}</p>
+                                {% if step.display_guidance %}
+                                <div class="mini-note">{{ step.display_guidance }}</div>
                                 {% endif %}
+                                <div class="mini-note mt-2">
+                                    <a href="{% url 'payments:closing_step_workspace' payment.pk step.pk %}" class="text-link">Open dedicated step workspace</a>
+                                </div>
                                 {% if is_payment_buyer %}
                                 <div class="mini-note mt-2"><strong>Your way forward:</strong> {{ step.buyer_instruction }}</div>
                                 {% endif %}
@@ -183,6 +252,34 @@
             </div>
 
             <aside class="detail-side">
+                {% if is_payment_buyer and payment.buyer_journey_steps %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>{{ payment.buyer_journey_title }}</h2>
+                            <p class="summary-description mb-0">{{ payment.buyer_journey_intro }}</p>
+                        </div>
+                        <strong>{{ payment.buyer_journey_progress_value }}%</strong>
+                    </div>
+                    <div class="progress-track mb-3">
+                        <span class="progress-fill" style="width: {{ payment.buyer_journey_progress_value }}%;"></span>
+                    </div>
+                    <div class="milestone-list">
+                        {% for journey_step in payment.buyer_journey_steps %}
+                        <article class="milestone-item">
+                            <div class="milestone-number">{{ forloop.counter }}</div>
+                            <div>
+                                <h3>{{ journey_step.title }}</h3>
+                                <p>
+                                    {% if journey_step.status == 'completed' %}Completed{% elif journey_step.status == 'in_progress' %}In progress{% elif journey_step.status == 'blocked' %}Blocked{% else %}Pending{% endif %}
+                                </p>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
                 <section class="content-card">
                     <div class="card-heading">
                         <h2>Quick actions</h2>

@@ -252,6 +252,245 @@
     background: #ffffff;
 }
 
+.ownership-dashboard {
+    padding-top: 2.5rem;
+    background: linear-gradient(180deg, #fffdfa 0%, #f8f5ec 100%);
+}
+
+.ownership-process-card {
+    position: relative;
+    background: #fff;
+    border-radius: 34px;
+    padding: 2.4rem 2rem 0;
+    box-shadow: 0 30px 70px rgba(58, 42, 18, 0.12);
+    overflow: hidden;
+}
+
+.ownership-ribbons {
+    position: absolute;
+    left: -2rem;
+    top: -1rem;
+    display: grid;
+    gap: 0.55rem;
+}
+
+.ownership-ribbons span {
+    width: 12rem;
+    height: 0.8rem;
+    background: #d91f18;
+    border-radius: 999px;
+    transform-origin: left center;
+}
+
+.ownership-ribbons span:nth-child(1) {
+    transform: rotate(-3deg);
+}
+
+.ownership-ribbons span:nth-child(2) {
+    width: 10.8rem;
+    transform: rotate(-5deg);
+}
+
+.ownership-ribbons span:nth-child(3) {
+    width: 9.4rem;
+    transform: rotate(-7deg);
+}
+
+.ownership-brand {
+    position: absolute;
+    right: 2rem;
+    top: 1.4rem;
+    text-align: right;
+    color: #ca2018;
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    font-weight: 700;
+    font-size: 2rem;
+    line-height: 0.9;
+}
+
+.ownership-brand small {
+    color: #173a29;
+    font-size: 0.8rem;
+    letter-spacing: 0.18em;
+}
+
+.ownership-title-wrap {
+    text-align: center;
+    padding: 1.6rem 8rem 1.8rem;
+}
+
+.ownership-title {
+    margin: 0.5rem 0 0.9rem;
+    color: #d61f18;
+    text-decoration: underline;
+    text-underline-offset: 0.2rem;
+    font-size: clamp(1.9rem, 3vw, 3rem);
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.ownership-subtitle {
+    color: #234533;
+    margin: 0;
+    font-weight: 600;
+}
+
+.ownership-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 1.2rem 1rem;
+    align-items: center;
+}
+
+.ownership-step {
+    min-height: 12.5rem;
+    padding: 1.15rem 1rem 1.25rem;
+    border-radius: 26px;
+    background: #fff;
+    text-align: center;
+    border: 1px solid rgba(16, 44, 31, 0.08);
+    box-shadow: 0 14px 35px rgba(16, 44, 31, 0.08);
+}
+
+.ownership-step-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.ownership-icon {
+    width: 4rem;
+    height: 4rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #1f5b39;
+    color: #fff;
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    letter-spacing: 0.08em;
+}
+
+.ownership-status-chip {
+    padding: 0.3rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: #e5efe8;
+    color: #1f5b39;
+}
+
+.ownership-step h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.12rem;
+    line-height: 1.1;
+    color: #132f22;
+    font-family: "Space Grotesk", "Segoe UI", sans-serif;
+}
+
+.ownership-step p {
+    margin: 0;
+    color: #344a3f;
+    font-size: 0.95rem;
+    line-height: 1.45;
+}
+
+.ownership-arrow {
+    align-self: center;
+    justify-self: center;
+    color: #111;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    font-size: 1.2rem;
+}
+
+.ownership-step-completed {
+    background: linear-gradient(180deg, #f7fff7 0%, #eefaf0 100%);
+    border-color: rgba(31, 139, 76, 0.22);
+}
+
+.ownership-step-completed .ownership-status-chip {
+    background: #1f8b4c;
+    color: #fff;
+}
+
+.ownership-step-current {
+    background: linear-gradient(180deg, #fff8ea 0%, #fff0ca 100%);
+    border-color: rgba(240, 180, 41, 0.34);
+    transform: translateY(-0.15rem);
+}
+
+.ownership-step-current .ownership-status-chip {
+    background: #f0b429;
+    color: #173a29;
+}
+
+.ownership-step-pending .ownership-icon {
+    background: #e8efe9;
+    color: #204530;
+}
+
+.ownership-bottom-bar {
+    margin-top: 1.8rem;
+    background: #d91f18;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.4rem;
+}
+
+.ownership-bottom-copy {
+    display: grid;
+    gap: 0.2rem;
+}
+
+.ownership-bottom-copy strong {
+    font-size: 1.05rem;
+}
+
+.ownership-bottom-copy span {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.92rem;
+}
+
+.ownership-bottom-bar .hero-btn-primary {
+    background: #fff;
+    color: #c11711;
+    box-shadow: none;
+}
+
+.ownership-stats-grid {
+    margin-top: 1.4rem;
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.ownership-stats-grid .stat-card {
+    background: #fff;
+    border-radius: 22px;
+    padding: 1.1rem 1rem;
+    box-shadow: 0 14px 34px rgba(16, 44, 31, 0.08);
+}
+
+.ownership-stats-grid .stat-card span {
+    display: block;
+    color: #6a7780;
+    margin-bottom: 0.35rem;
+}
+
+.ownership-stats-grid .stat-card strong {
+    color: #173a29;
+    font-size: 1.25rem;
+}
+
 .journey-card {
     padding: 1.4rem;
     border: 1px solid rgba(23, 58, 41, 0.08);
@@ -697,6 +936,18 @@
     .dashboard-hero-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .ownership-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ownership-arrow {
+        display: none;
+    }
+
+    .ownership-stats-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 680px) {
@@ -743,5 +994,34 @@
     .payment-row-side,
     .detail-header-side {
         text-align: left;
+    }
+
+    .ownership-process-card {
+        padding: 1.5rem 1rem 0;
+        border-radius: 24px;
+    }
+
+    .ownership-title-wrap {
+        padding: 2.6rem 0 1.2rem;
+    }
+
+    .ownership-brand {
+        position: static;
+        text-align: center;
+        margin-bottom: 0.9rem;
+    }
+
+    .ownership-grid,
+    .ownership-stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ownership-step {
+        min-height: auto;
+    }
+
+    .ownership-bottom-bar {
+        flex-direction: column;
+        align-items: flex-start;
     }
 }

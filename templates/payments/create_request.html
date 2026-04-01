@@ -15,9 +15,9 @@
     <div class="payments-shell create-layout">
         <div class="form-card">
             <div class="section-heading compact">
-                <span class="section-kicker">Paystack + M-Pesa</span>
-                <h2>Pay with M-Pesa</h2>
-                <p>Choose whether this is a purchase or lease, enter a small test amount, and continue to Paystack for the M-Pesa payment prompt.</p>
+                <span class="section-kicker">Legal escrow workflow</span>
+                <h2>Start the land transfer workflow</h2>
+                <p>This checkout opens the Kenyan land transfer path: pay the commitment fee, lock the plot for due diligence, then continue through agreement, consents, tax, completion, and final registration.</p>
             </div>
             {% if selected_plot %}
             <div class="workspace-notice mb-3">
@@ -26,9 +26,17 @@
             </div>
             {% endif %}
             <div class="workspace-notice mb-3">
-                <strong>Testing mode:</strong> this checkout is currently limited to direct land purchase and lease flows through M-Pesa.
-                <div class="mt-2" id="amountPolicyHint">Enter any small test amount, complete the M-Pesa flow, and verify the deal lifecycle from pending to released.</div>
+                <strong>Testing mode:</strong> this checkout simulates the commitment fee that opens the legal escrow workflow for direct land purchase and lease deals.
+                <div class="mt-2" id="amountPolicyHint">AgriPlot will calculate the amount for the selected sale stage from the plot price so the buyer cannot modify it manually.</div>
             </div>
+            {% if current_payment_stage_label %}
+            <div class="workspace-notice mb-3">
+                <strong>Current payment stage:</strong> {{ current_payment_stage_label }}
+                {% if current_payment_stage_message %}
+                <div class="mt-2">{{ current_payment_stage_message }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
             <form method="post" class="payments-form">
                 {% csrf_token %}
                 {% if form.non_field_errors %}
@@ -60,7 +68,9 @@
                     }
                 </style>
                 {% for field in form %}
-                {% if field.name != 'phone_number' and field.name != 'title' and field.name != 'description' and field.name != 'method' and field.name != 'escrow_enabled' and field.name != 'lease_start_date' and field.name != 'lease_end_date' and field.name != 'due_at' and field.name != 'mpesa_reference' and field.name != 'mpesa_account_reference' and field.name != 'cardholder_name' and field.name != 'card_last4' and field.name != 'bank_name' and field.name != 'bank_account_name' and field.name != 'bank_account_number' and field.name != 'airtel_number' and field.name != 'wallet_identifier' and field.name != 'manual_escrow_notes' %}
+                {% if field.is_hidden %}
+                {{ field }}
+                {% elif field.name != 'phone_number' and field.name != 'title' and field.name != 'description' and field.name != 'method' and field.name != 'escrow_enabled' and field.name != 'lease_start_date' and field.name != 'lease_end_date' and field.name != 'due_at' and field.name != 'mpesa_reference' and field.name != 'mpesa_account_reference' and field.name != 'cardholder_name' and field.name != 'card_last4' and field.name != 'bank_name' and field.name != 'bank_account_name' and field.name != 'bank_account_number' and field.name != 'airtel_number' and field.name != 'wallet_identifier' and field.name != 'manual_escrow_notes' %}
                 <div class="field-block {% if field.name == 'escrow_enabled' %}field-inline{% endif %}">
                     <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
                     {{ field }}
@@ -73,13 +83,9 @@
                 </div>
                 {% endif %}
                 {% endfor %}
-                {{ form.title }}
-                {{ form.description }}
-                {{ form.method }}
-                {{ form.escrow_enabled }}
 
                 <div class="workspace-notice mb-3">
-                    <strong>Payment deadline:</strong> AgriPlot sets this automatically, so the buyer only needs to complete the M-Pesa prompt in time.
+                    <strong>Due diligence lock:</strong> once payment succeeds, AgriPlot opens a 7-day lock so the buyer can review the search and survey pack before the legal sale stages continue.
                 </div>
 
                 <div class="method-detail-panel" data-transaction-panel="lease">
@@ -102,7 +108,7 @@
                 <div class="method-detail-panel" style="display:grid;">
                     <h3 class="form-label">M-Pesa Number</h3>
                     <div class="workspace-notice">
-                        We are keeping this simple: enter the M-Pesa number and AgriPlot will hand off to Paystack for the M-Pesa checkout. The buyer enters their PIN on the phone, not on this form.
+                        Enter the buyer's M-Pesa number for the commitment fee. The buyer will approve the payment on the phone, and AgriPlot will open the legal transaction tracker after success.
                     </div>
                     <div class="field-block">
                         <label for="{{ form.phone_number.id_for_label }}" class="form-label">{{ form.phone_number.label }}</label>
@@ -114,30 +120,39 @@
                     </div>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" class="hero-btn hero-btn-primary">Continue to Paystack</button>
+                    <button type="submit" class="hero-btn hero-btn-primary">
+                        {% if current_payment_stage_label %}
+                        Pay {{ current_payment_stage_label|lower }}
+                        {% else %}
+                        Continue to payment
+                        {% endif %}
+                    </button>
                     <a href="{% url 'payments:dashboard' %}" class="hero-btn hero-btn-secondary hero-btn-light">Back to workspace</a>
                 </div>
             </form>
         </div>
         <aside class="side-panel-stack">
             <div class="hero-panel-card">
-                <span class="panel-label">How it works</span>
-                <ul class="hero-list">
-                    <li>Buyer chooses purchase or lease</li>
-                    <li>Buyer enters a small test amount</li>
-                    <li>Buyer enters the M-Pesa number</li>
-                    <li>Paystack opens the M-Pesa payment step</li>
+                <span class="panel-label">Your next 3 moves</span>
+                <ul class="hero-list" id="checkoutJourneySteps">
+                    <li>AgriPlot checks the current legal step and opens only the valid payment stage.</li>
+                    <li>Pay the calculated amount for this stage without editing it manually.</li>
+                    <li>Return to the tracker and continue the assigned legal workspace, not guesswork.</li>
                 </ul>
             </div>
             <div class="hero-panel-card">
-                <span class="panel-label">Test Goal</span>
-                <p class="mb-0 text-muted">This flow is intentionally narrow right now: test that a buyer can successfully buy or lease land, and once released, nobody else can proceed with the same sold or occupied plot.</p>
+                <span class="panel-label">What happens after checkout</span>
+                <p class="mb-0 text-muted" id="checkoutJourneyTitle">The transaction tracker will open the real next legal step for this land deal so the buyer is not left guessing.</p>
+                <div class="workspace-notice mt-3" id="checkoutLandNote">
+                    AgriPlot adjusts the legal tracker to the selected land type, so agricultural land, residential plots, and commercial sites do not all follow the exact same closing path.
+                </div>
             </div>
         </aside>
     </div>
 </section>
 {{ checkout_amounts|json_script:"checkout-amounts" }}
 {{ plot_listing_types|json_script:"plot-listing-types" }}
+{{ plot_checkout_contexts|json_script:"plot-checkout-contexts" }}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const plot = document.getElementById("id_plot");
@@ -147,14 +162,19 @@ document.addEventListener("DOMContentLoaded", function () {
     const hint = document.getElementById("amountPolicyHint");
     const dataNode = document.getElementById("checkout-amounts");
     const plotTypeNode = document.getElementById("plot-listing-types");
+    const plotContextNode = document.getElementById("plot-checkout-contexts");
     const transactionPanels = document.querySelectorAll("[data-transaction-panel]");
+    const journeyTitle = document.getElementById("checkoutJourneyTitle");
+    const journeySteps = document.getElementById("checkoutJourneySteps");
+    const landNote = document.getElementById("checkoutLandNote");
 
-    if (!transactionType || !category || !amount || !hint || !dataNode || !plotTypeNode) {
+    if (!transactionType || !category || !amount || !hint || !dataNode || !plotTypeNode || !plotContextNode) {
         return;
     }
 
     const presets = JSON.parse(dataNode.textContent);
     const plotListingTypes = JSON.parse(plotTypeNode.textContent);
+    const plotContexts = JSON.parse(plotContextNode.textContent);
 
     function formatKes(value) {
         const number = Number(value);
@@ -169,9 +189,10 @@ document.addEventListener("DOMContentLoaded", function () {
         const cat = category.value;
         const suggested = presets?.[tx]?.[cat] || "";
         if (suggested) {
-            hint.textContent = "Suggested amount for this flow: " + formatKes(suggested) + ". You can still enter any small test amount for the demo.";
+            amount.value = Number(suggested).toFixed(2);
+            hint.textContent = "Fixed amount for this stage: " + formatKes(suggested) + ". AgriPlot calculates this from the sale price and stage rules.";
         } else {
-            hint.textContent = "Enter any small test amount you want to use for this transaction.";
+            hint.textContent = "AgriPlot will calculate the amount automatically once the deal type and payment stage are fully selected.";
         }
     }
 
@@ -195,19 +216,82 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    function getJourneyContent() {
+        const plotContext = plot ? plotContexts?.[plot.value] : null;
+        const tx = transactionType.value;
+        const landType = plotContext?.land_type || "agricultural";
+        const landTypeDisplay = plotContext?.land_type_display || "land";
+
+        if (tx === "lease") {
+            return {
+                title: `After this ${landTypeDisplay.toLowerCase()} lease checkout`,
+                note: landType === "agricultural"
+                    ? "The tracker will guide the buyer through lease confirmation, site handover, and any farming-use confirmations before occupation."
+                    : "The tracker will guide the buyer through lease agreement review, payment proof, and handover for this site.",
+                steps: [
+                    "Complete the M-Pesa commitment and return to AgriPlot.",
+                    "Use the guided tracker to confirm the lease agreement and payment proof.",
+                    "Follow the handover step so possession is documented before occupation."
+                ]
+            };
+        }
+
+        if (landType === "agricultural") {
+            return {
+                title: "After this agricultural land checkout",
+                note: "Agricultural land follows the stricter Kenyan path: due diligence lock, agreement, Land Control Board consent, valuation and stamp duty, completion exchange, and final registration.",
+                steps: [
+                    "Return from Paystack and open the due diligence workspace instead of guessing what comes next.",
+                    "Work through the agricultural purchase tracker, including the agreement, Land Control Board consent, and stamp duty stages.",
+                    "The plot only becomes sold after registry transfer is confirmed, not just because payment succeeded."
+                ]
+            };
+        }
+
+        return {
+            title: `After this ${landTypeDisplay.toLowerCase()} purchase checkout`,
+            note: "AgriPlot adapts the transfer journey for the selected land type, including the right consent, clearance, valuation, and registration steps.",
+            steps: [
+                "Return from Paystack and open the due diligence workspace.",
+                "Work through the agreement, consent or clearance, valuation, and completion steps.",
+                "The plot only becomes sold after final registration proof is uploaded."
+            ]
+        };
+    }
+
+    function updateJourneyPanel() {
+        if (!journeyTitle || !journeySteps || !landNote) {
+            return;
+        }
+        const content = getJourneyContent();
+        journeyTitle.textContent = content.title;
+        landNote.textContent = content.note;
+        journeySteps.innerHTML = "";
+        content.steps.forEach((step) => {
+            const item = document.createElement("li");
+            item.textContent = step;
+            journeySteps.appendChild(item);
+        });
+    }
+
     transactionType.addEventListener("change", updateAmountHint);
     transactionType.addEventListener("change", updateTransactionPanels);
-    category.addEventListener("change", updateAmountHint);
+    transactionType.addEventListener("change", updateJourneyPanel);
+    if (category.type !== "hidden") {
+        category.addEventListener("change", updateAmountHint);
+    }
     if (plot) {
         plot.addEventListener("change", function () {
             syncTransactionTypeFromPlot();
             updateTransactionPanels();
             updateAmountHint();
+            updateJourneyPanel();
         });
     }
     syncTransactionTypeFromPlot();
     updateAmountHint();
     updateTransactionPanels();
+    updateJourneyPanel();
 });
 </script>
 {% endblock %}

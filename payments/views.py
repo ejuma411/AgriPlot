@@ -2,6 +2,7 @@ import logging
 import hashlib
 import hmac
 import json
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib import messages
@@ -16,6 +17,7 @@ from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, TemplateView
 from django.views.decorators.csrf import csrf_exempt
 
+from django.utils import timezone
 from listings.models import Plot, UserInterest
 from notifications.notification_service import NotificationService
 
@@ -32,6 +34,7 @@ from .permissions import (
     user_can_create_payment,
     user_can_open_dispute,
     user_can_update_closing_steps,
+    user_can_update_specific_closing_step,
     user_can_transition_payment,
     user_can_view_payment,
     user_is_finance_admin,
@@ -129,6 +132,7 @@ def _notify_payment_activity(payment, event):
 
 def _handle_successful_paystack_payment(payment, verification, actor=None):
     _ensure_payment_workflow_seeded(payment)
+    anchor = payment.workflow_anchor_payment
     metadata = dict(payment.metadata or {})
     metadata["paystack_verification"] = {
         "status": verification.get("status", ""),
@@ -136,11 +140,45 @@ def _handle_successful_paystack_payment(payment, verification, actor=None):
         "paid_at": verification.get("paid_at", ""),
         "channel": verification.get("channel", ""),
     }
+    if (
+        payment.transaction_type == PaymentRequest.TransactionType.PURCHASE
+        and "due_diligence_lock_expires_at" not in metadata
+    ):
+        lock_anchor = payment.paid_at or timezone.now()
+        metadata["due_diligence_lock_expires_at"] = (
+            lock_anchor + timedelta(days=7)
+        ).isoformat()
+        metadata["due_diligence_pack_ready"] = True
     payment.metadata = metadata
 
     if payment.status == PaymentRequest.Status.PENDING:
         payment.apply_transition("mark_paid", actor=actor)
         _notify_payment_activity(payment, "paid")
+
+    if anchor.pk != payment.pk:
+        category_to_step = {
+            PaymentRequest.Category.AGREEMENT_DEPOSIT: "agreement",
+            PaymentRequest.Category.STAMP_DUTY: "stamp_duty",
+            PaymentRequest.Category.COMPLETION_BALANCE: "completion_docs",
+        }
+        target_code = category_to_step.get(payment.category)
+        if target_code:
+            target_step = anchor.closing_steps.filter(code=target_code).first()
+            if target_step:
+                note_line = (
+                    f"Payment recorded on {timezone.localtime(timezone.now()):%b %d, %Y %I:%M %p}: "
+                    f"{payment.get_category_display()} ({payment.internal_reference}) for KES {payment.amount:,.2f}."
+                )
+                existing_notes = target_step.notes.strip()
+                target_step.notes = f"{existing_notes}\n{note_line}".strip() if existing_notes else note_line
+                if target_step.status == PaymentClosingStep.Status.PENDING:
+                    target_step.status = PaymentClosingStep.Status.IN_PROGRESS
+                target_step.save(update_fields=["notes", "status", "updated_at"])
+                anchor.add_event(
+                    "stage_payment_recorded",
+                    f"{payment.get_category_display()} recorded for {target_step.display_title}: KES {payment.amount:,.2f}.",
+                    actor=actor,
+                )
 
     _maybe_auto_complete_test_deal(payment)
     payment.save(update_fields=["metadata", "updated_at"])
@@ -222,6 +260,11 @@ def _journey_context():
 
 def _build_default_milestones(payment):
     milestone_templates = {
+        PaymentRequest.Category.COMMITMENT_FEE: [
+            "Commitment fee confirmed",
+            "Due diligence lock activated",
+            "Search and survey pack delivered",
+        ],
         PaymentRequest.Category.VIEWING_FEE: [
             "Buyer payment confirmed",
             "Seller viewing slot scheduled",
@@ -232,6 +275,11 @@ def _build_default_milestones(payment):
             "Seller uploads title and supporting documents",
             "Reservation released or refunded",
         ],
+        PaymentRequest.Category.AGREEMENT_DEPOSIT: [
+            "Agreement deposit confirmed",
+            "Sale agreement signed",
+            "Advocate escrow instructions recorded",
+        ],
         PaymentRequest.Category.VERIFICATION_PACKAGE: [
             "Payment confirmed",
             "Verification task assigned",
@@ -241,6 +289,16 @@ def _build_default_milestones(payment):
             "Funds placed in escrow",
             "Seller milestone evidence submitted",
             "Escrow released on approval",
+        ],
+        PaymentRequest.Category.STAMP_DUTY: [
+            "Government valuation captured",
+            "Stamp duty payment confirmed",
+            "Tax evidence logged",
+        ],
+        PaymentRequest.Category.COMPLETION_BALANCE: [
+            "Completion balance confirmed",
+            "Completion documents exchanged",
+            "Registration ready",
         ],
         PaymentRequest.Category.SERVICE_FEE: [
             "Payment confirmed",
@@ -264,7 +322,27 @@ def _build_default_milestones(payment):
 
 
 def _ensure_payment_workflow_seeded(payment):
-    payment.ensure_closing_steps()
+    anchor = payment.workflow_anchor_payment
+    anchor.ensure_closing_steps()
+    if anchor.status in {
+        PaymentRequest.Status.PAID,
+        PaymentRequest.Status.IN_ESCROW,
+        PaymentRequest.Status.PARTIALLY_RELEASED,
+        PaymentRequest.Status.RELEASED,
+    }:
+        started_steps = anchor.closing_steps.exclude(status=PaymentClosingStep.Status.PENDING)
+        if not started_steps.exists():
+            first_step = anchor.closing_steps.order_by("sequence").first()
+            if first_step:
+                first_step.status = PaymentClosingStep.Status.IN_PROGRESS
+                first_step.notes = (
+                    "AgriPlot activated this transaction workspace after the checkout payment succeeded."
+                )
+                first_step.save(update_fields=["status", "notes", "updated_at"])
+                anchor.add_event(
+                    "closing_step_assigned",
+                    f"Transaction workspace activated: {first_step.display_title} is now in progress.",
+                )
     if not payment.milestones.exists():
         _build_default_milestones(payment)
 
@@ -272,25 +350,87 @@ def _ensure_payment_workflow_seeded(payment):
 def _maybe_auto_complete_test_deal(payment):
     if not settings.PAYSTACK_AUTO_RELEASE_TEST_DEALS:
         return
+    if payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+        payment.add_event(
+            "test_mode_payment_recorded",
+            "Test-mode payment was recorded, but AgriPlot left the legal stages untouched so the tracker stays truthful.",
+        )
+        return
     if payment.status == PaymentRequest.Status.PAID:
         payment.apply_transition("move_escrow")
     if payment.status in {
         PaymentRequest.Status.IN_ESCROW,
         PaymentRequest.Status.PARTIALLY_RELEASED,
     }:
-        if payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
-            for code in ["agreement", "lcb_consent", "valuation", "stamp_duty", "completion_docs"]:
-                step = payment.closing_steps.filter(code=code).first()
-                if step and step.status != PaymentClosingStep.Status.COMPLETED:
-                    step.set_status(
-                        PaymentClosingStep.Status.COMPLETED,
-                        notes="Completed automatically in test mode before payment release.",
-                    )
         payment.apply_transition("release")
         payment.add_event(
             "auto_released",
             "Test-mode auto release completed so the plot status reflects the demo transaction.",
         )
+
+
+def _payment_next_workspace_url(payment):
+    anchor = payment.workflow_anchor_payment
+    _ensure_payment_workflow_seeded(anchor)
+    next_step = anchor.next_closing_step
+    if next_step:
+        return reverse(
+            "payments:closing_step_workspace",
+            kwargs={"pk": anchor.pk, "step_id": next_step.pk},
+        )
+    return reverse("payments:detail", kwargs={"pk": anchor.pk})
+
+
+def _active_deal_for_buyer_plot(user, plot, transaction_type):
+    if not getattr(user, "is_authenticated", False) or not plot:
+        return None
+    deal = (
+        PaymentRequest.objects.filter(
+            buyer=user,
+            plot=plot,
+            transaction_type=transaction_type,
+        )
+        .exclude(
+            status__in=[
+                PaymentRequest.Status.REFUNDED,
+                PaymentRequest.Status.CANCELLED,
+                PaymentRequest.Status.FAILED,
+            ]
+        )
+        .prefetch_related("closing_steps")
+        .order_by("-created_at")
+        .first()
+    )
+    if deal:
+        anchor = deal.workflow_anchor_payment
+        _ensure_payment_workflow_seeded(anchor)
+        return anchor
+    return deal
+
+
+def _recommended_payment_category(plot, user, transaction_type):
+    if transaction_type == PaymentRequest.TransactionType.PURCHASE:
+        active_deal = _active_deal_for_buyer_plot(user, plot, transaction_type)
+        if not active_deal:
+            return PaymentRequest.Category.COMMITMENT_FEE, None
+        next_step = active_deal.next_closing_step
+        if not next_step:
+            return None, active_deal
+        step_to_category = {
+            "agreement": PaymentRequest.Category.AGREEMENT_DEPOSIT,
+            "stamp_duty": PaymentRequest.Category.STAMP_DUTY,
+            "completion_docs": PaymentRequest.Category.COMPLETION_BALANCE,
+        }
+        return step_to_category.get(next_step.code), active_deal
+    return PaymentRequest.Category.COMMITMENT_FEE, None
+
+
+STEP_PAYMENT_CATEGORY_MAP = {
+    "due_diligence": PaymentRequest.Category.COMMITMENT_FEE,
+    "agreement": PaymentRequest.Category.AGREEMENT_DEPOSIT,
+    "stamp_duty": PaymentRequest.Category.STAMP_DUTY,
+    "completion_docs": PaymentRequest.Category.COMPLETION_BALANCE,
+}
 
 
 class PaymentFlowOverviewView(TemplateView):
@@ -301,6 +441,17 @@ class PaymentFlowOverviewView(TemplateView):
         context.update(_journey_context())
         context["method_cards"] = PAYMENT_METHOD_CARDS
         context["dashboard_url"] = reverse("payments:dashboard")
+        plot = None
+        plot_id = self.request.GET.get("plot")
+        if plot_id:
+            try:
+                plot = Plot.objects.select_related("landowner__user", "agent__user").get(pk=plot_id)
+            except (Plot.DoesNotExist, ValueError, TypeError):
+                plot = None
+        context["selected_plot"] = plot
+        context["workflow_start_url"] = (
+            f"{reverse('payments:create_request')}?plot={plot.pk}" if plot else reverse("payments:create_request")
+        )
         return context
 
 
@@ -330,6 +481,17 @@ class PaymentDashboardView(ListView):
         payments = self.object_list
         for payment in payments:
             _ensure_payment_workflow_seeded(payment)
+        focus_payment = next(
+            (
+                payment
+                for payment in payments
+                if payment.transaction_type in {
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.TransactionType.LEASE,
+                }
+            ),
+            payments[0] if payments else None,
+        )
         aggregates = payments.aggregate(
             total_amount=Sum("amount"),
             paid_count=Count("id", filter=Q(status=PaymentRequest.Status.PAID)),
@@ -349,6 +511,7 @@ class PaymentDashboardView(ListView):
         }
         context["method_cards"] = PAYMENT_METHOD_CARDS
         context["show_scope_notice"] = not self.request.user.is_authenticated
+        context["focus_payment"] = focus_payment
         return context
 
 
@@ -367,18 +530,88 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         except (Plot.DoesNotExist, ValueError, TypeError):
             return None
 
+    def get_selected_transaction_type(self):
+        selected_plot = self.get_selected_plot()
+        requested_type = self.request.GET.get("transaction_type") or self.request.POST.get("transaction_type")
+        if selected_plot:
+            if selected_plot.listing_type == "sale":
+                return PaymentRequest.TransactionType.PURCHASE
+            if selected_plot.listing_type == "lease":
+                return PaymentRequest.TransactionType.LEASE
+        if requested_type in {
+            PaymentRequest.TransactionType.PURCHASE,
+            PaymentRequest.TransactionType.LEASE,
+        }:
+            return requested_type
+        return PaymentRequest.TransactionType.PURCHASE
+
+    def get_stage_gate(self):
+        selected_plot = self.get_selected_plot()
+        transaction_type = self.get_selected_transaction_type()
+        if not selected_plot:
+            return {
+                "forced_category": None,
+                "active_deal": None,
+                "payment_required": False,
+                "stage_title": "",
+                "stage_message": "",
+            }
+        forced_category, active_deal = _recommended_payment_category(
+            selected_plot,
+            self.request.user,
+            transaction_type,
+        )
+        stage_title = ""
+        stage_message = ""
+        payment_required = bool(forced_category)
+        if forced_category:
+            stage_title = dict(PaymentRequest.Category.choices).get(forced_category, "Current payment stage")
+            stage_message = (
+                f"AgriPlot has locked this checkout to {stage_title.lower()} based on the current legal step, "
+                "so the buyer cannot accidentally pay for the wrong stage."
+            )
+        elif active_deal and active_deal.next_closing_step:
+            stage_title = active_deal.next_closing_step.display_title
+            stage_message = (
+                f"The transaction is currently at '{stage_title}'. This stage needs legal work or evidence, "
+                "not a new payment."
+            )
+        return {
+            "forced_category": forced_category,
+            "active_deal": active_deal,
+            "payment_required": payment_required,
+            "stage_title": stage_title,
+            "stage_message": stage_message,
+        }
+
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
         kwargs["selected_plot"] = self.get_selected_plot()
+        kwargs["forced_category"] = self.get_stage_gate()["forced_category"]
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["method_cards"] = PAYMENT_METHOD_CARDS
         context["selected_plot"] = self.get_selected_plot()
+        stage_gate = self.get_stage_gate()
+        context["stage_gate"] = stage_gate
+        context["forced_category"] = stage_gate["forced_category"]
+        context["current_payment_stage_label"] = stage_gate["stage_title"]
+        context["current_payment_stage_message"] = stage_gate["stage_message"]
         context["plot_listing_types"] = {
             str(plot.pk): plot.listing_type
+            for plot in context["form"].fields["plot"].queryset
+        }
+        context["plot_checkout_contexts"] = {
+            str(plot.pk): {
+                "listing_type": plot.listing_type,
+                "land_type": plot.land_type,
+                "land_type_display": plot.get_land_type_display(),
+                "market_zone_display": plot.get_market_zone_display(),
+                "title": plot.title,
+            }
             for plot in context["form"].fields["plot"].queryset
         }
         context["selected_plot_availability"] = (
@@ -389,27 +622,62 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         selected_plot = context["selected_plot"]
         context["checkout_amounts"] = {
             "purchase": {
+                "commitment_fee": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.Category.COMMITMENT_FEE,
+                ) or ""),
                 "reservation_deposit": str(PaymentRequestForm.calculate_amount(
                     selected_plot,
                     PaymentRequest.TransactionType.PURCHASE,
                     PaymentRequest.Category.RESERVATION_DEPOSIT,
                 ) or ""),
+                "agreement_deposit": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.Category.AGREEMENT_DEPOSIT,
+                ) or ""),
                 "escrow_deposit": str(PaymentRequestForm.calculate_amount(
                     selected_plot,
                     PaymentRequest.TransactionType.PURCHASE,
                     PaymentRequest.Category.ESCROW_DEPOSIT,
+                ) or ""),
+                "stamp_duty": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.Category.STAMP_DUTY,
+                ) or ""),
+                "completion_balance": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.Category.COMPLETION_BALANCE,
                 ) or ""),
             },
             "lease": {
+                "commitment_fee": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.LEASE,
+                    PaymentRequest.Category.COMMITMENT_FEE,
+                ) or ""),
                 "reservation_deposit": str(PaymentRequestForm.calculate_amount(
                     selected_plot,
                     PaymentRequest.TransactionType.LEASE,
                     PaymentRequest.Category.RESERVATION_DEPOSIT,
                 ) or ""),
+                "agreement_deposit": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.LEASE,
+                    PaymentRequest.Category.AGREEMENT_DEPOSIT,
+                ) or ""),
                 "escrow_deposit": str(PaymentRequestForm.calculate_amount(
                     selected_plot,
                     PaymentRequest.TransactionType.LEASE,
                     PaymentRequest.Category.ESCROW_DEPOSIT,
+                ) or ""),
+                "completion_balance": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.LEASE,
+                    PaymentRequest.Category.COMPLETION_BALANCE,
                 ) or ""),
             },
         }
@@ -420,9 +688,22 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         if not decision.allowed:
             messages.error(request, decision.reason)
             return redirect("payments:dashboard")
+        stage_gate = self.get_stage_gate()
+        if (
+            stage_gate["active_deal"]
+            and not stage_gate["payment_required"]
+            and stage_gate["active_deal"].next_closing_step
+        ):
+            next_step = stage_gate["active_deal"].next_closing_step
+            messages.info(
+                request,
+                f"This deal is currently at '{next_step.display_title}'. AgriPlot has opened the legal workspace instead of another payment page.",
+            )
+            return redirect(_payment_next_workspace_url(stage_gate["active_deal"]))
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
+        stage_gate = self.get_stage_gate()
         payment = form.save(commit=False)
         if self.request.user.is_authenticated:
             payment.buyer = self.request.user
@@ -432,6 +713,15 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                 payment.seller = payment.plot.landowner.user
             elif payment.plot.agent_id and payment.plot.agent.user_id:
                 payment.seller = payment.plot.agent.user
+
+        metadata = dict(payment.metadata or {})
+        if (
+            stage_gate["active_deal"]
+            and stage_gate["active_deal"].pk != payment.pk
+            and stage_gate["payment_required"]
+        ):
+            metadata["workflow_root_id"] = stage_gate["active_deal"].pk
+        payment.metadata = metadata
 
         payment.status = PaymentRequest.Status.PENDING
         super().form_valid(form)
@@ -585,6 +875,7 @@ class PaystackCallbackView(View):
                 request,
                 f"Payment {payment.internal_reference} verified successfully through Paystack.",
             )
+            return redirect(_payment_next_workspace_url(payment))
         else:
             metadata = dict(payment.metadata or {})
             metadata["paystack_verification"] = {
@@ -659,6 +950,49 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
         current_index = next((idx for idx, item in enumerate(closing_steps) if item.pk == step.pk), 0)
         previous_step = closing_steps[current_index - 1] if current_index > 0 else None
         next_step = closing_steps[current_index + 1] if current_index + 1 < len(closing_steps) else None
+        recorded_submitter = ((payment.metadata or {}).get("step_submitters") or {}).get(step.code, {})
+        payment_category = STEP_PAYMENT_CATEGORY_MAP.get(step.code)
+        payment_stage_label = (
+            dict(PaymentRequest.Category.choices).get(payment_category, "")
+            if payment_category
+            else ""
+        )
+        payment_amount = (
+            PaymentRequestForm.calculate_amount(payment.plot, payment.transaction_type, payment_category)
+            if payment_category
+            else None
+        )
+        step_action_checklist = {
+            "due_diligence": [
+                "Open every delivered search, survey, and land-use document.",
+                "Confirm the plot details match what you expect on the ground.",
+                "Save any review notes before moving to the agreement stage.",
+            ],
+            "agreement": [
+                "Enter the buyer and seller advocate details.",
+                "Upload the executed sale agreement once both sides sign.",
+                "Pay the agreement deposit through the legal workflow button below.",
+            ],
+            "lcb_consent": [
+                "Capture the Land Control Board or transfer consent reference.",
+                "Enter the meeting date.",
+                "Upload the consent pack before the next stage can unlock.",
+            ],
+            "stamp_duty": [
+                "Enter the official market value from the government valuer.",
+                "Enter the assessed stamp duty amount.",
+                "Upload the KRA/eCitizen receipt and clear the payment stage if required.",
+            ],
+            "completion_docs": [
+                "Confirm the original title has been handed over.",
+                "Confirm the seller ID/KRA copies are in the file.",
+                "Confirm the signed transfer forms are in order, then clear the completion balance stage.",
+            ],
+            "registration": [
+                "Upload the fresh search or title proof showing the buyer as proprietor.",
+                "Use this final proof to complete the legal transfer on AgriPlot.",
+            ],
+        }.get(step.code, [])
 
         context.update(
             {
@@ -668,8 +1002,20 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
                 "next_step": next_step,
                 "closing_steps": closing_steps,
                 "is_payment_buyer": payment.buyer_id == self.request.user.id,
-                "can_update_closing_steps": user_can_update_closing_steps(self.request.user, payment).allowed,
-                "closing_step_form": PaymentClosingStepForm(instance=step),
+                "can_update_closing_steps": user_can_update_specific_closing_step(
+                    self.request.user, payment, step
+                ).allowed,
+                "closing_step_form": PaymentClosingStepForm(instance=step, user=self.request.user),
+                "step_payment_category": payment_category,
+                "step_payment_label": payment_stage_label,
+                "step_payment_amount": payment_amount,
+                "step_payment_url": (
+                    f"{reverse('payments:create_request')}?plot={payment.plot_id}&transaction_type={payment.transaction_type}"
+                    if payment.plot_id and payment_category
+                    else ""
+                ),
+                "step_action_checklist": step_action_checklist,
+                "recorded_submitter": recorded_submitter,
             }
         )
         return context
@@ -701,23 +1047,30 @@ class PaymentTransitionView(LoginRequiredMixin, View):
 class PaymentClosingStepUpdateView(LoginRequiredMixin, View):
     def post(self, request, pk, step_id):
         payment = get_object_or_404(PaymentRequest, pk=pk)
-        decision = user_can_update_closing_steps(request.user, payment)
+        step = get_object_or_404(PaymentClosingStep, pk=step_id, payment=payment)
+        decision = user_can_update_specific_closing_step(request.user, payment, step)
         if not decision.allowed:
             messages.error(request, decision.reason)
-            return redirect("payments:detail", pk=payment.pk)
+            return redirect("payments:closing_step_workspace", pk=payment.pk, step_id=step.pk)
 
-        step = get_object_or_404(PaymentClosingStep, pk=step_id, payment=payment)
-        form = PaymentClosingStepForm(request.POST, request.FILES, instance=step)
+        form = PaymentClosingStepForm(request.POST, request.FILES, instance=step, user=request.user)
         if not form.is_valid():
             messages.error(request, "Please correct the closing tracker update and try again.")
-            return redirect("payments:detail", pk=payment.pk)
+            return redirect("payments:closing_step_workspace", pk=payment.pk, step_id=step.pk)
 
         updated_step = form.save(commit=False)
         if request.FILES.get("document"):
             updated_step.document = request.FILES["document"]
-            updated_step.save(update_fields=["document", "updated_at"])
+        updated_step.save()
+        target_status = updated_step.status
+        if not user_is_finance_admin(request.user):
+            target_status = (
+                PaymentClosingStep.Status.COMPLETED
+                if updated_step.can_mark_complete_with_current_evidence()
+                else PaymentClosingStep.Status.IN_PROGRESS
+            )
         updated_step.set_status(
-            updated_step.status,
+            target_status,
             actor=request.user,
             notes=updated_step.notes,
         )
@@ -737,7 +1090,7 @@ class PaymentClosingStepUpdateView(LoginRequiredMixin, View):
                 actor=request.user,
             )
         messages.success(request, f"Updated closing tracker step: {step.title}.")
-        return redirect("payments:detail", pk=payment.pk)
+        return redirect("payments:closing_step_workspace", pk=payment.pk, step_id=step.pk)
 
 
 class PaymentMilestoneCreateView(LoginRequiredMixin, View):

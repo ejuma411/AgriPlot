@@ -128,10 +128,11 @@ class PaymentRequestModelTests(TestCase):
             status=PaymentRequest.Status.IN_ESCROW,
         )
         payment.ensure_closing_steps()
-        for code in ["agreement", "lcb_consent", "valuation", "stamp_duty", "completion_docs"]:
+        for code in ["agreement", "lcb_consent", "stamp_duty", "completion_docs"]:
             payment.closing_steps.get(code=code).set_status(
                 PaymentClosingStep.Status.COMPLETED,
                 actor=user,
+                bypass_evidence=True,
             )
 
         payment.apply_transition("release", actor=user)
@@ -191,10 +192,12 @@ class PaymentRequestModelTests(TestCase):
         payment.ensure_closing_steps()
         registration_step = payment.closing_steps.get(code="registration")
 
+        registration_step.document = SimpleUploadedFile("new-search.pdf", b"proof")
+        registration_step.save(update_fields=["document", "updated_at"])
         registration_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=user)
 
         plot.refresh_from_db()
-        self.assertEqual(plot.market_status, "reserved")
+        self.assertEqual(plot.market_status, "sold")
 
     def test_form_accepts_manual_test_amount(self):
         landowner = self._create_landowner_for_plot("amount_owner")

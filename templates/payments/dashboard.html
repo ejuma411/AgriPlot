@@ -11,18 +11,60 @@
 {% endblock %}
 
 {% block content %}
-<section class="payments-hero payments-hero-dashboard">
-    <div class="payments-shell dashboard-hero-grid">
-        <div class="hero-copy">
-            <span class="hero-kicker">AgriPlot payments</span>
-            <h1>Control land-deal money with better rails</h1>
-            <p class="hero-lead">Track commitment fees, reservation deposits, escrow milestones, and disputes from one place. The experience is designed to feel like a serious transaction desk, not a loose collection of payment links.</p>
-            <div class="hero-actions">
-                <a href="{% url 'payments:create_request' %}" class="hero-btn hero-btn-primary">Create payment request</a>
-                <a href="{% url 'payments:flow_overview' %}" class="hero-btn hero-btn-secondary">View flow blueprint</a>
+<section class="payments-section ownership-dashboard">
+    <div class="payments-shell">
+        {% if focus_payment %}
+        <div class="ownership-process-card">
+            <div class="ownership-ribbons" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="ownership-brand">AgriPlot<br><small>Connect</small></div>
+            <div class="ownership-title-wrap">
+                <span class="section-kicker">Buyer tracker</span>
+                <h1 class="ownership-title">AGRIPLOT LAND OWNERSHIP PROCESS</h1>
+                <p class="ownership-subtitle">
+                    {{ focus_payment.plot.title|default:focus_payment.title }} · {{ focus_payment.internal_reference }} · {{ focus_payment.transfer_status_label }}
+                </p>
+            </div>
+
+            <div class="ownership-grid">
+                {% for process_step in focus_payment.dashboard_process_steps %}
+                <article class="ownership-step ownership-step-{{ process_step.status }}">
+                    <div class="ownership-step-top">
+                        <div class="ownership-icon">{{ process_step.sequence }}</div>
+                        <span class="ownership-status-chip">{{ process_step.state_label }}</span>
+                    </div>
+                    <h3>{{ process_step.title }}</h3>
+                    <p>{{ process_step.caption }}</p>
+                </article>
+                {% if not forloop.last %}
+                <div class="ownership-arrow" aria-hidden="true">→→→</div>
+                {% endif %}
+                {% endfor %}
+            </div>
+
+            <div class="ownership-bottom-bar">
+                <div class="ownership-bottom-copy">
+                    <strong>{{ focus_payment.buyer_next_step_summary }}</strong>
+                    <span>{{ focus_payment.buyer_next_step_instruction }}</span>
+                    <span>{{ focus_payment.current_assignment_message }}</span>
+                    {% if focus_payment.due_diligence_lock_message %}
+                    <span>{{ focus_payment.due_diligence_lock_message }}</span>
+                    {% endif %}
+                </div>
+                <div class="ownership-bottom-actions">
+                    {% if focus_payment.next_closing_step %}
+                    <a href="{% url 'payments:closing_step_workspace' focus_payment.pk focus_payment.next_closing_step.pk %}" class="hero-btn hero-btn-primary">Continue transaction</a>
+                    {% else %}
+                    <a href="{% url 'payments:detail' focus_payment.pk %}" class="hero-btn hero-btn-primary">Open tracker</a>
+                    {% endif %}
+                </div>
             </div>
         </div>
-        <div class="stats-grid">
+
+        <div class="ownership-stats-grid">
             <article class="stat-card">
                 <span>Total requests</span>
                 <strong>{{ stats.total_payments }}</strong>
@@ -44,30 +86,22 @@
                 <strong>{{ stats.purchase_tracker_count }}</strong>
             </article>
         </div>
-    </div>
-    {% if show_scope_notice %}
-    <div class="payments-shell">
-        <div class="workspace-notice">
+        <div class="workspace-notice mt-4">
+            <strong>How to read this tracker:</strong> every stage before the current one stays marked as completed, the current stage is the only step waiting for action now, and all later stages remain pending until the current one is cleared. The same stage order is used in the CMS so updates stay consistent.
+        </div>
+        {% else %}
+        <div class="empty-state-card">
+            <h3>No payment trackers yet</h3>
+            <p>Create the first direct purchase or lease checkout to see the buyer journey board.</p>
+            <a href="{% url 'payments:create_request' %}" class="hero-btn hero-btn-primary">Create payment request</a>
+        </div>
+        {% endif %}
+
+        {% if show_scope_notice %}
+        <div class="workspace-notice mt-4">
             <strong>Preview mode:</strong> you are seeing the payments workspace layout. Sign in to see only the requests linked to your buyer or seller account.
         </div>
-    </div>
-    {% endif %}
-</section>
-
-<section class="payments-section">
-    <div class="payments-shell">
-        <div class="section-heading compact">
-            <span class="section-kicker">Available methods</span>
-            <h2>Built for multiple payment paths</h2>
-        </div>
-        <div class="method-grid">
-            {% for method in method_cards %}
-            <article class="method-card tone-{{ method.tone }}">
-                <h3>{{ method.name }}</h3>
-                <p>{{ method.description }}</p>
-            </article>
-            {% endfor %}
-        </div>
+        {% endif %}
     </div>
 </section>
 
@@ -98,7 +132,7 @@
                 </div>
                 <div class="payment-row-side">
                     <strong>KES {{ payment.amount|floatformat:2|intcomma }}</strong>
-                    <a href="{% url 'payments:detail' payment.pk %}" class="text-link">Open</a>
+                    <a href="{% url 'payments:detail' payment.workflow_anchor_payment.pk %}" class="text-link">Open</a>
                 </div>
             </article>
             {% endfor %}
