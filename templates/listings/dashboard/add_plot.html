@@ -927,20 +927,38 @@
                                     <div class="form-row mb-4">
                                         <div class="row">
                                             <div class="col-md-3">
-                                                <label for="{{ form.valuation_report.id_for_label }}" class="form-label">
-                                                    <i class="fas fa-file-alt me-2"></i>Valuation Report
+                                                <label class="form-label">
+                                                    <i class="fas fa-file-alt me-2"></i>Pricing Proof
                                                 </label>
-                                                <br><small class="text-muted">If price basis is Government-set, upload official proof.</small>
+                                                <br><small class="text-muted">Only upload the proof that matches the selected price basis.</small>
                                             </div>
                                             <div class="col-md-6">
-                                                {{ form.valuation_report }}
-                                                {{ form.government_price_proof }}
-                                                {% if form.valuation_report.errors %}
-                                                <div class="invalid-feedback d-block">
-                                                    <i class="fas fa-exclamation-circle me-1"></i>
-                                                    {{ form.valuation_report.errors }}
+                                                <div class="row g-3">
+                                                    <div class="col-md-6" id="valuation-report-row">
+                                                        <label for="{{ form.valuation_report.id_for_label }}" class="form-label small text-muted">
+                                                            Valuation Report
+                                                        </label>
+                                                        {{ form.valuation_report }}
+                                                        {% if form.valuation_report.errors %}
+                                                        <div class="invalid-feedback d-block">
+                                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                                            {{ form.valuation_report.errors }}
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="col-md-6" id="government-price-proof-row">
+                                                        <label for="{{ form.government_price_proof.id_for_label }}" class="form-label small text-muted">
+                                                            Government Price Proof
+                                                        </label>
+                                                        {{ form.government_price_proof }}
+                                                        {% if form.government_price_proof.errors %}
+                                                        <div class="invalid-feedback d-block">
+                                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                                            {{ form.government_price_proof.errors }}
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
                                                 </div>
-                                                {% endif %}
                                             </div>
                                             <div class="col-md-3">
                                                 <small class="text-muted">{{ form.valuation_report.help_text }}</small>
@@ -3330,6 +3348,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchRef = document.getElementById('{{ form.search_reference_number.id_for_label }}');
     const ownershipTypeInput = document.getElementById('{{ form.ownership_type.id_for_label }}');
     const priceBasisInput = document.getElementById('{{ form.price_basis.id_for_label }}');
+    const valuationReportRow = document.getElementById('valuation-report-row');
+    const governmentPriceProofRow = document.getElementById('government-price-proof-row');
     const leaseBasisInput = document.getElementById('{{ form.lease_basis.id_for_label }}');
 
     const ownershipSection = document.getElementById('ownershipSection');
@@ -3387,6 +3407,16 @@ document.addEventListener('DOMContentLoaded', function() {
         return false;
     }
 
+    function togglePricingProofFields() {
+        const basis = priceBasisInput?.value || '';
+        if (valuationReportRow) {
+            valuationReportRow.style.display = basis === 'valuation_report' ? '' : 'none';
+        }
+        if (governmentPriceProofRow) {
+            governmentPriceProofRow.style.display = basis === 'government_set' ? '' : 'none';
+        }
+    }
+
     function setSectionUnlocked(section, unlocked) {
         if (!section) return;
         const wasLocked = section.classList.contains('is-locked');
@@ -3438,6 +3468,10 @@ document.addEventListener('DOMContentLoaded', function() {
         element.addEventListener('input', updateProgressiveSections);
         element.addEventListener('change', updateProgressiveSections);
     });
+    if (priceBasisInput) {
+        priceBasisInput.addEventListener('change', togglePricingProofFields);
+        priceBasisInput.addEventListener('input', togglePricingProofFields);
+    }
     if (parcelInput && searchRef) {
         parcelInput.addEventListener('input', () => {
             if (!searchRef.value.trim()) {
@@ -3448,6 +3482,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     updateProgressiveSections();
+    togglePricingProofFields();
     
     // Toggle conditional fields based on listing type
     function toggleListingTypeFields() {

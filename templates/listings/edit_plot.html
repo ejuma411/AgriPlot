@@ -914,26 +914,41 @@
                                 <div class="form-row mb-4">
                                     <div class="row">
                                         <div class="col-md-3">
-                                            <label for="{{ form.valuation_report.id_for_label }}" class="form-label">
-                                                <i class="fas fa-file-alt me-2"></i>Valuation / Proof
+                                            <label class="form-label">
+                                                <i class="fas fa-file-alt me-2"></i>Pricing Proof
                                             </label>
+                                            <br><small class="text-muted">Keep only the proof that matches the chosen sale price basis.</small>
                                         </div>
                                         <div class="col-md-6">
-                                            {{ form.valuation_report }}
-                                            {{ form.government_price_proof }}
-                                            <div class="field-feedback">
-                                                {% if form.valuation_report.errors %}
-                                                <small class="text-danger">
-                                                    <i class="fas fa-exclamation-circle me-1"></i>
-                                                    {{ form.valuation_report.errors }}
-                                                </small>
-                                                {% endif %}
-                                                {% if form.government_price_proof.errors %}
-                                                <small class="text-danger d-block mt-1">
-                                                    <i class="fas fa-exclamation-circle me-1"></i>
-                                                    {{ form.government_price_proof.errors }}
-                                                </small>
-                                                {% endif %}
+                                            <div class="row g-3">
+                                                <div class="col-md-6" id="valuation-report-row">
+                                                    <label for="{{ form.valuation_report.id_for_label }}" class="form-label small text-muted">
+                                                        Valuation Report
+                                                    </label>
+                                                    {{ form.valuation_report }}
+                                                    {% if form.valuation_report.errors %}
+                                                    <div class="field-feedback">
+                                                        <small class="text-danger">
+                                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                                            {{ form.valuation_report.errors }}
+                                                        </small>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="col-md-6" id="government-price-proof-row">
+                                                    <label for="{{ form.government_price_proof.id_for_label }}" class="form-label small text-muted">
+                                                        Government Price Proof
+                                                    </label>
+                                                    {{ form.government_price_proof }}
+                                                    {% if form.government_price_proof.errors %}
+                                                    <div class="field-feedback">
+                                                        <small class="text-danger">
+                                                            <i class="fas fa-exclamation-circle me-1"></i>
+                                                            {{ form.government_price_proof.errors }}
+                                                        </small>
+                                                    </div>
+                                                    {% endif %}
+                                                </div>
                                             </div>
                                         </div>
                                         <div class="col-md-3">
@@ -1911,7 +1926,9 @@
                                         <div class="col-md-3">
                                             <div id="soilReportPreview" class="document-preview text-muted">
                                                 {% if plot.soil_report %}
-                                                <i class="fas fa-file-pdf text-info me-1"></i> Current file exists
+                                                <a href="{{ plot.soil_report.url }}" target="_blank" rel="noopener" class="text-info text-decoration-none">
+                                                    <i class="fas fa-file-pdf text-info me-1"></i> Open current soil test report
+                                                </a>
                                                 {% else %}
                                                 No file selected
                                                 {% endif %}
@@ -3186,6 +3203,29 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const priceBasisInput = document.getElementById('{{ form.price_basis.id_for_label }}');
+    const valuationReportRow = document.getElementById('valuation-report-row');
+    const governmentPriceProofRow = document.getElementById('government-price-proof-row');
+
+    function togglePricingProofFields() {
+        const basis = priceBasisInput ? priceBasisInput.value : '';
+        if (valuationReportRow) {
+            valuationReportRow.style.display = basis === 'valuation_report' ? '' : 'none';
+        }
+        if (governmentPriceProofRow) {
+            governmentPriceProofRow.style.display = basis === 'government_set' ? '' : 'none';
+        }
+    }
+
+    if (priceBasisInput) {
+        priceBasisInput.addEventListener('change', togglePricingProofFields);
+        priceBasisInput.addEventListener('input', togglePricingProofFields);
+    }
+    togglePricingProofFields();
 });
 </script>
 <script>
