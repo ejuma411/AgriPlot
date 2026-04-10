@@ -10,7 +10,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from listings.models import ContactRequest, Plot, UserInterest
-from payments.models import PaymentRequest
+from payments.models import PaymentClosingStep, PaymentRequest
+from payments.permissions import step_requires_admin_action, user_is_finance_admin
 from verification.models import VerificationLog, VerificationStatus, VerificationTask
 
 logger = logging.getLogger(__name__)
@@ -25,6 +26,7 @@ def staff_dashboard(request):
     is_agent = hasattr(request.user, "agent")
     is_landowner = hasattr(request.user, "landownerprofile")
     is_staff = request.user.is_staff or request.user.is_superuser
+    is_finance_admin = user_is_finance_admin(request.user)
     is_extension = hasattr(request.user, "extension_officer")
     is_surveyor = hasattr(request.user, "land_surveyor")
 
@@ -32,13 +34,14 @@ def staff_dashboard(request):
         return redirect("verification:extension_dashboard")
     if is_surveyor and not request.user.is_superuser:
         return redirect("verification:surveyor_dashboard")
-    if not (is_agent or is_landowner or is_staff or request.user.is_superuser):
+    if not (is_agent or is_landowner or is_staff or is_finance_admin or request.user.is_superuser):
         messages.error(request, "You don't have access to this dashboard.")
         return redirect("listings:home")
 
     context = {
         "is_agent": is_agent,
         "is_landowner": is_landowner,
+        "is_staff_dashboard_admin": is_staff or is_finance_admin,
         "profile_type": "Agent" if is_agent else "Landowner",
         "profile": (
             request.user.agent
@@ -53,7 +56,7 @@ def staff_dashboard(request):
         plots = Plot.objects.filter(agent=request.user.agent)
     elif is_landowner:
         plots = Plot.objects.filter(landowner=request.user.landownerprofile)
-    elif request.user.is_superuser:
+    elif request.user.is_superuser or is_finance_admin:
         plots = Plot.objects.all()
     else:
         plots = Plot.objects.none()
@@ -129,7 +132,7 @@ def staff_dashboard(request):
         }
     )
 
-    if is_staff:
+    if is_staff or is_finance_admin:
         context["stats"] = {
             "pending_review": VerificationStatus.objects.filter(
                 content_type=plot_content_type, current_stage="document_uploaded"
@@ -141,6 +144,42 @@ def staff_dashboard(request):
         context["my_tasks_count"] = VerificationTask.objects.filter(
             assigned_to=request.user, status="in_progress"
         ).count()
+
+        payment_admin_tasks = []
+        payment_queryset = (
+            PaymentRequest.objects.select_related("plot", "buyer", "seller")
+            .prefetch_related("closing_steps")
+            .filter(
+                transaction_type__in=[
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.TransactionType.LEASE,
+                ]
+            )
+            .exclude(
+                status__in=[
+                    PaymentRequest.Status.REFUNDED,
+                    PaymentRequest.Status.CANCELLED,
+                    PaymentRequest.Status.FAILED,
+                ]
+            )
+            .order_by("-created_at")
+        )
+        for payment in payment_queryset:
+            payment.ensure_closing_steps()
+            for step in payment.closing_steps.exclude(status=PaymentClosingStep.Status.COMPLETED).order_by("sequence"):
+                if step_requires_admin_action(step):
+                    payment_admin_tasks.append(
+                        {
+                            "payment": payment,
+                            "step": step,
+                            "owner_label": step.responsible_party_label,
+                            "is_current": payment.current_assigned_step and payment.current_assigned_step.pk == step.pk,
+                        }
+                    )
+
+        context["payment_admin_tasks"] = payment_admin_tasks
+        context["payment_admin_task_count"] = len(payment_admin_tasks)
+        context["show_payment_admin_tasks"] = True
 
     if is_extension:
         context["extension_tasks_count"] = VerificationTask.objects.filter(

@@ -37,6 +37,27 @@ from notifications.notification_service import NotificationService
 logger = logging.getLogger(__name__)
 
 
+def _refresh_expired_lease(plot):
+    if (
+        plot.market_status == "leased"
+        and plot.lease_end_date
+        and plot.lease_end_date < timezone.localdate()
+    ):
+        plot.market_status = "available"
+        plot.lease_start_date = None
+        plot.lease_end_date = None
+        plot.availability_notes = "The previous lease term has ended and the land is back on the market."
+        plot.save(
+            update_fields=[
+                "market_status",
+                "lease_start_date",
+                "lease_end_date",
+                "availability_notes",
+                "updated_at",
+            ]
+        )
+
+
 def _serialize_pricing_preview(plot, transaction_type):
     guidance = plot.pricing_guidance(transaction_type)
     recommendation = plot.pricing_recommendation(transaction_type)
@@ -141,109 +162,22 @@ def request_land_surveyor(request):
 # ============ PUBLIC PAGES ============
 def home(request):
     """Homepage with plot listings"""
-    # Get verified plots - removed verification from select_related
-    verified_plots = Plot.objects.filter(
+    search_form = PlotSearchForm(request.GET or None)
+    available_queryset = Plot.objects.filter(
         verification__current_stage="approved"
-    ).select_related('agent__user')
-    
-    # Apply ordering (most recent first)
-    verified_plots = verified_plots.order_by('-created_at')
-    
-    # Filters
-    soil_type = request.GET.get('soil_type')
-    crop = request.GET.get('crop')
-    crop_preset_param = request.GET.get('crop_preset')
-    if crop_preset_param:
-        crop = crop_preset_param
-    ph_min = request.GET.get('ph_min')
-    ph_max = request.GET.get('ph_max')
-    om_min = request.GET.get('om_min')
-    n_min = request.GET.get('n_min')
-    p_min = request.GET.get('p_min')
-    k_min = request.GET.get('k_min')
-    ec_max = request.GET.get('ec_max')
-    texture = request.GET.get('texture')
-    listing_type = request.GET.get('listing_type')
-    land_type = request.GET.get('land_type')
-    min_price = request.GET.get('min_price')
-    max_price = request.GET.get('max_price')
-    min_area = request.GET.get('min_area')
-    max_area = request.GET.get('max_area')
+    ).select_related("agent__user")
+    filtered_plots = search_form.apply(available_queryset)
 
-    if soil_type:
-        verified_plots = verified_plots.filter(soil_type__icontains=soil_type)
-    if crop:
-        verified_plots = verified_plots.filter(crop_suitability__icontains=crop)
-    if listing_type:
-        verified_plots = verified_plots.filter(listing_type=listing_type)
-    if land_type:
-        verified_plots = verified_plots.filter(land_type=land_type)
-    if min_price:
-        verified_plots = verified_plots.filter(price__gte=min_price)
-    if max_price:
-        verified_plots = verified_plots.filter(price__lte=max_price)
-    if min_area:
-        verified_plots = verified_plots.filter(area__gte=min_area)
-    if max_area:
-        verified_plots = verified_plots.filter(area__lte=max_area)
-
-    # Crop-presets
-    crop_presets = {
-        'Maize': {'ph_min': 5.8, 'ph_max': 7.0, 'om_min': 2.0},
-        'Wheat': {'ph_min': 6.0, 'ph_max': 7.5, 'om_min': 1.5},
-        'Rice': {'ph_min': 5.5, 'ph_max': 6.5, 'om_min': 1.0},
-        'Coffee': {'ph_min': 5.0, 'ph_max': 6.5, 'om_min': 3.0},
-    }
-
-    # Apply soil metric filters via SoilReport
-    soil_filters = {}
-    try:
-        if ph_min:
-            soil_filters['soil_reports__pH__gte'] = float(ph_min)
-        if ph_max:
-            soil_filters['soil_reports__pH__lte'] = float(ph_max)
-        if om_min:
-            soil_filters['soil_reports__organic_matter_pct__gte'] = float(om_min)
-        if n_min:
-            soil_filters['soil_reports__nitrogen_mgkg__gte'] = float(n_min)
-        if p_min:
-            soil_filters['soil_reports__phosphorus_mgkg__gte'] = float(p_min)
-        if k_min:
-            soil_filters['soil_reports__potassium_mgkg__gte'] = float(k_min)
-        if ec_max:
-            soil_filters['soil_reports__ec_salinity__lte'] = float(ec_max)
-        if texture:
-            if ',' in texture:
-                parts = [float(x) for x in texture.split(',') if x.strip()]
-                if len(parts) == 3:
-                    soil_filters['soil_reports__sand_pct__gte'] = parts[0]
-                    soil_filters['soil_reports__silt_pct__gte'] = parts[1]
-                    soil_filters['soil_reports__clay_pct__gte'] = parts[2]
-            else:
-                soil_filters['soil_reports__report_file__icontains'] = texture
-    except ValueError:
-        soil_filters = {}
-
-    # Apply crop preset if no explicit filters
-    if crop and crop in crop_presets and not any([ph_min, ph_max, om_min, n_min, p_min, k_min, ec_max, texture]):
-        preset = crop_presets[crop]
-        soil_filters['soil_reports__pH__gte'] = preset.get('ph_min')
-        soil_filters['soil_reports__pH__lte'] = preset.get('ph_max')
-        if preset.get('om_min'):
-            soil_filters['soil_reports__organic_matter_pct__gte'] = preset.get('om_min')
-
-    if soil_filters:
-        verified_plots = verified_plots.filter(**soil_filters).distinct()
-    
-    # Stats
     total_plots = Plot.objects.count()
-    verified_count = Plot.objects.filter(verification__current_stage="approved").count()
+    verified_count = available_queryset.count()
     total_agents = Agent.objects.filter(verified=True).count()
-    soil_types = Plot.objects.values_list('soil_type', flat=True).distinct()
-    common_crops = ['Maize', 'Wheat', 'Coffee', 'Tea', 'Beans', 'Potatoes', 'Sugarcane', 'Rice', 'Vegetables']
+    active_filters = []
+    if search_form.is_valid():
+        for active_filter in search_form.active_filters():
+            active_filter["remove_url"] = build_remove_url(request, active_filter["params"])
+            active_filters.append(active_filter)
 
-    # Pagination
-    paginator = Paginator(verified_plots, 15)
+    paginator = Paginator(filtered_plots, 15)
     page_number = request.GET.get('page')
     featured_plots = paginator.get_page(page_number)
     saved_plot_ids = []
@@ -251,174 +185,134 @@ def home(request):
         saved_plot_ids = list(
             UserInterest.objects.filter(user=request.user).values_list("plot_id", flat=True)
         )
-    
+
     return render(request, 'listings/home.html', {
         'featured_plots': featured_plots,
         'total_plots': total_plots,
         'verified_count': verified_count,
         'total_agents': total_agents,
-        'soil_types': soil_types,
-        'common_crops': common_crops,
-        'filter_soil_type': soil_type,
-        'filter_crop': crop,
-        'filter_listing_type': listing_type,
-        'filter_land_type': land_type,
-        'crop_presets': crop_presets,
+        'search_form': search_form,
+        'county_choices': KENYA_COUNTIES,
+        'subcounty_choices': KENYA_SUB_COUNTIES.get(search_form["county"].value() or "", []),
         'saved_plot_ids': saved_plot_ids,
-        'active_soil_filters': {
-            'ph_min': ph_min, 'ph_max': ph_max, 'om_min': om_min,
-            'n_min': n_min, 'p_min': p_min, 'k_min': k_min, 
-            'ec_max': ec_max, 'texture': texture
-        },
+        'active_filters': active_filters,
+        'has_active_filters': bool(active_filters),
+        'active_filters_count': len(active_filters),
+        'plots_count': paginator.count,
+        'selected_size_presets': request.GET.getlist("size_presets"),
     })
-# In your view, add these context variables
-def get_context_data(self, **kwargs):
-    context = super().get_context_data(**kwargs)
-    
-    # Count active filters
-    active_filters = []
-    request = self.request
-    
-    # Check each filter and build active filters list
-    if request.GET.get('soil_type'):
-        active_filters.append({
-            'label': 'Soil',
-            'value': request.GET.get('soil_type'),
-            'remove_url': self.build_remove_url('soil_type')
-        })
-    
-    if request.GET.get('crop_preset'):
-        active_filters.append({
-            'label': 'Crop',
-            'value': request.GET.get('crop_preset'),
-            'remove_url': self.build_remove_url('crop_preset')
-        })
-    
-    if request.GET.get('listing_type'):
-        listing_type = request.GET.get('listing_type')
-        active_filters.append({
-            'label': 'Type',
-            'value': 'For Sale' if listing_type == 'sale' else 'For Lease',
-            'remove_url': self.build_remove_url('listing_type')
-        })
-    
-    if request.GET.get('min_price') or request.GET.get('max_price'):
-        price_str = []
-        if request.GET.get('min_price'):
-            price_str.append(f"Min: {request.GET.get('min_price')}")
-        if request.GET.get('max_price'):
-            price_str.append(f"Max: {request.GET.get('max_price')}")
-        active_filters.append({
-            'label': 'Price',
-            'value': ' '.join(price_str),
-            'remove_url': self.build_remove_url(['min_price', 'max_price'])
-        })
-    
-    context['active_filters'] = active_filters
-    context['has_active_filters'] = len(active_filters) > 0
-    context['active_filters_count'] = len(active_filters)
-    context['plots_count'] = self.get_queryset().count()
-    
-    return context
 
-def build_remove_url(self, params_to_remove):
+def build_remove_url(request, params_to_remove):
     """Build URL with specified parameters removed"""
     if not isinstance(params_to_remove, list):
         params_to_remove = [params_to_remove]
-    
-    new_params = self.request.GET.copy()
+
+    new_params = request.GET.copy()
     for param in params_to_remove:
+        if param == "size_presets":
+            new_params.pop(param, None)
+            continue
         if param in new_params:
             del new_params[param]
-    
+
     return f"?{new_params.urlencode()}"
 
 def ajax_search(request):
     """Return rendered market grid fragment for AJAX search requests."""
-    verified_plots = Plot.objects.filter(
-        verification__current_stage="approved"
-    ).select_related('agent__user')
-    verified_plots = verified_plots.order_by('-created_at')
-
-    # Filters (same as home)
-    soil_type = request.GET.get('soil_type')
-    crop = request.GET.get('crop') or request.GET.get('crop_preset')
-    ph_min = request.GET.get('ph_min')
-    ph_max = request.GET.get('ph_max')
-    om_min = request.GET.get('om_min')
-    n_min = request.GET.get('n_min')
-    p_min = request.GET.get('p_min')
-    k_min = request.GET.get('k_min')
-    ec_max = request.GET.get('ec_max')
-    texture = request.GET.get('texture')
-    listing_type = request.GET.get('listing_type')
-    land_type = request.GET.get('land_type')
-
-    if soil_type:
-        verified_plots = verified_plots.filter(soil_type__icontains=soil_type)
-    if crop:
-        verified_plots = verified_plots.filter(crop_suitability__icontains=crop)
-    if listing_type:
-        verified_plots = verified_plots.filter(listing_type=listing_type)
-    if land_type:
-        verified_plots = verified_plots.filter(land_type=land_type)
-
-    crop_presets = {
-        'Maize': {'ph_min': 5.8, 'ph_max': 7.0, 'om_min': 2.0},
-        'Wheat': {'ph_min': 6.0, 'ph_max': 7.5, 'om_min': 1.5},
-        'Rice': {'ph_min': 5.5, 'ph_max': 6.5, 'om_min': 1.0},
-        'Coffee': {'ph_min': 5.0, 'ph_max': 6.5, 'om_min': 3.0},
-    }
-
-    soil_filters = {}
-    try:
-        if ph_min:
-            soil_filters['soil_reports__pH__gte'] = float(ph_min)
-        if ph_max:
-            soil_filters['soil_reports__pH__lte'] = float(ph_max)
-        if om_min:
-            soil_filters['soil_reports__organic_matter_pct__gte'] = float(om_min)
-        if n_min:
-            soil_filters['soil_reports__nitrogen_mgkg__gte'] = float(n_min)
-        if p_min:
-            soil_filters['soil_reports__phosphorus_mgkg__gte'] = float(p_min)
-        if k_min:
-            soil_filters['soil_reports__potassium_mgkg__gte'] = float(k_min)
-        if ec_max:
-            soil_filters['soil_reports__ec_salinity__lte'] = float(ec_max)
-        if texture:
-            if ',' in texture:
-                parts = [float(x) for x in texture.split(',') if x.strip()]
-                if len(parts) == 3:
-                    soil_filters['soil_reports__sand_pct__gte'] = parts[0]
-                    soil_filters['soil_reports__silt_pct__gte'] = parts[1]
-                    soil_filters['soil_reports__clay_pct__gte'] = parts[2]
-            else:
-                soil_filters['soil_reports__report_file__icontains'] = texture
-    except ValueError:
-        soil_filters = {}
-
-    if crop and crop in crop_presets and not any([ph_min, ph_max, om_min, n_min, p_min, k_min, ec_max, texture]):
-        preset = crop_presets[crop]
-        soil_filters['soil_reports__pH__gte'] = preset.get('ph_min')
-        soil_filters['soil_reports__pH__lte'] = preset.get('ph_max')
-        if preset.get('om_min'):
-            soil_filters['soil_reports__organic_matter_pct__gte'] = preset.get('om_min')
-
-    if soil_filters:
-        verified_plots = verified_plots.filter(**soil_filters).distinct()
+    search_form = PlotSearchForm(request.GET or None)
+    filtered_plots = search_form.apply(
+        Plot.objects.filter(
+            verification__current_stage="approved"
+        ).select_related('agent__user')
+    )
 
     # Pagination
-    paginator = Paginator(verified_plots, 15)
+    paginator = Paginator(filtered_plots, 15)
     page_number = request.GET.get('page')
     featured_plots = paginator.get_page(page_number)
+    saved_plot_ids = []
+    if request.user.is_authenticated:
+        saved_plot_ids = list(
+            UserInterest.objects.filter(user=request.user).values_list("plot_id", flat=True)
+        )
+    active_filters = []
+    if search_form.is_valid():
+        for active_filter in search_form.active_filters():
+            active_filter["remove_url"] = build_remove_url(request, active_filter["params"])
+            active_filters.append(active_filter)
 
     html = render_to_string('listings/_market_grid.html', {
         'featured_plots': featured_plots,
         'request': request,
+        'saved_plot_ids': saved_plot_ids,
+    })
+    active_filters_html = render_to_string(
+        'listings/_active_filters.html',
+        {
+            'active_filters': active_filters,
+            'request': request,
+        },
+    )
+
+    count = paginator.count
+    results_label = (
+        f"{count} plot found" if count == 1 else f"{count} plots found"
+    ) if count else "No plots found"
+
+    return JsonResponse({
+        'html': html,
+        'count': count,
+        'results_label': results_label,
+        'active_filters_html': active_filters_html,
+        'active_filters_count': len(active_filters),
     })
 
-    return JsonResponse({'html': html})
+
+@login_required
+@require_POST
+def join_lease_waitlist(request, plot_id):
+    plot = get_object_or_404(Plot, pk=plot_id)
+    from payments.models import LeaseWaitlistEntry
+
+    if not plot.next_lease_booking_open:
+        messages.error(request, "This land is not currently on an active lease waitlist path.")
+        return redirect("listings:plot_detail", id=plot.id)
+
+    entry, created = LeaseWaitlistEntry.objects.get_or_create(
+        plot=plot,
+        user=request.user,
+        defaults={
+            "desired_start_date": plot.lease_end_date,
+            "notes": "Created from plot detail waitlist button.",
+        },
+    )
+    if created:
+        messages.success(
+            request,
+            "You have joined the queue for the next lease window. AgriPlot will flag this plot again before the current lease expires.",
+        )
+    else:
+        messages.info(request, "You are already on the queue for the next lease window for this land.")
+    return redirect("listings:plot_detail", id=plot.id)
+
+
+@login_required
+@require_POST
+def confirm_lease_waitlist(request, plot_id):
+    plot = get_object_or_404(Plot, pk=plot_id)
+    from payments.models import LeaseWaitlistEntry
+
+    entry = get_object_or_404(LeaseWaitlistEntry, plot=plot, user=request.user)
+    if entry.status != LeaseWaitlistEntry.Status.CONTACTED:
+        messages.info(request, "Your waitlist slot is not currently awaiting confirmation.")
+        return redirect("listings:plot_detail", id=plot.id)
+
+    entry.mark_confirmed()
+    messages.success(
+        request,
+        "You have confirmed your interest for the next lease window. AgriPlot will keep you first in line when the current lease ends.",
+    )
+    return redirect("listings:plot_detail", id=plot.id)
 
 def plot_detail(request, id):
     """View individual plot details"""
@@ -429,6 +323,7 @@ def plot_detail(request, id):
         ).prefetch_related('verification_docs'),
         id=id
     )
+    _refresh_expired_lease(plot)
     
     # Get verification status separately
     from django.contrib.contenttypes.models import ContentType
@@ -483,6 +378,9 @@ def plot_detail(request, id):
     )
 
     current_buyer_deal = None
+    active_lease_deal = None
+    user_waitlist_entry = None
+    lease_waitlist = []
     if request.user.is_authenticated and not is_owner:
         from payments.models import PaymentRequest
 
@@ -509,6 +407,31 @@ def plot_detail(request, id):
         if current_buyer_deal:
             current_buyer_deal.ensure_closing_steps()
 
+    from payments.models import LeaseWaitlistEntry, PaymentRequest
+
+    active_lease_deal = (
+        PaymentRequest.objects.filter(
+            plot=plot,
+            transaction_type=PaymentRequest.TransactionType.LEASE,
+            status__in=[
+                PaymentRequest.Status.PAID,
+                PaymentRequest.Status.IN_ESCROW,
+                PaymentRequest.Status.PARTIALLY_RELEASED,
+                PaymentRequest.Status.RELEASED,
+            ],
+        )
+        .order_by("-lease_end_date", "-created_at")
+        .first()
+    )
+    lease_waitlist = list(
+        LeaseWaitlistEntry.objects.filter(plot=plot).select_related("user")
+    )
+    if request.user.is_authenticated:
+        user_waitlist_entry = next(
+            (entry for entry in lease_waitlist if entry.user_id == request.user.id),
+            None,
+        )
+
     context = {
         'plot': plot,
         'verification': verification,
@@ -527,6 +450,18 @@ def plot_detail(request, id):
         'availability_summary': plot.availability_summary,
         'checkout_availability_message': plot.checkout_availability_message,
         'current_buyer_deal': current_buyer_deal,
+        'active_lease_deal': active_lease_deal,
+        'show_public_lease_status': plot.has_active_lease,
+        'public_lease_end_date': getattr(active_lease_deal, "lease_end_date", None) or plot.lease_end_date,
+        'public_lease_start_date': getattr(active_lease_deal, "lease_start_date", None) or plot.lease_start_date,
+        'lease_waitlist_count': len([entry for entry in lease_waitlist if entry.status in {"waiting", "contacted", "confirmed"}]),
+        'user_waitlist_entry': user_waitlist_entry,
+        'can_start_purchase': request.user.is_authenticated and not is_owner and plot.purchase_checkout_open,
+        'can_start_lease': request.user.is_authenticated and not is_owner and plot.lease_checkout_open,
+        'show_waitlist_cta': request.user.is_authenticated and not is_owner and plot.next_lease_booking_open and not user_waitlist_entry,
+        'show_waitlist_confirm_cta': request.user.is_authenticated and not is_owner and user_waitlist_entry and user_waitlist_entry.status == "contacted",
+        'show_login_waitlist_cta': not request.user.is_authenticated and plot.next_lease_booking_open,
+        'show_waitlist_priority_notice': request.user.is_authenticated and not is_owner and user_waitlist_entry and user_waitlist_entry.status == "confirmed" and plot.lease_checkout_open,
     }
     
     return render(request, 'listings/details.html', context)

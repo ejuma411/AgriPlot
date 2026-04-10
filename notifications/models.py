@@ -101,6 +101,7 @@ class SupportTicket(models.Model):
 class SMSLog(models.Model):
     PROVIDER_CHOICES = [
         ("textsms", "TextSMS"),
+        ("opensms", "OpenSMS"),
     ]
     provider = models.CharField(max_length=20, choices=PROVIDER_CHOICES, default="textsms")
     phone = models.CharField(max_length=30)

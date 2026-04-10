@@ -10,6 +10,8 @@ urlpatterns = [
     # Public pages
     path("", views.home, name="home"),
     path("plot/<int:id>/", views.plot_detail, name="plot_detail"),
+    path("plot/<int:plot_id>/lease-waitlist/", views.join_lease_waitlist, name="join_lease_waitlist"),
+    path("plot/<int:plot_id>/lease-waitlist/confirm/", views.confirm_lease_waitlist, name="confirm_lease_waitlist"),
     path("plot/<int:plot_id>/save/", views.toggle_saved_plot, name="toggle_saved_plot"),
     path("ajax/search/", views.ajax_search, name="ajax_search"),
     path("browse-plots/", TemplateView.as_view(template_name="listings/info/browse_plots.html"), name="browse_plots"),

@@ -20,15 +20,15 @@
             <div class="search-main-row">
                 <div class="search-field location-field">
                     <i class="fas fa-map-marker-alt"></i>
-                    <input type="text" name="location" placeholder="County, town or area" 
-                           value="{{ request.GET.location|default:'' }}" autocomplete="off">
+                    <input type="text" name="q" placeholder="Try: 3 acres for lease in Njoro under 1M"
+                           value="{{ search_form.q.value|default:'' }}" autocomplete="off">
                 </div>
 
                 <div class="search-field">
                     <select name="listing_type">
-                        <option value="">All listings</option>
-                        <option value="sale" {% if request.GET.listing_type == 'sale' %}selected{% endif %}>For Sale</option>
-                        <option value="lease" {% if request.GET.listing_type == 'lease' %}selected{% endif %}>For Lease</option>
+                        <option value="">Sale or lease</option>
+                        <option value="sale" {% if search_form.listing_type.value == 'sale' %}selected{% endif %}>For Sale</option>
+                        <option value="lease" {% if search_form.listing_type.value == 'lease' %}selected{% endif %}>For Lease</option>
                     </select>
                 </div>
 
@@ -39,72 +39,86 @@
                 <button type="button" class="filter-toggle-btn" id="filterToggle">
                     <i class="fas fa-sliders-h"></i> More filters
                     {% if has_active_filters %}
-                    <span class="filter-badge">{{ active_filters_count }}</span>
+                    <span class="filter-badge" id="filterBadge">{{ active_filters_count }}</span>
                     {% endif %}
                 </button>
             </div>
 
             <!-- Quick filters row - always visible -->
             <div class="quick-filters" id="quickFilters">
-                <!-- Soil Type -->
+                <div class="filter-group">
+                    <label><i class="fas fa-map"></i> County</label>
+                    <select name="county" class="filter-select quick-filter-input">
+                        <option value="">Any county</option>
+                        {% for county in county_choices %}
+                        <option value="{{ county }}" {% if search_form.county.value == county %}selected{% endif %}>{{ county }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label><i class="fas fa-location-arrow"></i> Sub-county</label>
+                    <select name="subcounty" class="filter-select quick-filter-input">
+                        <option value="">Any sub-county</option>
+                        {% for subcounty in subcounty_choices %}
+                        <option value="{{ subcounty }}" {% if search_form.subcounty.value == subcounty %}selected{% endif %}>{{ subcounty }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label><i class="fas fa-map-signs"></i> Ward</label>
+                    <input type="text" name="ward" class="price-input quick-filter-input"
+                           placeholder="Any ward" value="{{ search_form.ward.value|default:'' }}">
+                </div>
+
                 <div class="filter-group">
                     <label><i class="fas fa-leaf"></i> Soil Type</label>
                     <select name="soil_type" class="filter-select quick-filter-input">
                         <option value="">Any soil type</option>
-                        {% for soil in soil_types %}
-                        <option value="{{ soil }}" {% if soil == filter_soil_type %}selected{% endif %}>
-                            {{ soil }}
-                        </option>
-                        {% endfor %}
+                        <option value="Red Volcanic" {% if search_form.soil_type.value == 'Red Volcanic' %}selected{% endif %}>Red Volcanic</option>
+                        <option value="Black Cotton" {% if search_form.soil_type.value == 'Black Cotton' %}selected{% endif %}>Black Cotton</option>
+                        <option value="Sandy" {% if search_form.soil_type.value == 'Sandy' %}selected{% endif %}>Sandy</option>
+                        <option value="Loam" {% if search_form.soil_type.value == 'Loam' %}selected{% endif %}>Loam</option>
+                        <option value="Clay" {% if search_form.soil_type.value == 'Clay' %}selected{% endif %}>Clay</option>
                     </select>
                 </div>
 
-                <!-- Crop Type -->
-                <div class="filter-group">
-                    <label><i class="fas fa-seedling"></i> Suitable for</label>
-                    <select name="crop_preset" class="filter-select quick-filter-input">
-                        <option value="">Any crop</option>
-                        {% for key, preset in crop_presets.items %}
-                        <option value="{{ key }}" {% if key == filter_crop %}selected{% endif %}>
-                            {{ key }}
-                        </option>
-                        {% endfor %}
-                    </select>
-                </div>
-
-                <!-- Price Range -->
                 <div class="filter-group price-range-group">
                     <label><i class="fas fa-tag"></i> Price Range</label>
                     <div class="price-inputs">
                             <input type="number" name="min_price" placeholder="Min" 
-                                   value="{{ request.GET.min_price|default:'' }}" class="price-input quick-filter-input">
+                                   value="{{ search_form.min_price.value|default:'' }}" class="price-input quick-filter-input">
                         <span class="price-separator">-</span>
                             <input type="number" name="max_price" placeholder="Max" 
-                                   value="{{ request.GET.max_price|default:'' }}" class="price-input quick-filter-input">
+                                   value="{{ search_form.max_price.value|default:'' }}" class="price-input quick-filter-input">
                     </div>
                 </div>
 
-                <!-- Area Size -->
                 <div class="filter-group">
-                    <label><i class="fas fa-vector-square"></i> Area (acres)</label>
-                    <select name="area_range" class="filter-select quick-filter-input">
-                        <option value="">Any size</option>
-                        <option value="0-1" {% if request.GET.area_range == '0-1' %}selected{% endif %}>Under 1 acre</option>
-                        <option value="1-5" {% if request.GET.area_range == '1-5' %}selected{% endif %}>1 - 5 acres</option>
-                        <option value="5-10" {% if request.GET.area_range == '5-10' %}selected{% endif %}>5 - 10 acres</option>
-                        <option value="10-50" {% if request.GET.area_range == '10-50' %}selected{% endif %}>10 - 50 acres</option>
-                        <option value="50+" {% if request.GET.area_range == '50+' %}selected{% endif %}>50+ acres</option>
-                    </select>
+                    <label><i class="fas fa-vector-square"></i> Size Intent</label>
+                    <div class="size-preset-list">
+                        <label class="checkbox-label compact">
+                            <input type="checkbox" name="size_presets" value="small_scale" {% if 'small_scale' in selected_size_presets %}checked{% endif %}>
+                            Small-scale
+                        </label>
+                        <label class="checkbox-label compact">
+                            <input type="checkbox" name="size_presets" value="commercial" {% if 'commercial' in selected_size_presets %}checked{% endif %}>
+                            Commercial
+                        </label>
+                        <label class="checkbox-label compact">
+                            <input type="checkbox" name="size_presets" value="estate" {% if 'estate' in selected_size_presets %}checked{% endif %}>
+                            Large-scale / Estate
+                        </label>
+                    </div>
                 </div>
 
-                <!-- Verification Status -->
-                <div class="filter-group">
-                    <label><i class="fas fa-check-circle"></i> Verification</label>
-                    <select name="verification" class="filter-select quick-filter-input">
-                        <option value="">Any status</option>
-                        <option value="verified" {% if request.GET.verification == 'verified' %}selected{% endif %}>Verified only</option>
-                        <option value="pending" {% if request.GET.verification == 'pending' %}selected{% endif %}>Pending verification</option>
-                    </select>
+                <div class="filter-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" name="verified_only" value="on"
+                               {% if search_form.verified_only.value %}checked{% endif %}>
+                        <i class="fas fa-check-circle"></i> Verified only
+                    </label>
                 </div>
                 <div class="quick-apply">
                     <button type="submit" class="quick-apply-btn">
@@ -121,26 +135,83 @@
                         <label><i class="fas fa-mountain"></i> Land Type</label>
                         <select name="land_type" class="filter-select">
                             <option value="">Any land type</option>
-                            <option value="agricultural" {% if request.GET.land_type == 'agricultural' %}selected{% endif %}>Agricultural</option>
-                            <option value="mixed_use" {% if request.GET.land_type == 'mixed_use' %}selected{% endif %}>Mixed Use</option>
-                            <option value="commercial" {% if request.GET.land_type == 'commercial' %}selected{% endif %}>Commercial</option>
+                            <option value="agricultural" {% if search_form.land_type.value == 'agricultural' %}selected{% endif %}>Agricultural</option>
+                            <option value="mixed_use" {% if search_form.land_type.value == 'mixed_use' %}selected{% endif %}>Mixed Use</option>
+                            <option value="commercial" {% if search_form.land_type.value == 'commercial' %}selected{% endif %}>Commercial</option>
                         </select>
                     </div>
 
-                    <!-- Water Access -->
+                    <div class="filter-group">
+                        <label><i class="fas fa-water"></i> Water Access</label>
+                        <select name="water_source" class="filter-select">
+                            <option value="">Any water access</option>
+                            <option value="borehole" {% if search_form.water_source.value == 'borehole' %}selected{% endif %}>Borehole</option>
+                            <option value="river" {% if search_form.water_source.value == 'river' %}selected{% endif %}>Riverfront</option>
+                            <option value="rain" {% if search_form.water_source.value == 'rain' %}selected{% endif %}>Rain-fed</option>
+                            <option value="irrigation" {% if search_form.water_source.value == 'irrigation' %}selected{% endif %}>Irrigation System</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label><i class="fas fa-seedling"></i> Crop Suitability</label>
+                        <input type="text" name="crop" class="price-input"
+                               placeholder="Onions, avocados, maize..." value="{{ search_form.crop.value|default:'' }}">
+                    </div>
+
+                    <div class="filter-group">
+                        <label><i class="fas fa-mountain"></i> Topography</label>
+                        <select name="topography" class="filter-select">
+                            <option value="">Any topography</option>
+                            <option value="flat" {% if search_form.topography.value == 'flat' %}selected{% endif %}>Flat</option>
+                            <option value="gentle_slope" {% if search_form.topography.value == 'gentle_slope' %}selected{% endif %}>Gentle Slope</option>
+                            <option value="sloped" {% if search_form.topography.value == 'sloped' %}selected{% endif %}>Sloped</option>
+                            <option value="hilly" {% if search_form.topography.value == 'hilly' %}selected{% endif %}>Hilly</option>
+                            <option value="valley" {% if search_form.topography.value == 'valley' %}selected{% endif %}>Valley Bottom</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label><i class="fas fa-file-signature"></i> Title Type</label>
+                        <select name="ownership_type" class="filter-select">
+                            <option value="">Any title type</option>
+                            <option value="freehold" {% if search_form.ownership_type.value == 'freehold' %}selected{% endif %}>Freehold</option>
+                            <option value="leasehold" {% if search_form.ownership_type.value == 'leasehold' %}selected{% endif %}>Leasehold</option>
+                            <option value="government" {% if search_form.ownership_type.value == 'government' %}selected{% endif %}>Government</option>
+                            <option value="community" {% if search_form.ownership_type.value == 'community' %}selected{% endif %}>Community</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label><i class="fas fa-shield-alt"></i> Registry Status</label>
+                        <select name="registry_status" class="filter-select">
+                            <option value="">Any registry status</option>
+                            <option value="ardhisasa" {% if search_form.registry_status.value == 'ardhisasa' %}selected{% endif %}>Verified on Ardhisasa</option>
+                            <option value="manual" {% if search_form.registry_status.value == 'manual' %}selected{% endif %}>Manual registry trail</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label><i class="fas fa-road"></i> Distance from Tarmac</label>
+                        <select name="road_distance_band" class="filter-select">
+                            <option value="">Any distance</option>
+                            <option value="0_5" {% if search_form.road_distance_band.value == '0_5' %}selected{% endif %}>0 - 5 km</option>
+                            <option value="5_10" {% if search_form.road_distance_band.value == '5_10' %}selected{% endif %}>5 - 10 km</option>
+                            <option value="10_plus" {% if search_form.road_distance_band.value == '10_plus' %}selected{% endif %}>Over 10 km</option>
+                        </select>
+                    </div>
+
                     <div class="filter-group checkbox-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" name="has_water" value="yes" 
-                                   {% if request.GET.has_water == 'yes' %}checked{% endif %}>
-                            <i class="fas fa-water"></i> Has water source
+                            <input type="checkbox" name="encumbrance_free" value="on"
+                                   {% if search_form.encumbrance_free.value %}checked{% endif %}>
+                            <i class="fas fa-balance-scale"></i> Encumbrance-free only
                         </label>
                     </div>
 
-                    <!-- Electricity Access -->
                     <div class="filter-group checkbox-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" name="has_electricity" value="yes"
-                                   {% if request.GET.has_electricity == 'yes' %}checked{% endif %}>
+                            <input type="checkbox" name="has_electricity" value="on"
+                                   {% if search_form.has_electricity.value %}checked{% endif %}>
                             <i class="fas fa-bolt"></i> Has electricity
                         </label>
                     </div>
@@ -159,22 +230,9 @@
         </form>
 
         <!-- Active filters display -->
-        {% if active_filters %}
-        <div class="active-filters">
-            <span class="active-filters-label">Active filters:</span>
-            <div class="filter-chips">
-                {% for filter in active_filters %}
-                <span class="filter-chip">
-                    {{ filter.label }}: {{ filter.value }}
-                    <a href="{{ filter.remove_url }}" class="remove-filter"><i class="fas fa-times"></i></a>
-                </span>
-                {% endfor %}
-                {% if active_filters|length > 1 %}
-                <a href="?" class="clear-all-link">Clear all</a>
-                {% endif %}
-            </div>
+        <div id="activeFiltersContainer">
+            {% include 'listings/_active_filters.html' %}
         </div>
-        {% endif %}
     </div>
 
     <!-- HERO IMAGES SLIDER -->
@@ -188,7 +246,7 @@
 <!-- RESULTS HEADER (add after hero section) -->
 <section class="results-header container95" id="resultsHeader">
     <div class="results-info">
-        <h3>
+        <h3 id="resultsCountLabel">
             {% if plots_count %}
             {{ plots_count }} {% if plots_count == 1 %}plot{% else %}plots{% endif %} found
             {% else %}
@@ -196,7 +254,7 @@
             {% endif %}
         </h3>
         {% if request.GET %}
-        <a href="?" class="reset-search">
+        <a href="?" class="reset-search" id="resetSearchLink">
             <i class="fas fa-redo-alt"></i> Reset search
         </a>
         {% endif %}
@@ -205,20 +263,20 @@
     <div class="results-sorting">
         <label for="sortBy">Sort by:</label>
         <select id="sortBy" name="sort" form="searchForm">
-            <option value="-created_at" {% if request.GET.sort == '-created_at' %}selected{% endif %}>Newest first</option>
-            <option value="price" {% if request.GET.sort == 'price' %}selected{% endif %}>Price: Low to High</option>
-            <option value="-price" {% if request.GET.sort == '-price' %}selected{% endif %}>Price: High to Low</option>
-            <option value="area" {% if request.GET.sort == 'area' %}selected{% endif %}>Area: Small to Large</option>
-            <option value="-area" {% if request.GET.sort == '-area' %}selected{% endif %}>Area: Large to Small</option>
+            <option value="-created_at" {% if search_form.sort.value == '-created_at' or not search_form.sort.value %}selected{% endif %}>Newest first</option>
+            <option value="price" {% if search_form.sort.value == 'price' %}selected{% endif %}>Price: Low to High</option>
+            <option value="-price" {% if search_form.sort.value == '-price' %}selected{% endif %}>Price: High to Low</option>
+            <option value="area" {% if search_form.sort.value == 'area' %}selected{% endif %}>Area: Small to Large</option>
+            <option value="-area" {% if search_form.sort.value == '-area' %}selected{% endif %}>Area: Large to Small</option>
         </select>
     </div>
 </section>
 
 
 <!-- FEATURED LISTINGS -->
-
-
+<div id="ajaxResultsContainer">
     {% include 'listings/_market_grid.html' %}
+</div>
 
 
 
@@ -253,10 +311,288 @@
 
 </section>
 
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("searchForm");
+    const resultsHeader = document.getElementById("resultsHeader");
+    const resultsLabel = document.getElementById("resultsCountLabel");
+    const resultsContainer = document.getElementById("ajaxResultsContainer");
+    const activeFiltersContainer = document.getElementById("activeFiltersContainer");
+    const filterBadge = document.getElementById("filterBadge");
+    const resultsInfo = document.querySelector(".results-info");
+    const countySelect = form?.querySelector('select[name="county"]');
+    const subcountySelect = form?.querySelector('select[name="subcounty"]');
+    const clearFiltersButton = document.getElementById("clearFilters");
+    const ajaxUrl = "{% url 'listings:ajax_search' %}";
+    const subcountyUrl = "{% url 'listings:get_subcounties' %}";
+
+    if (!form || !resultsHeader || !resultsContainer || !resultsLabel) {
+        return;
+    }
+
+    let searchTimer = null;
+    let activeController = null;
+
+    function setLoadingState(isLoading) {
+        resultsContainer.classList.toggle("is-loading", isLoading);
+        form.classList.toggle("is-loading", isLoading);
+    }
+
+    function updateResultsLabel(labelText) {
+        resultsLabel.textContent = labelText;
+    }
+
+    function updateFilterBadge(count) {
+        if (count > 0) {
+            if (filterBadge) {
+                filterBadge.textContent = count;
+            } else {
+                const toggle = document.getElementById("filterToggle");
+                const badge = document.createElement("span");
+                badge.className = "filter-badge";
+                badge.id = "filterBadge";
+                badge.textContent = count;
+                toggle.appendChild(badge);
+            }
+        } else if (document.getElementById("filterBadge")) {
+            document.getElementById("filterBadge").remove();
+        }
+    }
+
+    function updateResetSearchLink(count) {
+        const existingLink = document.getElementById("resetSearchLink");
+        if (count > 0) {
+            if (!existingLink && resultsInfo) {
+                const link = document.createElement("a");
+                link.href = "?";
+                link.className = "reset-search";
+                link.id = "resetSearchLink";
+                link.innerHTML = '<i class="fas fa-redo-alt"></i> Reset search';
+                resultsInfo.appendChild(link);
+            }
+        } else if (existingLink) {
+            existingLink.remove();
+        }
+    }
+
+    function buildSearchParams() {
+        const formData = new FormData(form);
+        const params = new URLSearchParams();
+
+        for (const [key, value] of formData.entries()) {
+            if (value !== "") {
+                params.append(key, value);
+            }
+        }
+
+        return params;
+    }
+
+    function scrollToResults() {
+        resultsHeader.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    async function refreshSubcounties(selectedValue = "") {
+        if (!countySelect || !subcountySelect) {
+            return;
+        }
+
+        const county = countySelect.value;
+        subcountySelect.innerHTML = '<option value="">Any sub-county</option>';
+
+        if (!county) {
+            return;
+        }
+
+        const response = await fetch(`${subcountyUrl}?county=${encodeURIComponent(county)}`, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+        });
+        const data = await response.json();
+
+        for (const subcounty of data.subcounties || []) {
+            const option = document.createElement("option");
+            option.value = subcounty;
+            option.textContent = subcounty;
+            if (subcounty === selectedValue) {
+                option.selected = true;
+            }
+            subcountySelect.appendChild(option);
+        }
+    }
+
+    async function runAjaxSearch({ scroll = true, pushUrl = true, extraParams = null } = {}) {
+        const params = extraParams || buildSearchParams();
+
+        if (activeController) {
+            activeController.abort();
+        }
+
+        activeController = new AbortController();
+        setLoadingState(true);
+
+        try {
+            const response = await fetch(`${ajaxUrl}?${params.toString()}`, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                signal: activeController.signal,
+            });
+            const data = await response.json();
+
+            resultsContainer.innerHTML = data.html;
+            updateResultsLabel(data.results_label || "No plots found");
+            if (activeFiltersContainer) {
+                activeFiltersContainer.innerHTML = data.active_filters_html || "";
+            }
+            updateFilterBadge(data.active_filters_count || 0);
+            updateResetSearchLink(data.active_filters_count || 0);
+
+            const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+            if (pushUrl) {
+                window.history.pushState({ params: params.toString() }, "", newUrl);
+            }
+
+            if (scroll) {
+                scrollToResults();
+            }
+        } catch (error) {
+            if (error.name !== "AbortError") {
+                window.location.href = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+            }
+        } finally {
+            setLoadingState(false);
+        }
+    }
+
+    function scheduleSearch(options = {}) {
+        window.clearTimeout(searchTimer);
+        searchTimer = window.setTimeout(() => runAjaxSearch(options), 250);
+    }
+
+    form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        runAjaxSearch({ scroll: true, pushUrl: true });
+    });
+
+    form.addEventListener("change", async (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement)) {
+            return;
+        }
+
+        if (target === countySelect) {
+            await refreshSubcounties();
+        }
+
+        runAjaxSearch({ scroll: true, pushUrl: true });
+    });
+
+    form.addEventListener("input", (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLInputElement)) {
+            if (target instanceof HTMLTextAreaElement) {
+                scheduleSearch({ scroll: false, pushUrl: true });
+            }
+            return;
+        }
+
+        if (["q", "min_price", "max_price", "ward", "crop"].includes(target.name)) {
+            scheduleSearch({ scroll: false, pushUrl: true });
+        }
+    });
+
+    clearFiltersButton?.addEventListener("click", async () => {
+        form.reset();
+        await refreshSubcounties();
+        runAjaxSearch({ scroll: true, pushUrl: true });
+    });
+
+    document.addEventListener("click", (event) => {
+        const link = event.target.closest(".ajax-page");
+        if (link) {
+            event.preventDefault();
+            const url = new URL(link.href, window.location.origin);
+            const params = new URLSearchParams(url.search);
+            runAjaxSearch({ scroll: true, pushUrl: true, extraParams: params });
+            return;
+        }
+
+        const stateLink = event.target.closest(".remove-filter, .clear-all-link, .reset-search");
+        if (!stateLink) {
+            return;
+        }
+
+        event.preventDefault();
+        const url = new URL(stateLink.href, window.location.origin);
+        const params = new URLSearchParams(url.search);
+
+        for (const element of form.elements) {
+            if (!element.name) {
+                continue;
+            }
+
+            if (element instanceof HTMLInputElement && element.type === "checkbox") {
+                if (element.name === "size_presets") {
+                    element.checked = params.getAll("size_presets").includes(element.value);
+                } else {
+                    element.checked = params.has(element.name);
+                }
+            } else if (element instanceof HTMLSelectElement || element instanceof HTMLInputElement) {
+                element.value = params.get(element.name) || "";
+            }
+        }
+
+        refreshSubcounties(params.get("subcounty") || "");
+        runAjaxSearch({ scroll: true, pushUrl: true, extraParams: params });
+    });
+
+    window.addEventListener("popstate", async () => {
+        const params = new URLSearchParams(window.location.search);
+
+        for (const element of form.elements) {
+            if (!element.name) {
+                continue;
+            }
+
+            if (element instanceof HTMLInputElement && element.type === "checkbox") {
+                if (element.name === "size_presets") {
+                    element.checked = params.getAll("size_presets").includes(element.value);
+                } else {
+                    element.checked = params.has(element.name);
+                }
+            } else if (element instanceof HTMLSelectElement || element instanceof HTMLInputElement) {
+                element.value = params.get(element.name) || "";
+            }
+        }
+
+        await refreshSubcounties(params.get("subcounty") || "");
+        runAjaxSearch({ scroll: false, pushUrl: false, extraParams: params });
+    });
+});
+</script>
+
 <style>
 .container95{
     max-width:95%;
     margin:auto;
+}
+
+#ajaxResultsContainer {
+    transition: opacity 0.2s ease;
+}
+
+#ajaxResultsContainer.is-loading {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.size-preset-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.checkbox-label.compact {
+    font-size: 0.92rem;
+    margin: 0;
 }
 
 /* HERO SECTION */

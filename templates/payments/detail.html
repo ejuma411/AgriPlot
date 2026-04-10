@@ -109,6 +109,33 @@
                     {% endif %}
                 </section>
 
+                {% if transaction_stage_matrix %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Clearing-House Process</h2>
+                            <p class="summary-description mb-0">Each stage shows the money expected, the form or filing, the information needed, and who must provide it through AgriPlot.</p>
+                        </div>
+                    </div>
+                    <div class="milestone-list">
+                        {% for stage in transaction_stage_matrix %}
+                        <article class="milestone-item">
+                            <div class="milestone-number">{{ forloop.counter }}</div>
+                            <div class="w-100">
+                                <h3>{{ stage.stage }}</h3>
+                                <div class="mini-note mt-2"><strong>Money required:</strong> {{ stage.money_required }}</div>
+                                <div class="mini-note mt-2"><strong>Form / document:</strong> {{ stage.form_document }}</div>
+                                <div class="mini-note mt-2"><strong>Required information:</strong> {{ stage.required_information }}</div>
+                                <div class="mini-note mt-2"><strong>Who provides / pays:</strong> {{ stage.who_provides }}</div>
+                                <div class="mini-note mt-2"><strong>Who files / uploads:</strong> {{ stage.who_files }}</div>
+                                <div class="mini-note mt-2"><strong>What AgriPlot issues:</strong> {{ stage.system_output }}</div>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
                 {% if payment.workflow_related_payments %}
                 <section class="content-card">
                     <div class="card-heading">
@@ -162,6 +189,66 @@
                     </div>
                 </section>
 
+                {% if transaction_certificates %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Clearance Evidence</h2>
+                            <p class="summary-description mb-0">These are the system-issued certificates and digital receipts available to the buyer, seller, and lease parties as the transaction progresses.</p>
+                        </div>
+                    </div>
+                    <div class="milestone-list">
+                        {% for certificate in transaction_certificates %}
+                        <article class="milestone-item">
+                            <div class="milestone-number">{{ forloop.counter }}</div>
+                            <div class="w-100">
+                                <h3>{{ certificate.title }}</h3>
+                                <p>{{ certificate.get_status_display }} · Audience: {{ certificate.get_audience_display }}</p>
+                                <div class="mini-note">{{ certificate.summary }}</div>
+                                {% if certificate.issued_at %}
+                                <div class="mini-note mt-2">Issued {{ certificate.issued_at|date:"M d, Y H:i" }}</div>
+                                {% endif %}
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+                {% if disbursement_plan %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Payout Waterfall</h2>
+                            <p class="summary-description mb-0">AgriPlot holds money centrally, then releases it to officers, government channels, the seller, the agent, and the platform only when each trigger is satisfied.</p>
+                        </div>
+                    </div>
+                    <div class="payment-list">
+                        {% for item in disbursement_plan %}
+                        <article class="payment-row">
+                            <div class="payment-row-main">
+                                <div class="payment-title-row">
+                                    <h3>{{ item.recipient_name }}</h3>
+                                    <span class="status-pill status-{% if item.status == 'released' %}success{% elif item.status == 'ready' %}info{% elif item.status == 'held' %}warning{% else %}secondary{% endif %}">{{ item.get_status_display }}</span>
+                                </div>
+                                <p>{{ item.get_recipient_role_display }} · Paid by {{ item.get_paid_by_side_display }}</p>
+                                <div class="mini-note">{{ item.release_trigger }}</div>
+                                {% if item.notes %}
+                                <div class="mini-note mt-2">{{ item.notes }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="payment-row-side">
+                                <strong>KES {{ item.amount|floatformat:2|intcomma }}</strong>
+                                {% if item.released_at %}
+                                <div class="mini-note mt-2">Released {{ item.released_at|date:"M d, Y H:i" }}</div>
+                                {% endif %}
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
                 {% if closing_steps %}
                 <section class="content-card">
                     <div class="card-heading">
@@ -202,7 +289,7 @@
                                 {% if step.completed_at %}
                                 <div class="mini-note mt-2">Completed {{ step.completed_at|date:"M d, Y H:i" }}{% if step.completed_by %} · {{ step.completed_by.get_full_name|default:step.completed_by.username }}{% endif %}</div>
                                 {% endif %}
-                                {% if can_update_closing_steps %}
+                                {% if step.user_can_update %}
                                 <form method="post" action="{% url 'payments:update_closing_step' payment.pk step.pk %}" class="payments-form compact-form mt-3" enctype="multipart/form-data">
                                     {% csrf_token %}
                                     <div class="field-block">
@@ -223,6 +310,14 @@
                                     </div>
                                     <button type="submit" class="hero-btn hero-btn-secondary">Update step</button>
                                 </form>
+                                {% elif step.requires_admin_action %}
+                                <div class="mini-note mt-3">
+                                    This step is handled by AgriPlot admin or the assigned official, so buyer and seller updates are disabled here.
+                                </div>
+                                {% elif step.update_restriction_reason %}
+                                <div class="mini-note mt-3">
+                                    {{ step.update_restriction_reason }}
+                                </div>
                                 {% endif %}
                             </div>
                         </article>
@@ -252,6 +347,53 @@
             </div>
 
             <aside class="detail-side">
+                {% if officer_payment_rules %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Officer Payments</h2>
+                            <p class="summary-description mb-0">Professionals and officers are paid through AgriPlot after verified work is delivered, not by side deals outside the platform.</p>
+                        </div>
+                    </div>
+                    <div class="milestone-list">
+                        {% for rule in officer_payment_rules %}
+                        <article class="milestone-item">
+                            <div class="milestone-number">{{ forloop.counter }}</div>
+                            <div>
+                                <h3>{{ rule.officer }}</h3>
+                                <p>{{ rule.fee }} · Paid by {{ rule.paid_by }}</p>
+                                <div class="mini-note">{{ rule.purpose }}</div>
+                                <div class="mini-note mt-2">{{ rule.release_rule }}</div>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
+                {% if platform_revenue_streams %}
+                <section class="content-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>AgriPlot Revenue</h2>
+                            <p class="summary-description mb-0">This is how the platform benefits transparently from the transaction instead of hiding charges in side conversations.</p>
+                        </div>
+                    </div>
+                    <div class="milestone-list">
+                        {% for revenue in platform_revenue_streams %}
+                        <article class="milestone-item">
+                            <div class="milestone-number">{{ forloop.counter }}</div>
+                            <div>
+                                <h3>{{ revenue.label }}</h3>
+                                <p>{{ revenue.amount }}</p>
+                                <div class="mini-note">{{ revenue.detail }}</div>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </section>
+                {% endif %}
+
                 {% if is_payment_buyer and payment.buyer_journey_steps %}
                 <section class="content-card">
                     <div class="card-heading">
@@ -284,10 +426,18 @@
                     <div class="card-heading">
                         <h2>Quick actions</h2>
                     </div>
-                    {% if paystack_authorization_url and payment.status == 'pending' %}
+                    {% if payment_provider == 'paystack' and paystack_authorization_url and payment.status == 'pending' %}
                     <a href="{{ paystack_authorization_url }}" class="hero-btn hero-btn-primary w-100 mb-3">
                         Continue Paystack Checkout
                     </a>
+                    {% elif payment_provider == 'daraja' and payment.status == 'pending' %}
+                    <div class="mini-note mb-3">
+                        {% if daraja_customer_message %}
+                        {{ daraja_customer_message }}
+                        {% else %}
+                        A Safaricom Daraja STK push was sent to the buyer's phone. Complete it on the handset, then wait for the callback to update this deal.
+                        {% endif %}
+                    </div>
                     {% endif %}
                     {% if is_finance_admin %}
                     <p class="mini-note">Finance-level actions can change settlement state and should be used only after operational review.</p>

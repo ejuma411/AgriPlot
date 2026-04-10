@@ -2,6 +2,17 @@ from dataclasses import dataclass
 
 
 FINANCE_ADMIN_GROUP = "Finance Admin"
+ADMIN_STEP_KEYWORDS = (
+    "admin",
+    "registrar",
+    "operations",
+    "lawyer",
+    "valuer",
+    "government",
+    "officer",
+    "surveyor",
+    "registry",
+)
 
 
 @dataclass(frozen=True)
@@ -75,11 +86,22 @@ def user_can_update_closing_steps(user, payment):
     )
 
 
+def step_requires_admin_action(step):
+    owner_label = (step.responsible_party_label or "").lower()
+    return any(keyword in owner_label for keyword in ADMIN_STEP_KEYWORDS)
+
+
 def user_can_update_specific_closing_step(user, payment, step):
     if not getattr(user, "is_authenticated", False):
         return PaymentDecision(False, "You need to sign in to update this step.")
     if user_is_finance_admin(user):
         return PaymentDecision(True)
+
+    if step_requires_admin_action(step):
+        return PaymentDecision(
+            False,
+            f"'{step.display_title}' is handled by AgriPlot admin or an appointed official and will appear in the admin task queue.",
+        )
 
     active_step = payment.current_assigned_step
     if active_step and active_step.pk != step.pk and step.status != step.Status.COMPLETED:
@@ -91,15 +113,21 @@ def user_can_update_specific_closing_step(user, payment, step):
     actor_is_buyer = user == payment.buyer
     actor_is_seller = user == payment.seller
 
+    lcb_allowed = actor_is_buyer
+    if payment.transaction_type == payment.TransactionType.LEASE:
+        lcb_allowed = actor_is_seller
+
     allowed_map = {
         "due_diligence": actor_is_buyer,
         "offer": actor_is_buyer,
         "agreement": actor_is_buyer or actor_is_seller,
-        "lcb_consent": actor_is_buyer,
+        "lcb_consent": lcb_allowed,
         "stamp_duty": actor_is_buyer,
         "completion_docs": actor_is_buyer,
         "registration": actor_is_buyer,
         "payment_security": actor_is_buyer,
+        "lease_registration": actor_is_buyer or actor_is_seller,
+        "soil_health_baseline": actor_is_buyer or actor_is_seller,
         "handover": actor_is_seller,
     }
     if allowed_map.get(step.code, False):

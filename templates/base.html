@@ -445,8 +445,19 @@
                     </li>
                     {% endif %}
 
+                    {% if user.is_superuser or user.is_staff or show_payment_admin_nav %}
+                    <li class="nav-item">
+                        <a class="nav-link nav-activity-link" href="{% url 'payments:dashboard' %}" data-analytics="nav_payment_admin_tasks">
+                            <i class="fas fa-money-check-dollar me-1"></i> Payment Admin Tasks
+                            {% if payment_admin_task_count %}
+                                <span class="nav-activity-badge">{{ payment_admin_task_count }}</span>
+                            {% endif %}
+                        </a>
+                    </li>
+                    {% endif %}
+
                     <!-- Role-specific quick links -->
-                    {% if user.is_superuser %}
+                    {% if user.is_superuser or user.is_staff or show_payment_admin_nav %}
                         <!-- Staff/Admin Quick Links -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="staffDropdown" role="button" data-bs-toggle="dropdown">
@@ -463,6 +474,10 @@
                                 <li><a class="dropdown-item" href="{% url 'verification:my_tasks' %}">
                                     <i class="fas fa-user-check me-2"></i>My Tasks
                                     {% if my_tasks_count %}<span class="badge bg-success">{{ my_tasks_count }}</span>{% endif %}
+                                </a></li>
+                                <li><a class="dropdown-item" href="{% url 'payments:dashboard' %}" data-analytics="admin_payment_tasks">
+                                    <i class="fas fa-money-check-dollar me-2"></i>Payment Admin Tasks
+                                    {% if payment_admin_task_count %}<span class="badge bg-danger">{{ payment_admin_task_count }}</span>{% endif %}
                                 </a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="{% url 'verification:analytics_dashboard' %}">

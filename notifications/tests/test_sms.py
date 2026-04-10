@@ -40,3 +40,27 @@ class SMSServiceTestCase(TestCase):
         
         self.assertTrue(result['success'])
         mock_post.assert_called_once()
+
+    @override_settings(
+        USE_SMS_MOCK=False,
+        SMS_PROVIDER='opensms',
+        OPENSMS_API_URL='https://www.opensms.co.ke/api/v3/',
+        OPENSMS_API_TOKEN='test-token',
+        OPENSMS_SENDER_ID='AgriPlot',
+    )
+    @patch('requests.Session.post')
+    def test_send_sms_success_opensms(self, mock_post):
+        """Test successful SMS sending via OpenSMS."""
+        sms = TextSMSService()
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {'message_id': 'abc123', 'status': 'success'}
+        mock_post.return_value = mock_response
+
+        result = sms.send_sms(self.test_phone, "Test message")
+
+        self.assertTrue(result['success'])
+        _, kwargs = mock_post.call_args
+        self.assertEqual(kwargs['headers']['Authorization'], 'Bearer test-token')
+        self.assertEqual(kwargs['json']['phone'], '254718810503')
+        self.assertEqual(kwargs['json']['message'], 'Test message')

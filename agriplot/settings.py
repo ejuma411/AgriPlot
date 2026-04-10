@@ -6,6 +6,7 @@ Configured for development with structured logging and PostgreSQL database.
 from pathlib import Path
 import os
 import logging
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 from django.core.management.utils import get_random_secret_key
 from decouple import config
@@ -78,6 +79,12 @@ def _normalize_base_url(value: str, default: str = "http://127.0.0.1:8000") -> s
     if not raw.startswith(("http://", "https://")):
         raw = f"http://{raw}"
     return raw.rstrip("/")
+
+
+def _host_from_url(value: str) -> str:
+    """Extract the hostname portion from a URL-like value."""
+    parsed = urlparse(_normalize_base_url(value))
+    return parsed.hostname or ""
 
 
 # =============================================================================
@@ -165,6 +172,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "payments.middleware.LeaseLifecycleHeartbeatMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "security.middleware.EnforceTwoFactorEnrollmentMiddleware",
@@ -213,6 +221,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "notifications.context_processors.nav_activity",
+                "payments.context_processors.payment_admin_nav",
             ],
         },
     },
@@ -297,11 +306,21 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     'AgriPlot Connect <noreply@agriplot.com>'
 )
 SITE_URL = _normalize_base_url(os.environ.get("SITE_URL"))
+SITE_HOST = _host_from_url(SITE_URL)
+
+if SITE_HOST and SITE_HOST not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append(SITE_HOST)
+
+CSRF_TRUSTED_ORIGINS = _env_csv("DJANGO_CSRF_TRUSTED_ORIGINS")
+if SITE_URL and SITE_URL not in CSRF_TRUSTED_ORIGINS:
+    CSRF_TRUSTED_ORIGINS.append(SITE_URL)
 
 
 # =============================================================================
-# SMS CONFIGURATION (TextSMS)
+# SMS CONFIGURATION
 # =============================================================================
+
+SMS_PROVIDER = os.environ.get('SMS_PROVIDER', 'textsms').lower()
 
 TEXTSMS_PARTNER_ID = os.environ.get('TEXTSMS_PARTNER_ID', '')
 TEXTSMS_API_KEY = os.environ.get('TEXTSMS_API_KEY', '')
@@ -310,6 +329,13 @@ TEXTSMS_API_URL = os.environ.get(
     'TEXTSMS_API_URL',
     'https://sms.textsms.co.ke/api/services/sendsms/'
 )
+
+OPENSMS_API_URL = os.environ.get(
+    'OPENSMS_API_URL',
+    'https://api.opensms.co.ke/v3/sms/send'
+)
+OPENSMS_API_TOKEN = os.environ.get('OPENSMS_API_TOKEN', '')
+OPENSMS_SENDER_ID = os.environ.get('OPENSMS_SENDER_ID', 'AgriPlot')
 
 
 # =============================================================================
@@ -327,8 +353,10 @@ ARDHISASA_WEBHOOK_URL = os.environ.get(
 
 
 # =============================================================================
-# PAYSTACK CONFIGURATION
+# PAYMENT GATEWAY CONFIGURATION
 # =============================================================================
+
+PAYMENT_PROVIDER = os.environ.get("PAYMENT_PROVIDER", "daraja").lower()
 
 PAYSTACK_PUBLIC_KEY = os.environ.get("PAYSTACK_PUBLIC_KEY", "")
 PAYSTACK_SECRET_KEY = os.environ.get("PAYSTACK_SECRET_KEY", "")
@@ -339,6 +367,17 @@ PAYSTACK_AUTO_RELEASE_TEST_DEALS = _env_bool(
     "PAYSTACK_AUTO_RELEASE_TEST_DEALS",
     default=DEBUG,
 )
+
+MPESA_CONSUMER_KEY = os.environ.get("MPESA_CONSUMER_KEY", "")
+MPESA_CONSUMER_SECRET = os.environ.get("MPESA_CONSUMER_SECRET", "")
+MPESA_BUSINESS_SHORTCODE = os.environ.get("MPESA_BUSINESS_SHORTCODE", "")
+MPESA_PASSKEY = os.environ.get("MPESA_PASSKEY", "")
+MPESA_ENVIRONMENT = os.environ.get("MPESA_ENVIRONMENT", "sandbox").lower()
+MPESA_TRANSACTION_TYPE = os.environ.get(
+    "MPESA_TRANSACTION_TYPE",
+    "CustomerPayBillOnline",
+)
+MPESA_CALLBACK_URL = os.environ.get("MPESA_CALLBACK_URL", "")
 
 
 # =============================================================================

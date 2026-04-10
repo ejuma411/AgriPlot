@@ -14,13 +14,13 @@
         <div class="hero-card-info">
             <h2>{{ plot.title }}</h2>
             <p class="hero-location">
-                {% if plot.county %}{{ plot.county }}{% if plot.subcounty %}, {{ plot.subcounty }}{% endif %}{% else %}{{ plot.location }}{% endif %}
+                {% if plot.county %}{{ plot.county }}{% if plot.subcounty %}, {{ plot.subcounty }}{% endif %}{% if plot.ward %}, {{ plot.ward }}{% endif %}{% else %}{{ plot.location }}{% endif %}
             </p>
             <div class="availability-banner {{ plot.market_status_css }}">
                 <span class="availability-eyebrow">Availability Status</span>
                 <div class="availability-status-line">
                     <span class="availability-pill">
-                        {{ plot.market_status_label }}
+                        {{ plot.occupancy_status_label }}
                     </span>
                     <span class="availability-mode">
                         {% if plot.listing_type == 'lease' %}
@@ -81,11 +81,33 @@
             <a href="{% if current_buyer_deal.next_closing_step %}{% url 'payments:closing_step_workspace' current_buyer_deal.pk current_buyer_deal.next_closing_step.pk %}{% else %}{% url 'payments:detail' current_buyer_deal.pk %}{% endif %}" class="btn hero-btn payment">
                 <i class="fas fa-route me-2"></i>{% if current_buyer_deal.next_closing_step %}{{ current_buyer_deal.next_closing_step.action_cta_label }}{% else %}Continue Transaction{% endif %}
             </a>
-            {% elif can_start_payment %}
+            {% elif can_start_lease %}
             <a href="{{ legal_workflow_url }}" class="btn hero-btn payment">
-                <i class="fas fa-scale-balanced me-2"></i>{% if plot.listing_type == 'lease' %}Open Lease Workflow{% else %}Open Legal Escrow Workflow{% endif %}
+                <i class="fas fa-scale-balanced me-2"></i>Lease Now
             </a>
-            {% elif user.is_authenticated and not is_owner and not plot.is_checkout_open %}
+            {% elif can_start_purchase %}
+            <a href="{{ legal_workflow_url }}&transaction_type=purchase" class="btn hero-btn payment">
+                <i class="fas fa-scale-balanced me-2"></i>{% if plot.has_active_lease %}Buy with Active Lease{% else %}Open Purchase Workflow{% endif %}
+            </a>
+            {% elif show_waitlist_cta %}
+            <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="inline-action-form">
+                {% csrf_token %}
+                <button type="submit" class="btn hero-btn payment">
+                    <i class="fas fa-hourglass-half me-2"></i>Reserve Next Lease Window
+                </button>
+            </form>
+            {% elif show_waitlist_confirm_cta %}
+            <form method="post" action="{% url 'listings:confirm_lease_waitlist' plot.id %}" class="inline-action-form">
+                {% csrf_token %}
+                <button type="submit" class="btn hero-btn payment">
+                    <i class="fas fa-check-circle me-2"></i>Confirm Next Lease Interest
+                </button>
+            </form>
+            {% elif show_login_waitlist_cta %}
+            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn hero-btn payment">
+                <i class="fas fa-hourglass-half me-2"></i>Login to Reserve Next
+            </a>
+            {% elif user.is_authenticated and not is_owner %}
             <span class="btn hero-btn payment disabled">
                 <i class="fas fa-ban me-2"></i>Currently Unavailable
             </span>
@@ -94,6 +116,27 @@
                 <i class="fas fa-scale-balanced me-2"></i>Login for Legal Workflow
             </a>
             {% endif %}
+            {% if plot.next_lease_booking_open and not current_buyer_deal %}
+            {% if show_waitlist_cta %}
+            <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="inline-action-form">
+                {% csrf_token %}
+                <button type="submit" class="btn hero-btn outline">
+                    <i class="fas fa-hourglass-half me-2"></i>Reserve Next Lease Window
+                </button>
+            </form>
+            {% elif show_waitlist_confirm_cta %}
+            <form method="post" action="{% url 'listings:confirm_lease_waitlist' plot.id %}" class="inline-action-form">
+                {% csrf_token %}
+                <button type="submit" class="btn hero-btn outline">
+                    <i class="fas fa-check-circle me-2"></i>Confirm Next Lease
+                </button>
+            </form>
+            {% elif show_login_waitlist_cta %}
+            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn hero-btn outline">
+                <i class="fas fa-hourglass-half me-2"></i>Login to Reserve Next
+            </a>
+            {% endif %}
+            {% endif %}
             <a href="#location" class="btn hero-btn outline">
                 <i class="fas fa-map-marker-alt me-2"></i>View Location
             </a>
@@ -101,6 +144,14 @@
         </div>
     </div>
 </section>
+
+{% if show_waitlist_priority_notice %}
+<section class="container py-3">
+    <div class="workspace-notice">
+        You already confirmed your interest for the next lease window on this land, and the plot is now free again. You can continue with the AgriPlot lease workflow now.
+    </div>
+</section>
+{% endif %}
 
 <div class="container-fluid py-4 detail-shell">
     <div class="detail-layout">
@@ -354,6 +405,72 @@
                     </div>
                 </div>
             </div>
+
+            {% if show_public_lease_status %}
+            <div class="dashboard-card mt-4" id="lease-status">
+                <div class="card-header">
+                    <h6 class="card-title">
+                        <i class="fas fa-file-signature me-2"></i>Current Lease Status
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="lease-status-grid">
+                        <div class="lease-status-item">
+                            <span class="lease-status-label">Occupation Window</span>
+                            <strong>{{ public_lease_start_date|date:"M d, Y" }} to {{ public_lease_end_date|date:"M d, Y" }}</strong>
+                        </div>
+                        <div class="lease-status-item">
+                            <span class="lease-status-label">Notice Window Opens</span>
+                            <strong>{% if active_lease_deal and active_lease_deal.vacation_notice_date %}{{ active_lease_deal.vacation_notice_date|date:"M d, Y" }}{% else %}Depends on the signed lease notice clause{% endif %}</strong>
+                        </div>
+                        <div class="lease-status-item">
+                            <span class="lease-status-label">Intended Use</span>
+                            <strong>{% if active_lease_deal %}{{ active_lease_deal.intended_use|default:"Not publicly stated" }}{% else %}Available on lease agreement record{% endif %}</strong>
+                        </div>
+                        <div class="lease-status-item">
+                            <span class="lease-status-label">Security Deposit</span>
+                            <strong>{% if active_lease_deal and active_lease_deal.lease_security_deposit %}KES {{ active_lease_deal.lease_security_deposit|floatformat:0|intcomma }}{% else %}Held in workflow{% endif %}</strong>
+                        </div>
+                    </div>
+                    <div class="workspace-notice mt-3">
+                        {% if active_lease_deal %}
+                        {{ active_lease_deal.public_lease_summary }}
+                        {% else %}
+                        Occupied until {{ public_lease_end_date|date:"M d, Y" }}. You can still join the queue now and reserve the next lease window once the current term ends.
+                        {% endif %}
+                    </div>
+                    <ul class="hero-list mt-3 mb-0">
+                        <li>Good husbandry clause: {% if active_lease_deal %}{% if active_lease_deal.good_husbandry_required %}required{% else %}not marked as required{% endif %}{% else %}tracked in the lease record{% endif %}.</li>
+                        <li>Soil exit test: {% if active_lease_deal %}{% if active_lease_deal.soil_exit_test_required %}required before final exit{% else %}not flagged{% endif %}{% else %}tracked in the lease record{% endif %}.</li>
+                        <li>Lease registry: {% if active_lease_deal %}{% if active_lease_deal.requires_registry_protection %}should be protected at the Lands Registry because the lease is over 2 years{% else %}formal registry protection is not mandatory from duration alone{% endif %}{% else %}depends on the lease term{% endif %}.</li>
+                        <li>Waitlist queue: {{ lease_waitlist_count }} interested {% if lease_waitlist_count == 1 %}user{% else %}users{% endif %} for the next lease slot.</li>
+                        {% if active_lease_deal and active_lease_deal.subject_to_sale %}
+                        <li>Subject to sale: this tenancy remains on the market for investors, and the lease should be honoured or terminated through the agreed notice path.</li>
+                        {% endif %}
+                    </ul>
+                    {% if user_waitlist_entry %}
+                    <div class="workspace-notice mt-3">
+                        You are already in the next-lease queue with status: <strong>{{ user_waitlist_entry.get_status_display }}</strong>.
+                    </div>
+                    {% if show_waitlist_confirm_cta %}
+                    <form method="post" action="{% url 'listings:confirm_lease_waitlist' plot.id %}" class="mt-3">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check-circle me-2"></i>Confirm You Still Want This Lease
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% elif show_waitlist_cta %}
+                    <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="mt-3">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-primary">
+                            <i class="fas fa-hourglass-half me-2"></i>Join Waitlist / Reserve Next
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Right Column: Documents & Broker Info -->
@@ -909,6 +1026,35 @@ a:hover {
     line-height: 1.5;
 }
 
+.lease-status-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.lease-status-item {
+    background: #f3f7f5;
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+
+.lease-status-label {
+    display: block;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7d76;
+    margin-bottom: 4px;
+}
+
+.workspace-notice {
+    padding: 0.95rem 1rem;
+    border-radius: 14px;
+    background: rgba(31, 122, 77, 0.08);
+    border: 1px solid rgba(31, 122, 77, 0.14);
+    color: #244436;
+}
+
 .gallery-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -947,6 +1093,9 @@ a:hover {
         grid-template-columns: 1fr;
     }
     .hero-card-actions {
+        grid-template-columns: 1fr;
+    }
+    .lease-status-grid {
         grid-template-columns: 1fr;
     }
 }

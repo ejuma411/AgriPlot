@@ -1,0 +1,16 @@
+{% if active_filters %}
+<div class="active-filters">
+    <span class="active-filters-label">Active filters:</span>
+    <div class="filter-chips">
+        {% for filter in active_filters %}
+        <span class="filter-chip">
+            {{ filter.label }}: {{ filter.value }}
+            <a href="{{ filter.remove_url }}" class="remove-filter"><i class="fas fa-times"></i></a>
+        </span>
+        {% endfor %}
+        {% if active_filters|length > 1 %}
+        <a href="?" class="clear-all-link">Clear all</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

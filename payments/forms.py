@@ -39,10 +39,18 @@ class PaymentRequestForm(forms.ModelForm):
         PaymentRequest.Category.SERVICE_FEE: timedelta(hours=48),
     }
     FIXED_CATEGORY_AMOUNTS = {
-        PaymentRequest.Category.COMMITMENT_FEE: Decimal("5000.00"),
+        PaymentRequest.Category.COMMITMENT_FEE: Decimal("50.00"),
         PaymentRequest.Category.VIEWING_FEE: Decimal("2500.00"),
         PaymentRequest.Category.VERIFICATION_PACKAGE: Decimal("5000.00"),
         PaymentRequest.Category.SERVICE_FEE: Decimal("3000.00"),
+    }
+    PURCHASE_STAGE_TEST_AMOUNTS = {
+        PaymentRequest.Category.COMMITMENT_FEE: Decimal("50.00"),
+        PaymentRequest.Category.RESERVATION_DEPOSIT: Decimal("100.00"),
+        PaymentRequest.Category.AGREEMENT_DEPOSIT: Decimal("100.00"),
+        PaymentRequest.Category.ESCROW_DEPOSIT: Decimal("150.00"),
+        PaymentRequest.Category.STAMP_DUTY: Decimal("200.00"),
+        PaymentRequest.Category.COMPLETION_BALANCE: Decimal("500.00"),
     }
     METHOD_DETAIL_FIELDS = [
         "mpesa_reference",
@@ -126,6 +134,12 @@ class PaymentRequestForm(forms.ModelForm):
             "phone_number",
             "lease_start_date",
             "lease_end_date",
+            "intended_use",
+            "lease_security_deposit",
+            "notice_period_days",
+            "good_husbandry_required",
+            "soil_exit_test_required",
+            "subject_to_sale",
             "escrow_enabled",
             "due_at",
         ]
@@ -148,15 +162,32 @@ class PaymentRequestForm(forms.ModelForm):
             ),
             "lease_start_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "lease_end_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
+            "intended_use": forms.TextInput(attrs={"class": "form-control", "placeholder": "e.g. avocados, onions, grazing, greenhouse farming"}),
+            "lease_security_deposit": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "min": "0"}),
+            "notice_period_days": forms.NumberInput(attrs={"class": "form-control", "min": "30", "step": "1"}),
+            "good_husbandry_required": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "soil_exit_test_required": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "subject_to_sale": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "escrow_enabled": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             "due_at": DateTimePickerInput(attrs={"class": "form-control"}),
         }
 
-    def __init__(self, *args, user=None, selected_plot=None, forced_category=None, **kwargs):
+    def __init__(
+        self,
+        *args,
+        user=None,
+        selected_plot=None,
+        forced_category=None,
+        active_deal=None,
+        forced_amount=None,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.user = user
         self.selected_plot = selected_plot
         self.forced_category = forced_category
+        self.active_deal = active_deal
+        self.forced_amount = self.normalize_amount(forced_amount) if forced_amount not in {None, ""} else None
         self.allow_amount_override = False
         self.allow_due_at_override = user_is_finance_admin(user)
         self.simple_mpesa_checkout = True
@@ -166,6 +197,12 @@ class PaymentRequestForm(forms.ModelForm):
         self.fields["phone_number"].required = True
         self.fields["lease_start_date"].required = False
         self.fields["lease_end_date"].required = False
+        self.fields["intended_use"].required = False
+        self.fields["lease_security_deposit"].required = False
+        self.fields["notice_period_days"].required = False
+        self.fields["good_husbandry_required"].required = False
+        self.fields["soil_exit_test_required"].required = False
+        self.fields["subject_to_sale"].required = False
         self.fields["transaction_type"].choices = self.DIRECT_TRANSACTION_CHOICES
         self.fields["category"].choices = self.DIRECT_CATEGORY_CHOICES
         self.fields["category"].initial = PaymentRequest.Category.COMMITMENT_FEE
@@ -193,10 +230,30 @@ class PaymentRequestForm(forms.ModelForm):
         )
         self.fields["amount"].widget.attrs["readonly"] = True
         self.fields["amount"].widget.attrs["data-fixed-amount"] = "true"
+        self.fields["intended_use"].help_text = "State how the tenant plans to use the land so the lease can match the agricultural purpose."
+        self.fields["lease_security_deposit"].help_text = "Security deposit held in the AgriPlot workflow before possession starts."
+        self.fields["notice_period_days"].help_text = "Standard vacation notice period. Agricultural leases should normally give at least 90 days."
+        self.fields["good_husbandry_required"].help_text = "Keep the land in good farming condition and avoid soil damage."
+        self.fields["soil_exit_test_required"].help_text = "Require a soil or land-condition exit test before final release."
+        self.fields["subject_to_sale"].help_text = "For plots listed for both sale and lease, the lease stays subject to a later sale."
         if self.forced_category:
             self.fields["category"].initial = self.forced_category
             self.fields["category"].widget = forms.HiddenInput()
             self.fields["category"].help_text = ""
+        if self.active_deal and self.active_deal.transaction_type == PaymentRequest.TransactionType.LEASE:
+            lease_initials = {
+                "lease_start_date": self.active_deal.lease_start_date,
+                "lease_end_date": self.active_deal.lease_end_date,
+                "intended_use": self.active_deal.intended_use,
+                "lease_security_deposit": self.active_deal.lease_security_deposit,
+                "notice_period_days": self.active_deal.notice_period_days,
+                "good_husbandry_required": self.active_deal.good_husbandry_required,
+                "soil_exit_test_required": self.active_deal.soil_exit_test_required,
+                "subject_to_sale": self.active_deal.subject_to_sale,
+            }
+            for field_name, value in lease_initials.items():
+                if value not in {None, ""}:
+                    self.fields[field_name].initial = value
         if selected_plot is not None:
             self.fields["plot"].initial = selected_plot
             self.fields["plot"].help_text = (
@@ -212,6 +269,8 @@ class PaymentRequestForm(forms.ModelForm):
                 self.fields["transaction_type"].choices = [
                     (PaymentRequest.TransactionType.LEASE, "Lease")
                 ]
+            if selected_plot.listing_type == "both":
+                self.fields["subject_to_sale"].initial = True
         if self.instance and self.instance.pk:
             metadata = self.instance.metadata or {}
             for field_name in self.METHOD_DETAIL_FIELDS:
@@ -221,7 +280,7 @@ class PaymentRequestForm(forms.ModelForm):
             profile = getattr(user, "profile", None)
             if profile and profile.phone:
                 self.fields["phone_number"].initial = profile.phone
-        default_amount = self.calculate_amount(
+        default_amount = self.forced_amount if self.forced_amount is not None else self.calculate_amount(
             selected_plot or self.initial.get("plot"),
             self.fields["transaction_type"].initial or self.initial.get("transaction_type"),
             self.forced_category
@@ -231,6 +290,11 @@ class PaymentRequestForm(forms.ModelForm):
         )
         if default_amount is not None:
             self.fields["amount"].initial = default_amount
+            if self.forced_amount is not None:
+                self.fields["amount"].widget.attrs["data-exact-amount"] = f"{self.forced_amount:.2f}"
+                self.fields["amount"].help_text = (
+                    "This is the exact agreed amount for the current deal stage and cannot be changed here."
+                )
         if not self.allow_due_at_override:
             self.fields["due_at"].initial = self.calculate_due_at(
                 self.fields["transaction_type"].initial or self.initial.get("transaction_type"),
@@ -291,19 +355,9 @@ class PaymentRequestForm(forms.ModelForm):
         if not plot:
             return None
         if transaction_type == PaymentRequest.TransactionType.PURCHASE:
-            if category == PaymentRequest.Category.AGREEMENT_DEPOSIT:
-                return cls.normalize_amount(Decimal(plot.price) * Decimal("0.10"))
-            if category == PaymentRequest.Category.RESERVATION_DEPOSIT:
-                return cls.normalize_amount(Decimal(plot.price) * Decimal("0.10"))
-            if category == PaymentRequest.Category.ESCROW_DEPOSIT:
-                return cls.normalize_amount(Decimal(plot.price) * Decimal("0.10"))
-            if category == PaymentRequest.Category.STAMP_DUTY:
-                rate = Decimal("0.02")
-                if plot.market_zone in {"urban", "peri_urban"}:
-                    rate = Decimal("0.04")
-                return cls.normalize_amount(Decimal(plot.price) * rate)
-            if category == PaymentRequest.Category.COMPLETION_BALANCE:
-                return cls.normalize_amount(Decimal(plot.price) * Decimal("0.90"))
+            test_amount = cls.PURCHASE_STAGE_TEST_AMOUNTS.get(category)
+            if test_amount is not None:
+                return test_amount
         if transaction_type == PaymentRequest.TransactionType.LEASE:
             lease_base = cls.lease_base_amount(plot)
             if lease_base and category in {
@@ -325,10 +379,13 @@ class PaymentRequestForm(forms.ModelForm):
         self.instance.method = PaymentRequest.Method.MPESA_STK
         method = PaymentRequest.Method.MPESA_STK
         amount = cleaned_data.get("amount")
-        calculated_amount = self.calculate_amount(plot, transaction_type, category)
-        if transaction_type == PaymentRequest.TransactionType.PURCHASE:
+        calculated_amount = self.forced_amount if self.forced_amount is not None else self.calculate_amount(plot, transaction_type, category)
+        if transaction_type in {
+            PaymentRequest.TransactionType.PURCHASE,
+            PaymentRequest.TransactionType.LEASE,
+        }:
             if calculated_amount in {None, ""}:
-                self.add_error("amount", "AgriPlot could not calculate the amount for this sale stage.")
+                self.add_error("amount", "AgriPlot could not calculate the amount for this checkout stage.")
             else:
                 cleaned_data["amount"] = calculated_amount
                 self.instance.amount = calculated_amount
@@ -386,6 +443,32 @@ class PaymentRequestForm(forms.ModelForm):
             PaymentRequest.Category.ESCROW_DEPOSIT,
             PaymentRequest.Category.VERIFICATION_PACKAGE,
         }
+        if transaction_type == PaymentRequest.TransactionType.LEASE:
+            if self.active_deal:
+                active_values = {
+                    "lease_start_date": self.active_deal.lease_start_date,
+                    "lease_end_date": self.active_deal.lease_end_date,
+                    "intended_use": self.active_deal.intended_use,
+                    "lease_security_deposit": self.active_deal.lease_security_deposit,
+                    "notice_period_days": self.active_deal.notice_period_days,
+                    "good_husbandry_required": self.active_deal.good_husbandry_required,
+                    "soil_exit_test_required": self.active_deal.soil_exit_test_required,
+                    "subject_to_sale": self.active_deal.subject_to_sale,
+                }
+                for field_name, value in active_values.items():
+                    if cleaned_data.get(field_name) in {None, ""} and value not in {None, ""}:
+                        cleaned_data[field_name] = value
+                        setattr(self.instance, field_name, value)
+            if not cleaned_data.get("intended_use"):
+                self.add_error("intended_use", "Tell AgriPlot how the tenant will use the land.")
+            if not cleaned_data.get("lease_security_deposit") and plot:
+                lease_base = self.lease_base_amount(plot)
+                if lease_base:
+                    cleaned_data["lease_security_deposit"] = lease_base
+                    self.instance.lease_security_deposit = lease_base
+            if plot and plot.listing_type == "both":
+                cleaned_data["subject_to_sale"] = True
+                self.instance.subject_to_sale = True
         self.instance.title = cleaned_data["title"]
         self.instance.description = cleaned_data["description"]
         self.instance.escrow_enabled = cleaned_data["escrow_enabled"]
@@ -496,6 +579,16 @@ class PaymentClosingStepForm(forms.ModelForm):
             attrs={"class": "form-control", "placeholder": "Seller's advocate phone"}
         ),
     )
+    buyer_accepts_agreement = forms.BooleanField(
+        required=False,
+        label="Buyer / tenant digitally confirms this agreement",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
+    seller_accepts_agreement = forms.BooleanField(
+        required=False,
+        label="Seller / landowner digitally confirms this agreement",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
 
     class Meta:
         model = PaymentClosingStep
@@ -548,6 +641,8 @@ class PaymentClosingStepForm(forms.ModelForm):
                 "buyer_advocate_phone",
                 "seller_advocate_name",
                 "seller_advocate_phone",
+                "buyer_accepts_agreement",
+                "seller_accepts_agreement",
             },
             "lcb_consent": {
                 "status",
@@ -596,6 +691,8 @@ class PaymentClosingStepForm(forms.ModelForm):
         }
         if step:
             metadata = dict(step.payment.metadata or {})
+            actor_is_buyer = self.user and self.user == step.payment.buyer
+            actor_is_seller = self.user and self.user == step.payment.seller
             for field_name in {
                     "buyer_advocate_name",
                     "buyer_advocate_phone",
@@ -616,6 +713,13 @@ class PaymentClosingStepForm(forms.ModelForm):
                 self.fields["status"].widget = forms.HiddenInput()
                 self.fields["status"].required = False
                 allowed_fields.add("status")
+            if step.code == "agreement" and step.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
+                self.fields["buyer_accepts_agreement"].initial = bool(step.buyer_confirmed_at)
+                self.fields["seller_accepts_agreement"].initial = bool(step.seller_confirmed_at)
+                if not actor_is_buyer and not self.can_set_status:
+                    allowed_fields.discard("buyer_accepts_agreement")
+                if not actor_is_seller and not self.can_set_status:
+                    allowed_fields.discard("seller_accepts_agreement")
             for name in list(self.fields.keys()):
                 if name not in allowed_fields:
                     self.fields.pop(name)
@@ -626,32 +730,43 @@ class PaymentClosingStepForm(forms.ModelForm):
         if not step:
             return cleaned_data
 
-        status = cleaned_data.get("status")
+        requested_completion = cleaned_data.get("status") == PaymentClosingStep.Status.COMPLETED
         if not self.can_set_status:
-            status = PaymentClosingStep.Status.COMPLETED
-            cleaned_data["status"] = status
+            cleaned_data["status"] = (
+                step.status if step.status != PaymentClosingStep.Status.PENDING else PaymentClosingStep.Status.IN_PROGRESS
+            )
+            requested_completion = False
 
-        if status != PaymentClosingStep.Status.COMPLETED:
+        if not requested_completion:
             return cleaned_data
 
         if step.code in {"offer", "agreement", "registration"} and not (
             cleaned_data.get("document") or step.document
+        ) and not (
+            step.code == "agreement"
+            and step.payment.transaction_type == PaymentRequest.TransactionType.LEASE
         ):
             self.add_error("document", "Upload the supporting document before marking this step complete.")
 
         if step.code == "agreement":
-            for field_name, label in [
-                ("submitter_name", "submitter name"),
-                ("submitter_phone", "submitter phone"),
-                ("submitter_role", "submitter role"),
-                ("submitter_organisation", "submitter organisation"),
-                ("buyer_advocate_name", "buyer's advocate name"),
-                ("buyer_advocate_phone", "buyer's advocate phone"),
-                ("seller_advocate_name", "seller's advocate name"),
-                ("seller_advocate_phone", "seller's advocate phone"),
-            ]:
-                if not cleaned_data.get(field_name):
-                    self.add_error(field_name, f"Enter the {label} before completing this step.")
+            if step.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
+                if not (step.buyer_confirmed_at or cleaned_data.get("buyer_accepts_agreement")):
+                    self.add_error("buyer_accepts_agreement", "The tenant must digitally confirm the lease agreement.")
+                if not (step.seller_confirmed_at or cleaned_data.get("seller_accepts_agreement")):
+                    self.add_error("seller_accepts_agreement", "The landowner must digitally confirm the lease agreement.")
+            else:
+                for field_name, label in [
+                    ("submitter_name", "submitter name"),
+                    ("submitter_phone", "submitter phone"),
+                    ("submitter_role", "submitter role"),
+                    ("submitter_organisation", "submitter organisation"),
+                    ("buyer_advocate_name", "buyer's advocate name"),
+                    ("buyer_advocate_phone", "buyer's advocate phone"),
+                    ("seller_advocate_name", "seller's advocate name"),
+                    ("seller_advocate_phone", "seller's advocate phone"),
+                ]:
+                    if not cleaned_data.get(field_name):
+                        self.add_error(field_name, f"Enter the {label} before completing this step.")
 
         if step.code == "lcb_consent":
             for field_name, label in [
@@ -738,6 +853,16 @@ class PaymentClosingStepForm(forms.ModelForm):
             if field_name in self.cleaned_data and self.cleaned_data.get(field_name)
         }
         metadata["step_submitters"] = step_submitters
+        if instance.code == "agreement" and payment.transaction_type == PaymentRequest.TransactionType.LEASE:
+            agreement_acceptance = dict(metadata.get("lease_agreement_acceptance") or {})
+            if self.cleaned_data.get("buyer_accepts_agreement") and self.user == payment.buyer and not instance.buyer_confirmed_at:
+                instance.buyer_confirmed_at = timezone.now()
+                agreement_acceptance["buyer_confirmed_at"] = instance.buyer_confirmed_at.isoformat()
+            if self.cleaned_data.get("seller_accepts_agreement") and self.user == payment.seller and not instance.seller_confirmed_at:
+                instance.seller_confirmed_at = timezone.now()
+                agreement_acceptance["seller_confirmed_at"] = instance.seller_confirmed_at.isoformat()
+            if agreement_acceptance:
+                metadata["lease_agreement_acceptance"] = agreement_acceptance
         payment.metadata = metadata
         if commit:
             payment.save(update_fields=["metadata", "updated_at"])

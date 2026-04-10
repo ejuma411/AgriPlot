@@ -1,262 +1,773 @@
 {% extends "base.html" %}
 {% load static humanize %}
 
-{% block title %}{{ step.display_title }} — AgriPlot Connect{% endblock %}
+{% block title %}{{ step.display_title }} - AgriPlot{% endblock %}
 
 {% block extra_css %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'css/payments.css' %}">
+<style>
+    .workspace-hero {
+        background: linear-gradient(135deg, #f7fbf6 0%, #ecf4ea 100%);
+        border: 1px solid rgba(46, 125, 50, 0.12);
+        border-radius: 24px;
+        padding: 28px;
+        margin-bottom: 24px;
+    }
+    .workspace-hero.lease {
+        background: linear-gradient(135deg, #f4fbf5 0%, #e3f2df 100%);
+    }
+    .workspace-hero.purchase {
+        background: linear-gradient(135deg, #fcfaf3 0%, #f8edd2 100%);
+    }
+    .workspace-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 14px;
+        margin-top: 20px;
+    }
+    .workspace-stat {
+        background: rgba(255, 255, 255, 0.82);
+        border-radius: 18px;
+        padding: 16px;
+        border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+    .workspace-stat small {
+        display: block;
+        color: #52606d;
+        margin-bottom: 8px;
+    }
+    .workspace-stat strong {
+        font-size: 1.2rem;
+        color: #132a13;
+    }
+    .workspace-panels {
+        display: grid;
+        grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+        gap: 24px;
+    }
+    .workspace-stack {
+        display: grid;
+        gap: 24px;
+    }
+    .workspace-card {
+        background: #fff;
+        border-radius: 22px;
+        padding: 24px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+        border: 1px solid rgba(15, 23, 42, 0.05);
+    }
+    .workspace-card h2,
+    .workspace-card h3 {
+        margin-top: 0;
+    }
+    .workspace-label {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: #edf7ee;
+        color: #1b5e20;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    .workspace-note {
+        background: #f6f8fa;
+        border-left: 4px solid #2e7d32;
+        border-radius: 14px;
+        padding: 16px;
+        margin: 16px 0;
+    }
+    .workspace-note.warning {
+        border-left-color: #ef6c00;
+        background: #fff6e9;
+    }
+    .workspace-note.info {
+        border-left-color: #1565c0;
+        background: #eef6ff;
+    }
+    .workspace-checklist {
+        margin: 0;
+        padding-left: 20px;
+    }
+    .workspace-checklist li + li {
+        margin-top: 8px;
+    }
+    .workspace-timeline {
+        display: grid;
+        gap: 12px;
+    }
+    .workspace-timeline-item {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 16px;
+        padding: 14px 16px;
+        background: #fff;
+    }
+    .workspace-timeline-item.current {
+        border-color: rgba(46, 125, 50, 0.28);
+        background: #f3faf3;
+    }
+    .workspace-form-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .workspace-form-grid .field-block.full {
+        grid-column: 1 / -1;
+    }
+    .workspace-nav {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+    }
+    .workspace-nav a,
+    .workspace-nav button {
+        text-decoration: none;
+    }
+    .workspace-payment-callout {
+        background: linear-gradient(135deg, #0f3d28 0%, #1f6b43 100%);
+        color: #f7f7f2;
+        border-radius: 22px;
+        padding: 22px;
+        box-shadow: 0 18px 42px rgba(15, 61, 40, 0.22);
+    }
+    .workspace-payment-callout p,
+    .workspace-payment-callout strong,
+    .workspace-payment-callout small {
+        color: inherit;
+    }
+    .workspace-payment-callout .hero-btn-secondary {
+        background: #f0b429;
+        color: #0c3322;
+        border: none;
+        box-shadow: 0 16px 34px rgba(12, 51, 34, 0.24);
+    }
+    .workspace-checkout-form {
+        display: grid;
+        gap: 14px;
+        margin-top: 16px;
+    }
+    .workspace-checkout-form input[type="text"] {
+        width: 100%;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        background: rgba(255, 255, 255, 0.14);
+        color: #fff;
+        padding: 14px 16px;
+    }
+    .workspace-checkout-form input[type="text"]::placeholder {
+        color: rgba(247, 247, 242, 0.78);
+    }
+    .workspace-checkout-form label,
+    .workspace-checkout-form .help-copy {
+        color: #f7f7f2;
+    }
+    .workspace-muted-copy {
+        color: #52606d;
+        margin-top: 12px;
+    }
+    .workspace-payment-status {
+        margin-top: 14px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.14);
+        color: #f7f7f2;
+    }
+    .workspace-payment-status.error {
+        background: rgba(176, 42, 55, 0.2);
+    }
+    .workspace-days-critical {
+        color: #c62828;
+    }
+    .workspace-days-safe {
+        color: #1b5e20;
+    }
+    @media (max-width: 960px) {
+        .workspace-panels {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <section class="payments-section">
     <div class="payments-shell">
-        <div class="section-heading compact">
-            <span class="section-kicker">Transaction workspace</span>
-            <h2>{{ step.action_headline }}</h2>
-            <p>{{ payment.plot.title|default:payment.title }} · {{ payment.internal_reference }}</p>
+        <div class="workspace-hero {% if payment.transaction_type == 'lease' %}lease{% else %}purchase{% endif %}">
+            <span class="section-kicker">{{ section_kicker }}</span>
+            <h1 class="detail-title">{{ workspace_title }}</h1>
+            <p class="detail-subtitle">
+                {{ payment.internal_reference }}
+                {% if payment.transaction_type == 'lease' %}
+                · Tenant: {{ payment.buyer.get_full_name|default:payment.buyer.username|default:"Pending tenant" }}
+                · Landowner: {{ payment.counterparty_label }}
+                {% else %}
+                · Buyer: {{ payment.buyer.get_full_name|default:payment.buyer.username|default:"Pending buyer" }}
+                · Seller: {{ payment.counterparty_label }}
+                {% endif %}
+            </p>
+
+            <div class="workspace-note">
+                <span class="workspace-label">Current step</span>
+                <h2 style="margin: 12px 0 8px;">{{ step.display_title }}</h2>
+                <p style="margin-bottom: 0;">{{ step.action_headline }}</p>
+                <p style="margin-top: 10px; margin-bottom: 0;">{{ step.action_where }}</p>
+            </div>
+
+            <div class="workspace-stat-grid">
+                {% if payment.transaction_type == 'lease' %}
+                <div class="workspace-stat">
+                    <small>Days remaining</small>
+                    <strong class="{% if lease_days_remaining is not None and lease_days_remaining < 30 %}workspace-days-critical{% else %}workspace-days-safe{% endif %}">
+                        {% if lease_days_remaining is not None %}{{ lease_days_remaining }}{% else %}-{% endif %}
+                    </strong>
+                </div>
+                <div class="workspace-stat">
+                    <small>Lease started</small>
+                    <strong>{% if payment.lease_start_date %}{{ payment.lease_start_date|date:"M d, Y" }}{% else %}-{% endif %}</strong>
+                </div>
+                <div class="workspace-stat">
+                    <small>Lease ends</small>
+                    <strong>{% if payment.lease_end_date %}{{ payment.lease_end_date|date:"M d, Y" }}{% else %}-{% endif %}</strong>
+                </div>
+                <div class="workspace-stat">
+                    <small>Status</small>
+                    <strong>{{ payment.transfer_status_label }}</strong>
+                </div>
+                {% else %}
+                <div class="workspace-stat">
+                    <small>Workflow progress</small>
+                    <strong>{{ payment.closing_progress_value }}%</strong>
+                </div>
+                <div class="workspace-stat">
+                    <small>Total price</small>
+                    <strong>KES {{ total_price|floatformat:2|intcomma }}</strong>
+                </div>
+                <div class="workspace-stat">
+                    <small>Status</small>
+                    <strong>{{ payment.transfer_status_label }}</strong>
+                </div>
+                <div class="workspace-stat">
+                    <small>Next legal move</small>
+                    <strong>{{ payment.closing_stage_summary }}</strong>
+                </div>
+                {% endif %}
+            </div>
         </div>
 
-        <article class="payment-row tone-sand mb-4">
-            <div class="payment-row-main">
-                <div class="payment-title-row">
-                    <h3>{{ payment.buyer_next_step_summary }}</h3>
-                    <span class="status-pill status-{{ payment.status_badge }}">{{ step.get_status_display }}</span>
-                </div>
-                <p>{{ payment.transfer_status_label }} · Responsible: {{ step.responsible_party_label }} · Update mode: {{ step.stakeholder_update_label }}</p>
-                <div class="mini-note mt-2">{{ payment.buyer_next_step_instruction }}</div>
-                <div class="mini-note mt-2">{{ payment.current_assignment_message }}</div>
-                <div class="mini-note mt-2">Total paid on this deal so far: KES {{ payment.workflow_total_paid_amount|floatformat:2|intcomma }} · Total requested across all recorded stages: KES {{ payment.workflow_total_requested_amount|floatformat:2|intcomma }}</div>
-            </div>
-            <div class="payment-row-side">
-                <strong>{{ payment.closing_stage_summary }}</strong>
-                <a href="{% url 'payments:detail' payment.pk %}" class="text-link">Open full tracker</a>
-            </div>
-        </article>
+        <div class="workspace-panels">
+            <div class="workspace-stack">
+                {% if viewing_historical_step %}
+                <section class="workspace-card">
+                    <div class="workspace-note warning" style="margin: 0;">
+                        <strong>You are viewing a completed step</strong>
+                        <div style="margin-top: 8px;">
+                            {{ step.display_title }} is already complete. The current active stage is
+                            <strong>{{ timeline_current_step.display_title }}</strong>.
+                        </div>
+                        {% if current_workspace_step_url %}
+                        <div class="workspace-nav">
+                            <a href="{{ current_workspace_step_url }}" class="hero-btn hero-btn-primary">Open current stage</a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </section>
+                {% endif %}
 
-        <div class="detail-grid">
-            <div class="detail-main">
-                <section class="content-card">
+                <section class="workspace-card">
                     <div class="card-heading">
-                        <h2>What happens in this step</h2>
+                        <div>
+                            <h2>{% if payment.transaction_type == 'lease' %}Lease dashboard{% else %}Transaction dashboard{% endif %}</h2>
+                            <p class="summary-description mb-0">This section shows where the money sits and what the current step is unlocking.</p>
+                        </div>
                     </div>
-                    {% if step.code == 'due_diligence' and payment.due_diligence_lock_message %}
-                    <div class="workspace-notice mb-3">
-                        <strong>Due diligence lock</strong>
-                        <div>{{ payment.due_diligence_lock_message }}</div>
+                    <div class="workspace-stat-grid">
+                        <div class="workspace-stat">
+                            <small>Paid by buyer / tenant</small>
+                            <strong>KES {{ total_paid_by_buyer|floatformat:2|intcomma }}</strong>
+                        </div>
+                        <div class="workspace-stat">
+                            <small>Currently in escrow</small>
+                            <strong>KES {{ current_escrow_balance|floatformat:2|intcomma }}</strong>
+                        </div>
+                        <div class="workspace-stat">
+                            <small>Released to seller / landlord</small>
+                            <strong>KES {{ released_to_seller|floatformat:2|intcomma }}</strong>
+                        </div>
+                        <div class="workspace-stat">
+                            <small>AgriPlot / agent deductions</small>
+                            <strong>KES {{ agriplot_fee|floatformat:2|intcomma }} / KES {{ agent_commission|floatformat:2|intcomma }}</strong>
+                        </div>
+                    </div>
+                    <div class="workspace-note info">
+                        <strong>How your money is split</strong>
+                        <div style="margin-top: 8px;">
+                            AgriPlot fee: KES {{ agriplot_fee|floatformat:2|intcomma }} ·
+                            Agent commission: KES {{ agent_commission|floatformat:2|intcomma }} ·
+                            Total transaction value: KES {{ total_price|floatformat:2|intcomma }}
+                        </div>
+                    </div>
+                    {% if buyer_payment_certificate %}
+                    <div class="workspace-note">
+                        <strong>{{ buyer_payment_certificate.title }}</strong>
+                        <div style="margin-top: 8px;">{{ buyer_payment_certificate.summary }}</div>
                     </div>
                     {% endif %}
-                    <div class="summary-grid mb-3">
-                        <div><span>Status</span><strong>{{ step.get_status_display }}</strong></div>
-                        <div><span>Responsible party</span><strong>{{ step.responsible_party_label }}</strong></div>
-                        <div><span>Required document</span><strong>{{ step.action_document_label }}</strong></div>
-                        <div><span>Current transfer stage</span><strong>{{ payment.transfer_status_label }}</strong></div>
-                    </div>
-                    {% if step.code == 'due_diligence' and payment.due_diligence_documents %}
-                    <div class="mini-note mb-3">
-                        <strong>Documents delivered to your dashboard</strong>
+                </section>
+
+                {% if payment.transaction_type == 'lease' %}
+                <section class="workspace-card">
+                    <div class="card-heading">
                         <div>
-                            {% for item in payment.due_diligence_documents %}
-                            <div>{{ forloop.counter }}. <a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a> — {{ item.note }}</div>
-                            {% endfor %}
+                            <h2>
+                                {% if step.code == "offer" %}Step 1: Choose your lease terms{% elif step.code == "lcb_consent" %}Step 2: Get necessary consents{% elif step.code == "payment_security" %}Step 3: Pay security deposit{% elif step.code == "handover" %}Step 4: Entry handover{% elif payment.status == "released" %}Active lease dashboard{% else %}Lease step workspace{% endif %}
+                            </h2>
+                            <p class="summary-description mb-0">{{ step.display_guidance }}</p>
+                        </div>
+                    </div>
+
+                    {% if step.code == "offer" %}
+                    <div class="workspace-note">
+                        <strong>Lease terms now on record</strong>
+                        <div style="margin-top: 8px;">Use this step to confirm the lease window, intended use, and whether the security deposit amount is correct before the rest of the workflow starts moving.</div>
+                    </div>
+                    {% elif step.code == "lcb_consent" %}
+                    <div class="workspace-note warning">
+                        <strong>Consent stage</strong>
+                        <div style="margin-top: 8px;">
+                            {% if step.document %}
+                            The consent pack has already been uploaded. Review the reference number and meeting date below before the step is marked complete.
+                            {% else %}
+                            The lease should not go live until the LCB and family consent pack is uploaded where required.
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% elif step.code == "payment_security" %}
+                    <div class="workspace-note">
+                        <strong>Security deposit</strong>
+                        <div style="margin-top: 8px;">
+                            Required amount: KES {{ payment.lease_security_deposit|default:payment.amount|floatformat:2|intcomma }}.
+                            The deposit stays in AgriPlot escrow until the agreed lease conditions are satisfied.
+                        </div>
+                    </div>
+                    {% if step_payment_record %}
+                    <div class="workspace-note info">
+                        <strong>Escrow payment recorded</strong>
+                        <div style="margin-top: 8px;">
+                            AgriPlot recorded {{ step_payment_record.get_category_display|lower }} of
+                            KES {{ step_payment_record.amount|floatformat:2|intcomma }}
+                            under reference {{ step_payment_record.internal_reference }}.
+                            Current payment status: {{ step_payment_record.get_status_display }}.
                         </div>
                     </div>
                     {% endif %}
-                    {% if step.code == 'agreement' %}
-                    <div class="mini-note mb-3">
-                        <strong>Advocate details on record</strong>
-                        <div>Buyer advocate: {{ payment.advocate_details.buyer_name|default:"Pending" }}{% if payment.advocate_details.buyer_phone %} · {{ payment.advocate_details.buyer_phone }}{% endif %}</div>
-                        <div>Seller advocate: {{ payment.advocate_details.seller_name|default:"Pending" }}{% if payment.advocate_details.seller_phone %} · {{ payment.advocate_details.seller_phone }}{% endif %}</div>
+                    <div class="workspace-note info">
+                        <strong>What you need to do in this step</strong>
+                        <ol class="workspace-checklist">
+                            <li>Review the deposit amount and confirm it matches the agreed lease terms.</li>
+                            <li>Pay the deposit through AgriPlot so it is recorded in escrow.</li>
+                            <li>Wait for AgriPlot to confirm the payment before handover moves forward.</li>
+                        </ol>
                     </div>
-                    {% endif %}
-                    {% if recorded_submitter %}
-                    <div class="mini-note mb-3">
-                        <strong>Professional details on record</strong>
-                        <div>Name: {{ recorded_submitter.submitter_name|default:"Pending" }}</div>
-                        <div>Role: {{ recorded_submitter.submitter_role|default:"Pending" }}</div>
-                        <div>Organisation: {{ recorded_submitter.submitter_organisation|default:"Pending" }}</div>
-                        <div>Phone: {{ recorded_submitter.submitter_phone|default:"Pending" }}</div>
+                    <div class="workspace-note warning">
+                        <strong>What you do not need to do here</strong>
+                        <div style="margin-top: 8px;">
+                            This is not the stage for LCB consent, registry filings, or other admin and officer documents. Those are handled in their own steps.
+                        </div>
                     </div>
-                    {% endif %}
-                    {% if step.completion_requirements %}
-                    <div class="mini-note mb-3">
-                        <strong>Evidence needed</strong>
-                        <div>
-                            {% for requirement in step.completion_requirements %}
-                            <div>{{ forloop.counter }}. {{ requirement }}</div>
-                            {% endfor %}
+                    {% elif step.code == "handover" %}
+                    <div class="workspace-note">
+                        <strong>Handover checklist</strong>
+                        <div style="margin-top: 8px;">
+                            Confirm the possession date, boundaries, land condition, and any access or utilities notes before the lease is treated as active.
                         </div>
                     </div>
                     {% endif %}
+
+                    {% if step.code == "agreement" and payment.generated_lease_agreement_text %}
+                    <div class="workspace-note info">
+                        <strong>Digital lease agreement</strong>
+                        <pre style="white-space: pre-wrap; margin: 12px 0 0;">{{ payment.generated_lease_agreement_text }}</pre>
+                    </div>
+                    <div class="workspace-stat-grid">
+                        <div class="workspace-stat">
+                            <small>Tenant confirmation</small>
+                            <strong>{% if step.buyer_confirmed_at %}Confirmed{% else %}Pending{% endif %}</strong>
+                        </div>
+                        <div class="workspace-stat">
+                            <small>Landowner confirmation</small>
+                            <strong>{% if step.seller_confirmed_at %}Confirmed{% else %}Pending{% endif %}</strong>
+                        </div>
+                        <div class="workspace-stat">
+                            <small>Notice window opens</small>
+                            <strong>{% if payment.vacation_notice_date %}{{ payment.vacation_notice_date|date:"M d, Y" }}{% else %}-{% endif %}</strong>
+                        </div>
+                        <div class="workspace-stat">
+                            <small>Subject to sale</small>
+                            <strong>{% if payment.subject_to_sale %}Yes{% else %}No{% endif %}</strong>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if payment.status == "released" %}
+                    <div class="workspace-note">
+                        <strong>Active lease summary</strong>
+                        <div style="margin-top: 8px;">{{ payment.public_lease_summary }}</div>
+                    </div>
+                    {% endif %}
+
+                    {% if agreement_certificate %}
+                    <div class="workspace-note {% if agreement_certificate.status != 'issued' %}warning{% endif %}">
+                        <strong>{{ agreement_certificate.title }}</strong>
+                        <div style="margin-top: 8px;">{{ agreement_certificate.summary }}</div>
+                    </div>
+                    {% endif %}
+                </section>
+                {% else %}
+                <section class="workspace-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>What this purchase step needs</h2>
+                            <p class="summary-description mb-0">{{ step.display_guidance }}</p>
+                        </div>
+                    </div>
+                    <div class="workspace-note">
+                        <strong>{{ step.action_document_label }}</strong>
+                        <div style="margin-top: 8px;">{{ step.action_platform_role }}</div>
+                    </div>
+                    {% if step.code == "stamp_duty" %}
+                    <div class="workspace-note warning">
+                        <strong>Tax stage reminder</strong>
+                        <div style="margin-top: 8px;">Enter the official market value and assessed duty before the step can be completed.</div>
+                    </div>
+                    {% elif step.code == "completion_docs" %}
+                    <div class="workspace-note warning">
+                        <strong>Completion exchange reminder</strong>
+                        <div style="margin-top: 8px;">Only mark this complete when the original title, signed transfer forms, and seller KYC documents are all in hand.</div>
+                    </div>
+                    {% endif %}
+                </section>
+                {% endif %}
+
+                <section class="workspace-card">
+                    <div class="card-heading">
+                        <div>
+                            <h2>Update this step</h2>
+                            <p class="summary-description mb-0">Submit the legal, officer, or tenant update for this exact stage.</p>
+                        </div>
+                    </div>
+
+                    {% if step.code == "payment_security" and step_payment_url and not viewing_historical_step %}
+                    <div class="workspace-payment-callout" style="margin-bottom: 18px;">
+                        <strong>Security deposit checkout form</strong>
+                        <div style="margin-top: 10px;">
+                            Pay the exact agreed security deposit through AgriPlot. Once the M-Pesa payment succeeds, the escrow stage will continue with the recorded amount.
+                        </div>
+                        <form method="post" action="{% url 'payments:closing_step_stk_push' payment.pk step.pk %}" class="workspace-checkout-form" id="workspace-stk-form" data-status-url-template="{% url 'payments:payment_status_poll' payment.workflow_anchor_payment.pk 0 %}">
+                            {% csrf_token %}
+                            <label for="workspace-mpesa-number"><strong>M-Pesa number</strong></label>
+                            <input
+                                id="workspace-mpesa-number"
+                                type="text"
+                                name="phone_number"
+                                value="{{ checkout_phone_initial }}"
+                                placeholder="2547XXXXXXXX"
+                                required
+                            >
+                            <div class="help-copy">
+                               A prompt will be sent to this number for the exact agreed amount{% if step_payment_amount %}: KES {{ step_payment_amount|floatformat:2|intcomma }}{% endif %}. So you'll need to provide your M-Pesa PIN to complete this transaction
+                            </div>
+                            <div class="workspace-nav">
+                                <button type="submit" class="hero-btn hero-btn-secondary" id="workspace-stk-submit">
+                                    Start checkout{% if step_payment_amount %} · KES {{ step_payment_amount|floatformat:2|intcomma }}{% endif %}
+                                </button>
+                            </div>
+                            <div class="workspace-payment-status" id="workspace-stk-status" hidden></div>
+                        </form>
+                        
+                    </div>
+                    {% endif %}
+
+                    <div class="workspace-note">
+                        <strong>{{ step.stakeholder_update_label }}</strong>
+                        <div style="margin-top: 8px;">{{ step.buyer_instruction }}</div>
+                        {% if step_payment_label and step_payment_url and step.code != "payment_security" %}
+                        <div style="margin-top: 12px;">
+                            <a href="{{ step_payment_url }}" class="hero-btn hero-btn-secondary">
+                                Open {{ step_payment_label|lower }} checkout{% if step_payment_amount %} · KES {{ step_payment_amount|floatformat:2|intcomma }}{% endif %}
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+
                     {% if step_action_checklist %}
-                    <div class="mini-note mb-3">
-                        <strong>What must be submitted in this step</strong>
-                        <div>
+                    <div class="workspace-note info">
+                        <strong>Checklist</strong>
+                        <ol class="workspace-checklist">
                             {% for item in step_action_checklist %}
-                            <div>{{ forloop.counter }}. {{ item }}</div>
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+                    {% endif %}
+
+                    {% if step.code == "payment_security" and not is_finance_admin %}
+                    <div class="workspace-note info">
+                        <strong>Checkout first</strong>
+                        <div style="margin-top: 8px;">
+                            {% if viewing_historical_step %}
+                            This escrow step is already complete. Use the current-stage link above to continue the lease workflow.
+                            {% else %}
+                            Use the STK push checkout above to pay the security deposit. AgriPlot will record the escrow payment automatically once Safaricom confirms it.
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% elif can_update_closing_steps %}
+                    <form method="post" action="{% url 'payments:update_closing_step' payment.pk step.pk %}" enctype="multipart/form-data" class="payments-form compact-form">
+                        {% csrf_token %}
+                        <div class="workspace-form-grid">
+                            {% for field in closing_step_form %}
+                            <div class="field-block {% if field.name == 'notes' %}full{% endif %}">
+                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="mini-note mt-2">{{ field.help_text }}</div>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
+                                {% endfor %}
+                            </div>
                             {% endfor %}
                         </div>
-                    </div>
-                    {% endif %}
-                    <div class="workspace-notice mb-3">
-                        <strong>What you should do now</strong>
-                        <div>{{ step.action_where }}</div>
-                    </div>
-                    {% if step.code == 'agreement' or step.code == 'lcb_consent' or step.code == 'stamp_duty' or step.code == 'completion_docs' or step.code == 'registration' %}
-                    <div class="workspace-notice mb-3">
-                        <strong>Buyer-side submission rule</strong>
-                        <div>Because AgriPlot does not yet have a separate lawyer portal, submit this stage from the buyer workspace using the responsible professional's real name, role, organisation, phone number, and supporting evidence.</div>
-                    </div>
-                    {% endif %}
-                    {% if step.code == 'agreement' %}
-                    <div class="workspace-notice mb-3">
-                        <strong>Legal escrow note</strong>
-                        <div>The 10% commitment at this stage should be treated as part of the legal escrow path and tracked through the advocates' trust arrangement, not as a direct seller payout.</div>
-                    </div>
-                    {% endif %}
-                    {% if step.code == 'completion_docs' %}
-                    <div class="workspace-notice mb-3">
-                        <strong>Completion exchange</strong>
-                        <div>This is the money-for-papers moment: the buyer clears the remaining balance while the seller's side hands over the original title, signed transfer forms, and ID/KRA copies.</div>
-                    </div>
-                    {% endif %}
-                    <div class="workspace-notice mb-3">
-                        <strong>How AgriPlot helps</strong>
-                        <div>{{ step.action_platform_role }}</div>
-                    </div>
-                    <div class="mini-note mb-3">
-                        <strong>Your way forward</strong>
-                        <div>{{ step.buyer_instruction }}</div>
-                    </div>
-                    <div class="mini-note mb-3">
-                        <strong>Reality check</strong>
-                        <div>{{ step.action_support_label }}</div>
-                    </div>
-                    {% if step.guidance %}
-                    <div class="mini-note mb-3">
-                        <strong>AgriPlot guidance</strong>
-                        <div>{{ step.guidance }}</div>
-                    </div>
-                    {% endif %}
-                    {% if step.notes %}
-                    <div class="mini-note mt-3">{{ step.notes }}</div>
-                    {% endif %}
-                    {% if step.document %}
-                    <div class="mini-note mt-3">Supporting document: <a href="{{ step.document.url }}" target="_blank" rel="noopener">Open file</a></div>
-                    {% endif %}
-                </section>
-                <br>
-                {% if step_payment_category %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Required payment for this step</h2>
-                    </div>
-                    <div class="workspace-notice mb-3">
-                        <strong>{{ step_payment_label }}</strong>
-                        <div>
-                            This stage includes a payment checkpoint. AgriPlot will open only the correct payment stage for this transaction and calculate the amount automatically.
+                        <div class="workspace-nav">
+                            <button type="submit" class="hero-btn hero-btn-primary">Save step update</button>
+                            <a href="{% url 'payments:detail' payment.pk %}" class="hero-btn hero-btn-secondary">Open full tracker</a>
                         </div>
+                    </form>
+                    {% else %}
+                    <div class="workspace-note {% if step_requires_admin_action %}warning{% else %}info{% endif %}">
+                        <strong>
+                            {% if step_requires_admin_action %}
+                            Admin / official action required
+                            {% else %}
+                            Update locked for this account
+                            {% endif %}
+                        </strong>
+                        <div style="margin-top: 8px;">{{ step_update_reason }}</div>
                     </div>
-                    {% if step_payment_amount %}
-                    <div class="mini-note mb-3">
-                        <strong>Calculated amount</strong>
-                        <div>KES {{ step_payment_amount|floatformat:2|intcomma }}</div>
+                    <div class="workspace-nav">
+                        <a href="{% url 'payments:detail' payment.pk %}" class="hero-btn hero-btn-secondary">Open full tracker</a>
                     </div>
                     {% endif %}
-                    {% if step_payment_url %}
-                    <a href="{{ step_payment_url }}" class="hero-btn hero-btn-secondary">Open {{ step_payment_label|lower }}</a>
-                    {% endif %}
                 </section>
-                {% else %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Payment handling for this step</h2>
-                    </div>
-                    <div class="workspace-notice">
-                        <strong>No AgriPlot payment is required here</strong>
-                        <div>This stage moves forward through evidence and confirmations only. If money is involved at this stage, it should be handled outside AgriPlot and then recorded here through the required documents or notes.</div>
-                    </div>
-                </section>
-                {% endif %}
-
-               
             </div>
 
-            <aside class="detail-sidebar">
-                <section class="content-card">
+            <aside class="workspace-stack">
+                <section class="workspace-card">
                     <div class="card-heading">
-                        <h2>Step navigation</h2>
-                    </div>
-                    <div class="payment-list">
-                        {% if previous_step %}
-                        <article class="payment-row">
-                            <div class="payment-row-main">
-                                <h3>Previous</h3>
-                                <p>{{ previous_step.display_title }}</p>
-                            </div>
-                            <div class="payment-row-side">
-                                <a href="{% url 'payments:closing_step_workspace' payment.pk previous_step.pk %}" class="text-link">Open</a>
-                            </div>
-                        </article>
-                        {% endif %}
-                        {% if next_step %}
-                        <article class="payment-row">
-                            <div class="payment-row-main">
-                                <h3>Next</h3>
-                                <p>{{ next_step.display_title }}</p>
-                            </div>
-                            <div class="payment-row-side">
-                                <a href="{% url 'payments:closing_step_workspace' payment.pk next_step.pk %}" class="text-link">Open</a>
-                            </div>
-                        </article>
-                        {% endif %}
-                    </div>
-                </section>
-                <br>
-                 {% if can_update_closing_steps %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Update this step</h2>
-                    </div>
-                    <div class="mini-note mb-3">
-                        Fill the fields below with the real evidence for this stage. AgriPlot will use that evidence to move the legal tracker forward.
-                    </div>
-                    <form method="post" action="{% url 'payments:update_closing_step' payment.pk step.pk %}" class="payments-form" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        {% for field in closing_step_form %}
-                        {% if field.is_hidden %}
-                        {{ field }}
-                        {% else %}
-                        <div class="field-block">
-                            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                            {{ field }}
-                            {% for error in field.errors %}
-                            <div class="error-copy">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        {% endfor %}
-                        <button type="submit" class="hero-btn hero-btn-primary">Save step update</button>
-                    </form>
-                </section>
-                {% else %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Who updates this step</h2>
-                    </div>
-                    <div class="workspace-notice">
-                        <strong>{{ step.responsible_party_label }}</strong>
                         <div>
-                            This stage is currently updated by {{ step.responsible_party_label|lower }}. Once they submit the required evidence, AgriPlot will assign the next step automatically.
+                            <h3>Transaction timeline</h3>
+                            <p class="summary-description mb-0">Completed, current, and upcoming steps for this deal.</p>
+                        </div>
+                    </div>
+                    <div class="workspace-timeline">
+                        {% for item in completed_stages %}
+                        <div class="workspace-timeline-item">
+                            <span class="workspace-label">Completed</span>
+                            <div style="margin-top: 10px; font-weight: 600;">{{ item.display_title }}</div>
+                            <div class="mini-note mt-2">{{ item.get_status_display }}</div>
+                            <div class="mini-note mt-2">
+                                <a href="{% url 'payments:closing_step_workspace' payment.pk item.pk %}" class="text-link">Open</a>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        {% for item in blocked_stages %}
+                        <div class="workspace-timeline-item current">
+                            <span class="workspace-label">Blocked</span>
+                            <div style="margin-top: 10px; font-weight: 600;">{{ item.display_title }}</div>
+                            <div class="mini-note mt-2">{{ item.get_status_display }}</div>
+                        </div>
+                        {% endfor %}
+
+                        {% for item in in_progress_stages %}
+                        <div class="workspace-timeline-item current">
+                            <span class="workspace-label">In progress</span>
+                            <div style="margin-top: 10px; font-weight: 600;">{{ item.display_title }}</div>
+                            <div class="mini-note mt-2">{{ item.get_status_display }}</div>
+                        </div>
+                        {% endfor %}
+
+                        {% if timeline_current_step %}
+                        <div class="workspace-timeline-item current">
+                            <span class="workspace-label">Current</span>
+                            <div style="margin-top: 10px; font-weight: 600;">{{ timeline_current_step.display_title }}</div>
+                            <div class="mini-note mt-2">{{ timeline_current_step.get_status_display }}</div>
+                        </div>
+                        {% endif %}
+
+                        {% for item in upcoming_stages %}
+                        <div class="workspace-timeline-item">
+                            <span class="workspace-label">Upcoming</span>
+                            <div style="margin-top: 10px; font-weight: 600;">{{ item.display_title }}</div>
+                            <div class="mini-note mt-2">{{ item.get_status_display }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <section class="workspace-card">
+                    <div class="card-heading">
+                        <div>
+                            <h3>{% if payment.transaction_type == 'lease' %}Lease facts{% else %}Deal facts{% endif %}</h3>
+                            <p class="summary-description mb-0">Quick reference for the people and obligations on this transaction.</p>
+                        </div>
+                    </div>
+                    <div class="workspace-note">
+                        <strong>{% if payment.transaction_type == 'lease' %}Landowner{% else %}Seller{% endif %}</strong>
+                        <div style="margin-top: 8px;">{{ payment.counterparty_label }}</div>
+                    </div>
+                    {% if payment.transaction_type == 'lease' %}
+                    <div class="workspace-note">
+                        <strong>Intended use</strong>
+                        <div style="margin-top: 8px;">{{ payment.intended_use|default:"To be confirmed" }}</div>
+                    </div>
+                    <div class="workspace-note">
+                        <strong>Security deposit</strong>
+                        <div style="margin-top: 8px;">KES {{ payment.lease_security_deposit|default:payment.amount|floatformat:2|intcomma }}</div>
+                    </div>
+                    <div class="workspace-note">
+                        <strong>Notice period</strong>
+                        <div style="margin-top: 8px;">{{ payment.notice_period_days }} days</div>
+                    </div>
+                    {% else %}
+                    <div class="workspace-note">
+                        <strong>Due-diligence pack</strong>
+                        <div style="margin-top: 8px;">{{ payment.search_result_summary }}</div>
+                    </div>
+                    <div class="workspace-note">
+                        <strong>Purchase value</strong>
+                        <div style="margin-top: 8px;">KES {{ payment.sale_price_value|floatformat:2|intcomma }}</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="workspace-note info">
+                        <strong>Need help?</strong>
+                        <div style="margin-top: 8px;">Use the full payment tracker for documents, milestones, certificates, and payout status.</div>
+                        <div class="workspace-nav">
+                            <a href="{% url 'payments:detail' payment.pk %}" class="hero-btn hero-btn-secondary">Open full transaction tracker</a>
+                            {% if payment.seller and payment.seller.email %}
+                            <a href="mailto:{{ payment.seller.email }}?subject=AgriPlot%20support%20for%20{{ payment.internal_reference }}" class="hero-btn hero-btn-secondary">Email seller / landlord</a>
+                            {% endif %}
                         </div>
                     </div>
                 </section>
-                {% endif %}
-
             </aside>
         </div>
     </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const stkForm = document.getElementById("workspace-stk-form");
+    if (!stkForm) {
+        return;
+    }
+
+    const submitButton = document.getElementById("workspace-stk-submit");
+    const statusBox = document.getElementById("workspace-stk-status");
+    const statusUrlTemplate = stkForm.dataset.statusUrlTemplate || "";
+    let pollTimer = null;
+
+    function showStatus(message, isError) {
+        if (!statusBox) {
+            return;
+        }
+        statusBox.hidden = false;
+        statusBox.textContent = message;
+        statusBox.classList.toggle("error", Boolean(isError));
+    }
+
+    function setBusy(isBusy) {
+        if (!submitButton) {
+            return;
+        }
+        submitButton.disabled = isBusy;
+        submitButton.textContent = isBusy ? "Sending STK push..." : submitButton.dataset.defaultLabel;
+    }
+
+    function startPolling(paymentId) {
+        if (!statusUrlTemplate || !paymentId) {
+            return;
+        }
+        const pollUrl = statusUrlTemplate.replace(/0\/$/, paymentId + "/");
+        if (pollTimer) {
+            window.clearInterval(pollTimer);
+        }
+        pollTimer = window.setInterval(async function () {
+            try {
+                const response = await fetch(pollUrl, {
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    credentials: "same-origin",
+                });
+                const payload = await response.json();
+                if (!response.ok || !payload.ok) {
+                    showStatus(payload.message || "Could not verify payment status yet.", true);
+                    return;
+                }
+                if (payload.state === "paid") {
+                    showStatus(payload.message || "Payment detected. Refreshing this stage...", false);
+                    window.clearInterval(pollTimer);
+                    window.setTimeout(function () {
+                        window.location.reload();
+                    }, 1200);
+                } else if (payload.state === "failed") {
+                    showStatus(payload.message || "The payment did not complete successfully.", true);
+                    window.clearInterval(pollTimer);
+                    setBusy(false);
+                } else {
+                    showStatus(payload.message || "Waiting for Safaricom payment confirmation...", false);
+                }
+            } catch (error) {
+                showStatus("Still waiting for payment confirmation from Safaricom...", false);
+            }
+        }, 4000);
+    }
+
+    if (submitButton) {
+        submitButton.dataset.defaultLabel = submitButton.textContent;
+    }
+
+    stkForm.addEventListener("submit", async function (event) {
+        event.preventDefault();
+        setBusy(true);
+        showStatus("Sending a prompt to the provided number...", false);
+        try {
+            const response = await fetch(stkForm.action, {
+                method: "POST",
+                body: new FormData(stkForm),
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                credentials: "same-origin",
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) {
+                showStatus(payload.message || "Could not start the STK push.", true);
+                setBusy(false);
+                return;
+            }
+            showStatus(payload.message || "STK push sent. Complete it on your phone.", false);
+            startPolling(payload.payment_id);
+        } catch (error) {
+            showStatus("Could not start the STK push right now. Please try again.", true);
+            setBusy(false);
+        }
+    });
+});
+</script>
 {% endblock %}

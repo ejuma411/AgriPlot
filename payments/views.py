@@ -7,6 +7,8 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.core.mail import send_mail
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, HttpResponseRedirect, JsonResponse
@@ -27,9 +29,18 @@ from .forms import (
     PaymentMilestoneForm,
     PaymentRequestForm,
 )
-from .models import PaymentClosingStep, PaymentDispute, PaymentMilestone, PaymentRequest
+from .models import (
+    PaymentCertificate,
+    PaymentClosingStep,
+    PaymentDisbursement,
+    PaymentDispute,
+    PaymentMilestone,
+    PaymentRequest,
+)
+from .daraja import DarajaError, daraja_ready, extract_callback_metadata, initiate_stk_push
 from .paystack import PaystackError, initialize_transaction, paystack_ready, verify_transaction
 from .permissions import (
+    step_requires_admin_action,
     user_can_add_milestone,
     user_can_create_payment,
     user_can_open_dispute,
@@ -51,6 +62,16 @@ PAYMENT_METHOD_CARDS = [
         "tone": "green",
     },
 ]
+
+
+def _active_payment_provider():
+    return getattr(settings, "PAYMENT_PROVIDER", "daraja").lower()
+
+
+def _gateway_ready():
+    if _active_payment_provider() == "daraja":
+        return daraja_ready()
+    return paystack_ready()
 
 
 def _payment_counterparty(payment):
@@ -131,15 +152,19 @@ def _notify_payment_activity(payment, event):
 
 
 def _handle_successful_paystack_payment(payment, verification, actor=None):
+    _handle_successful_gateway_payment(
+        payment,
+        provider="paystack",
+        verification=verification,
+        actor=actor,
+    )
+
+
+def _handle_successful_gateway_payment(payment, provider, verification, actor=None):
     _ensure_payment_workflow_seeded(payment)
     anchor = payment.workflow_anchor_payment
     metadata = dict(payment.metadata or {})
-    metadata["paystack_verification"] = {
-        "status": verification.get("status", ""),
-        "gateway_response": verification.get("gateway_response", ""),
-        "paid_at": verification.get("paid_at", ""),
-        "channel": verification.get("channel", ""),
-    }
+    metadata[f"{provider}_verification"] = verification
     if (
         payment.transaction_type == PaymentRequest.TransactionType.PURCHASE
         and "due_diligence_lock_expires_at" not in metadata
@@ -158,6 +183,7 @@ def _handle_successful_paystack_payment(payment, verification, actor=None):
     if anchor.pk != payment.pk:
         category_to_step = {
             PaymentRequest.Category.AGREEMENT_DEPOSIT: "agreement",
+            PaymentRequest.Category.ESCROW_DEPOSIT: "payment_security",
             PaymentRequest.Category.STAMP_DUTY: "stamp_duty",
             PaymentRequest.Category.COMPLETION_BALANCE: "completion_docs",
         }
@@ -171,9 +197,17 @@ def _handle_successful_paystack_payment(payment, verification, actor=None):
                 )
                 existing_notes = target_step.notes.strip()
                 target_step.notes = f"{existing_notes}\n{note_line}".strip() if existing_notes else note_line
-                if target_step.status == PaymentClosingStep.Status.PENDING:
-                    target_step.status = PaymentClosingStep.Status.IN_PROGRESS
-                target_step.save(update_fields=["notes", "status", "updated_at"])
+                if target_step.code == "payment_security" and target_step.can_mark_complete_with_current_evidence():
+                    target_step.save(update_fields=["notes", "updated_at"])
+                    target_step.set_status(
+                        PaymentClosingStep.Status.COMPLETED,
+                        actor=actor,
+                        notes=target_step.notes,
+                    )
+                else:
+                    if target_step.status == PaymentClosingStep.Status.PENDING:
+                        target_step.status = PaymentClosingStep.Status.IN_PROGRESS
+                    target_step.save(update_fields=["notes", "status", "updated_at"])
                 anchor.add_event(
                     "stage_payment_recorded",
                     f"{payment.get_category_display()} recorded for {target_step.display_title}: KES {payment.amount:,.2f}.",
@@ -345,6 +379,7 @@ def _ensure_payment_workflow_seeded(payment):
                 )
     if not payment.milestones.exists():
         _build_default_milestones(payment)
+    anchor.ensure_transaction_artifacts()
 
 
 def _maybe_auto_complete_test_deal(payment):
@@ -381,6 +416,110 @@ def _payment_next_workspace_url(payment):
     return reverse("payments:detail", kwargs={"pk": anchor.pk})
 
 
+def _resolve_workspace_payment(pk):
+    payment = get_object_or_404(
+        PaymentRequest.objects.select_related("plot", "buyer", "seller").prefetch_related("closing_steps"),
+        pk=pk,
+    )
+    anchor = payment.workflow_anchor_payment
+    if anchor.pk == payment.pk:
+        return payment
+    return PaymentRequest.objects.select_related("plot", "buyer", "seller").prefetch_related("closing_steps").get(pk=anchor.pk)
+
+
+def _create_workspace_stage_payment(payment, step, phone_number, actor):
+    anchor = payment.workflow_anchor_payment
+    payment_category = STEP_PAYMENT_CATEGORY_MAP.get(step.code)
+    if not payment_category:
+        raise ValidationError("This stage does not support direct checkout.")
+
+    if (
+        anchor.transaction_type == PaymentRequest.TransactionType.LEASE
+        and step.code == "payment_security"
+    ):
+        stage_amount = anchor.lease_security_deposit or anchor.amount
+    else:
+        stage_amount = PaymentRequestForm.calculate_amount(
+            anchor.plot,
+            anchor.transaction_type,
+            payment_category,
+        )
+    if not stage_amount:
+        raise ValidationError("AgriPlot could not calculate the amount for this stage.")
+
+    checkout_phone = str(phone_number or "").strip()
+    if not checkout_phone:
+        raise ValidationError("Enter the M-Pesa number that should receive the STK push.")
+
+    child_payment = PaymentRequest(
+        buyer=anchor.buyer,
+        seller=anchor.seller,
+        plot=anchor.plot,
+        title=PaymentRequestForm.build_title(anchor.plot, anchor.transaction_type, payment_category),
+        description=f"M-Pesa checkout for {dict(PaymentRequest.Category.choices).get(payment_category, 'payment').lower()}.",
+        amount=stage_amount,
+        category=payment_category,
+        method=PaymentRequest.Method.MPESA_STK,
+        transaction_type=anchor.transaction_type,
+        status=PaymentRequest.Status.PENDING,
+        phone_number=checkout_phone,
+        lease_start_date=anchor.lease_start_date,
+        lease_end_date=anchor.lease_end_date,
+        intended_use=anchor.intended_use,
+        lease_security_deposit=anchor.lease_security_deposit,
+        notice_period_days=anchor.notice_period_days,
+        good_husbandry_required=anchor.good_husbandry_required,
+        soil_exit_test_required=anchor.soil_exit_test_required,
+        subject_to_sale=anchor.subject_to_sale,
+        escrow_enabled=True,
+        due_at=PaymentRequestForm.calculate_due_at(
+            anchor.transaction_type,
+            payment_category,
+            anchor.lease_start_date,
+        ),
+        metadata={
+            "workflow_root_id": anchor.pk,
+            "workspace_step_code": step.code,
+            "workspace_step_id": step.pk,
+        },
+    )
+    child_payment.full_clean()
+    child_payment.save()
+    child_payment.add_event(
+        "created",
+        "Workspace checkout created for the active step.",
+        actor=actor,
+    )
+    _ensure_payment_workflow_seeded(child_payment)
+    callback_url = settings.MPESA_CALLBACK_URL or (
+        f"{settings.SITE_URL.rstrip('/')}{reverse('payments:daraja_callback')}"
+    )
+    stk_data = initiate_stk_push(child_payment, callback_url)
+    child_payment.provider_reference = (
+        stk_data.get("CheckoutRequestID")
+        or stk_data.get("MerchantRequestID")
+        or child_payment.internal_reference
+    )
+    metadata = dict(child_payment.metadata or {})
+    metadata.update(
+        {
+            "daraja_checkout_request_id": stk_data.get("CheckoutRequestID", ""),
+            "daraja_merchant_request_id": stk_data.get("MerchantRequestID", ""),
+            "daraja_customer_message": stk_data.get("CustomerMessage", ""),
+            "daraja_response_description": stk_data.get("ResponseDescription", ""),
+        }
+    )
+    child_payment.metadata = metadata
+    child_payment.save(update_fields=["provider_reference", "metadata", "updated_at"])
+    child_payment.add_event(
+        "daraja_stk_initialized",
+        "Safaricom Daraja STK push sent from the step workspace.",
+        actor=actor,
+    )
+    _notify_payment_activity(child_payment, "initiated")
+    return child_payment, stk_data
+
+
 def _active_deal_for_buyer_plot(user, plot, transaction_type):
     if not getattr(user, "is_authenticated", False) or not plot:
         return None
@@ -409,8 +548,8 @@ def _active_deal_for_buyer_plot(user, plot, transaction_type):
 
 
 def _recommended_payment_category(plot, user, transaction_type):
+    active_deal = _active_deal_for_buyer_plot(user, plot, transaction_type)
     if transaction_type == PaymentRequest.TransactionType.PURCHASE:
-        active_deal = _active_deal_for_buyer_plot(user, plot, transaction_type)
         if not active_deal:
             return PaymentRequest.Category.COMMITMENT_FEE, None
         next_step = active_deal.next_closing_step
@@ -422,12 +561,24 @@ def _recommended_payment_category(plot, user, transaction_type):
             "completion_docs": PaymentRequest.Category.COMPLETION_BALANCE,
         }
         return step_to_category.get(next_step.code), active_deal
+    if transaction_type == PaymentRequest.TransactionType.LEASE:
+        if not active_deal:
+            return PaymentRequest.Category.COMMITMENT_FEE, None
+        next_step = active_deal.next_closing_step
+        if not next_step:
+            return None, active_deal
+        step_to_category = {
+            "offer": PaymentRequest.Category.COMMITMENT_FEE,
+            "payment_security": PaymentRequest.Category.ESCROW_DEPOSIT,
+        }
+        return step_to_category.get(next_step.code), active_deal
     return PaymentRequest.Category.COMMITMENT_FEE, None
 
 
 STEP_PAYMENT_CATEGORY_MAP = {
     "due_diligence": PaymentRequest.Category.COMMITMENT_FEE,
     "agreement": PaymentRequest.Category.AGREEMENT_DEPOSIT,
+    "payment_security": PaymentRequest.Category.ESCROW_DEPOSIT,
     "stamp_duty": PaymentRequest.Category.STAMP_DUTY,
     "completion_docs": PaymentRequest.Category.COMPLETION_BALANCE,
 }
@@ -481,6 +632,7 @@ class PaymentDashboardView(ListView):
         payments = self.object_list
         for payment in payments:
             _ensure_payment_workflow_seeded(payment)
+        is_finance = user_is_finance_admin(self.request.user)
         focus_payment = next(
             (
                 payment
@@ -512,6 +664,23 @@ class PaymentDashboardView(ListView):
         context["method_cards"] = PAYMENT_METHOD_CARDS
         context["show_scope_notice"] = not self.request.user.is_authenticated
         context["focus_payment"] = focus_payment
+        admin_step_queue = []
+        if is_finance:
+            for payment in payments:
+                for step in payment.closing_steps.exclude(status=PaymentClosingStep.Status.COMPLETED).order_by("sequence"):
+                    owner_label = step.responsible_party_label
+                    if step_requires_admin_action(step):
+                        admin_step_queue.append(
+                            {
+                                "payment": payment,
+                                "step": step,
+                                "owner_label": owner_label,
+                                "is_current": payment.current_assigned_step and payment.current_assigned_step.pk == step.pk,
+                            }
+                        )
+        context["is_finance_admin"] = is_finance
+        context["admin_step_queue"] = admin_step_queue
+        context["admin_task_count"] = len(admin_step_queue)
         return context
 
 
@@ -545,31 +714,77 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             return requested_type
         return PaymentRequest.TransactionType.PURCHASE
 
+    def get_requested_workflow_root(self):
+        workflow_root_id = self.request.GET.get("workflow_root_id") or self.request.POST.get("workflow_root_id")
+        if not workflow_root_id:
+            return None
+        try:
+            return PaymentRequest.objects.select_related("plot", "buyer", "seller").get(pk=workflow_root_id)
+        except (PaymentRequest.DoesNotExist, ValueError, TypeError):
+            return None
+
+    def get_forced_stage_amount(self, active_deal, forced_category):
+        if not active_deal or not forced_category:
+            return None
+        if (
+            active_deal.transaction_type == PaymentRequest.TransactionType.LEASE
+            and forced_category == PaymentRequest.Category.ESCROW_DEPOSIT
+        ):
+            return active_deal.lease_security_deposit or active_deal.amount
+        return None
+
     def get_stage_gate(self):
         selected_plot = self.get_selected_plot()
         transaction_type = self.get_selected_transaction_type()
+        requested_workflow_root = self.get_requested_workflow_root()
         if not selected_plot:
             return {
                 "forced_category": None,
                 "active_deal": None,
+                "forced_amount": None,
                 "payment_required": False,
                 "stage_title": "",
                 "stage_message": "",
             }
-        forced_category, active_deal = _recommended_payment_category(
-            selected_plot,
-            self.request.user,
-            transaction_type,
-        )
+        if (
+            requested_workflow_root
+            and requested_workflow_root.plot_id == selected_plot.pk
+            and requested_workflow_root.transaction_type == transaction_type
+        ):
+            active_deal = requested_workflow_root.workflow_anchor_payment
+            next_step = active_deal.next_closing_step
+            if transaction_type == PaymentRequest.TransactionType.PURCHASE:
+                step_to_category = {
+                    "agreement": PaymentRequest.Category.AGREEMENT_DEPOSIT,
+                    "stamp_duty": PaymentRequest.Category.STAMP_DUTY,
+                    "completion_docs": PaymentRequest.Category.COMPLETION_BALANCE,
+                }
+            else:
+                step_to_category = {
+                    "offer": PaymentRequest.Category.COMMITMENT_FEE,
+                    "payment_security": PaymentRequest.Category.ESCROW_DEPOSIT,
+                }
+            forced_category = step_to_category.get(next_step.code) if next_step else None
+        else:
+            forced_category, active_deal = _recommended_payment_category(
+                selected_plot,
+                self.request.user,
+                transaction_type,
+            )
         stage_title = ""
         stage_message = ""
         payment_required = bool(forced_category)
+        forced_amount = self.get_forced_stage_amount(active_deal, forced_category)
         if forced_category:
             stage_title = dict(PaymentRequest.Category.choices).get(forced_category, "Current payment stage")
             stage_message = (
                 f"AgriPlot has locked this checkout to {stage_title.lower()} based on the current legal step, "
                 "so the buyer cannot accidentally pay for the wrong stage."
             )
+            if forced_amount is not None:
+                stage_message = (
+                    f"{stage_message} The amount is fixed to the exact agreed deal amount of KES {forced_amount:,.2f}."
+                )
         elif active_deal and active_deal.next_closing_step:
             stage_title = active_deal.next_closing_step.display_title
             stage_message = (
@@ -579,6 +794,7 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         return {
             "forced_category": forced_category,
             "active_deal": active_deal,
+            "forced_amount": forced_amount,
             "payment_required": payment_required,
             "stage_title": stage_title,
             "stage_message": stage_message,
@@ -588,7 +804,10 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
         kwargs["selected_plot"] = self.get_selected_plot()
-        kwargs["forced_category"] = self.get_stage_gate()["forced_category"]
+        stage_gate = self.get_stage_gate()
+        kwargs["forced_category"] = stage_gate["forced_category"]
+        kwargs["active_deal"] = stage_gate["active_deal"]
+        kwargs["forced_amount"] = stage_gate["forced_amount"]
         return kwargs
 
     def get_context_data(self, **kwargs):
@@ -598,6 +817,7 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         stage_gate = self.get_stage_gate()
         context["stage_gate"] = stage_gate
         context["forced_category"] = stage_gate["forced_category"]
+        context["forced_amount"] = stage_gate["forced_amount"]
         context["current_payment_stage_label"] = stage_gate["stage_title"]
         context["current_payment_stage_message"] = stage_gate["stage_message"]
         context["plot_listing_types"] = {
@@ -724,66 +944,130 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         payment.metadata = metadata
 
         payment.status = PaymentRequest.Status.PENDING
-        super().form_valid(form)
-        payment.add_event("created", "Payment request created in the AgriPlot payments workspace.", actor=self.request.user if self.request.user.is_authenticated else None)
-        if payment.plot and payment.buyer:
-            activity_message = (
-                f"Buyer initiated a {payment.get_transaction_type_display().lower()} flow "
-                f"through checkout. Reference: {payment.internal_reference}."
-            )
-            if (
-                payment.transaction_type == PaymentRequest.TransactionType.LEASE
-                and payment.lease_start_date
-                and payment.lease_end_date
-            ):
-                activity_message = (
-                    f"{activity_message} Requested lease period: "
-                    f"{payment.lease_start_date:%b %d, %Y} to {payment.lease_end_date:%b %d, %Y}."
-                )
-            UserInterest.objects.update_or_create(
-                user=payment.buyer,
-                plot=payment.plot,
-                defaults={
-                    "message": activity_message,
-                    "notes": "Created automatically from AgriPlot checkout initiation.",
-                    "status": "pending",
-                },
-            )
-        _ensure_payment_workflow_seeded(payment)
-        _notify_payment_activity(payment, "initiated")
-        if paystack_ready():
-            callback_url = f"{settings.SITE_URL.rstrip('/')}{reverse('payments:paystack_callback')}"
-            try:
-                checkout_data = initialize_transaction(payment, callback_url)
-            except PaystackError as exc:
-                logger.exception("Paystack initialization failed for payment %s", payment.pk)
-                messages.warning(
-                    self.request,
-                    f"Payment request created, but Paystack checkout could not start yet: {exc}",
-                )
-                self.success_url = reverse("payments:detail", kwargs={"pk": payment.pk})
-                return HttpResponseRedirect(self.get_success_url())
+        if not payment.internal_reference:
+            payment.internal_reference = PaymentRequest.generate_reference()
+        provider = _active_payment_provider()
+        try:
+            with transaction.atomic():
+                payment.save()
+                self.object = payment
 
-            payment.provider_reference = checkout_data.get("reference", payment.internal_reference)
-            metadata = dict(payment.metadata or {})
-            metadata.update(
-                {
-                    "paystack_access_code": checkout_data.get("access_code", ""),
-                    "paystack_authorization_url": checkout_data.get("authorization_url", ""),
-                }
-            )
-            payment.metadata = metadata
-            payment.save(update_fields=["provider_reference", "metadata", "updated_at"])
-            payment.add_event(
-                "paystack_initialized",
-                "Redirecting buyer to Paystack checkout.",
-                actor=self.request.user if self.request.user.is_authenticated else None,
-            )
-            return redirect(checkout_data["authorization_url"])
+                if payment.plot and payment.buyer:
+                    activity_message = (
+                        f"Buyer initiated a {payment.get_transaction_type_display().lower()} flow "
+                        f"through checkout. Reference: {payment.internal_reference}."
+                    )
+                    if (
+                        payment.transaction_type == PaymentRequest.TransactionType.LEASE
+                        and payment.lease_start_date
+                        and payment.lease_end_date
+                    ):
+                        activity_message = (
+                            f"{activity_message} Requested lease period: "
+                            f"{payment.lease_start_date:%b %d, %Y} to {payment.lease_end_date:%b %d, %Y}."
+                        )
+                    UserInterest.objects.update_or_create(
+                        user=payment.buyer,
+                        plot=payment.plot,
+                        defaults={
+                            "message": activity_message,
+                            "notes": "Created automatically from AgriPlot checkout initiation.",
+                            "status": "pending",
+                        },
+                    )
 
+                _ensure_payment_workflow_seeded(payment)
+
+                if provider == "daraja" and daraja_ready():
+                    callback_url = settings.MPESA_CALLBACK_URL or (
+                        f"{settings.SITE_URL.rstrip('/')}{reverse('payments:daraja_callback')}"
+                    )
+                    stk_data = initiate_stk_push(payment, callback_url)
+                    payment.provider_reference = (
+                        stk_data.get("CheckoutRequestID")
+                        or stk_data.get("MerchantRequestID")
+                        or payment.internal_reference
+                    )
+                    metadata = dict(payment.metadata or {})
+                    metadata.update(
+                        {
+                            "daraja_checkout_request_id": stk_data.get("CheckoutRequestID", ""),
+                            "daraja_merchant_request_id": stk_data.get("MerchantRequestID", ""),
+                            "daraja_customer_message": stk_data.get("CustomerMessage", ""),
+                            "daraja_response_description": stk_data.get("ResponseDescription", ""),
+                        }
+                    )
+                    payment.metadata = metadata
+                    payment.save(update_fields=["provider_reference", "metadata", "updated_at"])
+                    payment.add_event(
+                        "created",
+                        "Payment request created in the AgriPlot payments workspace.",
+                        actor=self.request.user if self.request.user.is_authenticated else None,
+                    )
+                    payment.add_event(
+                        "daraja_stk_initialized",
+                        "Safaricom Daraja STK push sent to the buyer's phone.",
+                        actor=self.request.user if self.request.user.is_authenticated else None,
+                    )
+                    _notify_payment_activity(payment, "initiated")
+                    messages.success(
+                        self.request,
+                        stk_data.get("CustomerMessage")
+                        or "Safaricom Daraja STK push sent. Complete the prompt on your phone.",
+                    )
+                    self.success_url = reverse("payments:detail", kwargs={"pk": payment.pk})
+                    return HttpResponseRedirect(self.get_success_url())
+
+                if provider == "paystack" and paystack_ready():
+                    callback_url = f"{settings.SITE_URL.rstrip('/')}{reverse('payments:paystack_callback')}"
+                    checkout_data = initialize_transaction(payment, callback_url)
+                    payment.provider_reference = checkout_data.get("reference", payment.internal_reference)
+                    metadata = dict(payment.metadata or {})
+                    metadata.update(
+                        {
+                            "paystack_access_code": checkout_data.get("access_code", ""),
+                            "paystack_authorization_url": checkout_data.get("authorization_url", ""),
+                        }
+                    )
+                    payment.metadata = metadata
+                    payment.save(update_fields=["provider_reference", "metadata", "updated_at"])
+                    payment.add_event(
+                        "created",
+                        "Payment request created in the AgriPlot payments workspace.",
+                        actor=self.request.user if self.request.user.is_authenticated else None,
+                    )
+                    payment.add_event(
+                        "paystack_initialized",
+                        "Redirecting buyer to Paystack checkout.",
+                        actor=self.request.user if self.request.user.is_authenticated else None,
+                    )
+                    _notify_payment_activity(payment, "initiated")
+                    return redirect(checkout_data["authorization_url"])
+        except DarajaError as exc:
+            logger.exception("Daraja STK push failed for payment %s", payment.internal_reference)
+            messages.error(
+                self.request,
+                f"Safaricom Daraja STK push could not start yet: {exc}",
+            )
+            target_url = reverse("payments:create_request")
+            if payment.plot_id:
+                target_url = f"{target_url}?plot={payment.plot_id}"
+            return HttpResponseRedirect(target_url)
+        except PaystackError as exc:
+            logger.exception("Paystack initialization failed for payment %s", payment.internal_reference)
+            messages.error(
+                self.request,
+                f"Paystack checkout could not start yet: {exc}",
+            )
+            target_url = reverse("payments:create_request")
+            if payment.plot_id:
+                target_url = f"{target_url}?plot={payment.plot_id}"
+            return HttpResponseRedirect(target_url)
+
+        provider_label = "Safaricom Daraja" if provider == "daraja" else "Paystack"
         messages.success(
             self.request,
-            f"Payment request {payment.internal_reference} created. Configure Paystack to continue with live checkout.",
+            f"Payment request {payment.internal_reference} created. Configure {provider_label} to continue with live checkout.",
         )
         self.success_url = reverse("payments:detail", kwargs={"pk": payment.pk})
         return HttpResponseRedirect(self.get_success_url())
@@ -812,8 +1096,25 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
         context["dispute_form"] = PaymentDisputeForm()
         context["closing_step_form"] = PaymentClosingStepForm()
         context["payment_dispute"] = getattr(self.object, "dispute", None)
-        _ensure_payment_workflow_seeded(self.object)
-        context["closing_steps"] = self.object.closing_steps.all()
+        workspace_payment = self.object.workflow_anchor_payment
+        _ensure_payment_workflow_seeded(workspace_payment)
+        context["workspace_payment"] = workspace_payment
+        closing_steps = list(workspace_payment.closing_steps.all())
+        for step in closing_steps:
+            decision = user_can_update_specific_closing_step(
+                self.request.user,
+                workspace_payment,
+                step,
+            )
+            step.user_can_update = decision.allowed
+            step.update_restriction_reason = decision.reason
+            step.requires_admin_action = step_requires_admin_action(step)
+        context["closing_steps"] = closing_steps
+        context["transaction_stage_matrix"] = workspace_payment.transaction_stage_matrix
+        context["transaction_certificates"] = workspace_payment.certificates.all()
+        context["disbursement_plan"] = workspace_payment.disbursements.all()
+        context["officer_payment_rules"] = workspace_payment.officer_payment_rules
+        context["platform_revenue_streams"] = workspace_payment.platform_revenue_streams
         action_labels = [
             ("submit", "Send request"),
             ("mark_paid", "Mark paid"),
@@ -844,7 +1145,11 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
             self.request.user.is_authenticated
             and self.object.buyer_id == self.request.user.id
         )
-        context["paystack_ready"] = paystack_ready()
+        context["payment_provider"] = _active_payment_provider()
+        context["gateway_ready"] = _gateway_ready()
+        context["daraja_customer_message"] = (self.object.metadata or {}).get(
+            "daraja_customer_message", ""
+        )
         context["paystack_authorization_url"] = (self.object.metadata or {}).get(
             "paystack_authorization_url", ""
         )
@@ -894,6 +1199,68 @@ class PaystackCallbackView(View):
 
 
 @method_decorator(csrf_exempt, name="dispatch")
+class DarajaCallbackView(View):
+    http_method_names = ["post"]
+
+    def post(self, request):
+        if _active_payment_provider() != "daraja" or not daraja_ready():
+            return HttpResponseBadRequest("Daraja not configured.")
+
+        try:
+            payload = json.loads(request.body.decode("utf-8"))
+        except json.JSONDecodeError:
+            return HttpResponseBadRequest("Invalid JSON payload.")
+
+        stk_callback = (
+            (payload.get("Body") or {}).get("stkCallback") or {}
+        )
+        checkout_request_id = stk_callback.get("CheckoutRequestID")
+        merchant_request_id = stk_callback.get("MerchantRequestID")
+
+        payment = PaymentRequest.objects.filter(
+            Q(provider_reference=checkout_request_id)
+            | Q(metadata__daraja_checkout_request_id=checkout_request_id)
+            | Q(metadata__daraja_merchant_request_id=merchant_request_id)
+        ).first()
+        if not payment:
+            return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})
+
+        metadata = dict(payment.metadata or {})
+        metadata["daraja_callback"] = stk_callback
+        payment.metadata = metadata
+        payment.save(update_fields=["metadata", "updated_at"])
+
+        if stk_callback.get("ResultCode") == 0:
+            callback_metadata = extract_callback_metadata(stk_callback)
+            verification = {
+                "status": "success",
+                "result_desc": stk_callback.get("ResultDesc", ""),
+                "checkout_request_id": checkout_request_id,
+                "merchant_request_id": merchant_request_id,
+                "receipt_number": callback_metadata.get("MpesaReceiptNumber", ""),
+                "amount": callback_metadata.get("Amount"),
+                "phone_number": callback_metadata.get("PhoneNumber", ""),
+                "transaction_date": callback_metadata.get("TransactionDate", ""),
+            }
+            _handle_successful_gateway_payment(
+                payment,
+                provider="daraja",
+                verification=verification,
+            )
+            payment.add_event(
+                "daraja_callback_received",
+                "Safaricom Daraja callback confirmed a successful STK payment.",
+            )
+        else:
+            payment.add_event(
+                "daraja_callback_failed",
+                f"Daraja STK push returned: {stk_callback.get('ResultDesc', 'Unknown error')}",
+            )
+
+        return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})
+
+
+@method_decorator(csrf_exempt, name="dispatch")
 class PaystackWebhookView(View):
     http_method_names = ["post"]
 
@@ -935,21 +1302,38 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        payment = get_object_or_404(
-            PaymentRequest.objects.select_related("plot", "buyer", "seller").prefetch_related("closing_steps"),
-            pk=self.kwargs["pk"],
-        )
+        payment = _resolve_workspace_payment(self.kwargs["pk"])
         decision = user_can_view_payment(self.request.user, payment)
         if not decision.allowed:
             messages.error(self.request, decision.reason)
             raise Http404(decision.reason)
 
         payment.ensure_closing_steps()
+        payment.ensure_transaction_artifacts()
         step = get_object_or_404(PaymentClosingStep, pk=self.kwargs["step_id"], payment=payment)
         closing_steps = list(payment.closing_steps.all())
+        timeline_current_step = payment.current_assigned_step or step
         current_index = next((idx for idx, item in enumerate(closing_steps) if item.pk == step.pk), 0)
         previous_step = closing_steps[current_index - 1] if current_index > 0 else None
         next_step = closing_steps[current_index + 1] if current_index + 1 < len(closing_steps) else None
+        completed_stages = [
+            item for item in closing_steps if item.status == PaymentClosingStep.Status.COMPLETED
+        ]
+        blocked_stages = [
+            item for item in closing_steps if item.status == PaymentClosingStep.Status.BLOCKED
+        ]
+        in_progress_stages = [
+            item
+            for item in closing_steps
+            if item.status == PaymentClosingStep.Status.IN_PROGRESS
+            and (not timeline_current_step or item.pk != timeline_current_step.pk)
+        ]
+        upcoming_stages = [
+            item
+            for item in closing_steps
+            if item.status == PaymentClosingStep.Status.PENDING
+            and (not timeline_current_step or item.sequence > timeline_current_step.sequence)
+        ]
         recorded_submitter = ((payment.metadata or {}).get("step_submitters") or {}).get(step.code, {})
         payment_category = STEP_PAYMENT_CATEGORY_MAP.get(step.code)
         payment_stage_label = (
@@ -958,7 +1342,16 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
             else ""
         )
         payment_amount = (
-            PaymentRequestForm.calculate_amount(payment.plot, payment.transaction_type, payment_category)
+            (
+                payment.lease_security_deposit
+                or payment.amount
+            )
+            if (
+                payment_category == PaymentRequest.Category.ESCROW_DEPOSIT
+                and payment.transaction_type == PaymentRequest.TransactionType.LEASE
+                and step.code == "payment_security"
+            )
+            else PaymentRequestForm.calculate_amount(payment.plot, payment.transaction_type, payment_category)
             if payment_category
             else None
         )
@@ -993,6 +1386,70 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
                 "Use this final proof to complete the legal transfer on AgriPlot.",
             ],
         }.get(step.code, [])
+        if step.code == "agreement" and payment.transaction_type == PaymentRequest.TransactionType.LEASE:
+            step_action_checklist = [
+                "Review the generated lease terms, including dates, intended use, notice window, and subject-to-sale wording.",
+                "Confirm the good husbandry and soil exit obligations before any digital confirmation is recorded.",
+                "Tenant and landowner must both digitally confirm before this step can complete.",
+            ]
+        released_total = sum(
+            item.amount
+            for item in payment.disbursements.filter(status=PaymentDisbursement.Status.RELEASED)
+        )
+        released_to_seller = sum(
+            item.amount
+            for item in payment.disbursements.filter(
+                recipient_role=PaymentDisbursement.RecipientRole.SELLER,
+                status=PaymentDisbursement.Status.RELEASED,
+            )
+        )
+        total_paid_by_buyer = payment.workflow_total_paid_amount
+        current_escrow_balance = max(total_paid_by_buyer - released_total, 0)
+        today = timezone.localdate()
+        lease_days_remaining = None
+        if payment.transaction_type == PaymentRequest.TransactionType.LEASE and payment.lease_end_date:
+            lease_days_remaining = max((payment.lease_end_date - today).days, 0)
+        section_kicker = (
+            "Your Lease Workspace"
+            if payment.transaction_type == PaymentRequest.TransactionType.LEASE
+            else "Your Purchase Workspace"
+        )
+        workspace_title = (
+            payment.plot.title if payment.plot else payment.title
+        )
+        step_update_decision = user_can_update_specific_closing_step(
+            self.request.user,
+            payment,
+            step,
+        )
+        checkout_phone_initial = ""
+        buyer_profile = getattr(payment.buyer, "profile", None) if payment.buyer else None
+        if buyer_profile and buyer_profile.phone:
+            checkout_phone_initial = buyer_profile.phone
+        elif payment.phone_number:
+            checkout_phone_initial = payment.phone_number
+        settled_payment_statuses = {
+            PaymentRequest.Status.PAID,
+            PaymentRequest.Status.IN_ESCROW,
+            PaymentRequest.Status.PARTIALLY_RELEASED,
+            PaymentRequest.Status.RELEASED,
+        }
+        step_payment_record = None
+        if payment_category:
+            step_payments = [
+                related_payment
+                for related_payment in payment.workflow_related_payments
+                if related_payment.category == payment_category
+                and related_payment.status in settled_payment_statuses
+            ]
+            if step_payments:
+                step_payment_record = step_payments[-1]
+        current_workspace_step_url = ""
+        if timeline_current_step:
+            current_workspace_step_url = reverse(
+                "payments:closing_step_workspace",
+                kwargs={"pk": payment.pk, "step_id": timeline_current_step.pk},
+            )
 
         context.update(
             {
@@ -1001,24 +1458,144 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
                 "previous_step": previous_step,
                 "next_step": next_step,
                 "closing_steps": closing_steps,
+                "completed_stages": completed_stages,
+                "blocked_stages": blocked_stages,
+                "in_progress_stages": in_progress_stages,
+                "upcoming_stages": upcoming_stages,
+                "timeline_current_step": timeline_current_step,
+                "viewing_historical_step": bool(timeline_current_step and timeline_current_step.pk != step.pk),
+                "current_workspace_step_url": current_workspace_step_url,
                 "is_payment_buyer": payment.buyer_id == self.request.user.id,
-                "can_update_closing_steps": user_can_update_specific_closing_step(
-                    self.request.user, payment, step
-                ).allowed,
+                "is_finance_admin": user_is_finance_admin(self.request.user),
+                "can_update_closing_steps": step_update_decision.allowed,
+                "step_requires_admin_action": step_requires_admin_action(step),
+                "step_update_reason": step_update_decision.reason,
                 "closing_step_form": PaymentClosingStepForm(instance=step, user=self.request.user),
                 "step_payment_category": payment_category,
                 "step_payment_label": payment_stage_label,
                 "step_payment_amount": payment_amount,
                 "step_payment_url": (
-                    f"{reverse('payments:create_request')}?plot={payment.plot_id}&transaction_type={payment.transaction_type}"
+                    f"{reverse('payments:create_request')}?plot={payment.plot_id}&transaction_type={payment.transaction_type}&workflow_root_id={payment.workflow_anchor_payment.pk}"
                     if payment.plot_id and payment_category
                     else ""
                 ),
+                "checkout_phone_initial": checkout_phone_initial,
+                "step_payment_record": step_payment_record,
                 "step_action_checklist": step_action_checklist,
                 "recorded_submitter": recorded_submitter,
+                "lease_days_remaining": lease_days_remaining,
+                "section_kicker": section_kicker,
+                "workspace_title": workspace_title,
+                "total_paid_by_buyer": total_paid_by_buyer,
+                "current_escrow_balance": current_escrow_balance,
+                "released_to_seller": released_to_seller,
+                "agriplot_fee": payment.platform_fee_amount,
+                "agent_commission": payment.agent_commission_amount,
+                "total_price": (
+                    payment.lease_contract_value
+                    if payment.transaction_type == PaymentRequest.TransactionType.LEASE
+                    else payment.sale_price_value
+                ),
+                "agreement_certificate": payment.certificates.filter(code="lease_compliance").first()
+                if payment.transaction_type == PaymentRequest.TransactionType.LEASE
+                else payment.certificates.filter(code="completion_notice").first(),
+                "buyer_payment_certificate": payment.certificates.filter(
+                    code="tenant_payment_ack"
+                    if payment.transaction_type == PaymentRequest.TransactionType.LEASE
+                    else "buyer_payment_ack"
+                ).first(),
             }
         )
         return context
+
+
+class PaymentClosingStepStkPushView(LoginRequiredMixin, View):
+    def post(self, request, pk, step_id):
+        payment = _resolve_workspace_payment(pk)
+        decision = user_can_view_payment(request.user, payment)
+        if not decision.allowed:
+            return JsonResponse({"ok": False, "message": decision.reason}, status=403)
+
+        step = get_object_or_404(PaymentClosingStep, pk=step_id, payment=payment)
+        if step.code != "payment_security":
+            return JsonResponse({"ok": False, "message": "This step does not support inline STK checkout."}, status=400)
+
+        phone_number = request.POST.get("phone_number", "")
+        try:
+            child_payment, stk_data = _create_workspace_stage_payment(
+                payment,
+                step,
+                phone_number,
+                actor=request.user,
+            )
+        except ValidationError as exc:
+            message = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
+            return JsonResponse({"ok": False, "message": message}, status=400)
+        except DarajaError as exc:
+            logger.exception("Workspace Daraja STK push failed for payment %s", payment.pk)
+            return JsonResponse(
+                {
+                    "ok": False,
+                    "message": f"Safaricom Daraja STK push could not start yet: {exc}",
+                },
+                status=502,
+            )
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "payment_id": child_payment.pk,
+                "reference": child_payment.internal_reference,
+                "message": stk_data.get("CustomerMessage")
+                or "Safaricom Daraja STK push sent. Complete the prompt on the phone.",
+            }
+        )
+
+
+class PaymentStatusPollView(LoginRequiredMixin, View):
+    def get(self, request, pk, payment_id):
+        anchor_payment = _resolve_workspace_payment(pk)
+        decision = user_can_view_payment(request.user, anchor_payment)
+        if not decision.allowed:
+            return JsonResponse({"ok": False, "message": decision.reason}, status=403)
+
+        payment = get_object_or_404(PaymentRequest, pk=payment_id)
+        if payment.workflow_anchor_payment.pk != anchor_payment.workflow_anchor_payment.pk:
+            return JsonResponse({"ok": False, "message": "Payment does not belong to this workflow."}, status=404)
+
+        settled_statuses = {
+            PaymentRequest.Status.PAID,
+            PaymentRequest.Status.IN_ESCROW,
+            PaymentRequest.Status.PARTIALLY_RELEASED,
+            PaymentRequest.Status.RELEASED,
+        }
+        failed_statuses = {
+            PaymentRequest.Status.FAILED,
+            PaymentRequest.Status.CANCELLED,
+            PaymentRequest.Status.REFUNDED,
+        }
+        metadata = payment.metadata or {}
+        customer_message = (
+            metadata.get("daraja_customer_message")
+            or ((metadata.get("daraja_callback") or {}).get("ResultDesc"))
+            or ""
+        )
+        state = "pending"
+        if payment.status in settled_statuses:
+            state = "paid"
+        elif payment.status in failed_statuses:
+            state = "failed"
+
+        return JsonResponse(
+            {
+                "ok": True,
+                "state": state,
+                "status": payment.status,
+                "status_label": payment.get_status_display(),
+                "message": customer_message,
+                "redirect_url": _payment_next_workspace_url(anchor_payment) if state == "paid" else "",
+            }
+        )
 
 
 class PaymentTransitionView(LoginRequiredMixin, View):
@@ -1046,7 +1623,7 @@ class PaymentTransitionView(LoginRequiredMixin, View):
 
 class PaymentClosingStepUpdateView(LoginRequiredMixin, View):
     def post(self, request, pk, step_id):
-        payment = get_object_or_404(PaymentRequest, pk=pk)
+        payment = _resolve_workspace_payment(pk)
         step = get_object_or_404(PaymentClosingStep, pk=step_id, payment=payment)
         decision = user_can_update_specific_closing_step(request.user, payment, step)
         if not decision.allowed:
@@ -1069,11 +1646,15 @@ class PaymentClosingStepUpdateView(LoginRequiredMixin, View):
                 if updated_step.can_mark_complete_with_current_evidence()
                 else PaymentClosingStep.Status.IN_PROGRESS
             )
-        updated_step.set_status(
-            target_status,
-            actor=request.user,
-            notes=updated_step.notes,
-        )
+        try:
+            updated_step.set_status(
+                target_status,
+                actor=request.user,
+                notes=updated_step.notes,
+            )
+        except ValidationError as exc:
+            messages.error(request, exc.messages[0] if getattr(exc, "messages", None) else str(exc))
+            return redirect("payments:closing_step_workspace", pk=payment.pk, step_id=step.pk)
         payment.add_event(
             "closing_step_updated",
             f"Closing tracker updated: {step.title} → {updated_step.get_status_display()}",

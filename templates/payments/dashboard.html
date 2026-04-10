@@ -89,6 +89,44 @@
         <div class="workspace-notice mt-4">
             <strong>How to read this tracker:</strong> every stage before the current one stays marked as completed, the current stage is the only step waiting for action now, and all later stages remain pending until the current one is cleared. The same stage order is used in the CMS so updates stay consistent.
         </div>
+
+        {% if is_finance_admin %}
+        <div class="section-heading compact" style="margin-top: 32px;">
+            <span class="section-kicker">Admin queue</span>
+            <h2>Steps waiting for AgriPlot admin action</h2>
+        </div>
+        {% if admin_step_queue %}
+        <div class="payment-list">
+            {% for task in admin_step_queue %}
+            <article class="payment-row">
+                <div class="payment-row-main">
+                    <div class="payment-title-row">
+                        <h3>{{ task.step.display_title }}</h3>
+                        <span class="status-pill status-{% if task.is_current %}warning{% else %}secondary{% endif %}">
+                            {% if task.is_current %}Current admin task{% else %}Queued admin task{% endif %}
+                        </span>
+                    </div>
+                    <p>{{ task.payment.internal_reference }} {% if task.payment.plot %}· {{ task.payment.plot.title }}{% endif %}</p>
+                    <div class="payment-meta">
+                        <span>{{ task.payment.get_transaction_type_display }}</span>
+                        <span>Responsible: {{ task.owner_label }}</span>
+                        <span>{{ task.step.get_status_display }}</span>
+                    </div>
+                    <p class="mb-0 mt-2"><strong>{{ task.payment.transfer_status_label }}</strong> · {{ task.step.display_guidance }}</p>
+                </div>
+                <div class="payment-row-side">
+                    <strong>#{{ forloop.counter }}</strong>
+                    <a href="{% url 'payments:closing_step_workspace' task.payment.pk task.step.pk %}" class="text-link">Open task</a>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="workspace-notice mt-3">
+            <strong>No admin-held steps right now.</strong> As soon as a consent, registry, valuation, or other admin-owned step becomes active, it will appear here.
+        </div>
+        {% endif %}
+        {% endif %}
         {% else %}
         <div class="empty-state-card">
             <h3>No payment trackers yet</h3>

@@ -4,6 +4,7 @@ from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 
 
 class Plot(models.Model):
@@ -51,6 +52,14 @@ class Plot(models.Model):
         ("none", "No Water Source"),
     ]
 
+    TOPOGRAPHY_CHOICES = [
+        ("flat", "Flat"),
+        ("gentle_slope", "Gentle Slope"),
+        ("sloped", "Sloped"),
+        ("hilly", "Hilly"),
+        ("valley", "Valley Bottom"),
+    ]
+
     ROAD_TYPE_CHOICES = [
         ("tarmac", "Tarmac"),
         ("murram", "Murram/Gravel"),
@@ -68,6 +77,7 @@ class Plot(models.Model):
 
     county = models.CharField(max_length=100, blank=True, null=True)
     subcounty = models.CharField(max_length=100, blank=True, null=True)
+    ward = models.CharField(max_length=100, blank=True, default="")
     nearest_town = models.CharField(max_length=150, blank=True)
     ownership_type = models.CharField(
         max_length=20,
@@ -237,6 +247,12 @@ class Plot(models.Model):
     price = models.DecimalField(max_digits=12, decimal_places=2)
 
     soil_type = models.CharField(max_length=100, blank=True, default="")
+    topography = models.CharField(
+        max_length=20,
+        choices=TOPOGRAPHY_CHOICES,
+        blank=True,
+        default="",
+    )
     ph_level = models.FloatField(null=True, blank=True)
     crop_suitability = models.CharField(max_length=200, blank=True, default="")
 
@@ -376,6 +392,7 @@ class Plot(models.Model):
             models.Index(fields=["listing_type"]),
             models.Index(fields=["land_type"]),
             models.Index(fields=["soil_type"]),
+            models.Index(fields=["county", "subcounty", "ward"]),
             models.Index(fields=["latitude", "longitude"]),
         ]
 
@@ -493,7 +510,48 @@ class Plot(models.Model):
             self.market_status == "leased"
             and self.lease_start_date is not None
             and self.lease_end_date is not None
+            and self.lease_start_date <= timezone.localdate() <= self.lease_end_date
         )
+
+    @property
+    def is_hybrid_sale_lease(self):
+        return self.listing_type == "both"
+
+    @property
+    def purchase_checkout_open(self):
+        if self.market_status == "sold":
+            return False
+        if self.market_status == "reserved":
+            return False
+        if self.market_status == "leased" and not self.is_hybrid_sale_lease:
+            return False
+        return self.listing_type in {"sale", "both"}
+
+    @property
+    def lease_checkout_open(self):
+        return self.market_status == "available" and self.listing_type in {"lease", "both"}
+
+    @property
+    def next_lease_booking_open(self):
+        return (
+            self.listing_type in {"lease", "both"}
+            and self.market_status in {"reserved", "leased"}
+            and self.lease_end_date is not None
+        )
+
+    @property
+    def occupancy_status_label(self):
+        if (
+            self.market_status == "reserved"
+            and self.listing_type in {"lease", "both"}
+            and self.lease_end_date
+        ):
+            return "Lease Reserved"
+        if self.has_active_lease and self.is_hybrid_sale_lease:
+            return "Leased - Still for Sale"
+        if self.has_active_lease:
+            return "Currently Occupied"
+        return self.market_status_label
 
     @property
     def market_status_label(self):
@@ -516,10 +574,25 @@ class Plot(models.Model):
     def checkout_availability_message(self):
         if self.market_status == "sold":
             return "Checkout is closed because this land has already been sold."
+        if (
+            self.market_status == "reserved"
+            and self.listing_type in {"lease", "both"}
+            and self.lease_end_date
+        ):
+            return (
+                "Checkout is closed because this land is already committed to an incoming lease, "
+                f"with the current lease window expected to run until {self.lease_end_date:%b %d, %Y}. "
+                "Another tenant may still reserve the next lease window."
+            )
         if self.has_active_lease:
+            if self.is_hybrid_sale_lease:
+                return (
+                    "Lease checkout is closed because this land is occupied, but purchase checkout stays open "
+                    f"while the active tenancy runs until {self.lease_end_date:%b %d, %Y}. Another tenant may still reserve the next lease window."
+                )
             return (
                 "Checkout is closed because this land is already leased from "
-                f"{self.lease_start_date:%b %d, %Y} to {self.lease_end_date:%b %d, %Y}."
+                f"{self.lease_start_date:%b %d, %Y} to {self.lease_end_date:%b %d, %Y}. Another tenant may still reserve the next lease window."
             )
         if self.market_status == "reserved":
             return "Checkout is closed because this land is currently reserved."
@@ -529,10 +602,24 @@ class Plot(models.Model):
     def availability_summary(self):
         if self.market_status == "sold":
             return "This land has already been sold."
+        if (
+            self.market_status == "reserved"
+            and self.listing_type in {"lease", "both"}
+            and self.lease_end_date
+        ):
+            return (
+                f"This lease slot has already been committed through {self.lease_end_date:%b %d, %Y}. "
+                "You can still reserve the next lease window if you are willing to wait."
+            )
         if self.has_active_lease:
+            if self.is_hybrid_sale_lease:
+                return (
+                    f"This land is leased until {self.lease_end_date:%b %d, %Y} and is still open for investors "
+                    "who want to buy with the active tenant in place. Future tenants can still reserve the next lease window."
+                )
             return (
                 f"This land is already leased from "
-                f"{self.lease_start_date:%b %d, %Y} to {self.lease_end_date:%b %d, %Y}."
+                f"{self.lease_start_date:%b %d, %Y} to {self.lease_end_date:%b %d, %Y}. You can still reserve the next lease window if you are willing to wait."
             )
         if self.market_status == "reserved":
             return "This land is currently reserved."

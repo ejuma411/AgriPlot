@@ -4,10 +4,12 @@ import hashlib
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.utils import timezone
 from .models import *
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from .location_utils import validate_kenyan_location, get_subcounties_for_county
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from registry_mock.services import verify_with_registry
 from registry_mock.models import RegistryMismatchAttempt
 import re
@@ -46,6 +48,412 @@ def _validate_upload(field_name, file_obj):
             raise forms.ValidationError(
                 f"{field_name} must be a PDF or image file."
             )
+
+
+class PlotSearchForm(forms.Form):
+    SIZE_PRESET_CHOICES = [
+        ("small_scale", "Small-scale (Eighth/Quarter Acre)"),
+        ("commercial", "Commercial (1-10 Acres)"),
+        ("estate", "Large-scale/Estate (Over 10 Acres)"),
+    ]
+    REGISTRY_STATUS_CHOICES = [
+        ("", "Any registry status"),
+        ("ardhisasa", "Verified on Ardhisasa"),
+        ("manual", "Manual registry trail"),
+    ]
+    ROAD_DISTANCE_CHOICES = [
+        ("", "Any tarmac distance"),
+        ("0_5", "0-5 km"),
+        ("5_10", "5-10 km"),
+        ("10_plus", "Over 10 km"),
+    ]
+    SORT_CHOICES = [
+        ("-created_at", "Newest first"),
+        ("price", "Price: Low to High"),
+        ("-price", "Price: High to Low"),
+        ("area", "Area: Small to Large"),
+        ("-area", "Area: Large to Small"),
+    ]
+    SOIL_TYPE_CHOICES = [
+        ("", "Any soil type"),
+        ("Red Volcanic", "Red Volcanic"),
+        ("Black Cotton", "Black Cotton"),
+        ("Sandy", "Sandy"),
+        ("Loam", "Loam"),
+        ("Clay", "Clay"),
+    ]
+
+    q = forms.CharField(
+        required=False,
+        label="Search",
+        widget=forms.TextInput(
+            attrs={
+                "placeholder": "Try: 3 acres for lease in Njoro under 1M",
+                "class": "form-control",
+            }
+        ),
+    )
+    county = forms.ChoiceField(required=False, choices=[], widget=forms.Select(attrs={"class": "form-select"}))
+    subcounty = forms.ChoiceField(required=False, choices=[("", "Any sub-county")], widget=forms.Select(attrs={"class": "form-select"}))
+    ward = forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Any ward"}))
+    listing_type = forms.ChoiceField(required=False, choices=[("", "Sale or lease")] + list(Plot.LISTING_TYPE_CHOICES), widget=forms.Select(attrs={"class": "form-select"}))
+    land_type = forms.ChoiceField(required=False, choices=[("", "Any land type")] + list(Plot.LAND_TYPE_CHOICES), widget=forms.Select(attrs={"class": "form-select"}))
+    soil_type = forms.ChoiceField(required=False, choices=SOIL_TYPE_CHOICES, widget=forms.Select(attrs={"class": "form-select"}))
+    topography = forms.ChoiceField(required=False, choices=[("", "Any topography")] + list(Plot.TOPOGRAPHY_CHOICES), widget=forms.Select(attrs={"class": "form-select"}))
+    crop = forms.CharField(required=False, widget=forms.TextInput(attrs={"class": "form-control", "placeholder": "Crop or enterprise"}))
+    water_source = forms.ChoiceField(required=False, choices=[("", "Any water access")] + [choice for choice in Plot.WATER_SOURCE_CHOICES if choice[0] != "none"], widget=forms.Select(attrs={"class": "form-select"}))
+    ownership_type = forms.ChoiceField(required=False, choices=[("", "Any title type")] + list(Plot._meta.get_field("ownership_type").choices), widget=forms.Select(attrs={"class": "form-select"}))
+    registry_status = forms.ChoiceField(required=False, choices=REGISTRY_STATUS_CHOICES, widget=forms.Select(attrs={"class": "form-select"}))
+    road_distance_band = forms.ChoiceField(required=False, choices=ROAD_DISTANCE_CHOICES, widget=forms.Select(attrs={"class": "form-select"}))
+    size_presets = forms.MultipleChoiceField(required=False, choices=SIZE_PRESET_CHOICES, widget=forms.CheckboxSelectMultiple())
+    min_price = forms.DecimalField(required=False, min_value=0, widget=forms.NumberInput(attrs={"class": "form-control", "placeholder": "Min price"}))
+    max_price = forms.DecimalField(required=False, min_value=0, widget=forms.NumberInput(attrs={"class": "form-control", "placeholder": "Max price"}))
+    has_electricity = forms.BooleanField(required=False)
+    encumbrance_free = forms.BooleanField(required=False)
+    verified_only = forms.BooleanField(required=False)
+    sort = forms.ChoiceField(required=False, choices=SORT_CHOICES, initial="-created_at")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["county"].choices = [("", "Any county")] + [(county, county) for county in KENYA_COUNTIES]
+
+        selected_county = ""
+        if self.is_bound:
+            selected_county = self.data.get("county", "")
+        else:
+            selected_county = self.initial.get("county", "")
+        if selected_county in KENYA_SUB_COUNTIES:
+            self.fields["subcounty"].choices = [("", "Any sub-county")] + [
+                (subcounty, subcounty) for subcounty in KENYA_SUB_COUNTIES[selected_county]
+            ]
+
+    @staticmethod
+    def _parse_money_token(raw_value):
+        normalized = raw_value.replace(",", "").strip().lower()
+        multiplier = Decimal("1")
+        if normalized.endswith("k"):
+            multiplier = Decimal("1000")
+            normalized = normalized[:-1]
+        elif normalized.endswith("m"):
+            multiplier = Decimal("1000000")
+            normalized = normalized[:-1]
+        elif normalized.endswith("b"):
+            multiplier = Decimal("1000000000")
+            normalized = normalized[:-1]
+        try:
+            return Decimal(normalized) * multiplier
+        except InvalidOperation:
+            return None
+
+    @classmethod
+    def _parse_natural_language_query(cls, query):
+        if not query:
+            return {}
+
+        parsed = {}
+        lowered = query.lower()
+
+        if "lease" in lowered or "rent" in lowered:
+            parsed["listing_type"] = "lease"
+        elif "sale" in lowered or "buy" in lowered or "purchase" in lowered:
+            parsed["listing_type"] = "sale"
+
+        if "freehold" in lowered:
+            parsed["ownership_type"] = "freehold"
+        elif "leasehold" in lowered:
+            parsed["ownership_type"] = "leasehold"
+
+        if "ardhisasa" in lowered:
+            parsed["registry_status"] = "ardhisasa"
+        elif "manual search" in lowered or "manual registry" in lowered:
+            parsed["registry_status"] = "manual"
+
+        if "verified only" in lowered or "verified plot" in lowered:
+            parsed["verified_only"] = True
+
+        if "encumbrance-free" in lowered or "encumbrance free" in lowered or "no bank charges" in lowered:
+            parsed["encumbrance_free"] = True
+
+        if "riverfront" in lowered:
+            parsed["water_source"] = "river"
+        elif "borehole" in lowered:
+            parsed["water_source"] = "borehole"
+        elif "rain-fed" in lowered or "rain fed" in lowered:
+            parsed["water_source"] = "rain"
+        elif "irrigation" in lowered:
+            parsed["water_source"] = "irrigation"
+
+        if "flat" in lowered:
+            parsed["topography"] = "flat"
+        elif "gentle slope" in lowered:
+            parsed["topography"] = "gentle_slope"
+        elif "sloped" in lowered or "slope" in lowered:
+            parsed["topography"] = "sloped"
+        elif "hilly" in lowered:
+            parsed["topography"] = "hilly"
+
+        if "electricity" in lowered or "power" in lowered:
+            parsed["has_electricity"] = True
+
+        if "tarmac" in lowered:
+            if "0-5" in lowered or "0 to 5" in lowered or "within 5" in lowered:
+                parsed["road_distance_band"] = "0_5"
+            elif "5-10" in lowered or "5 to 10" in lowered or "within 10" in lowered:
+                parsed["road_distance_band"] = "5_10"
+
+        area_match = re.search(r"(\d+(?:\.\d+)?)\s*(acres?|hectares?|ha)\b", lowered)
+        if area_match:
+            area_value = Decimal(area_match.group(1))
+            area_unit = area_match.group(2)
+            if area_unit.startswith("h"):
+                area_value *= Decimal("2.47105")
+            parsed["min_area"] = area_value
+            parsed["max_area"] = area_value
+
+        max_price_match = re.search(r"\b(?:under|below|max(?:imum)?|less than)\s+([\d,.]+(?:[kmb])?)\b", lowered)
+        if max_price_match:
+            max_price = cls._parse_money_token(max_price_match.group(1))
+            if max_price is not None:
+                parsed["max_price"] = max_price
+
+        min_price_match = re.search(r"\b(?:over|above|min(?:imum)?|from)\s+([\d,.]+(?:[kmb])?)\b", lowered)
+        if min_price_match:
+            min_price = cls._parse_money_token(min_price_match.group(1))
+            if min_price is not None:
+                parsed["min_price"] = min_price
+
+        location_match = re.search(
+            r"\bin\s+([a-z][a-z\s]+?)(?=\s+(?:under|below|over|above|max|min|with|for)\b|$)",
+            lowered,
+        )
+        if location_match:
+            parsed["location_query"] = " ".join(location_match.group(1).split()).title()
+
+        crop_match = re.search(r"\b(?:for|grow|growing|suitable for)\s+([a-z][a-z\s-]+?)(?=\s+(?:in|under|below|over|with)\b|$)", lowered)
+        if crop_match:
+            crop_value = " ".join(crop_match.group(1).split())
+            if crop_value not in {"sale", "lease"}:
+                parsed["crop"] = crop_value.title()
+
+        for county in KENYA_COUNTIES:
+            if county.lower() in lowered:
+                parsed["county"] = county
+                break
+
+        if not parsed.get("county"):
+            for county, subcounties in KENYA_SUB_COUNTIES.items():
+                for subcounty in subcounties:
+                    if subcounty.lower() in lowered:
+                        parsed["county"] = county
+                        parsed["subcounty"] = subcounty
+                        parsed.setdefault("location_query", subcounty)
+                        break
+                if parsed.get("subcounty"):
+                    break
+
+        return parsed
+
+    def clean(self):
+        cleaned_data = super().clean()
+        query = cleaned_data.get("q", "").strip()
+        parsed_query = self._parse_natural_language_query(query)
+        cleaned_data["parsed_query"] = parsed_query
+
+        for key in (
+            "county",
+            "subcounty",
+            "listing_type",
+            "min_price",
+            "max_price",
+            "ownership_type",
+            "registry_status",
+            "water_source",
+            "topography",
+            "road_distance_band",
+            "crop",
+        ):
+            if not cleaned_data.get(key) and parsed_query.get(key) is not None:
+                cleaned_data[key] = parsed_query[key]
+
+        if not cleaned_data.get("verified_only") and parsed_query.get("verified_only"):
+            cleaned_data["verified_only"] = True
+        if not cleaned_data.get("encumbrance_free") and parsed_query.get("encumbrance_free"):
+            cleaned_data["encumbrance_free"] = True
+        if not cleaned_data.get("has_electricity") and parsed_query.get("has_electricity"):
+            cleaned_data["has_electricity"] = True
+
+        cleaned_data["location_query"] = parsed_query.get("location_query", query).strip()
+        cleaned_data["min_area"] = parsed_query.get("min_area")
+        cleaned_data["max_area"] = parsed_query.get("max_area")
+
+        county = cleaned_data.get("county")
+        subcounty = cleaned_data.get("subcounty")
+        if county and subcounty and subcounty not in KENYA_SUB_COUNTIES.get(county, []):
+            self.add_error("subcounty", "Choose a valid sub-county for the selected county.")
+
+        min_price = cleaned_data.get("min_price")
+        max_price = cleaned_data.get("max_price")
+        if min_price is not None and max_price is not None and min_price > max_price:
+            self.add_error("max_price", "Maximum price must be greater than or equal to minimum price.")
+
+        return cleaned_data
+
+    def apply(self, queryset):
+        base_queryset = queryset.exclude(market_status="sold")
+        default_sort = "-created_at"
+
+        if not self.is_bound:
+            return base_queryset.order_by(default_sort).distinct()
+
+        if not self.is_valid():
+            return base_queryset.order_by(default_sort).distinct()
+
+        data = self.cleaned_data
+        queryset = base_queryset
+
+        if data.get("county"):
+            queryset = queryset.filter(county__iexact=data["county"])
+        if data.get("subcounty"):
+            queryset = queryset.filter(subcounty__iexact=data["subcounty"])
+        if data.get("ward"):
+            queryset = queryset.filter(ward__icontains=data["ward"])
+
+        location_query = data.get("location_query")
+        if location_query:
+            queryset = queryset.filter(
+                Q(county__icontains=location_query)
+                | Q(subcounty__icontains=location_query)
+                | Q(ward__icontains=location_query)
+                | Q(nearest_town__icontains=location_query)
+                | Q(location__icontains=location_query)
+                | Q(title__icontains=location_query)
+            )
+
+        if data.get("listing_type"):
+            listing_type = data["listing_type"]
+            if listing_type == "both":
+                queryset = queryset.filter(listing_type="both")
+            else:
+                queryset = queryset.filter(Q(listing_type=listing_type) | Q(listing_type="both"))
+
+        if data.get("land_type"):
+            queryset = queryset.filter(land_type=data["land_type"])
+        if data.get("soil_type"):
+            queryset = queryset.filter(soil_type__icontains=data["soil_type"])
+        if data.get("topography"):
+            queryset = queryset.filter(topography=data["topography"])
+        if data.get("crop"):
+            queryset = queryset.filter(crop_suitability__icontains=data["crop"])
+        if data.get("water_source"):
+            queryset = queryset.filter(water_source=data["water_source"])
+        if data.get("ownership_type"):
+            queryset = queryset.filter(ownership_type=data["ownership_type"])
+        if data.get("has_electricity"):
+            queryset = queryset.filter(has_electricity=True)
+        if data.get("encumbrance_free"):
+            queryset = queryset.filter(encumbrances=False, registry_has_encumbrances=False)
+
+        min_price = data.get("min_price")
+        max_price = data.get("max_price")
+        if min_price is not None:
+            queryset = queryset.filter(price__gte=min_price)
+        if max_price is not None:
+            queryset = queryset.filter(price__lte=max_price)
+
+        min_area = data.get("min_area")
+        max_area = data.get("max_area")
+        if min_area is not None:
+            queryset = queryset.filter(area__gte=float(min_area))
+        if max_area is not None:
+            queryset = queryset.filter(area__lte=float(max_area))
+
+        size_presets = data.get("size_presets") or []
+        if size_presets:
+            size_query = Q()
+            for preset in size_presets:
+                if preset == "small_scale":
+                    size_query |= Q(area__gte=0.125, area__lte=0.25, area_unit="acres")
+                elif preset == "commercial":
+                    size_query |= Q(area__gte=1, area__lte=10, area_unit="acres")
+                elif preset == "estate":
+                    size_query |= Q(area__gt=10, area_unit="acres")
+            queryset = queryset.filter(size_query)
+
+        road_distance_band = data.get("road_distance_band")
+        if road_distance_band == "0_5":
+            queryset = queryset.filter(road_distance_km__gte=0, road_distance_km__lte=5)
+        elif road_distance_band == "5_10":
+            queryset = queryset.filter(road_distance_km__gt=5, road_distance_km__lte=10)
+        elif road_distance_band == "10_plus":
+            queryset = queryset.filter(road_distance_km__gt=10)
+
+        registry_status = data.get("registry_status")
+        if registry_status == "ardhisasa":
+            queryset = queryset.filter(search_result__verified=True)
+        elif registry_status == "manual":
+            queryset = queryset.filter(official_search__isnull=False).exclude(search_result__verified=True)
+
+        if data.get("verified_only"):
+            queryset = queryset.filter(
+                official_search__isnull=False,
+            ).filter(
+                Q(survey_map__isnull=False) | Q(surveyor_reports__isnull=False)
+            )
+
+        sort_value = data.get("sort") or default_sort
+        allowed_sorts = {choice[0] for choice in self.SORT_CHOICES}
+        if sort_value not in allowed_sorts:
+            sort_value = default_sort
+        return queryset.order_by(sort_value).distinct()
+
+    def active_filters(self):
+        if not self.is_valid():
+            return []
+
+        data = self.cleaned_data
+        filters = []
+        if data.get("q"):
+            filters.append({"label": "Search", "value": data["q"], "params": ["q"]})
+        if data.get("county"):
+            filters.append({"label": "County", "value": data["county"], "params": ["county"]})
+        if data.get("subcounty"):
+            filters.append({"label": "Sub-county", "value": data["subcounty"], "params": ["subcounty"]})
+        if data.get("ward"):
+            filters.append({"label": "Ward", "value": data["ward"], "params": ["ward"]})
+        if data.get("listing_type"):
+            filters.append({"label": "Listing", "value": dict(Plot.LISTING_TYPE_CHOICES).get(data["listing_type"], data["listing_type"]), "params": ["listing_type"]})
+        if data.get("soil_type"):
+            filters.append({"label": "Soil", "value": data["soil_type"], "params": ["soil_type"]})
+        if data.get("topography"):
+            filters.append({"label": "Topography", "value": dict(Plot.TOPOGRAPHY_CHOICES).get(data["topography"], data["topography"]), "params": ["topography"]})
+        if data.get("crop"):
+            filters.append({"label": "Crop", "value": data["crop"], "params": ["crop"]})
+        if data.get("ownership_type"):
+            filters.append({"label": "Title", "value": dict(Plot._meta.get_field("ownership_type").choices).get(data["ownership_type"], data["ownership_type"]), "params": ["ownership_type"]})
+        if data.get("registry_status"):
+            filters.append({"label": "Registry", "value": dict(self.REGISTRY_STATUS_CHOICES).get(data["registry_status"], data["registry_status"]), "params": ["registry_status"]})
+        if data.get("encumbrance_free"):
+            filters.append({"label": "Legal", "value": "Encumbrance-free", "params": ["encumbrance_free"]})
+        if data.get("water_source"):
+            filters.append({"label": "Water", "value": dict(Plot.WATER_SOURCE_CHOICES).get(data["water_source"], data["water_source"]), "params": ["water_source"]})
+        if data.get("has_electricity"):
+            filters.append({"label": "Power", "value": "Electricity available", "params": ["has_electricity"]})
+        if data.get("road_distance_band"):
+            filters.append({"label": "Road", "value": dict(self.ROAD_DISTANCE_CHOICES).get(data["road_distance_band"], data["road_distance_band"]), "params": ["road_distance_band"]})
+        if data.get("verified_only"):
+            filters.append({"label": "Trust", "value": "Verified pack only", "params": ["verified_only"]})
+        if data.get("min_price") is not None or data.get("max_price") is not None:
+            if data.get("min_price") is not None and data.get("max_price") is not None:
+                value = f"KES {int(data['min_price'])} - {int(data['max_price'])}"
+            elif data.get("min_price") is not None:
+                value = f"From KES {int(data['min_price'])}"
+            else:
+                value = f"Up to KES {int(data['max_price'])}"
+            filters.append({"label": "Budget", "value": value, "params": ["min_price", "max_price"]})
+        if data.get("size_presets"):
+            for preset in data["size_presets"]:
+                filters.append({"label": "Size", "value": dict(self.SIZE_PRESET_CHOICES).get(preset, preset), "params": ["size_presets"]})
+        return filters
 
 # ============ CUSTOM FORM WIDGETS ============
 class MultipleFileInput(forms.ClearableFileInput):
@@ -639,6 +1047,10 @@ class PlotForm(forms.ModelForm):
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
+    ward = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Mauche, Kiamaina, Bahati'})
+    )
     price_basis = forms.ChoiceField(
         choices=Plot.PRICE_BASIS_CHOICES,
         required=True,
@@ -738,6 +1150,11 @@ class PlotForm(forms.ModelForm):
         required=False,
         widget=forms.Select(attrs={'class': 'form-control'})
     )
+    topography = forms.ChoiceField(
+        choices=[("", "Select topography")] + list(Plot.TOPOGRAPHY_CHOICES),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
 
     survey_map = forms.FileField(
         required=False,
@@ -771,12 +1188,13 @@ class PlotForm(forms.ModelForm):
     class Meta:
         model = Plot
         fields = [
-            'title', 'county', 'subcounty', 'market_zone', 'location', 'area', 'area_unit', 'parcel_number', 'is_subdivision',
+            'title', 'county', 'subcounty', 'ward', 'market_zone', 'location', 'area', 'area_unit', 'parcel_number', 'is_subdivision',
             'original_parcel_number', 'registration_section',
             'search_certificate_date', 'search_reference_number',
             'owner_full_name', 'owner_id_number', 'owner_kra_pin_number', 'spousal_consent',
             'listing_type', 'land_type',
             'land_use_description', 'nearest_town',
+            'soil_type', 'topography', 'ph_level', 'crop_suitability',
             'ownership_type', 'tenure_details', 'encumbrances', 'encumbrance_details',
             'sale_price', 'price_per_acre',
             'lease_price_monthly', 'lease_price_yearly', 'lease_duration', 'lease_terms',
@@ -947,6 +1365,7 @@ class PlotForm(forms.ModelForm):
         self.fields['title'].help_text = "Give your plot a descriptive title"
         self.fields['county'].help_text = "Select the county where your plot is located"
         self.fields['subcounty'].help_text = "Select the specific sub-county"
+        self.fields['ward'].help_text = "Optional but recommended for hyper-local search trust."
         self.fields['market_zone'].help_text = "Tell AgriPlot whether this land is rural, peri-urban, or urban for pricing guidance."
         self.fields['area'].help_text = "Land area value"
         self.fields['area_unit'].help_text = "Select acres or hectares"
@@ -957,6 +1376,7 @@ class PlotForm(forms.ModelForm):
         self.fields['owner_kra_pin_number'].help_text = "Registered owner's KRA PIN number"
         self.fields['price_basis'].help_text = "How was the selling price determined?"
         self.fields['lease_basis'].help_text = "How was the lease price determined?"
+        self.fields['topography'].help_text = "Describe the slope of the land for farming and access decisions."
         self.fields['valuation_report'].help_text = "Optional valuation report (PDF/Image)"
         self.fields['price_notes'].help_text = "Optional notes about market demand or negotiations"
         self.fields['price_review_required'].help_text = "Automatically turned on when your asking price goes beyond the regional guide."
@@ -1108,8 +1528,12 @@ class PlotForm(forms.ModelForm):
                 validation_logger.debug(f"Valid subcounties for {county}: {valid_subcounties}")
         
         # Combine county and subcounty into location field for backward compatibility
+        ward = cleaned_data.get('ward')
         if county and subcounty:
-            cleaned_data['location'] = f"{county} - {subcounty}"
+            location_parts = [county, subcounty]
+            if ward:
+                location_parts.append(ward)
+            cleaned_data['location'] = " - ".join(location_parts)
             logger.debug(f"Generated location: {cleaned_data['location']}")
         
         # =========================================================================

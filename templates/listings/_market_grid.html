@@ -37,7 +37,7 @@
             <div class="fb-info">
                 <h5 class="fb-title">{{ plot.title|truncatechars:36 }}</h5>
                 <div class="fb-location">
-                    {% if plot.county %}{{ plot.county }}{% if plot.subcounty %}, {{ plot.subcounty }}{% endif %}{% else %}{{ plot.location|truncatechars:40 }}{% endif %}
+                    {% if plot.county %}{{ plot.county }}{% if plot.subcounty %}, {{ plot.subcounty }}{% endif %}{% if plot.ward %}, {{ plot.ward }}{% endif %}{% else %}{{ plot.location|truncatechars:40 }}{% endif %}
                 </div>
                 <div class="fb-meta">
                     <span class="fb-price">KES {{ plot.price|floatformat:0|intcomma }}</span>
@@ -45,7 +45,15 @@
                 </div>
                 <p class="fb-status-copy">{{ plot.availability_summary }}</p>
                 <div class="fb-actions">
-                    <a class="fb-cta" href="{% url 'listings:plot_detail' plot.id %}">Explore</a>
+                    <a class="fb-cta" href="{% url 'listings:plot_detail' plot.id %}{% if plot.next_lease_booking_open %}#lease-status{% endif %}">
+                        {% if plot.next_lease_booking_open %}
+                        Reserve Next Lease
+                        {% elif plot.purchase_checkout_open and plot.has_active_lease %}
+                        Buy with Tenant
+                        {% else %}
+                        Explore
+                        {% endif %}
+                    </a>
                 </div>
             </div>
         </div>
