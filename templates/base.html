@@ -626,6 +626,24 @@
     </div>
 </nav>
 
+{% if show_email_verification_banner %}
+<div class="container py-2">
+    <div class="alert alert-warning shadow-sm d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-0" role="alert">
+        <div>
+            <strong>Verify your email to finish setting up your account.</strong>
+            <div class="small">Your phone is already verified. We sent a verification link to your email.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <form method="post" action="{% url 'listings:resend_email_verification' %}" class="m-0">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-dark">Resend email link</button>
+            </form>
+            <a href="{% url 'listings:profile_management' %}" class="btn btn-sm btn-dark">Open profile</a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Main Content -->
 <main id="main-content" class="main-content" tabindex="-1">
     {% if messages %}

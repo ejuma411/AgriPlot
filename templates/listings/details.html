@@ -1664,7 +1664,513 @@ a:hover {
         flex-direction: column;
     }
 }
+</style>
+<!-- Add this to your existing styles section, replacing the problematic parts -->
 
+<style>
+/* =========================
+   FIXED RESPONSIVE STYLES FOR DETAIL PAGE
+========================= */
+
+/* Fix hero section responsiveness */
+.detail-hero {
+    position: relative;
+    min-height: auto;
+    padding: 20px 0 30px;
+}
+
+.detail-hero-card {
+    position: relative;
+    z-index: 2;
+    max-width: 1100px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 18px;
+    padding: 20px 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    align-items: flex-start;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+}
+
+.hero-card-logo {
+    flex-shrink: 0;
+}
+
+.hero-card-info {
+    flex: 2;
+    min-width: 200px;
+}
+
+.hero-card-actions {
+    flex: 1;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Fix hero stats on mobile */
+.hero-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+/* Fix layout grid for detail page */
+.detail-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 24px;
+}
+
+@media (max-width: 992px) {
+    .detail-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .detail-nav {
+        position: static;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 12px;
+        margin-bottom: 20px;
+    }
+    
+    .detail-nav .nav-link {
+        white-space: nowrap;
+        display: inline-flex;
+    }
+}
+
+/* Fix detail navigation */
+.detail-nav {
+    position: sticky;
+    top: 90px;
+    align-self: start;
+    background: #fff;
+    border-radius: 12px;
+    padding: 14px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.detail-nav .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    color: #4b5b56;
+    border-left: 3px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.detail-nav .nav-link i {
+    width: 20px;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .detail-nav {
+        position: relative;
+        top: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    
+    .detail-nav .nav-link {
+        border-left: none;
+        border-bottom: 2px solid transparent;
+        padding: 8px 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .detail-nav .nav-link.active {
+        border-bottom-color: #1f7a4d;
+        background: #e8f3ef;
+    }
+}
+
+/* Fix plot details table for mobile */
+.plot-details-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+@media (max-width: 768px) {
+    .plot-details-table,
+    .plot-details-table tbody,
+    .plot-details-table tr,
+    .plot-details-table td {
+        display: block;
+        width: 100%;
+    }
+    
+    .plot-details-table tr {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: #f9fafb;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+    }
+    
+    .plot-details-table td {
+        padding: 8px 0;
+        border: none;
+    }
+    
+    .detail-label {
+        font-weight: 700;
+        color: #1f7a4d;
+        margin-bottom: 4px;
+        border-right: none;
+    }
+    
+    .detail-value {
+        padding-left: 0;
+    }
+}
+
+/* Fix gallery responsiveness */
+.gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.gallery-thumb {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: transform 0.3s ease;
+}
+
+.gallery-thumb:hover {
+    transform: scale(1.05);
+}
+
+@media (max-width: 576px) {
+    .gallery-grid {
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    }
+    
+    .gallery-thumb {
+        height: 100px;
+    }
+}
+
+/* Fix amenities grid */
+.amenities-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.amenity-chip {
+    background: #f3f7f5;
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+@media (max-width: 480px) {
+    .amenity-chip {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Fix lease status grid */
+.lease-status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+}
+
+@media (max-width: 640px) {
+    .lease-status-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Fix agent stats grid */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+    gap: 12px;
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .stat-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        text-align: left;
+        padding: 8px 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+    }
+    
+    .stat-item i {
+        margin-bottom: 0;
+        font-size: 1.2rem;
+    }
+    
+    .stat-item div {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+}
+
+/* Fix contact buttons on mobile */
+.contact-methods .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 16px;
+}
+
+@media (max-width: 576px) {
+    .contact-methods .btn {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        width: 100%;
+    }
+}
+
+/* Fix availability banner on mobile */
+.availability-banner {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-radius: 18px;
+}
+
+.availability-status-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+@media (max-width: 480px) {
+    .availability-status-line {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}
+
+/* Fix hero card actions on mobile */
+@media (max-width: 768px) {
+    .detail-hero-card {
+        flex-direction: column;
+    }
+    
+    .hero-card-logo {
+        align-self: center;
+    }
+    
+    .hero-card-info {
+        text-align: center;
+    }
+    
+    .hero-card-info h2 {
+        font-size: 1.3rem;
+    }
+    
+    .hero-stats {
+        justify-content: center;
+    }
+    
+    .hero-card-actions {
+        width: 100%;
+    }
+    
+    .hero-card-actions .hero-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* Fix gallery hover for touch devices */
+@media (hover: none) {
+    .gallery-hover {
+        touch-action: pan-y pinch-zoom;
+    }
+    
+    .gallery-thumb:active {
+        transform: scale(0.98);
+    }
+}
+
+/* Fix modal on mobile */
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 10px;
+    }
+    
+    .modal-body {
+        padding: 1rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .modal-footer .btn {
+        width: 100%;
+    }
+}
+
+/* Fix container padding */
+.container-fluid {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 0.75rem;
+    }
+}
+
+/* Fix workspace notice */
+.workspace-notice {
+    padding: 0.95rem 1rem;
+    border-radius: 14px;
+    font-size: 0.9rem;
+    word-wrap: break-word;
+}
+
+/* Fix hero list */
+.hero-list {
+    padding-left: 1.2rem;
+    margin: 0.5rem 0;
+}
+
+.hero-list li {
+    margin-bottom: 0.5rem;
+    word-wrap: break-word;
+}
+
+/* Improve touch targets on mobile */
+@media (max-width: 768px) {
+    button,
+    .btn,
+    .nav-link,
+    .filter-chip,
+    .size-pill,
+    .amenity-chip {
+        min-height: 44px;
+    }
+    
+    input,
+    select,
+    textarea {
+        font-size: 16px !important; /* Prevents zoom on focus in iOS */
+    }
+}
+
+/* Fix overflowing text */
+.plot-title,
+.hero-card-info h2,
+.availability-copy {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* Improve scroll behavior */
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+}
+
+/* Fix image gallery */
+.gallery-hover {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    border-radius: 14px;
+    overflow: hidden;
+    position: relative;
+    background: #f0f0f0;
+}
+
+.gallery-hover img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.gallery-hover img.active {
+    opacity: 1;
+}
+
+@media (max-width: 768px) {
+    .gallery-hover {
+        aspect-ratio: 4 / 3;
+    }
+}
+
+/* Fix thumbnail grid */
+.thumbnail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.thumbnail-item {
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    aspect-ratio: 1 / 1;
+}
+
+.thumbnail-item.active,
+.thumbnail-item:hover {
+    border-color: #1f7a4d;
+}
+
+.thumbnail {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
 </style>
 
 <script>
@@ -1916,5 +2422,81 @@ document.addEventListener('DOMContentLoaded', function() {
         return null;
     }
 });
+// Add this to your existing script section for better mobile gallery
+document.addEventListener('DOMContentLoaded', function() {
+    // Fix for mobile gallery touch
+    const galleries = document.querySelectorAll('.gallery-hover');
+    
+    galleries.forEach(gallery => {
+        const images = gallery.querySelectorAll('img');
+        if (images.length <= 1) return;
+        
+        let currentIndex = 0;
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        // Initialize first image
+        images[0].classList.add('active');
+        
+        // Desktop hover
+        if (window.matchMedia('(hover: hover)').matches) {
+            let interval;
+            gallery.addEventListener('mouseenter', () => {
+                interval = setInterval(() => {
+                    images[currentIndex].classList.remove('active');
+                    currentIndex = (currentIndex + 1) % images.length;
+                    images[currentIndex].classList.add('active');
+                }, 2000);
+            });
+            
+            gallery.addEventListener('mouseleave', () => {
+                clearInterval(interval);
+                images.forEach(img => img.classList.remove('active'));
+                images[0].classList.add('active');
+                currentIndex = 0;
+            });
+        }
+        
+        // Mobile touch swipe
+        gallery.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        });
+        
+        gallery.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > 50) {
+                images[currentIndex].classList.remove('active');
+                if (diff > 0) {
+                    currentIndex = (currentIndex + 1) % images.length;
+                } else {
+                    currentIndex = (currentIndex - 1 + images.length) % images.length;
+                }
+                images[currentIndex].classList.add('active');
+            }
+        });
+    });
+    
+    // Fix for smooth scrolling on mobile
+    document.querySelectorAll('.detail-nav .nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            if (targetId && targetId !== '#') {
+                const target = document.querySelector(targetId);
+                if (target) {
+                    const offset = 80;
+                    const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
+                    window.scrollTo({
+                        top: targetPosition,
+                        behavior: 'smooth'
+                    });
+                }
+            }
+        });
+    });
+});
 </script>
+
 {% endblock %}

@@ -130,7 +130,18 @@ class TextSMSService:
             "data": result,
         }
 
-    def _send_via_opensms(self, mobile, message):
+    @staticmethod
+    def _extract_provider_error(result, default_status):
+        if isinstance(result, dict):
+            return (
+                result.get("message")
+                or result.get("error")
+                or result.get("detail")
+                or f"API returned {default_status}"
+            )
+        return f"API returned {default_status}"
+
+    def _send_via_opensms(self, mobile, message, include_sender_id=True):
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {self.opensms_token}",
@@ -141,7 +152,7 @@ class TextSMSService:
             "phone": mobile,
             "message": message,
         }
-        if self.opensms_sender_id:
+        if include_sender_id and self.opensms_sender_id:
             payload["sender_id"] = self.opensms_sender_id
 
         response = self.session.post(
@@ -177,6 +188,16 @@ class TextSMSService:
                 "message": "SMS sent successfully",
             }
 
+        if response.status_code == 403 and include_sender_id and self.opensms_sender_id:
+            logger.warning(
+                "OpenSMS rejected sender_id=%s for %s with 403. Retrying without sender_id.",
+                self.opensms_sender_id,
+                mobile,
+            )
+            retry_result = self._send_via_opensms(mobile, message, include_sender_id=False)
+            if retry_result.get("success"):
+                return retry_result
+
         self._log_sms(
             provider="opensms",
             phone=mobile,
@@ -187,7 +208,7 @@ class TextSMSService:
         )
         return {
             "success": False,
-            "error": f"API returned {response.status_code}",
+            "error": self._extract_provider_error(result, response.status_code),
             "data": result,
         }
 

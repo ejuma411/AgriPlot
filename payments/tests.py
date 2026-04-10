@@ -568,13 +568,20 @@ class PaymentAuthorizationTests(TestCase):
         self.assertEqual(self.payment.status, PaymentRequest.Status.PAID)
 
     @override_settings(PAYSTACK_ENABLED=False)
-    def test_purchase_request_notifies_seller_when_created(self):
+    @override_settings(ENABLE_SMS_NOTIFICATIONS=True)
+    @patch("notifications.notification_service.TextSMSService.send_sms")
+    def test_purchase_request_notifies_seller_when_created(self, mock_send_sms):
         owner_user = self.User.objects.create_user(
             username="notify_owner",
             password="secret123",
             email="owner@example.com",
         )
-        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        owner_profile, _ = Profile.objects.get_or_create(
+            user=owner_user,
+            defaults={"role": "landowner"},
+        )
+        owner_profile.phone = "0718810503"
+        owner_profile.save(update_fields=["phone"])
         landowner = LandownerProfile.objects.create(
             user=owner_user,
             national_id=SimpleUploadedFile("notify_id.txt", b"id"),
@@ -625,10 +632,17 @@ class PaymentAuthorizationTests(TestCase):
         interest = UserInterest.objects.get(user=self.buyer, plot=plot)
         self.assertIn("Buyer initiated a purchase flow through checkout", interest.message)
         self.assertTrue(any("Buyer initiated Purchase" in email.subject for email in mail.outbox))
+        mock_send_sms.assert_called_once()
+        self.assertIn("started a purchase payment flow", mock_send_sms.call_args.args[1])
 
-    def test_mark_paid_notifies_seller_that_payment_is_confirmed(self):
+    @override_settings(ENABLE_SMS_NOTIFICATIONS=True)
+    @patch("notifications.notification_service.TextSMSService.send_sms")
+    def test_mark_paid_notifies_seller_that_payment_is_confirmed(self, mock_send_sms):
         self.seller.email = "seller@example.com"
         self.seller.save(update_fields=["email"])
+        seller_profile = self.seller.profile
+        seller_profile.phone = "0718810503"
+        seller_profile.save(update_fields=["phone"])
         self.client.login(username="finance_auth", password="secret123")
 
         response = self.client.post(
@@ -643,6 +657,8 @@ class PaymentAuthorizationTests(TestCase):
             ).exists()
         )
         self.assertTrue(any("Payment confirmed" in email.subject for email in mail.outbox))
+        mock_send_sms.assert_called_once()
+        self.assertIn("completed payment", mock_send_sms.call_args.args[1])
 
     def test_finance_dashboard_shows_admin_step_queue(self):
         owner_user = self.User.objects.create_user(
@@ -1585,9 +1601,15 @@ class LeaseLifecycleTests(TestCase):
             password="secret123",
             email="next@example.com",
         )
-        Profile.objects.get_or_create(user=self.tenant, defaults={"role": "buyer"})
-        Profile.objects.get_or_create(user=self.seller, defaults={"role": "landowner"})
-        Profile.objects.get_or_create(user=self.waiting_user, defaults={"role": "buyer"})
+        tenant_profile, _ = Profile.objects.get_or_create(user=self.tenant, defaults={"role": "buyer"})
+        tenant_profile.phone = "0718810503"
+        tenant_profile.save(update_fields=["phone"])
+        seller_profile, _ = Profile.objects.get_or_create(user=self.seller, defaults={"role": "landowner"})
+        seller_profile.phone = "0718810504"
+        seller_profile.save(update_fields=["phone"])
+        waiting_profile, _ = Profile.objects.get_or_create(user=self.waiting_user, defaults={"role": "buyer"})
+        waiting_profile.phone = "0718810505"
+        waiting_profile.save(update_fields=["phone"])
         self.landowner = LandownerProfile.objects.create(
             user=self.seller,
             national_id=SimpleUploadedFile("lease_owner_id.txt", b"id"),
@@ -1640,7 +1662,9 @@ class LeaseLifecycleTests(TestCase):
             ).exists()
         )
 
-    def test_lifecycle_command_sends_renewal_warning_to_current_tenant(self):
+    @override_settings(ENABLE_SMS_NOTIFICATIONS=True)
+    @patch("notifications.notification_service.TextSMSService.send_sms")
+    def test_lifecycle_command_sends_renewal_warning_to_current_tenant(self, mock_send_sms):
         today = timezone.localdate()
         plot = Plot.objects.create(
             landowner=self.landowner,
@@ -1686,6 +1710,7 @@ class LeaseLifecycleTests(TestCase):
                 message__icontains="terminate the tenancy",
             ).exists()
         )
+        self.assertGreaterEqual(mock_send_sms.call_count, 2)
 
     def test_lifecycle_command_does_not_repeat_same_renewal_bucket(self):
         today = timezone.localdate()

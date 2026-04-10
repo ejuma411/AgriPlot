@@ -47,6 +47,26 @@
                 </div>
                 {% endif %}
 
+                {% if contact_phone_verified and not contact_email_verified %}
+                <div class="card border-warning">
+                    <div class="card-header bg-warning-subtle">
+                        <h6 class="card-title mb-0">
+                            <i class="fas fa-envelope-open-text me-2"></i>Email Verification Needed
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-3">
+                            Your phone number is verified and your account is active. To unlock the rest of the platform,
+                            verify your email address using the link we sent to <strong>{{ request.user.email }}</strong>.
+                        </p>
+                        <form method="post" action="{% url 'listings:resend_email_verification' %}">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-warning">Resend verification email</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="card">
                     <div class="card-header">
                         <h6 class="card-title">
@@ -70,12 +90,30 @@
                                     <tr>
                                         <td class="field-label">Email</td>
                                         <td class="field-input">{{ request.user.email|default:'Not set' }}</td>
-                                        <td class="field-help"><small class="text-muted">Primary contact</small></td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                Primary contact
+                                                {% if contact_email_verified %}
+                                                    · Verified
+                                                {% else %}
+                                                    · Pending verification
+                                                {% endif %}
+                                            </small>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <td class="field-label">Phone</td>
                                         <td class="field-input">{{ profile.phone|default:'Not set' }}</td>
-                                        <td class="field-help"><small class="text-muted">SMS verification</small></td>
+                                        <td class="field-help">
+                                            <small class="text-muted">
+                                                SMS verification
+                                                {% if contact_phone_verified %}
+                                                    · Verified
+                                                {% else %}
+                                                    · Pending verification
+                                                {% endif %}
+                                            </small>
+                                        </td>
                                     </tr>
                                     <tr>
                                         <td class="field-label">Address</td>

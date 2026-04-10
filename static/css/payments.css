@@ -25,6 +25,16 @@
     margin: 0 auto;
 }
 
+.payments-section img,
+.payments-section svg,
+.payments-section iframe,
+.payments-hero img,
+.payments-hero svg,
+.payments-hero iframe {
+    max-width: 100%;
+    height: auto;
+}
+
 .payments-hero .payments-shell,
 .dual-grid {
     display: grid;
@@ -655,6 +665,7 @@
     gap: 1rem;
     align-items: center;
     padding: 1.2rem 1.3rem;
+    flex-wrap: wrap;
 }
 
 .payment-row h3,
@@ -709,7 +720,7 @@
 .form-card,
 .content-card,
 .progress-card {
-    padding: 1.4rem;
+    padding: clamp(1rem, 2vw, 1.4rem);
 }
 
 .payments-form {
@@ -926,6 +937,10 @@
 }
 
 @media (max-width: 1024px) {
+    .payments-shell {
+        width: min(100%, calc(100% - 1.5rem));
+    }
+
     .payments-hero .payments-shell,
     .dual-grid,
     .journey-grid,
@@ -975,6 +990,7 @@
 
     .hero-copy h1 {
         max-width: none;
+        line-height: 1.05;
     }
 
     .payments-section {
@@ -994,6 +1010,21 @@
     .payment-row-side,
     .detail-header-side {
         text-align: left;
+    }
+
+    .hero-actions,
+    .action-grid,
+    .form-actions {
+        grid-template-columns: 1fr;
+    }
+
+    .hero-btn,
+    .action-btn,
+    .action-grid .btn,
+    .action-grid a,
+    .form-actions .btn,
+    .form-actions a {
+        width: 100%;
     }
 
     .ownership-process-card {

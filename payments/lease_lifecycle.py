@@ -1,7 +1,5 @@
 import logging
 
-from django.conf import settings
-from django.core.mail import send_mail
 from django.db import transaction
 from django.utils import timezone
 
@@ -23,31 +21,14 @@ ACTIVE_LEASE_STATUSES = {
 TENANT_RENEWAL_REMINDER_THRESHOLDS = [90, 60, 30, 7]
 
 
-def _send_plain_email(recipient, subject, message):
-    if not recipient:
-        return
-    try:
-        send_mail(
-            subject=subject,
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[recipient],
-            fail_silently=False,
-        )
-    except Exception:
-        logger.exception("Failed to send lease lifecycle email to %s", recipient)
-
-
 def _notify_user(user, plot, title, message):
-    NotificationService.create_notification(
+    NotificationService.notify_user(
         user=user,
         notification_type="plot_stage_update",
         title=title,
         message=message,
         plot=plot,
     )
-    if getattr(user, "email", ""):
-        _send_plain_email(user.email, f"AgriPlot: {title}", message)
 
 
 def _active_lease_payments(run_date):

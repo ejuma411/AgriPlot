@@ -24,6 +24,37 @@ MAX_UPLOAD_MB = 20
 PARCEL_PATTERN_REGISTRY = re.compile(r"^[A-Za-z0-9]+(?:/[A-Za-z0-9]+)+$")
 PARCEL_PATTERN_LR = re.compile(r"^L\.?R\.?\s*(NO\.?|NO|NUMBER)?\s*\d+(?:/\d+)*$", re.IGNORECASE)
 
+
+def _normalize_kenyan_phone(value):
+    phone = str(value or "").strip().replace(" ", "")
+    if phone.startswith("+"):
+        phone = phone[1:]
+    if phone.startswith("0"):
+        phone = "254" + phone[1:]
+    elif phone.startswith("7"):
+        phone = "254" + phone
+    return phone
+
+
+def _phone_exists_in_system(phone_value):
+    from accounts.models import Agent, Profile
+    from security.models import PhoneEmailVerification
+
+    normalized_input = _normalize_kenyan_phone(phone_value)
+    if not normalized_input:
+        return False
+
+    existing_numbers = list(
+        Profile.objects.exclude(phone__isnull=True).exclude(phone__exact="").values_list("phone", flat=True)
+    )
+    existing_numbers += list(
+        Agent.objects.exclude(phone__exact="").values_list("phone", flat=True)
+    )
+    existing_numbers += list(
+        PhoneEmailVerification.objects.exclude(phone_number__exact="").values_list("phone_number", flat=True)
+    )
+    return any(_normalize_kenyan_phone(number) == normalized_input for number in existing_numbers)
+
 def _validate_parcel_number(value):
     if not value:
         raise forms.ValidationError("Parcel number is required.")
@@ -511,6 +542,19 @@ class BaseUserRegistrationForm(UserCreationForm):
                 "Enter a valid Kenyan phone number (e.g., 0712345678 or +254712345678)"
             )
         return True
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if email and User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("An account with this email already exists.")
+        return email
+
+    def clean_phone(self):
+        phone = (self.cleaned_data.get("phone") or "").strip()
+        self.validate_phone(phone)
+        if _phone_exists_in_system(phone):
+            raise forms.ValidationError("An account with this phone number already exists.")
+        return phone
 
 class BuyerRegistrationForm(BaseUserRegistrationForm):
     """Simple buyer registration form"""
@@ -2268,6 +2312,17 @@ class LandownerStep2Form(forms.Form):
         required=True,
         widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Nakuru'})
     )
+
+    def clean_phone(self):
+        phone = (self.cleaned_data.get("phone") or "").strip()
+        pattern = r'^\+?254\d{9}$|^0\d{9}$'
+        if not re.match(pattern, phone):
+            raise forms.ValidationError(
+                "Enter a valid Kenyan phone number (e.g., 0712345678 or +254712345678)"
+            )
+        if _phone_exists_in_system(phone):
+            raise forms.ValidationError("An account with this phone number already exists.")
+        return phone
 
 
 class LandownerStep3Form(forms.Form):

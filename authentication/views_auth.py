@@ -312,8 +312,8 @@ def sign_out_all_sessions(request):
 
 class CustomPasswordResetView(PasswordResetView):
     template_name = 'authentication/password_reset.html'
-    email_template_name = 'emails/password_reset_email.html'
-    html_email_template_name = 'emails/password_reset_email.html'  # Add this line!
+    email_template_name = 'notifications/emails/password_reset_email.html'
+    html_email_template_name = 'notifications/emails/password_reset_email.html'
     subject_template_name = 'authentication/password_reset_subject.txt'
     success_url = reverse_lazy('listings:password_reset_done')
     
@@ -390,7 +390,7 @@ def password_reset_confirm_request(request):
                         }
                         
                         # Render HTML email
-                        html_content = render_to_string('emails/password_reset_email.html', context)
+                        html_content = render_to_string('notifications/emails/password_reset_email.html', context)
                         text_content = strip_tags(html_content)  # Create plain text version
                         
                         # Send email

@@ -20,6 +20,7 @@ body.auth-body {
     color: var(--auth-ink);
     background: radial-gradient(circle at 15% 10%, #fbf6ea 0%, #f1e8d8 40%, #e9efe4 100%);
     font-family: "Outfit", sans-serif;
+    overflow-x: hidden;
 }
 
 .auth-shell {
@@ -171,7 +172,7 @@ body.auth-body {
     width: min(500px, 100%);
     background: var(--auth-card);
     border-radius: 24px;
-    padding: 30px 30px 24px;
+    padding: clamp(22px, 3vw, 30px) clamp(18px, 3vw, 30px) 24px;
     box-shadow: var(--auth-shadow);
     border: 1px solid rgba(14, 45, 35, 0.1);
     animation: floatIn 0.6s ease;
@@ -206,7 +207,7 @@ body.auth-body {
 
 .auth-title {
     margin: 10px 0 6px;
-    font-size: 1.8rem;
+    font-size: clamp(1.45rem, 1vw + 1.15rem, 1.8rem);
     font-weight: 600;
     color: var(--auth-forest);
 }
@@ -214,7 +215,7 @@ body.auth-body {
 .auth-subtitle {
     margin: 0 0 16px;
     color: var(--auth-muted);
-    font-size: 0.96rem;
+    font-size: clamp(0.92rem, 0.3vw + 0.86rem, 1rem);
 }
 
 .auth-kicker {
@@ -284,6 +285,7 @@ body.auth-body {
 .auth-form textarea {
     width: 100%;
     padding: 12px 14px;
+    min-height: 46px;
     border-radius: 14px;
     border: 1px solid var(--auth-line);
     background: #fff;
@@ -363,6 +365,7 @@ body.auth-body {
     color: #fff;
     border: none;
     padding: 12px 14px;
+    min-height: 46px;
     border-radius: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -621,16 +624,33 @@ body.auth-body {
     .auth-card {
         border-radius: 20px;
     }
+    .auth-panel {
+        padding: 24px 16px 40px;
+    }
 }
 
 @media (max-width: 560px) {
     .auth-card {
-        padding: 24px;
+        padding: 20px 16px;
     }
     .auth-title {
         font-size: 1.6rem;
     }
     .auth-inline-actions {
         flex-direction: column;
+    }
+    .auth-card-header,
+    .auth-hero-brand {
+        gap: 10px;
+    }
+    .portal-links,
+    .auth-links {
+        align-items: stretch;
+    }
+    .portal-links a,
+    .auth-links a,
+    .auth-link {
+        width: 100%;
+        text-align: center;
     }
 }

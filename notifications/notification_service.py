@@ -21,6 +21,69 @@ class NotificationService:
     """Service for handling notifications and emails"""
 
     @staticmethod
+    def sms_notifications_enabled():
+        return bool(getattr(settings, "ENABLE_SMS_NOTIFICATIONS", False))
+
+    @staticmethod
+    def resolve_user_phone(user):
+        if user is None:
+            return ""
+        profile = getattr(user, "profile", None)
+        if profile and getattr(profile, "phone", ""):
+            return profile.phone
+        contact_verification = getattr(user, "contact_verification", None)
+        if contact_verification and getattr(contact_verification, "phone_number", ""):
+            return contact_verification.phone_number
+        agent = getattr(user, "agent", None)
+        if agent and getattr(agent, "phone", ""):
+            return agent.phone
+        return ""
+
+    @staticmethod
+    def send_sms(phone_number, message):
+        if not phone_number or not NotificationService.sms_notifications_enabled():
+            return {"success": False, "skipped": True}
+        try:
+            sms = TextSMSService()
+            return sms.send_sms(phone_number, message)
+        except Exception as exc:
+            logger.error("Failed to send SMS to %s: %s", phone_number, exc, exc_info=True)
+            return {"success": False, "error": str(exc)}
+
+    @staticmethod
+    def notify_user(user, notification_type, title, message, *, plot=None, task=None, email_subject=None):
+        if user is None:
+            return None
+
+        notification = NotificationService.create_notification(
+            user=user,
+            notification_type=notification_type,
+            title=title,
+            message=message,
+            plot=plot,
+            task=task,
+        )
+
+        if getattr(user, "email", ""):
+            try:
+                _subject = email_subject or f"AgriPlot: {title}"
+                send_mail(
+                    subject=_subject,
+                    message=message,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=False,
+                )
+            except Exception:
+                logger.exception("Failed to send notification email to %s", user.email)
+
+        phone_number = NotificationService.resolve_user_phone(user)
+        if phone_number:
+            NotificationService.send_sms(phone_number, message)
+
+        return notification
+
+    @staticmethod
     def _json_safe(value):
         """Convert common objects to JSON-serializable values for EmailLog.context."""
         if isinstance(value, (str, int, float, bool)) or value is None:

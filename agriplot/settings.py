@@ -222,6 +222,7 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
                 "notifications.context_processors.nav_activity",
                 "payments.context_processors.payment_admin_nav",
+                "security.context_processors.contact_verification_banner",
             ],
         },
     },
@@ -397,6 +398,7 @@ PLOT_CREATE_RATE_LIMIT = int(os.environ.get("PLOT_CREATE_RATE_LIMIT", "0"))
 # OTP / verification settings
 OTP_PROVIDER = os.environ.get("OTP_PROVIDER", "email")  # email | sms | both
 USE_SMS_MOCK = _env_bool("USE_SMS_MOCK", default=True)
+ENABLE_SMS_NOTIFICATIONS = _env_bool("ENABLE_SMS_NOTIFICATIONS", default=False)
 
 
 # =============================================================================
@@ -443,6 +445,9 @@ LOGGING = {
         },
         "require_debug_false": {
             "()": "django.utils.log.RequireDebugFalse",
+        },
+        "security_context_defaults": {
+            "()": "agriplot.logging_filters.SecurityContextDefaultsFilter",
         },
     },
 
@@ -500,6 +505,7 @@ LOGGING = {
             "filename": SECURITY_LOG_FILE,
             "formatter": "security",
             "level": "INFO",
+            "filters": ["security_context_defaults"],
             "maxBytes": 10485760,  # 10MB
             "backupCount": 5,
         },

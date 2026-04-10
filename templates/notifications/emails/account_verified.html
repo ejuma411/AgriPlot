@@ -10,21 +10,21 @@
 </head>
 <body>
     <div class="header">
-        <h1>Account Verified! ✅</h1>
+        <h1>Email Verified! ✅</h1>
     </div>
     <div class="content">
         <h2>Hello {{ user.get_full_name|default:user.username }},</h2>
-        <p>Great news! Your account has been verified by our team.</p>
+        <p>Great news. Your email address on AgriPlot has been verified successfully.</p>
         <p>You can now:</p>
         <ul>
-            <li>✅ List agricultural plots for sale or lease</li>
-            <li>✅ Receive inquiries from potential buyers</li>
-            <li>✅ Track verification progress of your listings</li>
+            <li>✅ Continue using your account with full contact verification</li>
+            <li>✅ Access actions that require both phone and email confirmation</li>
+            <li>✅ Keep receiving AgriPlot updates on a verified email address</li>
         </ul>
         <div style="text-align: center;">
-            <a href="{{ login_url }}" class="button">Start Listing Plots</a>
+            <a href="{{ login_url }}" class="button">Open AgriPlot</a>
         </div>
-        <p>Thank you for joining AgriPlot Connect!</p>
+        <p>Thank you for joining AgriPlot Connect.</p>
     </div>
 </body>
 </html>

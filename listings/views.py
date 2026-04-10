@@ -580,7 +580,13 @@ def add_plot(request):
         if otp_provider == "email" and not email_verified:
             messages.error(request, "Verify your email before listing a plot.")
             return redirect("listings:profile_management")
-        if otp_provider in ("sms", "both") and not (phone_verified and email_verified):
+        if otp_provider == "sms" and not phone_verified:
+            messages.error(request, "Verify your phone number before listing a plot.")
+            return redirect("listings:profile_management")
+        if otp_provider == "sms" and not email_verified:
+            messages.error(request, "Verify your email before listing a plot. We sent you a verification link after phone confirmation.")
+            return redirect("listings:profile_management")
+        if otp_provider == "both" and not (phone_verified and email_verified):
             messages.error(request, "Verify your phone and email before listing a plot.")
             return redirect("listings:profile_management")
 

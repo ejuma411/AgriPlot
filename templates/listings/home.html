@@ -14,14 +14,14 @@
         <h1>Find Verified Agricultural Land</h1>
         <p>Discover plots using soil analytics, location insights and Seller verification.</p>
 
-        <!-- ENHANCED SEARCH FORM -->
+        <!-- ENHANCED SEARCH FORM - FULLY RESPONSIVE -->
         <form method="GET" class="market-search" id="searchForm">
-            <!-- Main search row - always visible -->
+            <!-- Main search row -->
             <div class="search-main-row">
                 <div class="search-field location-field">
                     <i class="fas fa-map-marker-alt"></i>
                     <input type="text" name="q" placeholder="Try: 3 acres for lease in Njoro under 1M"
-                           value="{{ search_form.q.value|default:'' }}" autocomplete="off">
+                        value="{{ search_form.q.value|default:'' }}" autocomplete="off">
                 </div>
 
                 <div class="search-field">
@@ -39,16 +39,16 @@
                 <button type="button" class="filter-toggle-btn" id="filterToggle">
                     <i class="fas fa-sliders-h"></i> More filters
                     {% if has_active_filters %}
-                    <span class="filter-badge" id="filterBadge">{{ active_filters_count }}</span>
+                    <span class="filter-badge">{{ active_filters_count }}</span>
                     {% endif %}
                 </button>
             </div>
 
-            <!-- Quick filters row - always visible -->
+            <!-- Quick filters - FIXED RESPONSIVE GRID -->
             <div class="quick-filters" id="quickFilters">
                 <div class="filter-group">
                     <label><i class="fas fa-map"></i> County</label>
-                    <select name="county" class="filter-select quick-filter-input">
+                    <select name="county" class="filter-select">
                         <option value="">Any county</option>
                         {% for county in county_choices %}
                         <option value="{{ county }}" {% if search_form.county.value == county %}selected{% endif %}>{{ county }}</option>
@@ -58,7 +58,7 @@
 
                 <div class="filter-group">
                     <label><i class="fas fa-location-arrow"></i> Sub-county</label>
-                    <select name="subcounty" class="filter-select quick-filter-input">
+                    <select name="subcounty" class="filter-select">
                         <option value="">Any sub-county</option>
                         {% for subcounty in subcounty_choices %}
                         <option value="{{ subcounty }}" {% if search_form.subcounty.value == subcounty %}selected{% endif %}>{{ subcounty }}</option>
@@ -68,13 +68,12 @@
 
                 <div class="filter-group">
                     <label><i class="fas fa-map-signs"></i> Ward</label>
-                    <input type="text" name="ward" class="price-input quick-filter-input"
-                           placeholder="Any ward" value="{{ search_form.ward.value|default:'' }}">
+                    <input type="text" name="ward" placeholder="Any ward" value="{{ search_form.ward.value|default:'' }}">
                 </div>
 
                 <div class="filter-group">
                     <label><i class="fas fa-leaf"></i> Soil Type</label>
-                    <select name="soil_type" class="filter-select quick-filter-input">
+                    <select name="soil_type" class="filter-select">
                         <option value="">Any soil type</option>
                         <option value="Red Volcanic" {% if search_form.soil_type.value == 'Red Volcanic' %}selected{% endif %}>Red Volcanic</option>
                         <option value="Black Cotton" {% if search_form.soil_type.value == 'Black Cotton' %}selected{% endif %}>Black Cotton</option>
@@ -84,42 +83,46 @@
                     </select>
                 </div>
 
-                <div class="filter-group price-range-group">
+                <div class="filter-group">
                     <label><i class="fas fa-tag"></i> Price Range</label>
                     <div class="price-inputs">
-                            <input type="number" name="min_price" placeholder="Min" 
-                                   value="{{ search_form.min_price.value|default:'' }}" class="price-input quick-filter-input">
+                        <input type="number" name="min_price" placeholder="Min" value="{{ search_form.min_price.value|default:'' }}">
                         <span class="price-separator">-</span>
-                            <input type="number" name="max_price" placeholder="Max" 
-                                   value="{{ search_form.max_price.value|default:'' }}" class="price-input quick-filter-input">
+                        <input type="number" name="max_price" placeholder="Max" value="{{ search_form.max_price.value|default:'' }}">
                     </div>
                 </div>
 
-                <div class="filter-group">
+                <div class="filter-group full-width">
                     <label><i class="fas fa-vector-square"></i> Size Intent</label>
                     <div class="size-preset-list">
-                        <label class="checkbox-label compact">
+                        <label class="size-pill">
                             <input type="checkbox" name="size_presets" value="small_scale" {% if 'small_scale' in selected_size_presets %}checked{% endif %}>
                             Small-scale
                         </label>
-                        <label class="checkbox-label compact">
+                        <label class="size-pill">
                             <input type="checkbox" name="size_presets" value="commercial" {% if 'commercial' in selected_size_presets %}checked{% endif %}>
                             Commercial
                         </label>
-                        <label class="checkbox-label compact">
+                        <label class="size-pill">
                             <input type="checkbox" name="size_presets" value="estate" {% if 'estate' in selected_size_presets %}checked{% endif %}>
                             Large-scale / Estate
                         </label>
                     </div>
                 </div>
 
-                <div class="filter-group checkbox-group">
-                    <label class="checkbox-label">
-                        <input type="checkbox" name="verified_only" value="on"
-                               {% if search_form.verified_only.value %}checked{% endif %}>
-                        <i class="fas fa-check-circle"></i> Verified only
+                <div class="filter-group">
+                    <label class="verified-toggle">
+                        <input type="checkbox" name="verified_only" value="on" {% if search_form.verified_only.value %}checked{% endif %}>
+                        <span class="verified-toggle-copy">
+                            <i class="fas fa-check-circle"></i>
+                            <span>
+                                <strong>Verified only</strong>
+                                <small>Official search and survey pack uploaded</small>
+                            </span>
+                        </span>
                     </label>
                 </div>
+
                 <div class="quick-apply">
                     <button type="submit" class="quick-apply-btn">
                         <i class="fas fa-check"></i> Apply
@@ -127,13 +130,12 @@
                 </div>
             </div>
 
-            <!-- Advanced filters panel - collapsible -->
+            <!-- Advanced filters panel -->
             <div class="advanced-filters" id="advancedFilters" style="display: {% if has_active_filters %}block{% else %}none{% endif %};">
                 <div class="filters-grid">
-                    <!-- Land Type -->
                     <div class="filter-group">
                         <label><i class="fas fa-mountain"></i> Land Type</label>
-                        <select name="land_type" class="filter-select">
+                        <select name="land_type">
                             <option value="">Any land type</option>
                             <option value="agricultural" {% if search_form.land_type.value == 'agricultural' %}selected{% endif %}>Agricultural</option>
                             <option value="mixed_use" {% if search_form.land_type.value == 'mixed_use' %}selected{% endif %}>Mixed Use</option>
@@ -143,7 +145,7 @@
 
                     <div class="filter-group">
                         <label><i class="fas fa-water"></i> Water Access</label>
-                        <select name="water_source" class="filter-select">
+                        <select name="water_source">
                             <option value="">Any water access</option>
                             <option value="borehole" {% if search_form.water_source.value == 'borehole' %}selected{% endif %}>Borehole</option>
                             <option value="river" {% if search_form.water_source.value == 'river' %}selected{% endif %}>Riverfront</option>
@@ -154,13 +156,12 @@
 
                     <div class="filter-group">
                         <label><i class="fas fa-seedling"></i> Crop Suitability</label>
-                        <input type="text" name="crop" class="price-input"
-                               placeholder="Onions, avocados, maize..." value="{{ search_form.crop.value|default:'' }}">
+                        <input type="text" name="crop" placeholder="Onions, avocados, maize..." value="{{ search_form.crop.value|default:'' }}">
                     </div>
 
                     <div class="filter-group">
                         <label><i class="fas fa-mountain"></i> Topography</label>
-                        <select name="topography" class="filter-select">
+                        <select name="topography">
                             <option value="">Any topography</option>
                             <option value="flat" {% if search_form.topography.value == 'flat' %}selected{% endif %}>Flat</option>
                             <option value="gentle_slope" {% if search_form.topography.value == 'gentle_slope' %}selected{% endif %}>Gentle Slope</option>
@@ -172,7 +173,7 @@
 
                     <div class="filter-group">
                         <label><i class="fas fa-file-signature"></i> Title Type</label>
-                        <select name="ownership_type" class="filter-select">
+                        <select name="ownership_type">
                             <option value="">Any title type</option>
                             <option value="freehold" {% if search_form.ownership_type.value == 'freehold' %}selected{% endif %}>Freehold</option>
                             <option value="leasehold" {% if search_form.ownership_type.value == 'leasehold' %}selected{% endif %}>Leasehold</option>
@@ -183,7 +184,7 @@
 
                     <div class="filter-group">
                         <label><i class="fas fa-shield-alt"></i> Registry Status</label>
-                        <select name="registry_status" class="filter-select">
+                        <select name="registry_status">
                             <option value="">Any registry status</option>
                             <option value="ardhisasa" {% if search_form.registry_status.value == 'ardhisasa' %}selected{% endif %}>Verified on Ardhisasa</option>
                             <option value="manual" {% if search_form.registry_status.value == 'manual' %}selected{% endif %}>Manual registry trail</option>
@@ -192,7 +193,7 @@
 
                     <div class="filter-group">
                         <label><i class="fas fa-road"></i> Distance from Tarmac</label>
-                        <select name="road_distance_band" class="filter-select">
+                        <select name="road_distance_band">
                             <option value="">Any distance</option>
                             <option value="0_5" {% if search_form.road_distance_band.value == '0_5' %}selected{% endif %}>0 - 5 km</option>
                             <option value="5_10" {% if search_form.road_distance_band.value == '5_10' %}selected{% endif %}>5 - 10 km</option>
@@ -202,22 +203,19 @@
 
                     <div class="filter-group checkbox-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" name="encumbrance_free" value="on"
-                                   {% if search_form.encumbrance_free.value %}checked{% endif %}>
+                            <input type="checkbox" name="encumbrance_free" value="on" {% if search_form.encumbrance_free.value %}checked{% endif %}>
                             <i class="fas fa-balance-scale"></i> Encumbrance-free only
                         </label>
                     </div>
 
                     <div class="filter-group checkbox-group">
                         <label class="checkbox-label">
-                            <input type="checkbox" name="has_electricity" value="on"
-                                   {% if search_form.has_electricity.value %}checked{% endif %}>
+                            <input type="checkbox" name="has_electricity" value="on" {% if search_form.has_electricity.value %}checked{% endif %}>
                             <i class="fas fa-bolt"></i> Has electricity
                         </label>
                     </div>
                 </div>
 
-                <!-- Filter actions -->
                 <div class="filter-actions">
                     <button type="button" class="clear-filters-btn" id="clearFilters">
                         <i class="fas fa-times"></i> Clear all filters
@@ -236,11 +234,11 @@
     </div>
 
     <!-- HERO IMAGES SLIDER -->
-    <div class="hero-slider">
+    {% comment %} <div class="hero-slider">
         <img src="{% static 'images/farm-hero.jpg' %}" class="active" alt="Farm Hero 1">
         <img src="{% static 'images/farm-hero2.jpeg' %}" alt="Farm Hero 2">
         <img src="{% static 'images/farm-hero3.jpeg' %}" alt="Farm Hero 3">
-    </div>
+    </div> {% endcomment %}
 </section>
 
 <!-- RESULTS HEADER (add after hero section) -->
@@ -311,51 +309,184 @@
 
 </section>
 
+<!-- CLEANED, CONSOLIDATED JAVASCRIPT - No Duplicates -->
 <script>
-document.addEventListener("DOMContentLoaded", () => {
+// ============================================
+// MAIN APPLICATION SCRIPT - Consolidated
+// ============================================
+document.addEventListener("DOMContentLoaded", function() {
+    
+    // ========== 1. HERO SLIDER ==========
+    const heroSlides = document.querySelectorAll('.hero-slider img');
+    if(heroSlides.length > 0){
+        let heroIndex = 0;
+        heroSlides.forEach((img, i) => img.classList.toggle('active', i === 0));
+        setInterval(() => {
+            heroSlides[heroIndex].classList.remove('active');
+            heroIndex = (heroIndex + 1) % heroSlides.length;
+            heroSlides[heroIndex].classList.add('active');
+        }, 5000);
+    }
+
+    // ========== 2. FILTER TOGGLE ==========
+    const filterToggle = document.getElementById('filterToggle');
+    const advancedFilters = document.getElementById('advancedFilters');
+    
+    if (filterToggle && advancedFilters) {
+        filterToggle.addEventListener('click', function() {
+            const isVisible = advancedFilters.style.display === 'block';
+            advancedFilters.style.display = isVisible ? 'none' : 'block';
+            const icon = this.querySelector('i');
+            if (icon) {
+                icon.className = isVisible ? 'fas fa-sliders-h' : 'fas fa-times';
+            }
+        });
+    }
+
+    // ========== 3. PRICE RANGE VALIDATION ==========
+    const minPrice = document.querySelector('input[name="min_price"]');
+    const maxPrice = document.querySelector('input[name="max_price"]');
+    
+    if (minPrice && maxPrice) {
+        const validatePrice = function() {
+            if (minPrice.value && maxPrice.value) {
+                if (parseFloat(minPrice.value) > parseFloat(maxPrice.value)) {
+                    maxPrice.setCustomValidity('Max price must be greater than min price');
+                } else {
+                    maxPrice.setCustomValidity('');
+                }
+            }
+        };
+        minPrice.addEventListener('change', validatePrice);
+        maxPrice.addEventListener('change', validatePrice);
+    }
+
+    // ========== 4. PLOT CARD GALLERIES ==========
+    document.querySelectorAll('.plot-gallery').forEach(card => {
+        const images = card.querySelectorAll('img');
+        if (images.length <= 1) return;
+        
+        let currentIndex = 0;
+        let interval;
+        images[0].classList.add('active');
+        
+        // Desktop hover effect
+        card.addEventListener('mouseenter', () => {
+            interval = setInterval(() => {
+                images[currentIndex].classList.remove('active');
+                currentIndex = (currentIndex + 1) % images.length;
+                images[currentIndex].classList.add('active');
+            }, 1000);
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            clearInterval(interval);
+            images.forEach(img => img.classList.remove('active'));
+            images[0].classList.add('active');
+            currentIndex = 0;
+        });
+        
+        // Mobile swipe support
+        let touchStartX = 0;
+        card.addEventListener('touchstart', e => {
+            clearInterval(interval);
+            touchStartX = e.touches[0].clientX;
+        });
+        
+        card.addEventListener('touchend', e => {
+            const touchEndX = e.changedTouches[0].clientX;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > 50) {
+                images[currentIndex].classList.remove('active');
+                if (diff > 0) {
+                    currentIndex = (currentIndex + 1) % images.length;
+                } else {
+                    currentIndex = (currentIndex - 1 + images.length) % images.length;
+                }
+                images[currentIndex].classList.add('active');
+            }
+        });
+    });
+
+    // ========== 5. SMOOTH SCROLL ==========
+    document.querySelectorAll('a[href^="#"]:not([href="#"])').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            const targetId = this.getAttribute('href');
+            if (targetId && targetId !== '#') {
+                const target = document.querySelector(targetId);
+                if (target) {
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
+        });
+    });
+
+    // ========== 6. FAVORITE TOGGLE ==========
+    document.querySelectorAll('.fav-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const icon = this.querySelector('i');
+            if (icon) {
+                icon.classList.toggle('far');
+                icon.classList.toggle('fas');
+                this.classList.toggle('active');
+            }
+        });
+    });
+});
+
+// ============================================
+// AJAX SEARCH HANDLER - Consolidated
+// ============================================
+(function() {
     const form = document.getElementById("searchForm");
+    if (!form) return;
+
     const resultsHeader = document.getElementById("resultsHeader");
     const resultsLabel = document.getElementById("resultsCountLabel");
     const resultsContainer = document.getElementById("ajaxResultsContainer");
     const activeFiltersContainer = document.getElementById("activeFiltersContainer");
     const filterBadge = document.getElementById("filterBadge");
     const resultsInfo = document.querySelector(".results-info");
-    const countySelect = form?.querySelector('select[name="county"]');
-    const subcountySelect = form?.querySelector('select[name="subcounty"]');
+    const countySelect = form.querySelector('select[name="county"]');
+    const subcountySelect = form.querySelector('select[name="subcounty"]');
     const clearFiltersButton = document.getElementById("clearFilters");
+    const sortSelect = document.getElementById('sortBy');
+    const quickFilters = document.getElementById('quickFilters');
+    
     const ajaxUrl = "{% url 'listings:ajax_search' %}";
     const subcountyUrl = "{% url 'listings:get_subcounties' %}";
-
-    if (!form || !resultsHeader || !resultsContainer || !resultsLabel) {
-        return;
-    }
 
     let searchTimer = null;
     let activeController = null;
 
     function setLoadingState(isLoading) {
-        resultsContainer.classList.toggle("is-loading", isLoading);
+        if (resultsContainer) resultsContainer.classList.toggle("is-loading", isLoading);
         form.classList.toggle("is-loading", isLoading);
     }
 
     function updateResultsLabel(labelText) {
-        resultsLabel.textContent = labelText;
+        if (resultsLabel) resultsLabel.textContent = labelText;
     }
 
     function updateFilterBadge(count) {
         if (count > 0) {
             if (filterBadge) {
                 filterBadge.textContent = count;
+                filterBadge.style.display = 'inline-flex';
             } else {
                 const toggle = document.getElementById("filterToggle");
-                const badge = document.createElement("span");
-                badge.className = "filter-badge";
-                badge.id = "filterBadge";
-                badge.textContent = count;
-                toggle.appendChild(badge);
+                if (toggle) {
+                    const badge = document.createElement("span");
+                    badge.className = "filter-badge";
+                    badge.id = "filterBadge";
+                    badge.textContent = count;
+                    toggle.appendChild(badge);
+                }
             }
-        } else if (document.getElementById("filterBadge")) {
-            document.getElementById("filterBadge").remove();
+        } else if (filterBadge) {
+            filterBadge.style.display = 'none';
         }
     }
 
@@ -378,81 +509,61 @@ document.addEventListener("DOMContentLoaded", () => {
     function buildSearchParams() {
         const formData = new FormData(form);
         const params = new URLSearchParams();
-
         for (const [key, value] of formData.entries()) {
-            if (value !== "") {
-                params.append(key, value);
-            }
+            if (value !== "") params.append(key, value);
         }
-
         return params;
     }
 
     function scrollToResults() {
-        resultsHeader.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (resultsHeader) resultsHeader.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     async function refreshSubcounties(selectedValue = "") {
-        if (!countySelect || !subcountySelect) {
-            return;
-        }
-
+        if (!countySelect || !subcountySelect) return;
         const county = countySelect.value;
         subcountySelect.innerHTML = '<option value="">Any sub-county</option>';
-
-        if (!county) {
-            return;
-        }
-
-        const response = await fetch(`${subcountyUrl}?county=${encodeURIComponent(county)}`, {
-            headers: { "X-Requested-With": "XMLHttpRequest" },
-        });
-        const data = await response.json();
-
-        for (const subcounty of data.subcounties || []) {
-            const option = document.createElement("option");
-            option.value = subcounty;
-            option.textContent = subcounty;
-            if (subcounty === selectedValue) {
-                option.selected = true;
+        if (!county) return;
+        
+        try {
+            const response = await fetch(`${subcountyUrl}?county=${encodeURIComponent(county)}`, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+            });
+            const data = await response.json();
+            for (const subcounty of data.subcounties || []) {
+                const option = document.createElement("option");
+                option.value = subcounty;
+                option.textContent = subcounty;
+                if (subcounty === selectedValue) option.selected = true;
+                subcountySelect.appendChild(option);
             }
-            subcountySelect.appendChild(option);
+        } catch (error) {
+            console.error('Error fetching subcounties:', error);
         }
     }
 
     async function runAjaxSearch({ scroll = true, pushUrl = true, extraParams = null } = {}) {
         const params = extraParams || buildSearchParams();
-
-        if (activeController) {
-            activeController.abort();
-        }
-
+        if (activeController) activeController.abort();
         activeController = new AbortController();
         setLoadingState(true);
-
+        
         try {
             const response = await fetch(`${ajaxUrl}?${params.toString()}`, {
                 headers: { "X-Requested-With": "XMLHttpRequest" },
                 signal: activeController.signal,
             });
             const data = await response.json();
-
-            resultsContainer.innerHTML = data.html;
+            
+            if (resultsContainer) resultsContainer.innerHTML = data.html;
             updateResultsLabel(data.results_label || "No plots found");
-            if (activeFiltersContainer) {
-                activeFiltersContainer.innerHTML = data.active_filters_html || "";
-            }
+            if (activeFiltersContainer) activeFiltersContainer.innerHTML = data.active_filters_html || "";
             updateFilterBadge(data.active_filters_count || 0);
             updateResetSearchLink(data.active_filters_count || 0);
-
+            
             const newUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
-            if (pushUrl) {
-                window.history.pushState({ params: params.toString() }, "", newUrl);
-            }
-
-            if (scroll) {
-                scrollToResults();
-            }
+            if (pushUrl) window.history.pushState({ params: params.toString() }, "", newUrl);
+            if (scroll) scrollToResults();
         } catch (error) {
             if (error.name !== "AbortError") {
                 window.location.href = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
@@ -463,518 +574,195 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function scheduleSearch(options = {}) {
-        window.clearTimeout(searchTimer);
-        searchTimer = window.setTimeout(() => runAjaxSearch(options), 250);
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => runAjaxSearch(options), 250);
     }
 
+    // Form submit handler
     form.addEventListener("submit", (event) => {
         event.preventDefault();
         runAjaxSearch({ scroll: true, pushUrl: true });
     });
 
+    // Form change handler
     form.addEventListener("change", async (event) => {
-        const target = event.target;
-        if (!(target instanceof HTMLElement)) {
-            return;
-        }
-
-        if (target === countySelect) {
-            await refreshSubcounties();
-        }
-
+        if (event.target === countySelect) await refreshSubcounties();
         runAjaxSearch({ scroll: true, pushUrl: true });
     });
 
+    // Input handler for text fields
     form.addEventListener("input", (event) => {
         const target = event.target;
-        if (!(target instanceof HTMLInputElement)) {
-            if (target instanceof HTMLTextAreaElement) {
-                scheduleSearch({ scroll: false, pushUrl: true });
-            }
-            return;
-        }
-
-        if (["q", "min_price", "max_price", "ward", "crop"].includes(target.name)) {
+        if (target && ["q", "min_price", "max_price", "ward", "crop"].includes(target.name)) {
             scheduleSearch({ scroll: false, pushUrl: true });
         }
     });
 
-    clearFiltersButton?.addEventListener("click", async () => {
-        form.reset();
-        await refreshSubcounties();
-        runAjaxSearch({ scroll: true, pushUrl: true });
-    });
+    // Clear filters button
+    if (clearFiltersButton) {
+        clearFiltersButton.addEventListener("click", async () => {
+            form.reset();
+            await refreshSubcounties();
+            runAjaxSearch({ scroll: true, pushUrl: true });
+        });
+    }
 
+    // Sort select handler
+    if (sortSelect) {
+        sortSelect.addEventListener('change', () => runAjaxSearch({ scroll: true, pushUrl: true }));
+    }
+
+    // Quick filters auto-submit
+    if (quickFilters) {
+        quickFilters.querySelectorAll('.quick-filter-input').forEach(input => {
+            input.addEventListener('change', () => runAjaxSearch({ scroll: true, pushUrl: true }));
+        });
+    }
+
+    // AJAX pagination and filter removal
     document.addEventListener("click", (event) => {
         const link = event.target.closest(".ajax-page");
         if (link) {
             event.preventDefault();
             const url = new URL(link.href, window.location.origin);
-            const params = new URLSearchParams(url.search);
-            runAjaxSearch({ scroll: true, pushUrl: true, extraParams: params });
+            runAjaxSearch({ scroll: true, pushUrl: true, extraParams: new URLSearchParams(url.search) });
             return;
         }
-
+        
         const stateLink = event.target.closest(".remove-filter, .clear-all-link, .reset-search");
-        if (!stateLink) {
-            return;
-        }
-
-        event.preventDefault();
-        const url = new URL(stateLink.href, window.location.origin);
-        const params = new URLSearchParams(url.search);
-
-        for (const element of form.elements) {
-            if (!element.name) {
-                continue;
-            }
-
-            if (element instanceof HTMLInputElement && element.type === "checkbox") {
-                if (element.name === "size_presets") {
-                    element.checked = params.getAll("size_presets").includes(element.value);
+        if (stateLink) {
+            event.preventDefault();
+            const url = new URL(stateLink.href, window.location.origin);
+            const params = new URLSearchParams(url.search);
+            
+            for (const element of form.elements) {
+                if (!element.name) continue;
+                if (element.type === "checkbox") {
+                    if (element.name === "size_presets") {
+                        element.checked = params.getAll("size_presets").includes(element.value);
+                    } else {
+                        element.checked = params.has(element.name);
+                    }
                 } else {
-                    element.checked = params.has(element.name);
+                    element.value = params.get(element.name) || "";
                 }
-            } else if (element instanceof HTMLSelectElement || element instanceof HTMLInputElement) {
-                element.value = params.get(element.name) || "";
             }
+            refreshSubcounties(params.get("subcounty") || "");
+            runAjaxSearch({ scroll: true, pushUrl: true, extraParams: params });
         }
-
-        refreshSubcounties(params.get("subcounty") || "");
-        runAjaxSearch({ scroll: true, pushUrl: true, extraParams: params });
     });
 
+    // Browser back/forward handler
     window.addEventListener("popstate", async () => {
         const params = new URLSearchParams(window.location.search);
-
         for (const element of form.elements) {
-            if (!element.name) {
-                continue;
-            }
-
-            if (element instanceof HTMLInputElement && element.type === "checkbox") {
+            if (!element.name) continue;
+            if (element.type === "checkbox") {
                 if (element.name === "size_presets") {
                     element.checked = params.getAll("size_presets").includes(element.value);
                 } else {
                     element.checked = params.has(element.name);
                 }
-            } else if (element instanceof HTMLSelectElement || element instanceof HTMLInputElement) {
+            } else {
                 element.value = params.get(element.name) || "";
             }
         }
-
         await refreshSubcounties(params.get("subcounty") || "");
         runAjaxSearch({ scroll: false, pushUrl: false, extraParams: params });
     });
-});
+})();
+
+// ============================================
+// SCROLL TO RESULTS HELPER
+// ============================================
+(function() {
+    const scrollToResultsFlag = sessionStorage.getItem('scrollToResults');
+    if (scrollToResultsFlag) {
+        const resultsHeader = document.getElementById('resultsHeader');
+        if (resultsHeader) {
+            setTimeout(() => resultsHeader.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+        }
+        sessionStorage.removeItem('scrollToResults');
+    }
+    
+    const form = document.getElementById('searchForm');
+    if (form) {
+        form.addEventListener('submit', () => sessionStorage.setItem('scrollToResults', 'true'));
+    }
+})();
 </script>
 
+<!-- FIXED RESPONSIVE CSS - Consolidated, no duplicates -->
 <style>
-.container95{
-    max-width:95%;
-    margin:auto;
+/* Reset and base */
+.container95 {
+    max-width: 95%;
+    margin: auto;
 }
 
-#ajaxResultsContainer {
-    transition: opacity 0.2s ease;
-}
-
-#ajaxResultsContainer.is-loading {
-    opacity: 0.45;
-    pointer-events: none;
-}
-
-.size-preset-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.checkbox-label.compact {
-    font-size: 0.92rem;
-    margin: 0;
-}
-
-/* HERO SECTION */
-.hero-market{
+/* Hero section adjustments */
+.hero-market {
     position: relative;
-    min-height: 80vh; /* takes 80% of screen height */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 18px;
+    min-height: auto;
+    padding: 60px 0 40px;
+    background: linear-gradient(135deg, #0d2b1f 0%, #1a472a 100%);
+    border-radius: 0 0 30px 30px;
     margin-bottom: 40px;
-    overflow: hidden;
 }
 
-
-.hero-overlay{
-    position:absolute;
-    inset:0;
-    background:rgba(0,0,0,0.55);
-    z-index: 1;
+.hero-overlay {
+    display: none;
 }
 
-.hero-inner{
+.hero-inner {
     position: relative;
+    z-index: 2;
+    padding: 20px;
+}
+
+.hero-inner h1 {
     color: white;
     text-align: center;
-    padding: 40px 20px;
-    z-index: 2;
-    max-width: 900px;
-}
-
-.hero-inner h1{
-    font-size:2.8rem;
-    font-weight:700;
-    margin-bottom: 20px;
-    line-height: 1.2;
-}
-
-/* HERO SLIDER */
-.hero-slider {
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-}
-
-.hero-slider img {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    top: 0;
-    left: 0;
-    opacity: 0;
-    transition: opacity 1s ease-in-out;
-}
-
-.hero-slider img.active {
-    opacity: 1;
-}
-
-/* SEARCH FORM */
-.market-search{
-    margin-top:25px;
-    display:flex;
-    gap:12px;
-    justify-content:center;
-    flex-wrap:wrap;
-    max-width: 800px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.market-search input,
-.market-search select{
-    height:48px;
-    padding:0 12px;
-    border-radius:8px;
-    border:none;
-    min-width: 180px;
-}
-
-.market-search button{
-    background:#1f7a4d;
-    color:white;
-    border:none;
-    padding:0 25px;
-    border-radius:8px;
-    cursor: pointer;
-}
-
-.market-search button:hover {
-    background:#155c3a;
-}
-
-/* MARKET GRID */
-.market-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
-    gap:30px;
-    margin-top: 30px;
-}
-
-/* CARD */
-.market-card{
-    background:white;
-    border-radius:14px;
-    overflow:hidden;
-    box-shadow:0 6px 25px rgba(0,0,0,0.08);
-    transition:0.3s;
-}
-
-.market-card:hover{
-    transform:translateY(-6px);
-    box-shadow:0 12px 30px rgba(0,0,0,0.15);
-}
-
-/* PLOT IMAGE GALLERY */
-.market-image {
-    position:relative;
-    height:210px;
-    overflow: hidden;
-}
-
-.market-image img {
-    width:100%;
-    height:100%;
-    object-fit:cover;
-    transition: transform 0.5s ease;
-}
-
-.market-card:hover .market-image img {
-    transform: scale(1.05);
-}
-
-.plot-gallery {
-    position: relative;
-}
-
-.plot-gallery img {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    transition: opacity 0.5s ease;
-}
-
-.plot-gallery img.active {
-    opacity: 1;
-}
-
-.price-tag{
-    position:absolute;
-    bottom:12px;
-    left:12px;
-    background:#1f7a4d;
-    color:white;
-    padding:6px 12px;
-    border-radius:6px;
-    font-weight: bold;
-    z-index: 1;
-}
-
-/* Verified badge */
-.verified-badge{
-    position:absolute;
-    top:12px;
-    left:12px;
-    background:#198754;
-    color:white;
-    padding:4px 10px;
-    border-radius:6px;
-    font-size:12px;
-    font-weight: 500;
-    z-index: 1;
-}
-
-/* BODY */
-.market-body{
-    padding:20px;
-}
-
-.plot-title{
-    font-size:18px;
-    font-weight:600;
-    margin-bottom:5px;
-    color: #333;
-}
-
-.market-location{
-    color:#777;
-    font-size:14px;
+    font-size: clamp(1.5rem, 5vw, 2.5rem);
     margin-bottom: 15px;
 }
 
-/* QUICK SPECS */
-.plot-specs{
-    margin:12px 0;
-    display:flex;
-    flex-wrap:wrap;
-    gap:6px;
-}
-
-.spec-chip{
-    background:#eef7f2;
-    color:#1f7a4d;
-    padding:4px 10px;
-    border-radius:20px;
-    font-size:12px;
-    font-weight:500;
-}
-
-/* Seller */
-.Seller-mini{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    margin:12px 0;
-    padding: 10px 0;
-    border-top: 1px solid #eee;
-}
-
-.Seller-avatar{
-    width:36px;
-    height:36px;
-    background:#1f7a4d;
-    color:white;
-    border-radius:50%;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-weight:bold;
-}
-
-/* ACTIONS */
-.card-actions{
-    display:flex;
-    gap:10px;
-    margin-top: 15px;
-}
-
-.btn-view{
-    flex:1;
-    background:#1f7a4d;
-    color:white;
-    padding:10px;
-    text-align:center;
-    border-radius:6px;
-    text-decoration: none;
-    transition: background 0.3s;
-}
-
-.btn-view:hover{
-    background:#155c3a;
-    color: white;
-}
-
-.btn-contact{
-    flex:1;
-    background:#25D366;
-    color:white;
-    padding:10px;
-    text-align:center;
-    border-radius:6px;
-    text-decoration: none;
-    transition: background 0.3s;
-}
-
-.btn-contact:hover{
-    background:#1da851;
-    color: white;
-}
-
-/* HOW SECTION */
-.how-section {
-    background: #f9f9f9;
-    padding: 60px 0;
-    margin-top: 60px;
-}
-
-.how-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
-    gap:30px;
-    margin-top: 40px;
-}
-
-.how-card{
-    background:white;
-    padding:30px;
-    border-radius:14px;
-    text-align:center;
-    box-shadow:0 5px 20px rgba(0,0,0,0.07);
-    transition: transform 0.3s;
-}
-
-.how-card:hover{
-    transform: translateY(-5px);
-}
-
-.how-card span{
-    background:#1f7a4d;
-    color:white;
-    width:50px;
-    height:50px;
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    border-radius:50%;
-    font-weight:bold;
-    margin-bottom:12px;
-    font-size: 1.2rem;
-}
-
-/* EMPTY STATE */
-.empty-state {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 60px 20px;
-    background: #f9f9f9;
-    border-radius: 12px;
-    margin: 20px 0;
-}
-
-.empty-state h4 {
-    color: #666;
-    margin-bottom: 10px;
-}
-
-.empty-state p {
-    color: #999;
-}
-
-/* SECTION HEAD */
-.section-head {
+.hero-inner > p {
+    color: rgba(255,255,255,0.9);
     text-align: center;
     margin-bottom: 30px;
 }
 
-.section-head h2 {
-    font-size: 2.2rem;
-    color: #333;
-    position: relative;
-    display: inline-block;
-    padding-bottom: 10px;
+/* Search Form */
+.market-search {
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
-.section-head h2::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 60px;
-    height: 3px;
-    background: #1f7a4d;
-}
-/* Add these styles to your existing CSS */
-
-/* Search Main Row */
+/* Main Row */
 .search-main-row {
     display: flex;
     gap: 12px;
-    align-items: center;
     flex-wrap: wrap;
-    background: rgba(255, 255, 255, 0.95);
-    padding: 8px;
-    border-radius: 12px;
-    backdrop-filter: blur(10px);
+    background: white;
+    padding: 15px 20px;
+    border-radius: 60px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    margin-bottom: 20px;
 }
 
 .search-field {
     flex: 1;
-    min-width: 200px;
+    min-width: 180px;
     position: relative;
 }
 
 .search-field i {
     position: absolute;
-    left: 12px;
+    left: 15px;
     top: 50%;
     transform: translateY(-50%);
-    color: #666;
+    color: #2c7a4b;
     z-index: 1;
 }
 
@@ -982,103 +770,73 @@ document.addEventListener("DOMContentLoaded", () => {
 .search-field select {
     width: 100%;
     height: 48px;
-    padding: 0 12px 0 35px;
+    padding: 0 15px 0 40px;
     border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    font-size: 15px;
+    border-radius: 40px;
+    font-size: 14px;
     background: white;
-    transition: all 0.3s ease;
 }
 
 .search-field input:focus,
 .search-field select:focus {
-    border-color: #1f7a4d;
+    border-color: #2c7a4b;
     outline: none;
-    box-shadow: 0 0 0 3px rgba(31, 122, 77, 0.1);
+    box-shadow: 0 0 0 3px rgba(44,122,75,0.1);
+}
+
+.search-btn,
+.filter-toggle-btn {
+    height: 48px;
+    padding: 0 25px;
+    border-radius: 40px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    white-space: nowrap;
 }
 
 .search-btn {
-    background: #1f7a4d;
+    background: #2c7a4b;
     color: white;
-    border: none;
-    padding: 0 30px;
-    height: 48px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .search-btn:hover {
-    background: #155c3a;
+    background: #1f5e3c;
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(31, 122, 77, 0.3);
 }
 
 .filter-toggle-btn {
-    background: white;
+    background: #f5f5f5;
     color: #333;
-    border: 1px solid #e0e0e0;
-    padding: 0 20px;
-    height: 48px;
-    border-radius: 8px;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    position: relative;
+    border: 1px solid #ddd;
 }
 
 .filter-toggle-btn:hover {
-    background: #f5f5f5;
-    border-color: #1f7a4d;
+    background: #e8e8e8;
 }
 
 .filter-badge {
-    background: #1f7a4d;
+    background: #2c7a4b;
     color: white;
-    font-size: 12px;
-    font-weight: 600;
-    width: 20px;
-    height: 20px;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 22px;
+    height: 22px;
+    font-size: 11px;
     margin-left: 5px;
 }
 
-/* Advanced Filters Panel */
-.advanced-filters {
-    background: white;
-    border-radius: 12px;
+/* Quick Filters */
+.quick-filters {
+    background: rgba(255,255,255,0.95);
+    border-radius: 20px;
     padding: 20px;
-    margin-top: 12px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.filters-grid {
+    margin-bottom: 15px;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
-    margin-bottom: 20px;
 }
 
 .filter-group {
@@ -1088,63 +846,38 @@ document.addEventListener("DOMContentLoaded", () => {
 }
 
 .filter-group label {
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    color: #555;
+    color: #1a472a;
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.filter-group label i {
-    color: #1f7a4d;
-    width: 16px;
-}
-
-.filter-select {
+.filter-group input,
+.filter-group select {
     height: 42px;
     padding: 0 12px;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 14px;
     background: white;
-    cursor: pointer;
-    transition: all 0.3s ease;
 }
 
-.filter-select:hover {
-    border-color: #1f7a4d;
-}
-
-.filter-select:focus {
+.filter-group input:focus,
+.filter-group select:focus {
+    border-color: #2c7a4b;
     outline: none;
-    border-color: #1f7a4d;
-    box-shadow: 0 0 0 3px rgba(31, 122, 77, 0.1);
-}
-
-/* Price Range Inputs */
-.price-range-group {
-    grid-column: span 1;
 }
 
 .price-inputs {
     display: flex;
-    align-items: center;
     gap: 8px;
+    align-items: center;
 }
 
-.price-input {
+.price-inputs input {
     flex: 1;
-    height: 42px;
-    padding: 0 12px;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    font-size: 14px;
-}
-
-.price-input:focus {
-    outline: none;
-    border-color: #1f7a4d;
-    box-shadow: 0 0 0 3px rgba(31, 122, 77, 0.1);
 }
 
 .price-separator {
@@ -1152,144 +885,148 @@ document.addEventListener("DOMContentLoaded", () => {
     font-weight: 600;
 }
 
-/* Checkbox Groups */
-.checkbox-group {
-    justify-content: center;
+.size-preset-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
-.checkbox-label {
-    display: flex;
+.size-pill {
+    background: #f0f7f2;
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-size: 13px;
+    cursor: pointer;
+    display: inline-flex;
     align-items: center;
     gap: 8px;
+    transition: all 0.3s;
+}
+
+.size-pill:hover {
+    background: #2c7a4b;
+    color: white;
+}
+
+.size-pill input {
+    width: auto;
+    height: auto;
+    margin: 0;
+}
+
+.verified-toggle {
+    flex-direction: row;
+    align-items: center;
     cursor: pointer;
-    padding: 10px 12px;
+    background: #f0f7f2;
+    padding: 10px 15px;
+    border-radius: 12px;
+}
+
+.verified-toggle input {
+    width: auto;
+    height: auto;
+    margin-right: 10px;
+}
+
+.verified-toggle-copy {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.verified-toggle-copy i {
+    color: #2c7a4b;
+    font-size: 20px;
+}
+
+.verified-toggle-copy strong {
+    display: block;
+    font-size: 13px;
+}
+
+.verified-toggle-copy small {
+    font-size: 10px;
+    color: #666;
+}
+
+.quick-apply-btn {
+    width: 100%;
+    height: 42px;
+    background: #2c7a4b;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.quick-apply-btn:hover {
+    background: #1f5e3c;
+}
+
+/* Advanced Filters */
+.advanced-filters {
+    background: white;
+    border-radius: 20px;
+    padding: 20px;
+    margin-top: 15px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+}
+
+.filters-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.checkbox-group .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
     background: #f9f9f9;
-    border-radius: 6px;
-    transition: all 0.3s ease;
-}
-
-.checkbox-label:hover {
-    background: #eef7f2;
-}
-
-.checkbox-label input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
+    border-radius: 10px;
     cursor: pointer;
-    accent-color: #1f7a4d;
 }
 
-/* Filter Actions */
 .filter-actions {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    border-top: 1px solid #eee;
     padding-top: 20px;
+    border-top: 1px solid #eee;
+}
+
+.clear-filters-btn,
+.apply-filters-btn {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
 }
 
 .clear-filters-btn {
-    background: transparent;
+    background: #f5f5f5;
     color: #666;
-    border: 1px solid #ddd;
-    padding: 10px 20px;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 
 .clear-filters-btn:hover {
-    background: #f5f5f5;
+    background: #fee;
     color: #dc3545;
-    border-color: #dc3545;
 }
 
 .apply-filters-btn {
-    background: #1f7a4d;
+    background: #2c7a4b;
     color: white;
-    border: none;
-    padding: 10px 30px;
-    border-radius: 6px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 6px;
 }
 
 .apply-filters-btn:hover {
-    background: #155c3a;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(31, 122, 77, 0.3);
-}
-
-/* Active Filters Display */
-.active-filters {
-    margin-top: 15px;
-    text-align: left;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.active-filters-label {
-    font-size: 14px;
-    color: white;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-weight: 500;
-}
-
-.filter-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    flex: 1;
-}
-
-.filter-chip {
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(5px);
-    color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 13px;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.filter-chip .remove-filter {
-    color: white;
-    text-decoration: none;
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
-    display: flex;
-    align-items: center;
-}
-
-.filter-chip .remove-filter:hover {
-    opacity: 1;
-}
-
-.clear-all-link {
-    color: white;
-    font-size: 13px;
-    text-decoration: underline;
-    opacity: 0.8;
-    transition: opacity 0.3s ease;
-    padding: 4px 8px;
-}
-
-.clear-all-link:hover {
-    opacity: 1;
-    color: white;
+    background: #1f5e3c;
 }
 
 /* Results Header */
@@ -1297,94 +1034,76 @@ document.addEventListener("DOMContentLoaded", () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 30px auto 20px;
-    padding: 15px 0;
-    border-bottom: 1px solid #eee;
-}
-
-.results-info {
-    display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 15px;
+    margin: 30px auto 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #e0e0e0;
 }
 
 .results-info h3 {
     font-size: 1.2rem;
-    color: #333;
-    margin: 0;
+    color: #1a472a;
 }
 
 .reset-search {
-    color: #1f7a4d;
-    text-decoration: none;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 10px;
+    background: #f0f7f2;
+    padding: 5px 12px;
     border-radius: 20px;
-    background: #eef7f2;
-    transition: all 0.3s ease;
+    text-decoration: none;
+    color: #2c7a4b;
+    font-size: 13px;
 }
 
-.reset-search:hover {
-    background: #1f7a4d;
-    color: white;
-}
-
-.results-sorting {
+/* Active filters chips */
+.active-filters {
+    margin-top: 15px;
     display: flex;
-    align-items: center;
+    flex-wrap: wrap;
     gap: 10px;
+    align-items: center;
+    justify-content: center;
 }
 
-.results-sorting label {
-    color: #666;
-    font-size: 14px;
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
 }
 
-.results-sorting select {
-    padding: 8px 25px 8px 12px;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    background: white;
-    cursor: pointer;
-    font-size: 14px;
-    appearance: none;
-    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-    background-repeat: no-repeat;
-    background-position: right 8px center;
-    background-size: 16px;
+.filter-chip {
+    background: rgba(255,255,255,0.2);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.results-sorting select:focus {
-    outline: none;
-    border-color: #1f7a4d;
-}
-
-/* Responsive Improvements */
+/* RESPONSIVE BREAKPOINTS */
 @media (max-width: 768px) {
     .search-main-row {
         flex-direction: column;
-        background: transparent;
-        padding: 0;
-        gap: 10px;
+        border-radius: 20px;
+        padding: 15px;
     }
     
     .search-field {
         width: 100%;
     }
     
-    .search-field input,
-    .search-field select,
     .search-btn,
     .filter-toggle-btn {
         width: 100%;
+        justify-content: center;
     }
     
-    .search-btn,
-    .filter-toggle-btn {
-        justify-content: center;
+    .quick-filters {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 15px;
     }
     
     .filters-grid {
@@ -1398,12 +1117,10 @@ document.addEventListener("DOMContentLoaded", () => {
     
     .filter-actions button {
         width: 100%;
-        justify-content: center;
     }
     
     .results-header {
         flex-direction: column;
-        gap: 15px;
         align-items: flex-start;
     }
     
@@ -1412,330 +1129,203 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     .results-sorting select {
-        flex: 1;
+        width: 100%;
     }
     
-    .active-filters {
+    .size-preset-list {
         flex-direction: column;
-        align-items: flex-start;
+    }
+    
+    .size-pill {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .verified-toggle {
+        flex-direction: row;
     }
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-    .hero-market {
-        min-height: 70vh;
-        padding: 40px 15px;
-    }
-    
+@media (max-width: 480px) {
     .hero-inner h1 {
-        font-size: 2rem;
+        font-size: 1.5rem;
     }
     
-    .market-search {
+    .price-inputs {
         flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-        width: 100%;
     }
     
-    .market-search input,
-    .market-search select,
-    .market-search button {
-        height:48px;
-        padding:0 12px;
-        border-radius:8px;
-        border:none;
-        min-width: 180px;
-    }
-    .market-search button {
-        width: 100%;
-        max-width: 350px;
-        min-width: 0;
+    .price-separator {
+        display: none;
     }
     
-    .market-grid {
-        grid-template-columns: 1fr;
+    .verified-toggle-copy {
+        flex-direction: column;
+        text-align: center;
+    }
+}
+
+/* Loading state */
+#ajaxResultsContainer.is-loading {
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+}
+
+/* Market grid */
+.market-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 30px;
+    margin-top: 30px;
+}
+
+/* ============================================
+   HOW IT WORKS SECTION - RESTORED ORIGINAL STYLING
+   ============================================ */
+
+.how-section {
+    background: #f9f9f9;
+    padding: 60px 20px;
+    margin-top: 60px;
+    border-radius: 30px;
+}
+
+.container95 {
+    max-width: 95%;
+    margin: 0 auto;
+}
+
+.section-head {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.section-head h2 {
+    font-size: 2.2rem;
+    color: #333;
+    position: relative;
+    display: inline-block;
+    padding-bottom: 10px;
+    font-weight: 700;
+}
+
+.section-head h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 60px;
+    height: 3px;
+    background: #1f7a4d;
+}
+
+.how-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    margin-top: 20px;
+}
+
+.how-card {
+    background: white;
+    padding: 40px 30px;
+    border-radius: 16px;
+    text-align: center;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+}
+
+.how-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.12);
+}
+
+.how-card span {
+    background: #1f7a4d;
+    color: white;
+    width: 60px;
+    height: 60px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: 700;
+    margin-bottom: 20px;
+    font-size: 1.5rem;
+    box-shadow: 0 5px 15px rgba(31, 122, 77, 0.3);
+}
+
+.how-card h4 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #1a472a;
+    margin-bottom: 12px;
+}
+
+.how-card p {
+    color: #666;
+    line-height: 1.6;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* Responsive adjustments for How It Works section */
+@media (max-width: 768px) {
+    .how-section {
+        padding: 40px 15px;
+        margin-top: 40px;
+    }
+    
+    .section-head h2 {
+        font-size: 1.8rem;
     }
     
     .how-grid {
         grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .how-card {
+        padding: 30px 20px;
+    }
+    
+    .how-card span {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+    }
+    
+    .how-card h4 {
+        font-size: 1.2rem;
+    }
+    
+    .how-card p {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .how-section {
+        padding: 30px 12px;
+    }
+    
+    .section-head h2 {
+        font-size: 1.5rem;
+    }
+    
+    .section-head h2::after {
+        width: 50px;
+        height: 2px;
+    }
+    
+    .how-card {
+        padding: 25px 15px;
     }
 }
 
 </style>
 
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-    // Filter toggle functionality
-    const filterToggle = document.getElementById('filterToggle');
-    const advancedFilters = document.getElementById('advancedFilters');
-    
-    if (filterToggle && advancedFilters) {
-        filterToggle.addEventListener('click', function() {
-            const isVisible = advancedFilters.style.display === 'block';
-            advancedFilters.style.display = isVisible ? 'none' : 'block';
-            
-            // Update button icon/text
-            const icon = this.querySelector('i');
-            if (icon) {
-                icon.className = isVisible ? 'fas fa-sliders-h' : 'fas fa-times';
-            }
-        });
-    }
-    
-    // Clear all filters
-    const clearFilters = document.getElementById('clearFilters');
-    if (clearFilters) {
-        clearFilters.addEventListener('click', function() {
-            const form = document.getElementById('searchForm');
-            const inputs = form.querySelectorAll('input:not([type="submit"]), select');
-            
-            inputs.forEach(input => {
-                if (input.type === 'checkbox') {
-                    input.checked = false;
-                } else {
-                    input.value = '';
-                }
-            });
-            
-            // Submit form to refresh results
-            form.submit();
-        });
-    }
-    
-    // Auto-submit on sort change
-    const sortSelect = document.getElementById('sortBy');
-    if (sortSelect) {
-        sortSelect.addEventListener('change', function() {
-            document.getElementById('searchForm').submit();
-        });
-    }
-
-    // Auto-submit on quick filter change
-    const quickFilters = document.getElementById('quickFilters');
-    if (quickFilters) {
-        const quickInputs = quickFilters.querySelectorAll('.quick-filter-input');
-        quickInputs.forEach(input => {
-            input.addEventListener('change', function() {
-                document.getElementById('searchForm').submit();
-            });
-        });
-    }
-    
-    // Price range validation
-    const minPrice = document.querySelector('input[name="min_price"]');
-    const maxPrice = document.querySelector('input[name="max_price"]');
-    
-    if (minPrice && maxPrice) {
-        const validatePrice = function() {
-            if (minPrice.value && maxPrice.value) {
-                if (parseFloat(minPrice.value) > parseFloat(maxPrice.value)) {
-                    maxPrice.setCustomValidity('Max price must be greater than min price');
-                } else {
-                    maxPrice.setCustomValidity('');
-                }
-            }
-        };
-        
-        minPrice.addEventListener('change', validatePrice);
-        maxPrice.addEventListener('change', validatePrice);
-    }
-    
-    // Jump to results after form submit
-    const form = document.getElementById('searchForm');
-    if (form) {
-        form.addEventListener('submit', function() {
-            sessionStorage.setItem('scrollToResults', 'true');
-        });
-    }
-    
-    // Scroll to results header if requested
-    const scrollToResults = sessionStorage.getItem('scrollToResults');
-    if (scrollToResults) {
-        const resultsHeader = document.getElementById('resultsHeader');
-        if (resultsHeader) {
-            setTimeout(() => {
-                resultsHeader.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }, 0);
-        }
-        sessionStorage.removeItem('scrollToResults');
-    }
-    
-    // Your existing slider code...
-    // ... (keep your existing slider and gallery code)
-});
-</script>
-
-<script>
-document.addEventListener("DOMContentLoaded", function() {
-
-    // ===== HERO SLIDER =====
-    const heroSlides = document.querySelectorAll('.hero-slider img');
-    if(heroSlides.length > 0){
-        let heroIndex = 0;
-        const heroInterval = 5000; // 5s per slide
-        
-        // Initial setup
-        heroSlides.forEach((img, i) => img.classList.toggle('active', i === 0));
-        
-        setInterval(() => {
-            heroSlides[heroIndex].classList.remove('active');
-            heroIndex = (heroIndex + 1) % heroSlides.length;
-            heroSlides[heroIndex].classList.add('active');
-        }, heroInterval);
-    }
-
-    // ===== PLOT CARD GALLERIES =====
-    document.querySelectorAll('.plot-gallery').forEach(card => {
-        const images = card.querySelectorAll('img');
-        if (images.length <= 1) return;
-        
-        let currentIndex = 0;
-        let interval;
-        
-        // Initialize - show first image
-        images[0].classList.add('active');
-        
-        // Hover effect for desktop
-        card.addEventListener('mouseenter', () => {
-            interval = setInterval(() => {
-                images[currentIndex].classList.remove('active');
-                currentIndex = (currentIndex + 1) % images.length;
-                images[currentIndex].classList.add('active');
-            }, 1000);
-        });
-        
-        card.addEventListener('mouseleave', () => {
-            clearInterval(interval);
-            images.forEach(img => img.classList.remove('active'));
-            images[0].classList.add('active');
-            currentIndex = 0;
-        });
-        
-        // Swipe support for mobile
-        let touchStartX = 0;
-        let touchEndX = 0;
-        
-        card.addEventListener('touchstart', e => {
-            clearInterval(interval);
-            touchStartX = e.touches[0].clientX;
-        });
-        
-        card.addEventListener('touchend', e => {
-            touchEndX = e.changedTouches[0].clientX;
-            const diff = touchStartX - touchEndX;
-            
-            if (Math.abs(diff) > 50) { // Minimum swipe distance
-                images[currentIndex].classList.remove('active');
-                if (diff > 0) {
-                    // Swipe left - next image
-                    currentIndex = (currentIndex + 1) % images.length;
-                } else {
-                    // Swipe right - previous image
-                    currentIndex = (currentIndex - 1 + images.length) % images.length;
-                }
-                images[currentIndex].classList.add('active');
-            }
-        });
-    });
-    
-    // ===== SMOOTH SCROLL =====
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function(e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        });
-    });
-    
-    // ===== FAVORITE TOGGLE (if you add it later) =====
-    document.querySelectorAll('.fav-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const icon = this.querySelector('i');
-            if (icon) {
-                icon.classList.toggle('far');
-                icon.classList.toggle('fas');
-                this.classList.toggle('active');
-            }
-        });
-    });
-
-});
-
-</script>
-<script>
-// AJAX search handlers (submit form and pagination)
-document.addEventListener('DOMContentLoaded', function(){
-    const form = document.querySelector('.market-search');
-    if(!form) return;
-
-    form.addEventListener('submit', function(e){
-        e.preventDefault();
-        const params = new URLSearchParams(new FormData(form));
-        fetch(`/ajax/search/?${params.toString()}`)
-            .then(r => r.json())
-            .then(data => {
-                if(!data.html) return;
-                const container = document.createElement('div');
-                container.innerHTML = data.html;
-
-                const newGrid = container.querySelector('.market-grid');
-                const newPagination = container.querySelector('.pagination');
-
-                const oldGrid = document.querySelector('.market-grid');
-                const oldPagination = document.querySelector('.pagination');
-
-                if(oldGrid && newGrid){
-                    oldGrid.replaceWith(newGrid);
-                }
-                if(oldPagination){
-                    if(newPagination) oldPagination.replaceWith(newPagination);
-                    else oldPagination.remove();
-                } else if(newPagination && oldGrid && oldGrid.parentElement){
-                    oldGrid.parentElement.appendChild(newPagination);
-                }
-            })
-            .catch(err => console.error('Search error', err));
-    });
-
-    // Delegate AJAX pagination clicks
-    document.body.addEventListener('click', function(e){
-        if(e.target.matches('.ajax-page')){
-            e.preventDefault();
-            const href = e.target.getAttribute('href') || '';
-            const url = href.startsWith('?') ? `/ajax/search/${href}` : href;
-            fetch(url)
-                .then(r => r.json())
-                .then(data => {
-                    if(!data.html) return;
-                    const container = document.createElement('div');
-                    container.innerHTML = data.html;
-
-                    const newGrid = container.querySelector('.market-grid');
-                    const newPagination = container.querySelector('.pagination');
-
-                    const oldGrid = document.querySelector('.market-grid');
-                    const oldPagination = document.querySelector('.pagination');
-
-                    if(oldGrid && newGrid){
-                        oldGrid.replaceWith(newGrid);
-                    }
-                    if(oldPagination){
-                        if(newPagination) oldPagination.replaceWith(newPagination);
-                        else oldPagination.remove();
-                    } else if(newPagination && oldGrid && oldGrid.parentElement){
-                        oldGrid.parentElement.appendChild(newPagination);
-                    }
-                })
-            .catch(err => console.error('Pagination error', err));
-        }
-    });
-});
-</script>
 {% endblock %}

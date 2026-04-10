@@ -3,17 +3,18 @@
 import random
 import os
 from datetime import timedelta
+from django.core import signing
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.utils import timezone
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import login
 from django.core.files.storage import default_storage
-from django.core.files.base import ContentFile
-from django.core.mail import send_mail
 from django.conf import settings
 from django.core.files.base import File
 from django.contrib.auth.models import User
+from django.urls import reverse
 from notifications.services.sms_service import TextSMSService
+from notifications.notification_service import NotificationService
 from accounts.models import Profile, LandownerProfile, Agent
 from security.models import PhoneOTP, EmailOTP, PhoneEmailVerification
 from security.forms import OTPVerificationForm
@@ -21,9 +22,64 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+EMAIL_VERIFICATION_SALT = "security.email_verification"
+
 def generate_otp():
     """Generate 6-digit OTP"""
     return str(random.randint(100000, 999999))
+
+
+def _email_verification_signer():
+    return signing.TimestampSigner(salt=EMAIL_VERIFICATION_SALT)
+
+
+def build_email_verification_token(user):
+    email = (user.email or "").strip().lower()
+    payload = f"{user.pk}:{email}"
+    return _email_verification_signer().sign(payload)
+
+
+def _email_verification_url(request, user):
+    token = build_email_verification_token(user)
+    path = reverse("listings:verify_email", args=[token])
+    return f"{settings.SITE_URL}{path}"
+
+
+def send_email_verification_link(request, user):
+    if not getattr(user, "email", ""):
+        return False
+
+    display_name = user.get_full_name().strip() or user.username or "there"
+    result = NotificationService.send_email(
+        recipient=user.email,
+        subject="Verify your AgriPlot email address",
+        template="email_verification_link",
+        context={
+            "user": user,
+            "display_name": display_name,
+            "verification_url": _email_verification_url(request, user),
+            "support_url": settings.SITE_URL + "/contact-support/",
+        },
+    )
+    return bool(result)
+
+
+def _mark_email_verified(user):
+    profile, _ = Profile.objects.get_or_create(user=user)
+    profile.email_verified = True
+    profile.save(update_fields=["email_verified"])
+    contact, _ = PhoneEmailVerification.objects.get_or_create(
+        user=user,
+        defaults={
+            "phone_number": getattr(profile, "phone", "") or "",
+            "email": user.email or "",
+        },
+    )
+    contact.email = user.email or contact.email
+    contact.email_verified = True
+    contact.email_verified_at = timezone.now()
+    contact.save(update_fields=["email", "email_verified", "email_verified_at", "updated_at"])
 
 def send_otp_verification(request):
     """Step 1: Send OTP to phone/email based on settings"""
@@ -31,6 +87,9 @@ def send_otp_verification(request):
     reg_data = request.session.get('reg_data')
     
     if not phone or not reg_data:
+        if request.user.is_authenticated:
+            messages.info(request, "Your account is already active. Continue from your dashboard.")
+            return redirect('listings:dashboard_router')
         messages.error(request, "Session expired. Please register again.")
         return redirect('listings:register_choice')
     
@@ -102,7 +161,11 @@ def send_otp_verification(request):
         messages.success(request, "Verification code sent. Check SMS and/or email.")
         return redirect('listings:verify_otp')
 
-    messages.error(request, "Failed to send verification code. Please try again.")
+    if otp_provider == "sms":
+        sms_error = (result or {}).get("error", "SMS provider rejected the request.")
+        messages.error(request, f"Failed to send verification code by SMS. {sms_error}")
+    else:
+        messages.error(request, "Failed to send verification code. Please try again.")
     return redirect('listings:register_choice')
 
 
@@ -115,6 +178,9 @@ def verify_otp(request):
         reg_files = request.session.get('reg_files', {})
         
         if not phone or not reg_data:
+            if request.user.is_authenticated:
+                messages.info(request, "Your account is already active. Continue from your dashboard.")
+                return redirect('listings:dashboard_router')
             messages.error(request, "Session expired. Please register again.")
             return redirect('listings:register_choice')
 
@@ -167,7 +233,7 @@ def verify_otp(request):
             profile.role = reg_data['role']
             profile.phone = phone
             profile.phone_verified = (otp_provider in ("sms", "both"))
-            profile.email_verified = (otp_provider in ("email", "both"))
+            profile.email_verified = False
             if reg_data.get('address'):
                 profile.address = reg_data.get('address')
             profile.save()
@@ -178,9 +244,9 @@ def verify_otp(request):
                     'phone_number': phone,
                     'email': reg_data.get('email', ''),
                     'phone_verified': (otp_provider in ("sms", "both")),
-                    'email_verified': (otp_provider in ("email", "both")),
+                    'email_verified': False,
                     'phone_verified_at': timezone.now() if otp_provider in ("sms", "both") else None,
-                    'email_verified_at': timezone.now() if otp_provider in ("email", "both") else None,
+                    'email_verified_at': None,
                 }
             )
             
@@ -226,6 +292,8 @@ def verify_otp(request):
             # Auto login
             login(request, user)
 
+            email_link_sent = send_email_verification_link(request, user)
+
             # Clear session data
             target_role = request.session.get('reg_target_role')
             session_keys = ['reg_phone', 'reg_data', 'reg_files', 'reg_target_role']
@@ -238,25 +306,17 @@ def verify_otp(request):
                 if key in request.session:
                     del request.session[key]
 
-            messages.success(request, f"Account created successfully! Your phone is verified.")
+            if email_link_sent:
+                messages.success(
+                    request,
+                    "Account created successfully. Your phone is verified, and we sent an email verification link to complete your account."
+                )
+            else:
+                messages.warning(
+                    request,
+                    "Account created successfully and your phone is verified, but we could not send the email verification link yet. Use the resend email option from your dashboard."
+                )
 
-            # Send registration email with role upgrade notice
-            try:
-                from notifications.notification_service import NotificationService
-                if user.email:
-                    NotificationService.send_email(
-                        recipient=user.email,
-                        subject="Welcome to AgriPlot",
-                        template="registration_received",
-                        context={
-                            'user': user,
-                            'login_url': settings.SITE_URL + '/login/',
-                            'profile_url': settings.SITE_URL + '/dashboard/profile/',
-                        }
-                    )
-            except Exception as e:
-                logger.error(f"Failed to send registration email: {str(e)}", exc_info=True)
-            
             # Redirect based on role
             if target_role == 'extension_officer':
                 return redirect('verification:request_extension_officer')
@@ -283,6 +343,9 @@ def verify_otp(request):
     # GET request - show OTP verification form
     phone = request.session.get('reg_phone')
     if not phone:
+        if request.user.is_authenticated:
+            messages.info(request, "Your phone verification step is already complete.")
+            return redirect('listings:dashboard_router')
         return redirect('listings:register_choice')
     
     otp_provider = getattr(settings, "OTP_PROVIDER", "email")
@@ -358,8 +421,74 @@ def resend_otp(request):
         elif otp_provider == "both" and (sms_ok or email_ok):
             messages.success(request, "New verification code sent!")
         else:
-            messages.error(request, "Failed to send code. Please try again.")
+            if otp_provider == "sms":
+                sms_error = (result or {}).get("error", "SMS provider rejected the request.")
+                messages.error(request, f"Failed to send code by SMS. {sms_error}")
+            else:
+                messages.error(request, "Failed to send code. Please try again.")
         
         return redirect('listings:verify_otp')
     
     return redirect('listings:register_choice')
+
+
+def verify_email(request, token):
+    try:
+        unsigned = _email_verification_signer().unsign(token, max_age=60 * 60 * 24 * 3)
+        user_id, email = unsigned.split(":", 1)
+        user = User.objects.get(pk=int(user_id), email__iexact=email)
+    except (signing.BadSignature, signing.SignatureExpired, User.DoesNotExist, ValueError):
+        messages.error(request, "This email verification link is invalid or has expired.")
+        if request.user.is_authenticated:
+            return redirect("listings:profile_management")
+        return redirect("login")
+
+    _mark_email_verified(user)
+    try:
+        NotificationService.send_email(
+            recipient=user.email,
+            subject="Your AgriPlot email is verified",
+            template="account_verified",
+            context={
+                "user": user,
+                "login_url": settings.SITE_URL + reverse("listings:dashboard_router"),
+            },
+        )
+    except Exception:
+        logger.exception("Failed to send post-verification email for user %s", user.pk)
+
+    if request.user.is_authenticated and request.user.pk == user.pk:
+        messages.success(request, "Your email address has been verified successfully.")
+        return redirect("listings:profile_management")
+
+    messages.success(request, "Email verified successfully. Please sign in.")
+    return redirect("login")
+
+
+def resend_email_verification(request):
+    if not request.user.is_authenticated:
+        messages.error(request, "Sign in to resend your verification email.")
+        return redirect("login")
+
+    if request.method != "POST":
+        return redirect("listings:profile_management")
+
+    profile = getattr(request.user, "profile", None)
+    contact_verification = getattr(request.user, "contact_verification", None)
+    email_verified = bool(getattr(profile, "email_verified", False))
+    if contact_verification:
+        email_verified = email_verified or contact_verification.email_verified
+
+    if email_verified:
+        messages.info(request, "Your email is already verified.")
+        return redirect("listings:profile_management")
+
+    if not request.user.email:
+        messages.error(request, "Add an email address to your account before requesting verification.")
+        return redirect("listings:profile_edit")
+
+    if send_email_verification_link(request, request.user):
+        messages.success(request, "A new email verification link has been sent to your inbox.")
+    else:
+        messages.error(request, "We could not send the email verification link right now. Please try again.")
+    return redirect("listings:profile_management")

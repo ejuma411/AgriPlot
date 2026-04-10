@@ -10,7 +10,6 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Q, Sum
-from django.core.mail import send_mail
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
@@ -123,32 +122,18 @@ def _notify_payment_activity(payment, event):
     else:
         return
 
-    NotificationService.create_notification(
+    site_url = getattr(settings, "SITE_URL", "").rstrip("/")
+    workspace_url = f"{site_url}{payment_url}" if site_url else payment_url
+    full_message = f"{message} Open payment workspace: {workspace_url}"
+
+    NotificationService.notify_user(
         user=recipient,
         notification_type="plot_stage_update",
         title=title,
-        message=message,
+        message=full_message,
         plot=payment.plot,
+        email_subject=subject,
     )
-
-    if recipient.email:
-        try:
-            site_url = getattr(settings, "SITE_URL", "").rstrip("/")
-            send_mail(
-                subject=subject,
-                message=(
-                    f"{message}\n\n"
-                    f"Open payment workspace: {site_url}{payment_url}"
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient.email],
-                fail_silently=False,
-            )
-        except Exception:
-            logger.exception(
-                "Failed to send payment notification email for payment %s",
-                payment.pk,
-            )
 
 
 def _handle_successful_paystack_payment(payment, verification, actor=None):
