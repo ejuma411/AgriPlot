@@ -1,0 +1,447 @@
+{% extends "reports/base_report.html" %}
+{% load humanize %}
+
+{% block extra_css %}
+<style>
+    .velocity-header {
+        background: linear-gradient(135deg, #1B5E20, #2E7D32);
+        color: white;
+        padding: 30px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    .velocity-header h1 {
+        color: white;
+        margin: 0;
+    }
+    
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin: 25px 0;
+    }
+    
+    .stat-box {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        transition: all 0.3s ease;
+    }
+    
+    .stat-box:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+    
+    .stat-value {
+        font-size: 28pt;
+        font-weight: bold;
+        color: #2E7D32;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        font-size: 11px;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+    
+    .performance-card {
+        background: white;
+        border-radius: 12px;
+        margin-bottom: 20px;
+        border: 1px solid #e0e0e0;
+        overflow: hidden;
+    }
+    
+    .performance-card.good {
+        border-left: 4px solid #4CAF50;
+    }
+    
+    .performance-card.average {
+        border-left: 4px solid #FF9800;
+    }
+    
+    .performance-card.poor {
+        border-left: 4px solid #f44336;
+    }
+    
+    .performance-header {
+        padding: 15px 20px;
+        background: #f8f9fa;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .performance-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #1B5E20;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .performance-days {
+        font-size: 20px;
+        font-weight: bold;
+        padding: 4px 12px;
+        border-radius: 20px;
+    }
+    
+    .days-good {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .days-average {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .days-poor {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .performance-details {
+        padding: 15px 20px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+    }
+    
+    .detail-item {
+        text-align: center;
+    }
+    
+    .detail-label {
+        font-size: 10px;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+    
+    .detail-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1f2325;
+    }
+    
+    .bottleneck-list {
+        margin-top: 10px;
+        padding-left: 20px;
+    }
+    
+    .bottleneck-list li {
+        margin-bottom: 5px;
+        font-size: 12px;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    
+    .data-table th {
+        background-color: #2E7D32;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+    }
+    
+    .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .data-table tr:hover td {
+        background-color: #f5f5f5;
+    }
+    
+    .text-right {
+        text-align: right;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+    
+    .progress-container {
+        background-color: #e0e0e0;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 15px 0;
+    }
+    
+    .progress-bar {
+        background-color: #4CAF50;
+        height: 20px;
+        text-align: center;
+        line-height: 20px;
+        color: white;
+        font-size: 10px;
+    }
+    
+    .signature-line {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 2px solid #e0e0e0;
+        text-align: center;
+    }
+    
+    .warning-box {
+        background-color: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 8px;
+        font-size: 11px;
+        color: #856404;
+    }
+    
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .performance-details {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="velocity-header">
+    <h1>⚡ Transaction Velocity Report</h1>
+    <div class="subtitle">Time from Offer to Completion Analysis</div>
+    <div style="margin-top: 10px; font-size: 12px;">
+        Period: {{ start_date|date:"F d, Y" }} - {{ end_date|date:"F d, Y" }}
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-box">
+        <div class="stat-value">{{ total_deals|default:"0"|intcomma }}</div>
+        <div class="stat-label">Total Transactions</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value">{{ average_days|floatformat:1|default:"0" }}</div>
+        <div class="stat-label">Avg Days to Complete</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value">
+            {% if fastest_transaction %}
+                {{ fastest_transaction.days_to_complete }} days
+            {% else %}
+                —
+            {% endif %}
+        </div>
+        <div class="stat-label">Fastest Transaction</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value">
+            {% if slowest_transaction %}
+                {{ slowest_transaction.days_to_complete }} days
+            {% else %}
+                —
+            {% endif %}
+        </div>
+        <div class="stat-label">Slowest Transaction</div>
+    </div>
+</div>
+
+<!-- Velocity Distribution -->
+<h2>📊 Velocity Distribution</h2>
+<div class="progress-container">
+    <div class="progress-bar" style="width: 25%; background-color: #4CAF50;">0-30 days</div>
+    <div class="progress-bar" style="width: 35%; background-color: #FF9800;">31-60 days</div>
+    <div class="progress-bar" style="width: 25%; background-color: #f44336;">61-90 days</div>
+    <div class="progress-bar" style="width: 15%; background-color: #9C27B0;">90+ days</div>
+</div>
+
+<!-- Performance Assessment -->
+<h2>📈 Performance Assessment</h2>
+<div class="stats-grid">
+    <div class="stat-box">
+        <div class="stat-value" style="color: #4CAF50;">
+            {{ fast_percentage|default:"0" }}%
+        </div>
+        <div class="stat-label">Fast (0-30 days)</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value" style="color: #FF9800;">
+            {{ average_percentage|default:"0" }}%
+        </div>
+        <div class="stat-label">Average (31-60 days)</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value" style="color: #f44336;">
+            {{ slow_percentage|default:"0" }}%
+        </div>
+        <div class="stat-label">Slow (61-90 days)</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value" style="color: #9C27B0;">
+            {{ very_slow_percentage|default:"0" }}%
+        </div>
+        <div class="stat-label">Very Slow (90+ days)</div>
+    </div>
+</div>
+
+<!-- Transaction List -->
+<h2>📋 Transaction Details</h2>
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Deal ID</th>
+            <th>Plot Title</th>
+            <th>Type</th>
+            <th class="text-right">Days to Complete</th>
+            <th>Status</th>
+            <th>Bottlenecks</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for deal in deals %}
+        <tr>
+            <td>#{{ deal.deal_id }}</td>
+            <td>{{ deal.plot_title|truncatechars:40 }}</td>
+            <td>{{ deal.transaction_type|upper }}</td>
+            <td class="text-right">
+                <span class="
+                    {% if deal.days_to_complete <= 30 %}days-good
+                    {% elif deal.days_to_complete <= 60 %}days-average
+                    {% else %}days-poor{% endif %}
+                " style="padding: 2px 8px; border-radius: 20px;">
+                    {{ deal.days_to_complete }} days
+                </span>
+            </td>
+            <td>Completed</td>
+            <td>
+                {% if deal.bottlenecks %}
+                    <ul class="bottleneck-list" style="margin: 0;">
+                        {% for bottleneck in deal.bottlenecks|slice:":2" %}
+                            <li>{{ bottleneck }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="6" class="text-center">No transaction data available</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Fastest & Slowest Transactions -->
+<div class="stats-grid">
+    <div class="performance-card good">
+        <div class="performance-header">
+            <div class="performance-title">
+                <i class="fas fa-rocket"></i> Fastest Transaction
+            </div>
+            <div class="performance-days days-good">
+                {% if fastest_transaction %}{{ fastest_transaction.days_to_complete }} days{% else %}—{% endif %}
+            </div>
+        </div>
+        <div class="performance-details">
+            <div class="detail-item">
+                <div class="detail-label">Deal ID</div>
+                <div class="detail-value">#{{ fastest_transaction.deal_id|default:"—" }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Plot</div>
+                <div class="detail-value">{{ fastest_transaction.plot_title|default:"—"|truncatechars:30 }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Type</div>
+                <div class="detail-value">{{ fastest_transaction.transaction_type|default:"—"|upper }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="performance-card poor">
+        <div class="performance-header">
+            <div class="performance-title">
+                <i class="fas fa-turtle"></i> Slowest Transaction
+            </div>
+            <div class="performance-days days-poor">
+                {% if slowest_transaction %}{{ slowest_transaction.days_to_complete }} days{% else %}—{% endif %}
+            </div>
+        </div>
+        <div class="performance-details">
+            <div class="detail-item">
+                <div class="detail-label">Deal ID</div>
+                <div class="detail-value">#{{ slowest_transaction.deal_id|default:"—" }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Plot</div>
+                <div class="detail-value">{{ slowest_transaction.plot_title|default:"—"|truncatechars:30 }}</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Type</div>
+                <div class="detail-value">{{ slowest_transaction.transaction_type|default:"—"|upper }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottleneck Analysis -->
+<h2>🚧 Common Bottlenecks</h2>
+<div class="info-box">
+    <strong>Identified Delays:</strong>
+    <ul style="margin-top: 10px; margin-left: 20px;">
+        <li><strong>Due Diligence</strong> - Average delay: {{ due_diligence_delay|default:"N/A" }} days</li>
+        <li><strong>LCB Consent</strong> - Average delay: {{ lcb_consent_delay|default:"N/A" }} days</li>
+        <li><strong>Title Transfer</strong> - Average delay: {{ title_transfer_delay|default:"N/A" }} days</li>
+        <li><strong>Stamp Duty Processing</strong> - Average delay: {{ stamp_duty_delay|default:"N/A" }} days</li>
+    </ul>
+</div>
+
+<!-- Recommendations -->
+<div class="info-box" style="background: #E8F5E9; margin-top: 15px;">
+    <strong>💡 Recommendations to Improve Velocity:</strong>
+    <ul style="margin-top: 10px; margin-left: 20px;">
+        <li>Streamline document collection process</li>
+        <li>Pre-verify key documents before offer acceptance</li>
+        <li>Set clearer deadlines for each milestone</li>
+        <li>Automate follow-up reminders for pending steps</li>
+        <li>Provide better guidance to parties on required documents</li>
+    </ul>
+</div>
+
+<!-- Signature Line -->
+<div class="signature-line">
+    <p><strong>Transaction Velocity Certificate</strong></p>
+    <p>This report is electronically generated and certified by AgriPlot.</p>
+    <p><strong>Verification Code:</strong> {{ verification_code|default:"N/A" }}</p>
+    <p><strong>Document ID:</strong> {{ report_id|default:"N/A" }}</p>
+    <p><strong>Generated:</strong> {{ generated_date|date:"Y-m-d H:i:s" }}</p>
+</div>
+{% endblock %}

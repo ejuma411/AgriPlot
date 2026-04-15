@@ -19,6 +19,7 @@ from django.views.generic import CreateView, DetailView, ListView, TemplateView
 from django.views.decorators.csrf import csrf_exempt
 
 from django.utils import timezone
+from accounts.validators import validate_kenyan_phone
 from listings.models import Plot, UserInterest
 from notifications.notification_service import NotificationService
 
@@ -39,10 +40,13 @@ from .models import (
 from .daraja import DarajaError, daraja_ready, extract_callback_metadata, initiate_stk_push
 from .paystack import PaystackError, initialize_transaction, paystack_ready, verify_transaction
 from .permissions import (
+    describe_payment_actor,
+    step_allowed_actor_labels,
     step_requires_admin_action,
     user_can_add_milestone,
     user_can_create_payment,
     user_can_open_dispute,
+    user_can_start_inline_step_checkout,
     user_can_update_closing_steps,
     user_can_update_specific_closing_step,
     user_can_transition_payment,
@@ -435,6 +439,7 @@ def _create_workspace_stage_payment(payment, step, phone_number, actor):
     checkout_phone = str(phone_number or "").strip()
     if not checkout_phone:
         raise ValidationError("Enter the M-Pesa number that should receive the STK push.")
+    checkout_phone = validate_kenyan_phone(checkout_phone)
 
     child_payment = PaymentRequest(
         buyer=anchor.buyer,
@@ -1285,19 +1290,12 @@ class PaystackWebhookView(View):
 class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
     template_name = "payments/step_workspace.html"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        payment = _resolve_workspace_payment(self.kwargs["pk"])
-        decision = user_can_view_payment(self.request.user, payment)
-        if not decision.allowed:
-            messages.error(self.request, decision.reason)
-            raise Http404(decision.reason)
-
+    def _build_workspace_context(self, payment, step, closing_step_form=None, submit_outcome=None):
         payment.ensure_closing_steps()
         payment.ensure_transaction_artifacts()
-        step = get_object_or_404(PaymentClosingStep, pk=self.kwargs["step_id"], payment=payment)
         closing_steps = list(payment.closing_steps.all())
         timeline_current_step = payment.current_assigned_step or step
+        step_is_current = bool(timeline_current_step and timeline_current_step.pk == step.pk)
         current_index = next((idx for idx, item in enumerate(closing_steps) if item.pk == step.pk), 0)
         previous_step = closing_steps[current_index - 1] if current_index > 0 else None
         next_step = closing_steps[current_index + 1] if current_index + 1 < len(closing_steps) else None
@@ -1407,6 +1405,11 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
             payment,
             step,
         )
+        step_checkout_decision = user_can_start_inline_step_checkout(
+            self.request.user,
+            payment,
+            step,
+        )
         checkout_phone_initial = ""
         buyer_profile = getattr(payment.buyer, "profile", None) if payment.buyer else None
         if buyer_profile and buyer_profile.phone:
@@ -1435,75 +1438,154 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
                 "payments:closing_step_workspace",
                 kwargs={"pk": payment.pk, "step_id": timeline_current_step.pk},
             )
-
-        context.update(
-            {
-                "payment": payment,
-                "step": step,
-                "previous_step": previous_step,
-                "next_step": next_step,
-                "closing_steps": closing_steps,
-                "completed_stages": completed_stages,
-                "blocked_stages": blocked_stages,
-                "in_progress_stages": in_progress_stages,
-                "upcoming_stages": upcoming_stages,
-                "timeline_current_step": timeline_current_step,
-                "viewing_historical_step": bool(timeline_current_step and timeline_current_step.pk != step.pk),
-                "current_workspace_step_url": current_workspace_step_url,
-                "is_payment_buyer": payment.buyer_id == self.request.user.id,
-                "is_finance_admin": user_is_finance_admin(self.request.user),
-                "can_update_closing_steps": step_update_decision.allowed,
-                "step_requires_admin_action": step_requires_admin_action(step),
-                "step_update_reason": step_update_decision.reason,
-                "closing_step_form": PaymentClosingStepForm(instance=step, user=self.request.user),
-                "step_payment_category": payment_category,
-                "step_payment_label": payment_stage_label,
-                "step_payment_amount": payment_amount,
-                "step_payment_url": (
-                    f"{reverse('payments:create_request')}?plot={payment.plot_id}&transaction_type={payment.transaction_type}&workflow_root_id={payment.workflow_anchor_payment.pk}"
-                    if payment.plot_id and payment_category
-                    else ""
-                ),
-                "checkout_phone_initial": checkout_phone_initial,
-                "step_payment_record": step_payment_record,
-                "step_action_checklist": step_action_checklist,
-                "recorded_submitter": recorded_submitter,
-                "lease_days_remaining": lease_days_remaining,
-                "section_kicker": section_kicker,
-                "workspace_title": workspace_title,
-                "total_paid_by_buyer": total_paid_by_buyer,
-                "current_escrow_balance": current_escrow_balance,
-                "released_to_seller": released_to_seller,
-                "agriplot_fee": payment.platform_fee_amount,
-                "agent_commission": payment.agent_commission_amount,
-                "total_price": (
-                    payment.lease_contract_value
-                    if payment.transaction_type == PaymentRequest.TransactionType.LEASE
-                    else payment.sale_price_value
-                ),
-                "agreement_certificate": payment.certificates.filter(code="lease_compliance").first()
-                if payment.transaction_type == PaymentRequest.TransactionType.LEASE
-                else payment.certificates.filter(code="completion_notice").first(),
-                "buyer_payment_certificate": payment.certificates.filter(
-                    code="tenant_payment_ack"
-                    if payment.transaction_type == PaymentRequest.TransactionType.LEASE
-                    else "buyer_payment_ack"
-                ).first(),
-            }
+        is_finance_admin = user_is_finance_admin(self.request.user)
+        step_requires_admin = step_requires_admin_action(step)
+        actor_is_buyer = payment.buyer_id == self.request.user.id
+        actor_is_seller = payment.seller_id == self.request.user.id
+        actor_label = describe_payment_actor(self.request.user, payment)
+        allowed_actor_labels = step_allowed_actor_labels(payment, step)
+        primary_task_label = "AgriPlot admin / appointed advocate" if step_requires_admin else step.responsible_party_label
+        primary_task_title = (
+            "Admin task confirmation"
+            if step_requires_admin
+            else "Task confirmation"
         )
+        primary_task_description = step.action_headline
+        if step_requires_admin and not is_finance_admin:
+            primary_task_description = (
+                f"{step.display_title} is waiting for admin or advocate handling before the workflow can continue."
+            )
+        elif not step_is_current and step.status == step.Status.COMPLETED:
+            primary_task_description = (
+                f"{step.display_title} is already complete. Review the record here or return to the live task."
+            )
+        actor_access_summary = [
+            {"label": "Signed in as", "value": actor_label},
+            {"label": "Current task owner", "value": primary_task_label},
+            {"label": "Who can confirm this step", "value": ", ".join(allowed_actor_labels)},
+            {
+                "label": "Your access",
+                "value": "Can confirm now" if step_update_decision.allowed else "Read-only until ownership reaches your role",
+            },
+        ]
+        completed_count = len(completed_stages)
+        total_steps = len(closing_steps)
+
+        return {
+            "payment": payment,
+            "step": step,
+            "previous_step": previous_step,
+            "next_step": next_step,
+            "closing_steps": closing_steps,
+            "completed_stages": completed_stages,
+            "blocked_stages": blocked_stages,
+            "in_progress_stages": in_progress_stages,
+            "upcoming_stages": upcoming_stages,
+            "timeline_current_step": timeline_current_step,
+            "viewing_historical_step": bool(timeline_current_step and timeline_current_step.pk != step.pk),
+            "step_is_current": step_is_current,
+            "current_workspace_step_url": current_workspace_step_url,
+            "is_payment_buyer": actor_is_buyer,
+            "is_payment_seller": actor_is_seller,
+            "is_finance_admin": is_finance_admin,
+            "can_update_closing_steps": step_update_decision.allowed,
+            "can_start_inline_step_checkout": step_checkout_decision.allowed,
+            "step_requires_admin_action": step_requires_admin,
+            "step_update_reason": step_update_decision.reason,
+            "step_checkout_reason": step_checkout_decision.reason,
+            "closing_step_form": closing_step_form or PaymentClosingStepForm(instance=step, user=self.request.user),
+            "primary_task_title": primary_task_title,
+            "primary_task_label": primary_task_label,
+            "primary_task_description": primary_task_description,
+            "actor_access_summary": actor_access_summary,
+            "completed_step_count": completed_count,
+            "total_step_count": total_steps,
+            "step_payment_category": payment_category,
+            "step_payment_label": payment_stage_label,
+            "step_payment_amount": payment_amount,
+            "step_payment_url": (
+                f"{reverse('payments:create_request')}?plot={payment.plot_id}&transaction_type={payment.transaction_type}&workflow_root_id={payment.workflow_anchor_payment.pk}"
+                if payment.plot_id and payment_category
+                else ""
+            ),
+            "checkout_phone_initial": checkout_phone_initial,
+            "step_payment_record": step_payment_record,
+            "step_action_checklist": step_action_checklist,
+            "recorded_submitter": recorded_submitter,
+            "lease_days_remaining": lease_days_remaining,
+            "section_kicker": section_kicker,
+            "workspace_title": workspace_title,
+            "total_paid_by_buyer": total_paid_by_buyer,
+            "current_escrow_balance": current_escrow_balance,
+            "released_to_seller": released_to_seller,
+            "agriplot_fee": payment.platform_fee_amount,
+            "agent_commission": payment.agent_commission_amount,
+            "total_price": (
+                payment.lease_contract_value
+                if payment.transaction_type == PaymentRequest.TransactionType.LEASE
+                else payment.sale_price_value
+            ),
+            "agreement_certificate": payment.certificates.filter(code="lease_compliance").first()
+            if payment.transaction_type == PaymentRequest.TransactionType.LEASE
+            else payment.certificates.filter(code="completion_notice").first(),
+            "buyer_payment_certificate": payment.certificates.filter(
+                code="tenant_payment_ack"
+                if payment.transaction_type == PaymentRequest.TransactionType.LEASE
+                else "buyer_payment_ack"
+            ).first(),
+            "submit_outcome": submit_outcome or "",
+        }
+
+    def get(self, request, *args, **kwargs):
+        payment = _resolve_workspace_payment(kwargs["pk"])
+        decision = user_can_view_payment(request.user, payment)
+        if not decision.allowed:
+            messages.error(request, decision.reason)
+            raise Http404(decision.reason)
+
+        payment.ensure_closing_steps()
+        payment.ensure_transaction_artifacts()
+        requested_step = get_object_or_404(
+            PaymentClosingStep,
+            pk=kwargs["step_id"],
+            payment=payment,
+        )
+        current_step = payment.current_assigned_step
+        if (
+            current_step
+            and requested_step.pk != current_step.pk
+            and requested_step.status != PaymentClosingStep.Status.COMPLETED
+        ):
+            return redirect(
+                "payments:closing_step_workspace",
+                pk=payment.pk,
+                step_id=current_step.pk,
+            )
+
+        return super().get(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        payment = _resolve_workspace_payment(self.kwargs["pk"])
+        decision = user_can_view_payment(self.request.user, payment)
+        if not decision.allowed:
+            messages.error(self.request, decision.reason)
+            raise Http404(decision.reason)
+
+        payment.ensure_closing_steps()
+        payment.ensure_transaction_artifacts()
+        step = get_object_or_404(PaymentClosingStep, pk=self.kwargs["step_id"], payment=payment)
+        context.update(self._build_workspace_context(payment, step))
         return context
 
 
 class PaymentClosingStepStkPushView(LoginRequiredMixin, View):
     def post(self, request, pk, step_id):
         payment = _resolve_workspace_payment(pk)
-        decision = user_can_view_payment(request.user, payment)
+        step = get_object_or_404(PaymentClosingStep, pk=step_id, payment=payment)
+        decision = user_can_start_inline_step_checkout(request.user, payment, step)
         if not decision.allowed:
             return JsonResponse({"ok": False, "message": decision.reason}, status=403)
-
-        step = get_object_or_404(PaymentClosingStep, pk=step_id, payment=payment)
-        if step.code != "payment_security":
-            return JsonResponse({"ok": False, "message": "This step does not support inline STK checkout."}, status=400)
 
         phone_number = request.POST.get("phone_number", "")
         try:
@@ -1613,12 +1695,27 @@ class PaymentClosingStepUpdateView(LoginRequiredMixin, View):
         decision = user_can_update_specific_closing_step(request.user, payment, step)
         if not decision.allowed:
             messages.error(request, decision.reason)
-            return redirect("payments:closing_step_workspace", pk=payment.pk, step_id=step.pk)
+            workspace_view = PaymentClosingStepWorkspaceView()
+            workspace_view.request = request
+            context = workspace_view._build_workspace_context(
+                payment,
+                step,
+                submit_outcome="denied",
+            )
+            return workspace_view.render_to_response(context, status=403)
 
         form = PaymentClosingStepForm(request.POST, request.FILES, instance=step, user=request.user)
         if not form.is_valid():
             messages.error(request, "Please correct the closing tracker update and try again.")
-            return redirect("payments:closing_step_workspace", pk=payment.pk, step_id=step.pk)
+            workspace_view = PaymentClosingStepWorkspaceView()
+            workspace_view.request = request
+            context = workspace_view._build_workspace_context(
+                payment,
+                step,
+                closing_step_form=form,
+                submit_outcome="invalid",
+            )
+            return workspace_view.render_to_response(context, status=400)
 
         updated_step = form.save(commit=False)
         if request.FILES.get("document"):
@@ -1656,7 +1753,9 @@ class PaymentClosingStepUpdateView(LoginRequiredMixin, View):
                 actor=request.user,
             )
         messages.success(request, f"Updated closing tracker step: {step.title}.")
-        return redirect("payments:closing_step_workspace", pk=payment.pk, step_id=step.pk)
+        redirect_response = redirect("payments:closing_step_workspace", pk=payment.pk, step_id=step.pk)
+        redirect_response["X-AgriPlot-Submit-Outcome"] = "success"
+        return redirect_response
 
 
 class PaymentMilestoneCreateView(LoginRequiredMixin, View):

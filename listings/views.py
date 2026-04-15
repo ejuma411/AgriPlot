@@ -1992,5 +1992,26 @@ def admin_approve_verification(request, verification_id):
         'stage_details': verification.stage_details
     })
 
+def land_full_details(request, pk):
+    plot = get_object_or_404(Plot, pk=pk)
+    
+    # Calculate map bbox only if coordinates exist and are not None
+    map_bbox = None
+    if plot.latitude is not None and plot.longitude is not None:
+        try:
+            # Convert Decimal to float for arithmetic operations
+            lat = float(plot.latitude)
+            lng = float(plot.longitude)
+            map_bbox = f"{lng-0.005},{lat-0.005},{lng+0.005},{lat+0.005}"
+        except (TypeError, ValueError):
+            map_bbox = None
+    
+    context = {
+        'plot': plot,
+        'is_owner': plot.landowner == request.user if request.user.is_authenticated else False,
+        'is_saved_plot': request.user.is_authenticated and hasattr(plot, 'saved_by') and plot.saved_by.filter(id=request.user.id).exists(),
+        'availability_summary': getattr(plot, 'get_availability_summary', lambda: "Available")(),
+        'map_bbox': map_bbox,
+    }
+    return render(request, 'listings/land_full_details.html', context)
 
-# Phone verification and support flows moved out of listings.

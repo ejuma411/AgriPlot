@@ -4,6 +4,8 @@ from datetime import datetime, timedelta
 from django import forms
 from django.utils import timezone
 
+from accounts.validators import validate_kenyan_phone, validate_person_name
+
 from listings.models import Plot
 
 from .models import PaymentClosingStep, PaymentDispute, PaymentMilestone, PaymentRequest
@@ -480,6 +482,9 @@ class PaymentRequestForm(forms.ModelForm):
         }
         return cleaned_data
 
+    def clean_phone_number(self):
+        return validate_kenyan_phone(self.cleaned_data.get("phone_number"))
+
     def save(self, commit=True):
         instance = super().save(commit=False)
         metadata = dict(instance.metadata or {})
@@ -729,6 +734,28 @@ class PaymentClosingStepForm(forms.ModelForm):
         step = self.instance if getattr(self.instance, "pk", None) else None
         if not step:
             return cleaned_data
+
+        for field_name in [
+            "submitter_phone",
+            "buyer_advocate_phone",
+            "seller_advocate_phone",
+        ]:
+            if field_name in self.fields and cleaned_data.get(field_name):
+                try:
+                    cleaned_data[field_name] = validate_kenyan_phone(cleaned_data.get(field_name))
+                except forms.ValidationError as exc:
+                    self.add_error(field_name, exc)
+
+        for field_name, label in [
+            ("submitter_name", "Submitter name"),
+            ("buyer_advocate_name", "Buyer's advocate name"),
+            ("seller_advocate_name", "Seller's advocate name"),
+        ]:
+            if field_name in self.fields and cleaned_data.get(field_name):
+                try:
+                    cleaned_data[field_name] = validate_person_name(cleaned_data.get(field_name), label)
+                except forms.ValidationError as exc:
+                    self.add_error(field_name, exc)
 
         requested_completion = cleaned_data.get("status") == PaymentClosingStep.Status.COMPLETED
         if not self.can_set_status:

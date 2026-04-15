@@ -649,7 +649,7 @@
     {% if messages %}
     <div class="container py-2">
         {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert">
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show shadow-sm" role="alert" data-message-tag="{{ message.tags|default:'info' }}">
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
@@ -860,6 +860,62 @@
                     text: element.textContent.trim().slice(0, 80),
                 });
             });
+        });
+
+        document.querySelectorAll('.alert[data-message-tag]').forEach(alert => {
+            AgriPlotUI.trackEvent('toast_shown', {
+                level: alert.getAttribute('data-message-tag') || 'info',
+                text: alert.textContent.trim().slice(0, 160),
+            });
+        });
+
+        document.querySelectorAll('input[data-email-check-url]').forEach(input => {
+            const status = document.createElement('small');
+            status.className = 'text-muted d-block mt-1';
+            input.insertAdjacentElement('afterend', status);
+            let pendingController = null;
+
+            const runCheck = async () => {
+                const value = (input.value || '').trim();
+                if (!value) {
+                    input.setCustomValidity('');
+                    status.textContent = '';
+                    return;
+                }
+                if (pendingController) {
+                    pendingController.abort();
+                }
+                pendingController = new AbortController();
+                status.textContent = 'Checking email...';
+                try {
+                    const response = await fetch(`${input.dataset.emailCheckUrl}?email=${encodeURIComponent(value)}`, {
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        credentials: 'same-origin',
+                        signal: pendingController.signal,
+                    });
+                    const payload = await response.json();
+                    if (!payload.valid) {
+                        input.setCustomValidity(payload.message || 'Enter a valid email address.');
+                        status.textContent = payload.message || 'Enter a valid email address.';
+                        status.className = 'text-danger d-block mt-1';
+                        return;
+                    }
+                    input.value = payload.normalized || value;
+                    input.setCustomValidity('');
+                    status.textContent = payload.message || 'Email looks valid.';
+                    status.className = 'text-success d-block mt-1';
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    input.setCustomValidity('');
+                    status.textContent = 'Could not verify the email right now.';
+                    status.className = 'text-warning d-block mt-1';
+                }
+            };
+
+            input.addEventListener('blur', runCheck);
+            input.addEventListener('change', runCheck);
         });
 
         AgriPlotUI.trackEvent('page_view', {

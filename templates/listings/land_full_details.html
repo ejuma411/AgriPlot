@@ -1,0 +1,926 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Complete Land Details - {{ plot.title }} | AgriPlot{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-green: #2E7D32;
+        --secondary-green: #4CAF50;
+        --light-green: #E8F5E9;
+        --accent-gold: #FFA000;
+        --text-dark: #1B5E20;
+    }
+
+    body {
+        background: linear-gradient(135deg, #f5f9f0 0%, #e8f5e9 100%);
+        font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, sans-serif;
+    }
+
+    .registry-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.08), 0 5px 12px rgba(0,0,0,0.05);
+        overflow: hidden;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(46,125,50,0.15);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .registry-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 50px rgba(0,0,0,0.12);
+    }
+
+    .registry-header {
+        background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-bottom: 4px solid var(--accent-gold);
+    }
+
+    .registry-header h2 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .registry-header h2 i {
+        font-size: 2rem;
+        color: var(--accent-gold);
+    }
+
+    .registry-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 0.25rem 1rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        margin-left: 1rem;
+    }
+
+    .registry-section {
+        padding: 1.5rem 2rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+
+    .registry-section:last-child {
+        border-bottom: none;
+    }
+
+    .section-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--primary-green);
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid var(--secondary-green);
+        display: inline-block;
+    }
+
+    .section-title i {
+        margin-right: 10px;
+        color: var(--accent-gold);
+    }
+
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 1.25rem;
+    }
+
+    .detail-field {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 1rem;
+        border-left: 4px solid var(--secondary-green);
+        transition: all 0.2s ease;
+    }
+
+    .detail-field:hover {
+        background: var(--light-green);
+        transform: translateX(5px);
+    }
+
+    .detail-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .detail-label i {
+        width: 20px;
+        color: var(--primary-green);
+    }
+
+    .detail-value {
+        font-size: 1rem;
+        font-weight: 500;
+        color: #2c3e2f;
+        word-break: break-word;
+    }
+
+    .detail-value strong {
+        color: var(--primary-green);
+    }
+
+    .owner-profile {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+        padding: 1.5rem;
+        background: linear-gradient(135deg, var(--light-green) 0%, #ffffff 100%);
+        border-radius: 16px;
+        flex-wrap: wrap;
+    }
+
+    .owner-avatar-large {
+        width: 100px;
+        height: 100px;
+        background: var(--primary-green);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 3rem;
+        font-weight: bold;
+        box-shadow: 0 4px 15px rgba(46,125,50,0.3);
+    }
+
+    .owner-info {
+        flex: 1;
+    }
+
+    .owner-info h4 {
+        margin: 0 0 0.5rem 0;
+        color: var(--primary-green);
+    }
+
+    .verification-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 0.25rem 0.75rem;
+        border-radius: 50px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 0.5rem;
+    }
+
+    .badge-verified {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .registry-stamp {
+        text-align: center;
+        padding: 1.5rem;
+        background: repeating-linear-gradient(45deg, #f8f9fa, #f8f9fa 10px, #e9ecef 10px, #e9ecef 20px);
+        border-radius: 12px;
+        margin-top: 1rem;
+    }
+
+    .stamp {
+        font-family: 'Courier New', monospace;
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: var(--primary-green);
+        border: 3px double var(--primary-green);
+        display: inline-block;
+        padding: 0.5rem 2rem;
+        border-radius: 8px;
+        background: white;
+        transform: rotate(-5deg);
+    }
+
+    .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: white;
+        padding: 0.75rem 1.5rem;
+        border-radius: 50px;
+        text-decoration: none;
+        color: var(--primary-green);
+        font-weight: 600;
+        margin-bottom: 1.5rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .back-button:hover {
+        background: var(--primary-green);
+        color: white;
+        transform: translateX(-5px);
+    }
+
+    .action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .btn-registry {
+        padding: 0.75rem 2rem;
+        border-radius: 50px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .btn-registry-primary {
+        background: var(--primary-green);
+        color: white;
+        border: none;
+    }
+
+    .btn-registry-primary:hover {
+        background: var(--secondary-green);
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(46,125,50,0.3);
+    }
+
+    .btn-registry-outline {
+        background: transparent;
+        color: var(--primary-green);
+        border: 2px solid var(--primary-green);
+    }
+
+    .btn-registry-outline:hover {
+        background: var(--primary-green);
+        color: white;
+    }
+
+    @media print {
+        .no-print, .action-buttons, .back-button {
+            display: none !important;
+        }
+        .registry-card {
+            box-shadow: none;
+            margin: 0;
+        }
+        body {
+            background: white;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .registry-header h2 {
+            font-size: 1.25rem;
+            flex-direction: column;
+            text-align: center;
+        }
+        .registry-badge {
+            margin-left: 0;
+        }
+        .details-grid {
+            grid-template-columns: 1fr;
+        }
+        .owner-profile {
+            flex-direction: column;
+            text-align: center;
+        }
+        .action-buttons {
+            flex-direction: column;
+        }
+        .registry-section {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Back Button -->
+    <a href="{% url 'listings:plot_detail' plot.id %}" class="back-button no-print">
+        <i class="fas fa-arrow-left"></i>
+        Back to Plot Overview
+    </a>
+
+    <!-- Main Registry Card -->
+    <div class="registry-card">
+        <div class="registry-header">
+            <h2>
+                <i class="fas fa-landmark"></i>
+                OFFICIAL LAND REGISTRY RECORD
+                <span class="registry-badge">
+                    <i class="fas fa-fingerprint"></i> Entry #{{ plot.id }}
+                </span>
+            </h2>
+            <p class="mb-0 mt-2 opacity-75">
+                <i class="fas fa-calendar-alt me-2"></i>Recorded on: {{ plot.created_at|date:"F d, Y" }} | 
+                Last Updated: {{ plot.updated_at|date:"F d, Y" }}
+            </p>
+        </div>
+
+        <!-- SECTION 1: BASIC PROPERTY INFORMATION -->
+        <div class="registry-section">
+            <h3 class="section-title">
+                <i class="fas fa-home"></i> Property Identification
+            </h3>
+            <div class="details-grid">
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-tag"></i> Property Title
+                    </div>
+                    <div class="detail-value">{{ plot.title }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-hashtag"></i> Parcel Number
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.parcel_number %}
+                            <strong>{{ plot.parcel_number }}</strong>
+                        {% else %}
+                            <span class="text-muted"><i class="fas fa-clock"></i> Awaiting Registration</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-qrcode"></i> Original Parcel Number
+                    </div>
+                    <div class="detail-value">
+                        {{ plot.original_parcel_number|default:"Not applicable" }}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-chart-line"></i> Property Status
+                    </div>
+                    <div class="detail-value">
+                        <span class="badge {% if plot.market_status == 'available' %}bg-success{% elif plot.market_status == 'sold' %}bg-danger{% else %}bg-warning{% endif %} px-3 py-2">
+                            {{ plot.get_market_status_display|default:"Available" }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: PHYSICAL CHARACTERISTICS -->
+        <div class="registry-section">
+            <h3 class="section-title">
+                <i class="fas fa-draw-polygon"></i> Physical Characteristics
+            </h3>
+            <div class="details-grid">
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-vector-square"></i> Land Area
+                    </div>
+                    <div class="detail-value">
+                        <strong>{{ plot.area|floatformat:2 }} {{ plot.get_area_unit_display|default:"Acres" }}</strong>
+                        {% if plot.registry_area_ha %}
+                            <br><small class="text-muted">({{ plot.registry_area_ha|floatformat:2 }} hectares - Registry)</small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-mountain"></i> Topography
+                    </div>
+                    <div class="detail-value">{{ plot.topography|default:"Not specified" }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-seedling"></i> Soil Type
+                    </div>
+                    <div class="detail-value">{{ plot.soil_type|default:"Analysis pending" }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-flask"></i> pH Level
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.ph_level %}
+                            {{ plot.ph_level }}
+                            <span class="ph-indicator 
+                                {% if plot.ph_level < 5 %}text-danger{% elif plot.ph_level > 8 %}text-warning{% else %}text-success{% endif %}">
+                                ({% if plot.ph_level < 5 %}Acidic{% elif plot.ph_level > 8 %}Alkaline{% else %}Neutral{% endif %})
+                            </span>
+                        {% else %}
+                            Not tested
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-leaf"></i> Crop Suitability
+                    </div>
+                    <div class="detail-value">{{ plot.crop_suitability|default:"Various crops possible" }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-tree"></i> Land Type
+                    </div>
+                    <div class="detail-value">{{ plot.get_land_type_display|default:"Not specified" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: LOCATION & GIS DATA -->
+        <div class="registry-section">
+            <h3 class="section-title">
+                <i class="fas fa-map-marked-alt"></i> Location & Geospatial Data
+            </h3>
+            <div class="details-grid">
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-globe-africa"></i> County
+                    </div>
+                    <div class="detail-value">{{ plot.county|default:"Not specified" }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-city"></i> Sub-County
+                    </div>
+                    <div class="detail-value">{{ plot.subcounty|default:"Not specified" }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-location-dot"></i> Ward
+                    </div>
+                    <div class="detail-value">{{ plot.ward|default:"Not specified" }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-street-view"></i> Physical Location
+                    </div>
+                    <div class="detail-value">{{ plot.location|default:"Address not on record" }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-city"></i> Nearest Town
+                    </div>
+                    <div class="detail-value">{{ plot.nearest_town|default:"Not specified" }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-satellite"></i> GPS Coordinates
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.latitude and plot.longitude %}
+                            <strong>{{ plot.latitude|floatformat:6 }}° N, {{ plot.longitude|floatformat:6 }}° E</strong>
+                            <br><small class="text-muted">(Survey Grade Coordinates)</small>
+                        {% else %}
+                            <span class="text-muted"><i class="fas fa-exclamation-triangle"></i> Coordinates not captured</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-mountain"></i> Elevation
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.elevation_meters %}
+                            {{ plot.elevation_meters }} meters above sea level
+                        {% else %}
+                            Not recorded
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-chart-line"></i> Climate Zone
+                    </div>
+                    <div class="detail-value">{{ plot.climate_zone|default:"Not classified" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: OWNERSHIP DETAILS -->
+        <div class="registry-section">
+            <h3 class="section-title">
+                <i class="fas fa-user-check"></i> Ownership Registry
+            </h3>
+            
+            {% if plot.landowner %}
+            <div class="owner-profile">
+                <div class="owner-avatar-large">
+                    {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username|first|upper }}
+                </div>
+                <div class="owner-info">
+                    <h4>{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}</h4>
+                    <p class="text-muted mb-1">
+                        <i class="fas fa-envelope"></i> {{ plot.landowner.user.email }}
+                    </p>
+                    {% if plot.landowner.phone %}
+                        <p class="text-muted mb-1">
+                            <i class="fas fa-phone"></i> {{ plot.landowner.phone }}
+                        </p>
+                    {% endif %}
+                    <p class="text-muted mb-1">
+                        <i class="fas fa-id-card"></i> ID Number: {{ plot.owner_id_number|default:"On file" }}
+                    </p>
+                    <p class="text-muted mb-1">
+                        <i class="fas fa-file-invoice"></i> KRA PIN: {{ plot.owner_kra_pin_number|default:"On file" }}
+                    </p>
+                    <span class="verification-badge {% if plot.landowner.verified %}badge-verified{% else %}badge-pending{% endif %}">
+                        <i class="fas {% if plot.landowner.verified %}fa-check-circle{% else %}fa-clock{% endif %}"></i>
+                        {% if plot.landowner.verified %}Verified Landowner{% else %}Verification Pending{% endif %}
+                    </span>
+                </div>
+            </div>
+            {% elif plot.owner_full_name %}
+            <div class="owner-profile">
+                <div class="owner-avatar-large">
+                    {{ plot.owner_full_name|first|upper }}
+                </div>
+                <div class="owner-info">
+                    <h4>{{ plot.owner_full_name }}</h4>
+                    <p class="text-muted mb-1">
+                        <i class="fas fa-id-card"></i> ID Number: {{ plot.owner_id_number|default:"Not provided" }}
+                    </p>
+                    <p class="text-muted mb-1">
+                        <i class="fas fa-file-invoice"></i> KRA PIN: {{ plot.owner_kra_pin_number|default:"Not provided" }}
+                    </p>
+                    <span class="verification-badge badge-pending">
+                        <i class="fas fa-clock"></i> Awaiting Platform Registration
+                    </span>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <i class="fas fa-user-slash"></i> Ownership details pending registration
+            </div>
+            {% endif %}
+
+            <!-- Registry Owner Info -->
+            {% if plot.registry_owner_name %}
+            <div class="mt-3">
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-landmark"></i> Registry Recorded Owner
+                    </div>
+                    <div class="detail-value">
+                        <strong>{{ plot.registry_owner_name }}</strong>
+                        {% if plot.registry_owner_id_number %}
+                            <br><small>ID: {{ plot.registry_owner_id_number }}</small>
+                        {% endif %}
+                        {% if plot.registry_owner_kra_pin %}
+                            <br><small>KRA PIN: {{ plot.registry_owner_kra_pin }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="mt-3">
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-history"></i> First Registered
+                    </div>
+                    <div class="detail-value">{{ plot.created_at|date:"F d, Y" }} by AgriPlot Registry</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 5: FINANCIAL & MARKET INFORMATION -->
+        <div class="registry-section">
+            <h3 class="section-title">
+                <i class="fas fa-chart-simple"></i> Financial & Market Data
+            </h3>
+            <div class="details-grid">
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-money-bill-wave"></i> Sale Price
+                    </div>
+                    <div class="detail-value">
+                        <strong class="text-success">KES {{ plot.sale_price|default:plot.price|floatformat:0|intcomma }}</strong>
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-percent"></i> Price per Acre
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.price_per_acre %}
+                            KES {{ plot.price_per_acre|floatformat:0|intcomma }}
+                        {% elif plot.area and plot.area > 0 and plot.sale_price %}
+                            KES {% widthratio plot.sale_price plot.area 1 as price_per_acre %}{{ price_per_acre|floatformat:0|intcomma }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-file-signature"></i> Listing Type
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.listing_type == 'lease' %}
+                            <span class="badge bg-info">Lease Only</span>
+                        {% elif plot.listing_type == 'sale' %}
+                            <span class="badge bg-success">Sale Only</span>
+                        {% else %}
+                            <span class="badge bg-primary">Sale or Lease</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-tag"></i> Price Negotiable
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.is_price_negotiable %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i> Yes</span>
+                        {% else %}
+                            <span class="text-muted"><i class="fas fa-times-circle"></i> Fixed Price</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-chart-line"></i> Market Zone
+                    </div>
+                    <div class="detail-value">{{ plot.market_zone|default:"Standard Market" }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 6: LEASE INFORMATION (if applicable) -->
+        {% if plot.listing_type == 'lease' or plot.lease_basis %}
+        <div class="registry-section">
+                <h3 class="section-title">
+                        <i class="fas fa-file-signature"></i> Lease Terms
+                </h3>
+                    <div class="details-grid">
+                        <div class="detail-field">
+                            <div class="detail-label">
+                                <i class="fas fa-calendar"></i> Lease Duration
+                            </div>
+                            <div class="detail-value">{{ plot.lease_duration|default:"Negotiable" }} months</div>
+                        </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-calendar"></i> Lease Duration
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.lease_duration %}
+                            {{ plot.lease_duration }} {% if plot.lease_duration == 1 %}month{% else %}months{% endif %}
+                        {% else %}
+                            Negotiable
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-calendar-week"></i> Yearly Lease Price
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.lease_price_yearly %}
+                            KES {{ plot.lease_price_yearly|floatformat:0|intcomma }}
+                        {% else %}
+                            Not specified
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-check-circle"></i> Lease Basis
+                    </div>
+                    <div class="detail-value">{{ plot.lease_basis|default:"Standard lease" }}</div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- SECTION 7: AMENITIES & INFRASTRUCTURE -->
+        <div class="registry-section">
+            <h3 class="section-title">
+                <i class="fas fa-list-check"></i> Amenities & Infrastructure
+            </h3>
+            <div class="details-grid">
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-tint"></i> Water Access
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.has_water %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i> Yes</span>
+                            {% if plot.water_source %} - {{ plot.water_source }}{% endif %}
+                        {% else %}
+                            <span class="text-muted"><i class="fas fa-times-circle"></i> No</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-bolt"></i> Electricity
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.has_electricity %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i> Connected</span>
+                            {% if plot.electricity_meter %} - Meter: {{ plot.electricity_meter }}{% endif %}
+                        {% else %}
+                            <span class="text-muted"><i class="fas fa-times-circle"></i> Not connected</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-road"></i> Road Access
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.has_road_access %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i> Yes</span>
+                            {% if plot.road_type %} - {{ plot.road_type }}{% endif %}
+                            {% if plot.road_distance_km %} - {{ plot.road_distance_km }}km away{% endif %}
+                        {% else %}
+                            <span class="text-muted"><i class="fas fa-times-circle"></i> No</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-fence"></i> Fencing
+                    </div>
+                    <div class="detail-value">{{ plot.fencing|default:"Not specified" }}</div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-building"></i> Existing Buildings
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.has_buildings %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i> Present</span>
+                            {% if plot.building_description %} - {{ plot.building_description }}{% endif %}
+                        {% else %}
+                            <span class="text-muted"><i class="fas fa-times-circle"></i> None</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-map"></i> Subdivision
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.is_subdivision %}
+                            <span class="text-info">Part of a subdivided parcel</span>
+                        {% else %}
+                            <span class="text-muted">Whole parcel</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% if plot.other_amenities %}
+                <div class="mt-3">
+                    <div class="detail-field">
+                        <div class="detail-label">
+                            <i class="fas fa-plus-circle"></i> Additional Amenities
+                        </div>
+                        <div class="detail-value">{{ plot.other_amenities|linebreaksbr }}</div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- SECTION 8: LEGAL & VERIFICATION STATUS -->
+        <div class="registry-section">
+            <h3 class="section-title">
+                <i class="fas fa-gavel"></i> Legal & Verification Status
+            </h3>
+            <div class="details-grid">
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-shield-alt"></i> Verification Status
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.verification.status == 'verified' %}
+                            <span class="badge bg-success px-3 py-2">
+                                <i class="fas fa-certificate"></i> VERIFIED
+                            </span>
+                            {% if plot.verification.reviewed_at %}
+                                <br><small>Reviewed: {{ plot.verification.reviewed_at|date:"F d, Y" }}</small>
+                            {% endif %}
+                        {% elif plot.verification.status == 'pending' %}
+                            <span class="badge bg-warning px-3 py-2">
+                                <i class="fas fa-clock"></i> PENDING VERIFICATION
+                            </span>
+                        {% elif plot.verification.status == 'rejected' %}
+                            <span class="badge bg-danger px-3 py-2">
+                                <i class="fas fa-times-circle"></i> REJECTED
+                            </span>
+                        {% else %}
+                            <span class="badge bg-secondary px-3 py-2">NOT VERIFIED</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-file-contract"></i> Title Deed
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.title_deed %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i> On file</span>
+                        {% else %}
+                            <span class="text-muted">Not uploaded</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-balance-scale"></i> Encumbrances
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.registry_has_encumbrances %}
+                            <span class="text-danger"><i class="fas fa-exclamation-triangle"></i> Encumbrances recorded</span>
+                            {% if plot.encumbrances %}<br><small>{{ plot.encumbrances }}</small>{% endif %}
+                        {% else %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i> No encumbrances</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-search"></i> Official Search
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.official_search %}
+                            <span class="text-success">Completed</span>
+                            {% if plot.search_reference_number %}
+                                <br><small>Ref: {{ plot.search_reference_number }}</small>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">Pending</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-handshake"></i> Spousal Consent
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.spousal_consent %}
+                            <span class="text-success"><i class="fas fa-check-circle"></i> Obtained</span>
+                        {% else %}
+                            <span class="text-muted">Not required/Not obtained</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="detail-field">
+                    <div class="detail-label">
+                        <i class="fas fa-file-invoice-dollar"></i> Rates Clearance
+                    </div>
+                    <div class="detail-value">
+                        {% if plot.rates_clearance %}
+                            <span class="text-success">Cleared</span>
+                        {% else %}
+                            <span class="text-warning">Pending verification</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 9: REGISTRY OFFICIAL STAMP -->
+        <div class="registry-section">
+            <div class="registry-stamp">
+                <div class="stamp">
+                    <i class="fas fa-stamp"></i> AGRIPLOT LAND REGISTRY<br>
+                    <small>OFFICIAL RECORD - {{ plot.updated_at|date:"Y-m-d" }}</small>
+                </div>
+                <p class="mt-3 mb-0 text-muted small">
+                    <i class="fas fa-lock"></i> This is an electronically generated registry entry.<br>
+                    All information provided as per landowner/agent declaration.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons no-print">
+        <button onclick="window.print()" class="btn btn-registry btn-registry-outline">
+            <i class="fas fa-print"></i> Print Registry Record
+        </button>
+        <a href="{% url 'listings:plot_detail' plot.id %}" class="btn btn-registry btn-registry-primary">
+            <i class="fas fa-arrow-left"></i> Return to Property Page
+        </a>
+        {% if user.is_authenticated and plot.landowner != user %}
+        <a href="{% url 'listings:contact_agent' plot.id %}" class="btn btn-registry btn-registry-primary">
+            <i class="fas fa-file-pdf"></i> Request Official Documents
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

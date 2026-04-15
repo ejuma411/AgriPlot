@@ -1,0 +1,227 @@
+{% extends "reports/base_report.html" %}
+{% load humanize %}
+{% block extra_css %}
+<style>
+    .lease-status {
+        text-align: center;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+    }
+    
+    .status-active {
+        background: linear-gradient(135deg, #4CAF50, #2E7D32);
+        color: white;
+    }
+    
+    .status-expiring {
+        background: linear-gradient(135deg, #FF9800, #F57C00);
+        color: white;
+    }
+    
+    .countdown-timer {
+        font-size: 36pt;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .rent-schedule {
+        margin: 20px 0;
+    }
+    
+    .rent-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    
+    .rent-due {
+        color: #f44336;
+        font-weight: bold;
+    }
+    
+    .rent-paid {
+        color: #4CAF50;
+    }
+    
+    .compliance-score {
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .score-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: conic-gradient(#4CAF50 0deg {{ compliance_score }}deg, #e0e0e0 {{ compliance_score }}deg 360deg);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+    }
+    
+    .score-inner {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24pt;
+        font-weight: bold;
+        color: #2E7D32;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-title">
+    <h1>🌾 Lease Management Dashboard</h1>
+    <div class="subtitle">Agricultural Lease Performance & Compliance Report</div>
+</div>
+
+<!-- Lease Status -->
+<div class="lease-status {% if days_remaining > 90 %}status-active{% elif days_remaining > 30 %}status-expiring{% else %}status-expiring{% endif %}">
+    <h3 style="color: white;">Lease Status: 
+        {% if days_remaining > 0 %}ACTIVE{% else %}EXPIRED{% endif %}
+    </h3>
+    <div class="countdown-timer">
+        {% if days_remaining > 0 %}
+            {{ days_remaining }} days remaining
+        {% else %}
+            Lease Term Completed
+        {% endif %}
+    </div>
+    <div>or {{ months_remaining }} months remaining</div>
+</div>
+
+<!-- Lease Details -->
+<div class="two-column">
+    <div class="column">
+        <div class="info-box">
+            <strong>Lease Period</strong><br>
+            Start: {{ deal.lease_start_date|date:"F d, Y" }}<br>
+            End: {{ deal.lease_end_date|date:"F d, Y" }}<br>
+            Duration: {{ deal.lease_duration_days|floatformat:0 }} days
+        </div>
+    </div>
+    <div class="column">
+        <div class="info-box">
+            <strong>Financial Summary</strong><br>
+            Monthly Rent: KES {{ deal.monthly_rent|floatformat:0|intcomma }}<br>
+            Security Deposit: KES {{ deal.security_deposit|floatformat:0|intcomma }}<br>
+            Total Lease Value: KES {{ deal.lease_contract_value|floatformat:0|intcomma }}
+        </div>
+    </div>
+</div>
+
+<!-- Rent Payment Schedule -->
+<h2>📅 Rent Payment Schedule</h2>
+<div class="rent-schedule">
+    {% for payment in upcoming_payments %}
+    <div class="rent-item">
+        <span>{{ payment.due_date|date:"F d, Y" }}</span>
+        <span>KES {{ payment.amount|floatformat:0|intcomma }}</span>
+        <span class="{% if payment.status == 'paid' %}rent-paid{% else %}rent-due{% endif %}">
+            {{ payment.get_status_display }}
+        </span>
+    </div>
+    {% empty %}
+    <div class="info-box">No upcoming payments scheduled</div>
+    {% endfor %}
+</div>
+
+<!-- Good Husbandry Compliance -->
+<h2>🌱 Good Husbandry Compliance</h2>
+<div class="compliance-score">
+    <div class="score-circle">
+        <div class="score-inner">{{ good_husbandry_score }}%</div>
+    </div>
+    <p style="margin-top: 10px;">Overall Compliance Score</p>
+</div>
+
+<div class="progress-container">
+    <div class="progress-bar" style="width: {{ good_husbandry_score }}%;">
+        Compliance Rating: {{ good_husbandry_score }}%
+    </div>
+</div>
+
+<!-- Compliance Logs -->
+{% if compliance_logs %}
+<h2>📋 Compliance Inspection Log</h2>
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Inspector</th>
+            <th>Score</th>
+            <th>Findings</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for log in compliance_logs %}
+        <tr>
+            <td>{{ log.date|date:"Y-m-d" }}</td>
+            <td>{{ log.inspector }}</td>
+            <td>{{ log.score }}%</td>
+            <td>{{ log.findings|truncatewords:10 }}</td>
+            <td>
+                {% if log.score >= 80 %}
+                    <span class="badge badge-success">Compliant</span>
+                {% elif log.score >= 60 %}
+                    <span class="badge badge-warning">Attention Needed</span>
+                {% else %}
+                    <span class="badge badge-danger">Non-Compliant</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Important Dates -->
+<h2>⚠ Important Dates</h2>
+<div class="two-column">
+    <div class="column">
+        <div class="warning-box">
+            <strong>Vacation Notice Window</strong><br>
+            {{ deal.vacation_notice_date|date:"F d, Y" }}<br>
+            {{ deal.notice_period_days }} days before lease end
+        </div>
+    </div>
+    <div class="column">
+        <div class="warning-box">
+            <strong>Renewal Deadline</strong><br>
+            {{ deal.lease_end_date|date:"F d, Y" }}<br>
+            Notify landlord {{ deal.notice_period_days }} days in advance
+        </div>
+    </div>
+</div>
+
+<!-- Soil Exit Test -->
+{% if deal.soil_exit_test_required %}
+<div class="info-box">
+    <strong>🧪 Soil Exit Test Required</strong><br>
+    An exit soil test must be conducted before lease termination to verify land condition.
+    The baseline soil report is on file for comparison.
+</div>
+{% endif %}
+
+<!-- Recommendations -->
+<div class="info-box" style="background: #E8F5E9;">
+    <strong>💡 Recommendations</strong><br>
+    {% if days_remaining < 90 %}
+        • Begin renewal negotiations soon<br>
+        • Schedule final soil inspection<br>
+        • Review lease terms for renewal options
+    {% else %}
+        • Maintain regular compliance inspections<br>
+        • Keep payment schedule up to date<br>
+        • Document all land improvements
+    {% endif %}
+</div>
+{% endblock %}

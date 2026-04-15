@@ -1444,3 +1444,64 @@ def export_report(request):
             ])
     
     return response
+
+from django.shortcuts import render
+from django.contrib.admin.views.decorators import staff_member_required
+from listings.models import Plot
+from payments.models import PaymentRequest
+from django.contrib.auth import get_user_model
+
+User = get_user_model()
+
+@staff_member_required
+def admin_dashboard(request):
+    """Custom admin dashboard view with detailed verification stats"""
+    
+    # Basic counts
+    total_plots = Plot.objects.count()
+    total_users = User.objects.count()
+    
+    # Detailed verification stats
+    verification_stats = {
+        'completed': VerificationStatus.objects.filter(is_complete=True).count(),
+        'in_progress': VerificationStatus.objects.filter(is_complete=False, current_stage__isnull=False).count(),
+        'not_started': Plot.objects.filter(verification__isnull=True).count(),
+    }
+    
+    # Stage breakdown
+    stage_breakdown = VerificationStatus.objects.filter(
+        is_complete=False
+    ).values('current_stage').annotate(count=Count('id'))
+    
+    # Transaction stats
+    total_transactions = PaymentRequest.objects.count()
+    completed_transactions = PaymentRequest.objects.filter(status='released').count()
+    
+    # Plot market status
+    market_status_counts = Plot.objects.values('market_status').annotate(count=Count('id'))
+    
+    # Calculate percentages
+    verification_progress = int((verification_stats['completed'] / total_plots * 100)) if total_plots > 0 else 0
+    completion_rate = int((completed_transactions / total_transactions * 100)) if total_transactions > 0 else 0
+    
+    context = {
+        'page_title': 'Admin Dashboard',
+        'active_tab': 'dashboard',
+        'total_plots': total_plots,
+        'verified_plots': verification_stats['completed'],
+        'pending_verification': verification_stats['in_progress'] + verification_stats['not_started'],
+        'verification_in_progress': verification_stats['in_progress'],
+        'verification_not_started': verification_stats['not_started'],
+        'stage_breakdown': stage_breakdown,
+        'total_users': total_users,
+        'total_transactions': total_transactions,
+        'completed_transactions': completed_transactions,
+        'pending_transactions': total_transactions - completed_transactions,
+        'market_status_counts': market_status_counts,
+        'verification_progress': verification_progress,
+        'completion_rate': completion_rate,
+        'recent_activities': [],
+    }
+    
+    return render(request, 'listings/admin/dashboard.html', context)
+

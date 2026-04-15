@@ -1,0 +1,594 @@
+{% extends "listings/admin/base_admin.html" %}
+{% load static %}
+
+{% block title %}Admin Dashboard - AgriPlot{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    /* Additional Dashboard-Specific Styles */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(0,0,0,0.05);
+        transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+    }
+    
+    .stat-icon {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        font-size: 3rem;
+        opacity: 0.15;
+    }
+    
+    .stat-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1f8b4c;
+        margin-bottom: 0.25rem;
+    }
+    
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+    
+    .admin-card {
+        background: white;
+        border-radius: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    
+    .admin-card-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 2px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .admin-card-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: #1f2325;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .admin-card-title i {
+        color: #1f8b4c;
+        font-size: 1.25rem;
+    }
+    
+    .admin-card-body {
+        padding: 1.5rem;
+    }
+    
+    .progress {
+        height: 8px;
+        background: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        background: linear-gradient(90deg, #1f8b4c, #34ce57);
+        border-radius: 10px;
+    }
+    
+    .report-card {
+        background: #f8f9fa;
+        border-radius: 16px;
+        padding: 1.5rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        height: 100%;
+        border: 1px solid #e9ecef;
+    }
+    
+    .report-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+        border-color: #1f8b4c;
+    }
+    
+    .report-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .report-title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+        color: #1f2325;
+    }
+    
+    .report-desc {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-bottom: 1rem;
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 30px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .btn-primary {
+        background: #1f8b4c;
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        background: #166b3a;
+        transform: translateY(-2px);
+    }
+    
+    .btn-success {
+        background: #28a745;
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background: #218838;
+        transform: translateY(-2px);
+    }
+    
+    .btn-info {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .btn-info:hover {
+        background: #138496;
+        transform: translateY(-2px);
+    }
+    
+    .btn-warning {
+        background: #ffc107;
+        color: #1f2325;
+    }
+    
+    .btn-warning:hover {
+        background: #e0a800;
+        transform: translateY(-2px);
+    }
+    
+    .btn-outline-primary {
+        background: transparent;
+        border: 2px solid #1f8b4c;
+        color: #1f8b4c;
+    }
+    
+    .btn-outline-primary:hover {
+        background: #1f8b4c;
+        color: white;
+    }
+    
+    .btn-outline-success {
+        background: transparent;
+        border: 2px solid #28a745;
+        color: #28a745;
+    }
+    
+    .btn-outline-success:hover {
+        background: #28a745;
+        color: white;
+    }
+    
+    .btn-outline-info {
+        background: transparent;
+        border: 2px solid #17a2b8;
+        color: #17a2b8;
+    }
+    
+    .btn-outline-info:hover {
+        background: #17a2b8;
+        color: white;
+    }
+    
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+    }
+    
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .admin-table th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        color: #6c757d;
+        border-bottom: 2px solid #e9ecef;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .admin-table td {
+        padding: 1rem;
+        border-bottom: 1px solid #e9ecef;
+        color: #4a5568;
+    }
+    
+    .admin-table tr:hover td {
+        background: #f8f9fa;
+    }
+    
+    .badge {
+        padding: 0.25rem 0.75rem;
+        border-radius: 30px;
+        font-size: 0.75rem;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .badge-success {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .badge-warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .badge-danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .badge-info {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .text-center {
+        text-align: center;
+    }
+    
+    .text-muted {
+        color: #6c757d;
+    }
+    
+    .mt-3 {
+        margin-top: 1rem;
+    }
+    
+    .mb-3 {
+        margin-bottom: 1rem;
+    }
+    
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: -0.75rem;
+    }
+    
+    .col-md-3, .col-md-4 {
+        padding: 0.75rem;
+        flex: 1;
+    }
+    
+    .col-md-3 {
+        flex: 0 0 calc(25% - 1.5rem);
+    }
+    
+    .col-md-4 {
+        flex: 0 0 calc(33.333% - 1.5rem);
+    }
+    
+    @media (max-width: 992px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .col-md-3, .col-md-4 {
+            flex: 0 0 calc(50% - 1.5rem);
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .col-md-3, .col-md-4 {
+            flex: 0 0 calc(100% - 1.5rem);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block admin_content %}
+<div class="admin-card" style="background: linear-gradient(135deg, #1f8b4c, #0f4a2e); color: white;">
+    <div class="admin-card-body" style="text-align: center;">
+        <h3 style="color: white; margin-bottom: 10px;">📊 Executive System Report</h3>
+        <p style="color: rgba(255,255,255,0.9); margin-bottom: 15px;">Generate a comprehensive system-wide report with all platform metrics</p>
+        <a href="{% url 'reports:executive_system_report' %}" class="btn btn-light" target="_blank" style="background: white; color: #1f8b4c;">
+            <i class="fas fa-download me-2"></i>Generate Executive Report
+        </a>
+    </div>
+</div>
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-value">{{ total_plots|default:"0" }}</div>
+        <div class="stat-label">Total Plots</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-value">{{ verified_plots|default:"0" }}</div>
+        <div class="stat-label">Verified Plots</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-clock"></i></div>
+        <div class="stat-value">{{ pending_verification|default:"0" }}</div>
+        <div class="stat-label">Pending Verification</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon"><i class="fas fa-users"></i></div>
+        <div class="stat-value">{{ total_users|default:"0" }}</div>
+        <div class="stat-label">Total Users</div>
+    </div>
+</div>
+
+<!-- Verification Progress -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-shield-alt"></i>
+            Verification Status
+        </h5>
+    </div>
+    <div class="admin-card-body">
+        <div class="progress mb-3">
+            <div class="progress-bar" style="width: {{ verification_progress }}%">
+                {{ verification_progress }}% Complete
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="text-center">
+                    <h3 class="text-success">{{ verified_plots }}</h3>
+                    <span class="text-muted">Completed</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center">
+                    <h3 class="text-warning">{{ verification_in_progress|default:"0" }}</h3>
+                    <span class="text-muted">In Progress</span>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="text-center">
+                    <h3 class="text-danger">{{ verification_not_started|default:"0" }}</h3>
+                    <span class="text-muted">Not Started</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Stats -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-exchange-alt"></i>
+            Transaction Overview
+        </h5>
+    </div>
+    <div class="admin-card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="report-card">
+                    <div class="report-icon text-primary">
+                        <i class="fas fa-chart-line fa-2x"></i>
+                    </div>
+                    <div class="report-title">Total Transactions</div>
+                    <div class="report-desc">{{ total_transactions|default:"0" }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="report-card">
+                    <div class="report-icon text-success">
+                        <i class="fas fa-check-circle fa-2x"></i>
+                    </div>
+                    <div class="report-title">Completed</div>
+                    <div class="report-desc">{{ completed_transactions|default:"0" }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="report-card">
+                    <div class="report-icon text-warning">
+                        <i class="fas fa-hourglass-half fa-2x"></i>
+                    </div>
+                    <div class="report-title">Pending</div>
+                    <div class="report-desc">{{ pending_transactions|default:"0" }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="progress mt-3">
+            <div class="progress-bar" style="width: {{ completion_rate }}%">
+                {{ completion_rate }}% Completion Rate
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Admin Reports Section -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-chart-pie"></i>
+            Administrative Reports
+        </h5>
+    </div>
+    <div class="admin-card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="report-card">
+                    <div class="report-icon">
+                        <i class="fas fa-chart-line fa-2x text-primary"></i>
+                    </div>
+                    <div class="report-title">Revenue & Escrow Audit</div>
+                    <div class="report-desc">Complete financial overview</div>
+                    <a href="{% url 'reports:revenue_audit' %}" class="btn btn-primary btn-sm" target="_blank">
+                        <i class="fas fa-download me-2"></i>Generate
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="report-card">
+                    <div class="report-icon">
+                        <i class="fas fa-tachometer-alt fa-2x text-success"></i>
+                    </div>
+                    <div class="report-title">Transaction Velocity</div>
+                    <div class="report-desc">Time from offer to completion</div>
+                    <a href="{% url 'reports:transaction_velocity' %}" class="btn btn-success btn-sm" target="_blank">
+                        <i class="fas fa-download me-2"></i>Generate
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="report-card">
+                    <div class="report-icon">
+                        <i class="fas fa-user-tie fa-2x text-info"></i>
+                    </div>
+                    <div class="report-title">Officer Performance</div>
+                    <div class="report-desc">Surveyors, valuers, lawyers</div>
+                    <a href="{% url 'reports:officer_performance' %}" class="btn btn-info btn-sm" target="_blank">
+                        <i class="fas fa-download me-2"></i>Generate
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="report-card">
+                    <div class="report-icon">
+                        <i class="fas fa-globe-africa fa-2x text-warning"></i>
+                    </div>
+                    <div class="report-title">Regional Market Trends</div>
+                    <div class="report-desc">Land prices by county</div>
+                    <a href="{% url 'reports:regional_trends' %}" class="btn btn-warning btn-sm" target="_blank">
+                        <i class="fas fa-download me-2"></i>Generate
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Reports -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-file-alt"></i>
+            Additional Reports
+        </h5>
+    </div>
+    <div class="admin-card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <a href="{% url 'reports:revenue_audit' %}?format=excel" class="btn btn-outline-primary w-100" target="_blank">
+                    <i class="fas fa-file-excel me-2"></i>Export Revenue Report (Excel)
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{% url 'reports:transaction_velocity' %}?days=90" class="btn btn-outline-success w-100" target="_blank">
+                    <i class="fas fa-chart-line me-2"></i>90-Day Velocity Report
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="{% url 'reports:regional_trends' %}?format=pdf" class="btn btn-outline-info w-100" target="_blank">
+                    <i class="fas fa-file-pdf me-2"></i>Market Trends PDF
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h5 class="admin-card-title">
+            <i class="fas fa-history"></i>
+            Recent Activity
+        </h5>
+        <a href="{% url 'verification:audit_logs' %}" class="btn btn-sm btn-outline-primary">
+            View All <i class="fas fa-arrow-right ms-2"></i>
+        </a>
+    </div>
+    <div class="admin-card-body">
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for activity in recent_activities %}
+                    <tr>
+                        <td>{{ activity.created_at|date:"Y-m-d H:i" }}</td>
+                        <td>{{ activity.user.get_full_name|default:activity.user.username }}</td>
+                        <td>{{ activity.action }}</td>
+                        <td>{{ activity.details|truncatechars:50 }}</td>
+                        <td>
+                            <span class="badge badge-success">{{ activity.status|default:"Completed" }}</span>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-center">No recent activity</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,6 +1,8 @@
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+import socket
+from unittest.mock import patch
 
 from accounts.models import Profile
 
@@ -14,7 +16,10 @@ class AccountUpgradeFlowTests(TestCase):
             first_name="Buyer",
             last_name="One",
         )
-        Profile.objects.create(user=self.user, phone="0712345678", role="buyer")
+        self.profile, _ = Profile.objects.get_or_create(user=self.user)
+        self.profile.phone = "0712345678"
+        self.profile.role = "buyer"
+        self.profile.save()
 
     def test_profile_management_shows_upgrade_actions_for_buyer(self):
         self.client.force_login(self.user)
@@ -92,3 +97,59 @@ class AccountUpgradeFlowTests(TestCase):
         self.assertContains(surveyor_response, 'value="buyer@example.com"')
         self.assertContains(surveyor_response, 'value="0712345678"')
         self.assertNotContains(surveyor_response, 'name="phone"')
+
+    @patch("accounts.validators.socket.getaddrinfo")
+    def test_email_validation_endpoint_rejects_duplicate_email(self, mock_getaddrinfo):
+        mock_getaddrinfo.return_value = [object()]
+
+        self.client.force_login(self.user)
+        response = self.client.get(
+            reverse("listings:validate_email_input"),
+            {"email": "buyer@example.com"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["valid"])
+        self.assertFalse(payload["exists"])
+
+        other_user = User.objects.create_user(
+            username="buyer2",
+            email="taken@example.com",
+            password="safe-pass-123",
+        )
+        other_profile, _ = Profile.objects.get_or_create(user=other_user)
+        other_profile.phone = "0711111111"
+        other_profile.role = "buyer"
+        other_profile.save()
+        duplicate_response = self.client.get(
+            reverse("listings:validate_email_input"),
+            {"email": "taken@example.com"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+        duplicate_payload = duplicate_response.json()
+        self.assertFalse(duplicate_payload["valid"])
+        self.assertTrue(duplicate_payload["exists"])
+
+    @patch("accounts.validators.socket.getaddrinfo")
+    def test_profile_edit_rejects_invalid_email_and_phone(self, mock_getaddrinfo):
+        mock_getaddrinfo.side_effect = socket.gaierror("domain lookup failed")
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("listings:profile_edit"),
+            data={
+                "section": "account",
+                "first_name": "Buyer",
+                "last_name": "One",
+                "email": "not-real@invalid-domain.zzz",
+                "phone": "12345",
+                "address": "Farm road",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Correct the account details below and try again.")
+        self.assertContains(response, "This email domain does not appear to accept mail.")
+        self.assertContains(response, "Enter a valid Kenyan phone number")

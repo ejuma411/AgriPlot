@@ -1,0 +1,147 @@
+{% extends "reports/base_report.html" %}
+
+{% block extra_css %}
+<style>
+    .payout-summary {
+        background: linear-gradient(135deg, #1B5E20, #2E7D32);
+        color: white;
+        padding: 25px;
+        border-radius: 10px;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+    
+    .payout-amount {
+        font-size: 36pt;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    
+    .breakdown-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin: 20px 0;
+    }
+    
+    .breakdown-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    
+    .breakdown-label {
+        font-size: 9pt;
+        color: #666;
+    }
+    
+    .breakdown-value {
+        font-size: 16pt;
+        font-weight: bold;
+        color: #2E7D32;
+        margin-top: 5px;
+    }
+    
+    .transaction-list {
+        margin: 20px 0;
+    }
+    
+    .transaction-item {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-title">
+    <h1>💰 Payout & Commission Summary</h1>
+    <div class="subtitle">Seller/Landlord Financial Statement</div>
+</div>
+
+<!-- Total Payout -->
+<div class="payout-summary">
+    <div>Total Net Payout</div>
+    <div class="payout-amount">KES {{ total_net_payout|floatformat:0|intcomma }}</div>
+    <div>Amount to be credited to your account</div>
+</div>
+
+<!-- Financial Breakdown -->
+<div class="breakdown-grid">
+    <div class="breakdown-card">
+        <div class="breakdown-label">Gross Sales/Lease Value</div>
+        <div class="breakdown-value">KES {{ total_sales|floatformat:0|intcomma }}</div>
+    </div>
+    <div class="breakdown-card">
+        <div class="breakdown-label">Platform Commission ({{ platform_commission_rate|default:"7.5" }}%)</div>
+        <div class="breakdown-value">- KES {{ total_commissions|floatformat:0|intcomma }}</div>
+    </div>
+    <div class="breakdown-card">
+        <div class="breakdown-label">Tax (VAT @ 16%)</div>
+        <div class="breakdown-value">- KES {{ total_taxes|floatformat:0|intcomma }}</div>
+    </div>
+    <div class="breakdown-card">
+        <div class="breakdown-label">Agent Commission</div>
+        <div class="breakdown-value">- KES {{ agent_commission|default:"0"|floatformat:0|intcomma }}</div>
+    </div>
+</div>
+
+<!-- Transaction Breakdown -->
+<h2>📊 Transaction Breakdown by Property</h2>
+<div class="transaction-list">
+    {% for payout in payouts %}
+    <div class="transaction-item">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <strong>{{ payout.plot.title }}</strong>
+            <span class="badge badge-success">{{ payout.deal.status|upper }}</span>
+        </div>
+        <div class="two-column">
+            <div class="column">
+                <div>Sale Price: <strong>KES {{ payout.sale_amount|floatformat:0|intcomma }}</strong></div>
+                <div>Commission: KES {{ payout.commission|floatformat:0|intcomma }}</div>
+                <div>Tax: KES {{ payout.tax|floatformat:0|intcomma }}</div>
+            </div>
+            <div class="column">
+                <div>Net Payout: <strong>KES {{ payout.net_payout|floatformat:0|intcomma }}</strong></div>
+                <div>Completed: {{ payout.date|date:"F d, Y" }}</div>
+                <div>Reference: {{ payout.deal.internal_reference }}</div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Payment Method -->
+<div class="info-box">
+    <strong>💰 Payment Method on File</strong><br>
+    {% if user.profile.mobile_money %}
+        M-Pesa: {{ user.profile.phone_number }}<br>
+    {% elif user.profile.bank_account %}
+        Bank: {{ user.profile.bank_name }} - Account: {{ user.profile.bank_account }}
+    {% else %}
+        No payment method configured. Please update your payment details.
+    {% endif %}
+</div>
+
+<!-- Withdrawal Schedule -->
+<h2>📅 Payout Schedule</h2>
+<div class="info-box">
+    <strong>Standard Payout Timeline:</strong><br>
+    • Escrow funds are released within 24-48 hours after transaction completion<br>
+    • Bank transfers take 2-3 business days<br>
+    • M-Pesa payouts are instant<br>
+    • International transfers take 5-7 business days
+</div>
+
+<!-- Tax Information -->
+<div class="warning-box">
+    <strong>📋 Tax Information</strong><br>
+    The amounts shown above are net of VAT (16%) on platform fees. 
+    Sellers are responsible for declaring Capital Gains Tax (CGT) on land transactions.
+    Please consult your tax advisor for complete tax obligations.
+</div>
+{% endblock %}

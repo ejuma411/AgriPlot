@@ -1,0 +1,491 @@
+{% extends "reports/base_report.html" %}
+{% load humanize %}
+
+{% block extra_css %}
+<style>
+    /* Executive Report Styles */
+    .executive-header {
+        background: linear-gradient(135deg, #0f4a2e, #1f8b4c);
+        color: white;
+        padding: 30px;
+        border-radius: 16px;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    
+    .executive-header h1 {
+        color: white;
+        margin: 0;
+        font-size: 28px;
+    }
+    
+    .executive-header .report-date {
+        margin-top: 10px;
+        opacity: 0.9;
+        font-size: 12px;
+    }
+    
+    /* Section Headers */
+    .section-header {
+        background: #f8f9fa;
+        padding: 12px 20px;
+        border-radius: 12px;
+        margin: 30px 0 20px 0;
+        border-left: 4px solid #1f8b4c;
+    }
+    
+    .section-header h2 {
+        margin: 0;
+        font-size: 18px;
+        color: #1B5E20;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    /* Stats Grid */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        transition: transform 0.2s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .stat-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1f8b4c;
+        margin-bottom: 8px;
+    }
+    
+    .stat-label {
+        font-size: 11px;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
+    }
+    
+    .stat-trend {
+        margin-top: 8px;
+        font-size: 12px;
+    }
+    
+    .trend-up { color: #28a745; }
+    .trend-down { color: #dc3545; }
+    .trend-stable { color: #ffc107; }
+    
+    /* KPI Cards */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .kpi-card {
+        background: linear-gradient(135deg, #1f8b4c, #0f4a2e);
+        color: white;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+    }
+    
+    .kpi-value {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 8px;
+    }
+    
+    .kpi-label {
+        font-size: 12px;
+        opacity: 0.9;
+    }
+    
+    /* Progress Bar */
+    .progress-container {
+        background-color: #e9ecef;
+        border-radius: 10px;
+        overflow: hidden;
+        margin: 10px 0;
+    }
+    
+    .progress-bar {
+        background-color: #1f8b4c;
+        height: 20px;
+        text-align: center;
+        line-height: 20px;
+        color: white;
+        font-size: 11px;
+        border-radius: 10px;
+    }
+    
+    /* Two Column Layout */
+    .two-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+        margin-bottom: 25px;
+    }
+    
+    /* Data Table */
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        background: white;
+    }
+    
+    .data-table th {
+        background-color: #f8f9fa;
+        color: #1f8b4c;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        border-bottom: 2px solid #e0e0e0;
+    }
+    
+    .data-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #e0e0e0;
+        color: #333;
+    }
+    
+    .data-table tr:hover td {
+        background-color: #f5f5f5;
+    }
+    
+    .text-right { text-align: right; }
+    .text-center { text-align: center; }
+    
+    /* Info Box */
+    .info-box {
+        background-color: #e8f5e9;
+        border-left: 4px solid #1f8b4c;
+        padding: 15px;
+        margin: 15px 0;
+        border-radius: 8px;
+    }
+    
+    .info-box strong {
+        color: #1B5E20;
+    }
+    
+    /* Signature Line */
+    .signature-line {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 2px solid #e0e0e0;
+        text-align: center;
+        color: #666;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .kpi-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .two-columns {
+            grid-template-columns: 1fr;
+        }
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .kpi-grid {
+            grid-template-columns: 1fr;
+        }
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="executive-header">
+    <h1>🏛️ AgriPlot Executive System Report</h1>
+    <div class="report-date">Comprehensive Platform Performance & Analytics Dashboard</div>
+</div>
+
+<!-- KEY PERFORMANCE INDICATORS -->
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-value">{{ total_plots|default:"0"|intcomma }}</div>
+        <div class="kpi-label">Total Plots</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value">KES {{ total_transaction_value|floatformat:0|intcomma }}</div>
+        <div class="kpi-label">Transaction Volume</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value">{{ total_users|default:"0"|intcomma }}</div>
+        <div class="kpi-label">Registered Users</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-value">KES {{ estimated_revenue|floatformat:0|intcomma }}</div>
+        <div class="kpi-label">Estimated Revenue</div>
+    </div>
+</div>
+
+<!-- SECTION 1: PLATFORM METRICS -->
+<div class="section-header">
+    <h2><i class="fas fa-chart-line"></i> Platform Overview</h2>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ published_plots|default:"0"|intcomma }}</div>
+        <div class="stat-label">Published Plots</div>
+        <div class="stat-trend">{{ publication_rate }}% of total</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ available_plots|default:"0"|intcomma }}</div>
+        <div class="stat-label">Available Plots</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ reserved_plots|default:"0"|intcomma }}</div>
+        <div class="stat-label">Reserved Plots</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ sold_plots|default:"0"|intcomma }}</div>
+        <div class="stat-label">Sold Plots</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ leased_plots|default:"0"|intcomma }}</div>
+        <div class="stat-label">Leased Plots</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ agricultural_plots|default:"0"|intcomma }}</div>
+        <div class="stat-label">Agricultural Land</div>
+    </div>
+</div>
+
+<!-- Verification Progress -->
+<div class="info-box">
+    <strong>📋 Verification Status</strong>
+    <div class="progress-container" style="margin-top: 10px;">
+        <div class="progress-bar" style="width: {{ verification_progress }}%;">
+            {{ verification_progress }}% Verified
+        </div>
+    </div>
+    <div class="stats-grid" style="margin-top: 15px; margin-bottom: 0;">
+        <div class="stat-card" style="padding: 10px;">
+            <div class="stat-value" style="font-size: 20px;">{{ verification_completed|default:"0"|intcomma }}</div>
+            <div class="stat-label">Verified</div>
+        </div>
+        <div class="stat-card" style="padding: 10px;">
+            <div class="stat-value" style="font-size: 20px;">{{ verification_pending|default:"0"|intcomma }}</div>
+            <div class="stat-label">In Progress</div>
+        </div>
+        <div class="stat-card" style="padding: 10px;">
+            <div class="stat-value" style="font-size: 20px;">{{ verification_not_started|default:"0"|intcomma }}</div>
+            <div class="stat-label">Not Started</div>
+        </div>
+    </div>
+</div>
+
+<!-- SECTION 2: TRANSACTION METRICS -->
+<div class="section-header">
+    <h2><i class="fas fa-exchange-alt"></i> Transaction Analytics</h2>
+</div>
+
+<div class="two-columns">
+    <div>
+        <h3>Transaction Breakdown</h3>
+        <table class="data-table">
+            <thead>
+                <tr><th>Type</th><th class="text-right">Count</th><th class="text-right">%</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Purchase</td><td class="text-right">{{ purchase_transactions|default:"0"|intcomma }}</td><td class="text-right">{% widthratio purchase_transactions total_transactions 100 %}%</td></tr>
+                <tr><td>Lease</td><td class="text-right">{{ lease_transactions|default:"0"|intcomma }}</td><td class="text-right">{% widthratio lease_transactions total_transactions 100 %}%</td></tr>
+                <tr><td>Service</td><td class="text-right">{{ service_transactions|default:"0"|intcomma }}</td><td class="text-right">{% widthratio service_transactions total_transactions 100 %}%</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div>
+        <h3>Transaction Status</h3>
+        <table class="data-table">
+            <thead>
+                <tr><th>Status</th><th class="text-right">Count</th><th class="text-right">%</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Completed</td><td class="text-right">{{ completed_transactions|default:"0"|intcomma }}</td><td class="text-right">{{ completion_rate }}%</td></tr>
+                <tr><td>In Escrow</td><td class="text-right">{{ in_escrow_transactions|default:"0"|intcomma }}</td><td class="text-right">{% widthratio in_escrow_transactions total_transactions 100 %}%</td></tr>
+                <tr><td>Pending</td><td class="text-right">{{ pending_transactions|default:"0"|intcomma }}</td><td class="text-right">{% widthratio pending_transactions total_transactions 100 %}%</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- SECTION 3: FINANCIAL SUMMARY -->
+<div class="section-header">
+    <h2><i class="fas fa-chart-pie"></i> Financial Summary</h2>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">KES {{ total_transaction_value|floatformat:0|intcomma }}</div>
+        <div class="stat-label">Total Transaction Value</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">KES {{ total_in_escrow|floatformat:0|intcomma }}</div>
+        <div class="stat-label">Currently in Escrow</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">KES {{ total_released|floatformat:0|intcomma }}</div>
+        <div class="stat-label">Released to Sellers</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">KES {{ avg_transaction_value|floatformat:0|intcomma }}</div>
+        <div class="stat-label">Average Transaction Value</div>
+    </div>
+</div>
+
+<!-- SECTION 4: USER METRICS -->
+<div class="section-header">
+    <h2><i class="fas fa-users"></i> User Analytics</h2>
+</div>
+
+<div class="two-columns">
+    <div>
+        <h3>User Breakdown</h3>
+        <table class="data-table">
+            <thead>
+                <tr><th>Role</th><th class="text-right">Count</th><th class="text-right">%</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Landowners</td><td class="text-right">{{ landowners|default:"0"|intcomma }}</td><td class="text-right">{% widthratio landowners total_users 100 %}%</td></tr>
+                <tr><td>Agents</td><td class="text-right">{{ agents|default:"0"|intcomma }}</td><td class="text-right">{% widthratio agents total_users 100 %}%</td></tr>
+                <tr><td>Buyers</td><td class="text-right">{{ buyers|default:"0"|intcomma }}</td><td class="text-right">{% widthratio buyers total_users 100 %}%</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div>
+        <h3>User Activity</h3>
+        <table class="data-table">
+            <thead>
+                <tr><th>Metric</th><th class="text-right">Value</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Active Users</td><td class="text-right">{{ active_users|default:"0"|intcomma }}</td></tr>
+                <tr><td>New Users (30d)</td><td class="text-right">{{ new_users_last_30_days|default:"0"|intcomma }}</td></tr>
+                <tr><td>Saved Plots</td><td class="text-right">{{ total_saved_plots|default:"0"|intcomma }}</td></tr>
+                <tr><td>Contact Requests</td><td class="text-right">{{ total_contact_requests|default:"0"|intcomma }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- SECTION 5: GROWTH TRENDS -->
+<div class="section-header">
+    <h2><i class="fas fa-chart-line"></i> Growth Trends</h2>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ plots_last_30_days|default:"0"|intcomma }}</div>
+        <div class="stat-label">New Plots (30 days)</div>
+        <div class="stat-trend {% if growth_rate > 0 %}trend-up{% else %}trend-down{% endif %}">
+            {% if growth_rate > 0 %}↑{% else %}↓{% endif %} 
+            {% if growth_rate > 0 %}{{ growth_rate }}{% else %}{{ growth_rate|slice:"1:" }}{% endif %}% vs prior period
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ transactions_last_30_days|default:"0"|intcomma }}</div>
+        <div class="stat-label">Transactions (30 days)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ transactions_last_90_days|default:"0"|intcomma }}</div>
+        <div class="stat-label">Transactions (90 days)</div>
+    </div>
+</div>
+
+<h3>Monthly Trends (Last 6 Months)</h3>
+<table class="data-table">
+    <thead>
+        <tr><th>Month</th><th class="text-right">New Plots</th><th class="text-right">Transactions</th></tr>
+    </thead>
+    <tbody>
+        {% for trend in monthly_trends %}
+        <tr>
+            <td>{{ trend.month }}</td>
+            <td class="text-right">{{ trend.plots|default:"0"|intcomma }}</td>
+            <td class="text-right">{{ trend.transactions|default:"0"|intcomma }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- SECTION 6: REGIONAL INSIGHTS -->
+<div class="section-header">
+    <h2><i class="fas fa-map-marker-alt"></i> Regional Insights</h2>
+</div>
+
+<h3>Top 5 Counties by Listings</h3>
+<table class="data-table">
+    <thead>
+        <tr><th>County</th><th class="text-right">Listings</th><th class="text-right">Avg Price (KES)</th></tr>
+    </thead>
+    <tbody>
+        {% for county in top_counties %}
+        <tr>
+            <td>{{ county.county|default:"Unknown" }}</td>
+            <td class="text-right">{{ county.count|default:"0"|intcomma }}</td>
+            <td class="text-right">KES {{ county.avg_price|floatformat:0|intcomma|default:"0" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="3" class="text-center">No regional data available</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- EXECUTIVE SUMMARY -->
+<div class="section-header">
+    <h2><i class="fas fa-clipboard-list"></i> Executive Summary</h2>
+</div>
+
+<div class="info-box">
+    <strong>📊 Key Takeaways:</strong>
+    <ul style="margin-top: 10px; margin-left: 20px;">
+        <li>Platform has <strong>{{ total_plots|intcomma }} plots</strong> listed with {{ publication_rate }}% publication rate</li>
+        <li>Total transaction volume: <strong>KES {{ total_transaction_value|floatformat:0|intcomma }}</strong></li>
+        <li><strong>{{ total_users|intcomma }} registered users</strong> with {{ active_users|intcomma }} active participants</li>
+        <li>Transaction completion rate: <strong>{{ completion_rate }}%</strong></li>
+        <li>Current escrow holdings: <strong>KES {{ total_in_escrow|floatformat:0|intcomma }}</strong></li>
+    </ul>
+</div>
+
+<!-- CERTIFICATION -->
+<div class="signature-line">
+    <p><strong>Executive Report Certificate</strong></p>
+    <p>This report is electronically generated and certified by AgriPlot.</p>
+    <p><strong>Verification Code:</strong> {{ verification_code|default:"N/A" }}</p>
+    <p><strong>Document ID:</strong> {{ report_id|default:"N/A" }}</p>
+    <p><strong>Generated:</strong> {{ generated_date|date:"Y-m-d H:i:s" }}</p>
+    <p><strong>Generated By:</strong> {{ generated_by|default:"System" }}</p>
+</div>
+
+<!-- CONFIDENTIALITY NOTICE -->
+<div class="warning-box" style="margin-top: 20px;">
+    <strong>🔒 CONFIDENTIALITY NOTICE:</strong> This report contains sensitive business information and is intended for authorized administrative personnel only. Do not distribute externally without proper authorization.
+</div>
+{% endblock %}

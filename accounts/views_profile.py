@@ -5,6 +5,13 @@ from django.shortcuts import redirect, render
 
 from listings.models import Plot, UserInterest
 
+from .forms import (
+    AccountDetailsForm,
+    AgentDetailsForm,
+    ExtensionOfficerEditForm,
+    LandSurveyorEditForm,
+)
+
 from .models import Profile
 
 
@@ -153,43 +160,60 @@ def profile_edit(request):
     extension_officer = context["extension_officer"]
     land_surveyor = context["land_surveyor"]
 
+    account_form = AccountDetailsForm(user=user)
+    agent_form = AgentDetailsForm(instance=agent) if agent else None
+    extension_form = (
+        ExtensionOfficerEditForm(instance=extension_officer) if extension_officer else None
+    )
+    surveyor_form = (
+        LandSurveyorEditForm(instance=land_surveyor) if land_surveyor else None
+    )
+
     if request.method == "POST":
         section = request.POST.get("section")
         if section == "account":
-            user.first_name = request.POST.get("first_name", "").strip()
-            user.last_name = request.POST.get("last_name", "").strip()
-            email = request.POST.get("email", "").strip()
-            if email:
-                user.email = email
-            profile.phone = request.POST.get("phone", "").strip()
-            profile.address = request.POST.get("address", "").strip()
-            user.save()
-            profile.save()
-            messages.success(request, "Account details updated successfully.")
+            account_form = AccountDetailsForm(request.POST, user=user)
+            if account_form.is_valid():
+                user.first_name = account_form.cleaned_data["first_name"]
+                user.last_name = account_form.cleaned_data["last_name"]
+                user.email = account_form.cleaned_data["email"]
+                profile.phone = account_form.cleaned_data["phone"]
+                profile.address = account_form.cleaned_data["address"]
+                user.save()
+                profile.save()
+                messages.success(request, "Account details updated successfully.")
+                return redirect("listings:profile_edit")
+            messages.error(request, "Correct the account details below and try again.")
         elif section == "agent" and agent:
-            agent.phone = request.POST.get("agent_phone", "").strip()
-            agent.license_number = request.POST.get("license_number", "").strip()
-            agent.id_number = request.POST.get("id_number", "").strip()
-            agent.contact_preference = request.POST.get(
-                "contact_preference", agent.contact_preference
-            )
-            agent.available_from = request.POST.get("available_from") or agent.available_from
-            agent.available_to = request.POST.get("available_to") or agent.available_to
-            agent.save()
-            messages.success(request, "Agent details updated successfully.")
+            agent_form = AgentDetailsForm(request.POST, instance=agent)
+            if agent_form.is_valid():
+                agent_form.save()
+                messages.success(request, "Agent details updated successfully.")
+                return redirect("listings:profile_edit")
+            messages.error(request, "Correct the agent details below and try again.")
         elif section == "extension_officer" and extension_officer:
-            extension_officer.phone = request.POST.get("officer_phone", "").strip()
-            extension_officer.office_address = request.POST.get("office_address", "").strip()
-            extension_officer.save()
-            messages.success(request, "Extension officer details updated successfully.")
+            extension_form = ExtensionOfficerEditForm(request.POST, instance=extension_officer)
+            if extension_form.is_valid():
+                extension_form.save()
+                messages.success(request, "Extension officer details updated successfully.")
+                return redirect("listings:profile_edit")
+            messages.error(request, "Correct the extension officer details below and try again.")
         elif section == "land_surveyor" and land_surveyor:
-            land_surveyor.phone = request.POST.get("surveyor_phone", "").strip()
-            land_surveyor.office_address = request.POST.get("surveyor_address", "").strip()
-            land_surveyor.save()
-            messages.success(request, "Surveyor details updated successfully.")
+            surveyor_form = LandSurveyorEditForm(request.POST, instance=land_surveyor)
+            if surveyor_form.is_valid():
+                surveyor_form.save()
+                messages.success(request, "Surveyor details updated successfully.")
+                return redirect("listings:profile_edit")
+            messages.error(request, "Correct the surveyor details below and try again.")
 
-        return redirect("listings:profile_edit")
-
+    context.update(
+        {
+            "account_form": account_form,
+            "agent_form": agent_form,
+            "extension_form": extension_form,
+            "surveyor_form": surveyor_form,
+        }
+    )
     return render(request, "accounts/dashboard/profile_edit.html", context)
 
 
@@ -218,4 +242,3 @@ def account_settings(request):
         return redirect("listings:account_settings")
 
     return render(request, "accounts/dashboard/settings.html", context)
-

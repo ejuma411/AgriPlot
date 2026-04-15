@@ -27,6 +27,7 @@ urlpatterns = [
     path("verify/system-construction/", views_admin.system_construction_journal, name="system_construction_journal"),
     path("verify/registry/", views_admin.registry_parcels, name="registry_parcels"),
     path("verify/registry/mismatches/", views_admin.registry_mismatches, name="registry_mismatches"),
+    path('', views_admin.admin_dashboard, name='admin_dashboard'),
 
     # Legacy admin route compatibility
     path("verify/dashboard/", RedirectView.as_view(pattern_name="verification:verification_dashboard", permanent=True)),

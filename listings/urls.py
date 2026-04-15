@@ -43,7 +43,7 @@ urlpatterns = [
     path("dashboard/add-plot/", views.add_plot, name="add_plot"),
     path("dashboard/plot/<int:plot_id>/upload-document/", views.upload_verification_doc, name="dashboard_upload_doc"),
     path("verification-progress/", views.verification_progress, name="verification_progress"),
-
+    path('land/<int:pk>/full-details/', views.land_full_details, name='land_full_details'),
     # Messaging & contact
     path("plot/<int:plot_id>/contact/", views.contact_agent, name="contact_agent"),
 

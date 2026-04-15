@@ -62,12 +62,12 @@
                                     <tbody>
                                         <tr>
                                             <td class="field-label"><label class="required">First Name</label></td>
-                                            <td class="field-input"><input type="text" class="form-control" name="first_name" value="{{ request.user.first_name }}" required></td>
+                                            <td class="field-input">{{ account_form.first_name }}{% if account_form.first_name.errors %}<small class="text-danger d-block mt-1">{{ account_form.first_name.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Legal first name</small></td>
                                         </tr>
                                         <tr>
                                             <td class="field-label"><label class="required">Last Name</label></td>
-                                            <td class="field-input"><input type="text" class="form-control" name="last_name" value="{{ request.user.last_name }}" required></td>
+                                            <td class="field-input">{{ account_form.last_name }}{% if account_form.last_name.errors %}<small class="text-danger d-block mt-1">{{ account_form.last_name.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Legal last name</small></td>
                                         </tr>
                                         <tr>
@@ -77,17 +77,17 @@
                                         </tr>
                                         <tr>
                                             <td class="field-label"><label class="required">Email Address</label></td>
-                                            <td class="field-input"><input type="email" class="form-control" name="email" value="{{ request.user.email }}" required></td>
+                                            <td class="field-input">{{ account_form.email }}{% if account_form.email.errors %}<small class="text-danger d-block mt-1">{{ account_form.email.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Used for alerts and 2FA</small></td>
                                         </tr>
                                         <tr>
                                             <td class="field-label"><label>Phone Number</label></td>
-                                            <td class="field-input"><input type="tel" class="form-control" name="phone" value="{{ profile.phone|default:'' }}"></td>
+                                            <td class="field-input">{{ account_form.phone }}{% if account_form.phone.errors %}<small class="text-danger d-block mt-1">{{ account_form.phone.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">SMS verification</small></td>
                                         </tr>
                                         <tr>
                                             <td class="field-label"><label>Address</label></td>
-                                            <td class="field-input"><textarea class="form-control" name="address" rows="3">{{ profile.address|default:'' }}</textarea></td>
+                                            <td class="field-input">{{ account_form.address }}{% if account_form.address.errors %}<small class="text-danger d-block mt-1">{{ account_form.address.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Optional contact address</small></td>
                                         </tr>
                                     </tbody>
@@ -116,28 +116,24 @@
                                     <tbody>
                                         <tr>
                                             <td class="field-label"><label>Agent Phone</label></td>
-                                            <td class="field-input"><input type="tel" class="form-control" name="agent_phone" value="{{ agent.phone|default:'' }}"></td>
+                                            <td class="field-input">{{ agent_form.phone }}{% if agent_form.phone.errors %}<small class="text-danger d-block mt-1">{{ agent_form.phone.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Public contact</small></td>
                                         </tr>
                                         <tr>
                                             <td class="field-label"><label>License Number</label></td>
-                                            <td class="field-input"><input type="text" class="form-control" name="license_number" value="{{ agent.license_number|default:'' }}"></td>
+                                            <td class="field-input">{{ agent_form.license_number }}{% if agent_form.license_number.errors %}<small class="text-danger d-block mt-1">{{ agent_form.license_number.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Professional license</small></td>
                                         </tr>
                                         <tr>
                                             <td class="field-label"><label>National ID</label></td>
-                                            <td class="field-input"><input type="text" class="form-control" name="id_number" value="{{ agent.id_number|default:'' }}"></td>
+                                            <td class="field-input">{{ agent_form.id_number }}{% if agent_form.id_number.errors %}<small class="text-danger d-block mt-1">{{ agent_form.id_number.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Government ID</small></td>
                                         </tr>
                                         <tr>
                                             <td class="field-label"><label>Contact Preference</label></td>
                                             <td class="field-input">
-                                                <select class="form-select" name="contact_preference">
-                                                    <option value="email" {% if agent.contact_preference == 'email' %}selected{% endif %}>Email</option>
-                                                    <option value="phone" {% if agent.contact_preference == 'phone' %}selected{% endif %}>Phone</option>
-                                                    <option value="whatsapp" {% if agent.contact_preference == 'whatsapp' %}selected{% endif %}>WhatsApp</option>
-                                                    <option value="any" {% if agent.contact_preference == 'any' %}selected{% endif %}>Any</option>
-                                                </select>
+                                                {{ agent_form.contact_preference }}
+                                                {% if agent_form.contact_preference.errors %}<small class="text-danger d-block mt-1">{{ agent_form.contact_preference.errors|join:", " }}</small>{% endif %}
                                             </td>
                                             <td class="field-help"><small class="text-muted">Preferred channel</small></td>
                                         </tr>
@@ -145,9 +141,11 @@
                                             <td class="field-label"><label>Availability</label></td>
                                             <td class="field-input">
                                                 <div class="d-flex gap-2">
-                                                    <input type="time" class="form-control" name="available_from" value="{% if agent.available_from %}{{ agent.available_from|time:'H:i' }}{% endif %}">
-                                                    <input type="time" class="form-control" name="available_to" value="{% if agent.available_to %}{{ agent.available_to|time:'H:i' }}{% endif %}">
+                                                    {{ agent_form.available_from }}
+                                                    {{ agent_form.available_to }}
                                                 </div>
+                                                {% if agent_form.available_from.errors %}<small class="text-danger d-block mt-1">{{ agent_form.available_from.errors|join:", " }}</small>{% endif %}
+                                                {% if agent_form.available_to.errors %}<small class="text-danger d-block mt-1">{{ agent_form.available_to.errors|join:", " }}</small>{% endif %}
                                             </td>
                                             <td class="field-help"><small class="text-muted">Typical hours</small></td>
                                         </tr>
@@ -178,12 +176,12 @@
                                     <tbody>
                                         <tr>
                                             <td class="field-label"><label>Phone</label></td>
-                                            <td class="field-input"><input type="tel" class="form-control" name="officer_phone" value="{{ extension_officer.phone|default:'' }}"></td>
+                                            <td class="field-input">{{ extension_form.phone }}{% if extension_form.phone.errors %}<small class="text-danger d-block mt-1">{{ extension_form.phone.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Work contact</small></td>
                                         </tr>
                                         <tr>
                                             <td class="field-label"><label>Office Address</label></td>
-                                            <td class="field-input"><textarea class="form-control" name="office_address" rows="2">{{ extension_officer.office_address|default:'' }}</textarea></td>
+                                            <td class="field-input">{{ extension_form.office_address }}{% if extension_form.office_address.errors %}<small class="text-danger d-block mt-1">{{ extension_form.office_address.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Office location</small></td>
                                         </tr>
                                         <tr>
@@ -218,12 +216,12 @@
                                     <tbody>
                                         <tr>
                                             <td class="field-label"><label>Phone</label></td>
-                                            <td class="field-input"><input type="tel" class="form-control" name="surveyor_phone" value="{{ land_surveyor.phone|default:'' }}"></td>
+                                            <td class="field-input">{{ surveyor_form.phone }}{% if surveyor_form.phone.errors %}<small class="text-danger d-block mt-1">{{ surveyor_form.phone.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Work contact</small></td>
                                         </tr>
                                         <tr>
                                             <td class="field-label"><label>Office Address</label></td>
-                                            <td class="field-input"><textarea class="form-control" name="surveyor_address" rows="2">{{ land_surveyor.office_address|default:'' }}</textarea></td>
+                                            <td class="field-input">{{ surveyor_form.office_address }}{% if surveyor_form.office_address.errors %}<small class="text-danger d-block mt-1">{{ surveyor_form.office_address.errors|join:", " }}</small>{% endif %}</td>
                                             <td class="field-help"><small class="text-muted">Office location</small></td>
                                         </tr>
                                         <tr>

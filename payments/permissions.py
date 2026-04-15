@@ -91,6 +91,35 @@ def step_requires_admin_action(step):
     return any(keyword in owner_label for keyword in ADMIN_STEP_KEYWORDS)
 
 
+def describe_payment_actor(user, payment):
+    if not getattr(user, "is_authenticated", False):
+        return "Guest"
+    if user_is_finance_admin(user):
+        return "Finance admin"
+    if user == payment.buyer:
+        return "Buyer / tenant"
+    if user == payment.seller:
+        return "Seller / landowner"
+    return "Viewer"
+
+
+def step_allowed_actor_labels(payment, step):
+    if step_requires_admin_action(step):
+        return ["AgriPlot admin / appointed advocate"]
+
+    if step.code in {"due_diligence", "offer", "stamp_duty", "completion_docs", "registration", "payment_security"}:
+        return ["Buyer / tenant"]
+    if step.code == "handover":
+        return ["Seller / landowner"]
+    if step.code in {"agreement", "lease_registration", "soil_health_baseline"}:
+        return ["Buyer / tenant", "Seller / landowner"]
+    if step.code == "lcb_consent":
+        if payment.transaction_type == payment.TransactionType.LEASE:
+            return ["Seller / landowner"]
+        return ["Buyer / tenant"]
+    return [step.responsible_party_label or "Assigned stakeholder"]
+
+
 def user_can_update_specific_closing_step(user, payment, step):
     if not getattr(user, "is_authenticated", False):
         return PaymentDecision(False, "You need to sign in to update this step.")
@@ -100,14 +129,14 @@ def user_can_update_specific_closing_step(user, payment, step):
     if step_requires_admin_action(step):
         return PaymentDecision(
             False,
-            f"'{step.display_title}' is handled by AgriPlot admin or an appointed official and will appear in the admin task queue.",
+            f"'{step.display_title}' can only be confirmed by AgriPlot admin or the appointed advocate / official handling this filing.",
         )
 
     active_step = payment.current_assigned_step
     if active_step and active_step.pk != step.pk and step.status != step.Status.COMPLETED:
         return PaymentDecision(
             False,
-            f"Finish the current assigned step first: {active_step.display_title}.",
+            f"This step is read-only for now. The only open task is '{active_step.display_title}'.",
         )
 
     actor_is_buyer = user == payment.buyer
@@ -133,10 +162,34 @@ def user_can_update_specific_closing_step(user, payment, step):
     if allowed_map.get(step.code, False):
         return PaymentDecision(True)
 
+    actor_label = describe_payment_actor(user, payment)
+    allowed_labels = ", ".join(step_allowed_actor_labels(payment, step))
     return PaymentDecision(
         False,
-        f"Only the assigned stakeholder or a finance admin can update '{step.title}'.",
+        f"You are signed in as {actor_label.lower()}. '{step.display_title}' is currently reserved for {allowed_labels.lower()} or a finance admin.",
     )
+
+
+def user_can_start_inline_step_checkout(user, payment, step):
+    if not getattr(user, "is_authenticated", False):
+        return PaymentDecision(False, "You need to sign in before starting checkout.")
+    if step.code != "payment_security":
+        return PaymentDecision(False, "Inline checkout is only available on the security deposit step.")
+    if step.status == step.Status.COMPLETED:
+        return PaymentDecision(False, "This checkout step is already complete.")
+    active_step = payment.current_assigned_step
+    if active_step and active_step.pk != step.pk:
+        return PaymentDecision(
+            False,
+            f"Inline checkout is locked until the current open task '{active_step.display_title}' is complete.",
+        )
+    if user != payment.buyer:
+        actor_label = describe_payment_actor(user, payment)
+        return PaymentDecision(
+            False,
+            f"You are signed in as {actor_label.lower()}. Only the buyer / tenant can start the security-deposit checkout.",
+        )
+    return PaymentDecision(True)
 
 
 def user_can_transition_payment(user, payment, action):

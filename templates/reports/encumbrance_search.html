@@ -1,0 +1,401 @@
+{% extends "reports/base_report.html" %}
+
+{% block extra_css %}
+<style>
+    .report-title {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .report-title h1 {
+        color: #1B5E20;
+        font-size: 24pt;
+        margin-bottom: 5px;
+    }
+    
+    .report-title .subtitle {
+        color: #666;
+        font-size: 11pt;
+        border-bottom: 2px solid #4CAF50;
+        display: inline-block;
+        padding-bottom: 5px;
+    }
+    
+    .property-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e8f5e9 100%);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
+        border-left: 4px solid #2E7D32;
+    }
+    
+    .property-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .property-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        padding: 8px 0;
+        border-bottom: 1px dashed #ddd;
+    }
+    
+    .property-label {
+        font-weight: bold;
+        color: #2E7D32;
+        font-size: 10pt;
+    }
+    
+    .property-value {
+        color: #333;
+        font-size: 10pt;
+    }
+    
+    .score-circle {
+        text-align: center;
+        margin: 20px 0;
+    }
+    
+    .score-value {
+        font-size: 36pt;
+        font-weight: bold;
+        color: #2E7D32;
+    }
+    
+    .status-completed {
+        color: #4CAF50;
+        font-weight: bold;
+    }
+    
+    .status-pending {
+        color: #FF9800;
+        font-weight: bold;
+    }
+    
+    .status-warning {
+        color: #f44336;
+        font-weight: bold;
+    }
+    
+    .checklist-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    
+    .checklist-table th {
+        background-color: #2E7D32;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-size: 10pt;
+    }
+    
+    .checklist-table td {
+        padding: 10px;
+        border-bottom: 1px solid #e0e0e0;
+        font-size: 9pt;
+    }
+    
+    .checklist-table tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .icon-check {
+        color: #4CAF50;
+        font-size: 14pt;
+    }
+    
+    .icon-warning {
+        color: #f44336;
+        font-size: 14pt;
+    }
+    
+    .icon-pending {
+        color: #FF9800;
+        font-size: 14pt;
+    }
+    
+    .search-box {
+        background-color: #E3F2FD;
+        border-left: 4px solid #2196F3;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 5px;
+    }
+    
+    .encumbrance-clear {
+        background-color: #E8F5E9;
+        border-left: 4px solid #4CAF50;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 5px;
+    }
+    
+    .encumbrance-warning {
+        background-color: #FFEBEE;
+        border-left: 4px solid #f44336;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 5px;
+    }
+    
+    .verification-timeline {
+        margin: 20px 0;
+    }
+    
+    .timeline-item {
+        display: flex;
+        margin-bottom: 15px;
+        padding-left: 20px;
+        border-left: 2px solid #4CAF50;
+    }
+    
+    .timeline-date {
+        min-width: 120px;
+        font-weight: bold;
+        color: #666;
+        font-size: 9pt;
+    }
+    
+    .timeline-content {
+        flex: 1;
+    }
+    
+    .disclaimer {
+        background-color: #FFF3E0;
+        padding: 15px;
+        margin-top: 30px;
+        font-size: 8pt;
+        color: #666;
+        border-radius: 5px;
+    }
+    
+    .footer-signature {
+        margin-top: 40px;
+        text-align: center;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+    }
+    
+    .qr-placeholder {
+        text-align: center;
+        margin-top: 20px;
+        font-family: monospace;
+        font-size: 8pt;
+        color: #999;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-title">
+    <h1>🏆 ENCUMBRANCE & SEARCH REPORT</h1>
+    <div class="subtitle">Official Due Diligence Certificate</div>
+</div>
+
+<!-- Property Information Card -->
+<div class="property-card">
+    <h2 style="color: #2E7D32; margin-bottom: 15px;">📋 Property Information</h2>
+    <div class="property-grid">
+        <div class="property-item">
+            <span class="property-label">Plot Title:</span>
+            <span class="property-value"><strong>{{ plot.title }}</strong></span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">Parcel Number:</span>
+            <span class="property-value">{{ plot.parcel_number|default:"Not registered" }}</span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">Location:</span>
+            <span class="property-value">{{ plot.location }}</span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">County:</span>
+            <span class="property-value">{{ plot.county|default:"Not specified" }}</span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">Sub-County:</span>
+            <span class="property-value">{{ plot.subcounty|default:"Not specified" }}</span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">Land Type:</span>
+            <span class="property-value">{{ plot.get_land_type_display|default:"Agricultural" }}</span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">Area:</span>
+            <span class="property-value">{{ plot.area|floatformat:2 }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">Listed On:</span>
+            <span class="property-value">{{ plot.created_at|date:"F d, Y" }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- Due Diligence Score -->
+<div class="score-circle">
+    <div class="progress-container" style="width: 80%; margin: 0 auto;">
+        <div class="progress-bar" style="width: {{ diligence_score }}%; background-color: {% if diligence_score >= 80 %}#4CAF50{% elif diligence_score >= 60 %}#FF9800{% else %}#f44336{% endif %};">
+            Overall Due Diligence Score: {{ diligence_score|floatformat:0 }}%
+        </div>
+    </div>
+    <p style="margin-top: 10px; color: #666; font-size: 9pt;">
+        {% if diligence_score >= 80 %}
+        ✅ High confidence - Property appears to have clear title
+        {% elif diligence_score >= 60 %}
+        ⚠ Moderate confidence - Some items require attention
+        {% else %}
+        ❌ Low confidence - Significant issues detected
+        {% endif %}
+    </p>
+</div>
+
+<!-- Due Diligence Checklist -->
+<h2 style="color: #2E7D32; margin: 25px 0 15px 0;">✅ Due Diligence Checklist</h2>
+<table class="checklist-table">
+    <thead>
+        <tr>
+            <th width="35%">Verification Item</th>
+            <th width="20%">Status</th>
+            <th width="45%">Reference / Details</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in due_diligence %}
+        <tr>
+            <td><strong>{{ item.item }}</strong></td>
+            <td>
+                {% if item.status == 'completed' %}
+                    <span class="status-completed">✓ Verified</span>
+                {% elif item.status == 'pending' %}
+                    <span class="status-pending">⏳ Pending</span>
+                {% elif item.status == 'warning' %}
+                    <span class="status-warning">⚠ Review Required</span>
+                {% else %}
+                    <span class="status-pending">{{ item.status }}</span>
+                {% endif %}
+            </td>
+            <td style="font-size: 9pt;">{{ item.details }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Official Search Results -->
+<h2 style="color: #2E7D32; margin: 25px 0 15px 0;">🔍 Official Land Search</h2>
+<div class="search-box">
+    <div class="property-grid">
+        <div class="property-item">
+            <span class="property-label">Search Reference:</span>
+            <span class="property-value"><strong>{{ search_reference|default:"Pending" }}</strong></span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">Search Date:</span>
+            <span class="property-value">{{ search_date|date:"F d, Y"|default:"Not conducted" }}</span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">Certificate Issue Date:</span>
+            <span class="property-value">{{ plot.search_certificate_date|date:"F d, Y"|default:"Pending" }}</span>
+        </div>
+        <div class="property-item">
+            <span class="property-label">Search Status:</span>
+            <span class="property-value">
+                {% if search_reference %}
+                    <span class="status-completed">✓ Completed</span>
+                {% else %}
+                    <span class="status-pending">Pending</span>
+                {% endif %}
+            </span>
+        </div>
+    </div>
+    {% if plot.search_result %}
+    <div style="margin-top: 15px; padding: 10px; background: white; border-radius: 4px;">
+        <strong>Search Result Summary:</strong><br>
+        {{ plot.search_result }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Encumbrance Record -->
+<h2 style="color: #2E7D32; margin: 25px 0 15px 0;">⚠ Encumbrance Record</h2>
+{% if plot.registry_has_encumbrances %}
+<div class="encumbrance-warning">
+    <strong>🚨 ENCUMBRANCES RECORDED AGAINST THIS PROPERTY</strong><br><br>
+    {{ plot.encumbrances|default:"The official registry indicates that encumbrances or caveats have been registered against this property. Prospective buyers should conduct a detailed review of these encumbrances and seek legal advice before proceeding with any transaction." }}
+</div>
+{% else %}
+<div class="encumbrance-clear">
+    <strong>✓ NO ENCUMBRANCES RECORDED</strong><br><br>
+    The official land registry search confirms that there are no encumbrances, caveats, or restrictions registered against this property. The title appears to be free and clear for transfer.
+</div>
+{% endif %}
+
+<!-- Verification Timeline -->
+{% if verification_logs %}
+<h2 style="color: #2E7D32; margin: 25px 0 15px 0;">📅 Verification Timeline</h2>
+<div class="verification-timeline">
+    {% for log in verification_logs|slice:":10" %}
+    <div class="timeline-item">
+        <div class="timeline-date">{{ log.created_at|date:"Y-m-d H:i" }}</div>
+        <div class="timeline-content">
+            <strong>{{ log.action|default:"Verification Event" }}</strong><br>
+            <span style="font-size: 8pt; color: #666;">{{ log.notes|default:"Verification recorded in the system" }}</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Summary & Recommendations -->
+<h2 style="color: #2E7D32; margin: 25px 0 15px 0;">📊 Summary & Recommendations</h2>
+<div class="property-card">
+    {% if diligence_score >= 80 %}
+    <p><strong>✅ RECOMMENDATION: Proceed with Transaction</strong></p>
+    <p>The due diligence process indicates that this property has a clear title with all necessary documentation in place. The buyer may proceed with confidence, subject to standard conveyancing procedures.</p>
+    {% elif diligence_score >= 60 %}
+    <p><strong>⚠ RECOMMENDATION: Proceed with Caution</strong></p>
+    <p>While most verification items are complete, there are some pending items that require attention before finalizing the transaction. Address the pending items before proceeding.</p>
+    {% else %}
+    <p><strong>❌ RECOMMENDATION: Do Not Proceed</strong></p>
+    <p>Significant issues have been identified during the due diligence process. It is strongly recommended to resolve these issues or seek alternative properties.</p>
+    {% endif %}
+</div>
+
+<!-- Legal Disclaimer -->
+<div class="disclaimer">
+    <strong>LEGAL DISCLAIMER</strong><br>
+    This report is generated electronically by AgriPlot based on information available in the official registry and system records. 
+    While every effort is made to ensure accuracy, this report does not constitute legal advice. 
+    Prospective buyers/tenants are strongly advised to:
+    <ul style="margin-top: 10px; margin-left: 20px;">
+        <li>Conduct their own independent due diligence</li>
+        <li>Engage a qualified legal professional to review all documents</li>
+        <li>Visit the property physically to verify boundaries and condition</li>
+        <li>Verify all information with the relevant government authorities</li>
+    </ul>
+</div>
+
+<!-- Footer Signature -->
+<div class="footer-signature">
+    <div style="display: inline-block; text-align: left;">
+        <div style="margin-bottom: 20px;">
+            <strong>Due Diligence Certificate</strong><br>
+            This document serves as official due diligence evidence for the above-named property.
+        </div>
+        <div>
+            <strong>Verification Code:</strong> {{ verification_code }}<br>
+            <strong>Certificate ID:</strong> {{ report_id }}<br>
+            <strong>Issued By:</strong> {{ generated_by }}<br>
+            <strong>Issue Date:</strong> {{ generated_date|date:"F d, Y H:i:s" }}
+        </div>
+    </div>
+    <div class="qr-placeholder">
+        [ DIGITAL SEAL - VERIFY ONLINE AT AGRIPLOT.COM/VERIFY/{{ verification_code }} ]
+    </div>
+</div>
+{% endblock %}

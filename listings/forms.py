@@ -4,7 +4,9 @@ import hashlib
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 from django.db.models import Q
+from django.urls import reverse
 from django.utils import timezone
 from .models import *
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
@@ -13,6 +15,15 @@ from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from registry_mock.services import verify_with_registry
 from registry_mock.models import RegistryMismatchAttempt
 import re
+
+from accounts.validators import (
+    normalize_email,
+    validate_kenyan_phone,
+    validate_license_number,
+    validate_national_id_number,
+    validate_person_name,
+    validate_realistic_email,
+)
 
 # Get logger for this module
 logger = logging.getLogger(__name__)
@@ -25,22 +36,11 @@ PARCEL_PATTERN_REGISTRY = re.compile(r"^[A-Za-z0-9]+(?:/[A-Za-z0-9]+)+$")
 PARCEL_PATTERN_LR = re.compile(r"^L\.?R\.?\s*(NO\.?|NO|NUMBER)?\s*\d+(?:/\d+)*$", re.IGNORECASE)
 
 
-def _normalize_kenyan_phone(value):
-    phone = str(value or "").strip().replace(" ", "")
-    if phone.startswith("+"):
-        phone = phone[1:]
-    if phone.startswith("0"):
-        phone = "254" + phone[1:]
-    elif phone.startswith("7"):
-        phone = "254" + phone
-    return phone
-
-
 def _phone_exists_in_system(phone_value):
     from accounts.models import Agent, Profile
     from security.models import PhoneEmailVerification
 
-    normalized_input = _normalize_kenyan_phone(phone_value)
+    normalized_input = validate_kenyan_phone(phone_value)
     if not normalized_input:
         return False
 
@@ -53,7 +53,15 @@ def _phone_exists_in_system(phone_value):
     existing_numbers += list(
         PhoneEmailVerification.objects.exclude(phone_number__exact="").values_list("phone_number", flat=True)
     )
-    return any(_normalize_kenyan_phone(number) == normalized_input for number in existing_numbers)
+    for number in existing_numbers:
+        if not number:
+            continue
+        try:
+            if validate_kenyan_phone(number) == normalized_input:
+                return True
+        except ValidationError:
+            continue
+    return False
 
 def _validate_parcel_number(value):
     if not value:
@@ -529,29 +537,22 @@ class BaseUserRegistrationForm(UserCreationForm):
         # Add Bootstrap classes to all fields
         for field_name, field in self.fields.items():
             field.widget.attrs.update({'class': 'form-control'})
-        
-        # Add phone validation
-        self.fields['phone'].validators.append(self.validate_phone)
-    
-    def validate_phone(self, value):
-        """Basic phone number validation"""
-        import re
-        pattern = r'^\+?254\d{9}$|^0\d{9}$'
-        if not re.match(pattern, value):
-            raise forms.ValidationError(
-                "Enter a valid Kenyan phone number (e.g., 0712345678 or +254712345678)"
-            )
-        return True
+        self.fields["email"].widget.attrs["data-email-check-url"] = reverse("listings:validate_email_input")
 
     def clean_email(self):
-        email = (self.cleaned_data.get("email") or "").strip().lower()
+        email = validate_realistic_email(self.cleaned_data.get("email"))
         if email and User.objects.filter(email__iexact=email).exists():
             raise forms.ValidationError("An account with this email already exists.")
-        return email
+        return normalize_email(email)
+
+    def clean_first_name(self):
+        return validate_person_name(self.cleaned_data.get("first_name"), "First name")
+
+    def clean_last_name(self):
+        return validate_person_name(self.cleaned_data.get("last_name"), "Last name")
 
     def clean_phone(self):
-        phone = (self.cleaned_data.get("phone") or "").strip()
-        self.validate_phone(phone)
+        phone = validate_kenyan_phone(self.cleaned_data.get("phone"))
         if _phone_exists_in_system(phone):
             raise forms.ValidationError("An account with this phone number already exists.")
         return phone
@@ -642,6 +643,10 @@ class AgentRegistrationForm(BaseUserRegistrationForm):
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("id_number"):
+            cleaned["id_number"] = validate_national_id_number(cleaned.get("id_number"))
+        if cleaned.get("license_number"):
+            cleaned["license_number"] = validate_license_number(cleaned.get("license_number"))
         _validate_upload("KRA PIN", cleaned.get('kra_pin'))
         _validate_upload("License Document", cleaned.get('license_doc'))
         _validate_upload("Practicing Certificate", cleaned.get('practicing_certificate'))

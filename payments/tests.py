@@ -750,6 +750,7 @@ class PaymentAuthorizationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Admin task confirmation")
         self.assertContains(response, "Admin / official action required")
         self.assertNotContains(response, "Save step update")
 
@@ -802,7 +803,7 @@ class PaymentAuthorizationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Completed")
         self.assertContains(response, "Land Control Board &amp; Family Consents")
-        self.assertContains(response, "Current")
+        self.assertContains(response, "Open now")
         self.assertContains(response, "Rural Valuation &amp; Stamp Duty")
 
     def test_security_deposit_workspace_explains_tenant_action_clearly(self):
@@ -850,10 +851,214 @@ class PaymentAuthorizationTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "What you need to do in this step")
+        self.assertContains(response, "Task confirmation")
+        self.assertContains(response, "Only the step currently needed from admin, advocate, buyer, or seller stays open here.")
+        self.assertContains(response, "Access control")
+        self.assertContains(response, "Signed in as")
+        self.assertContains(response, "Buyer / tenant")
+        self.assertContains(response, "Confirmation checklist")
         self.assertContains(response, "Pay the deposit through AgriPlot so it is recorded in escrow.")
-        self.assertContains(response, "This is not the stage for LCB consent, registry filings, or other admin and officer documents.")
-        self.assertContains(response, "Pay security deposit")
+        self.assertContains(response, "Security deposit checkout form")
+
+    def test_seller_sees_checkout_locked_when_buyer_owns_security_step(self):
+        owner_user = self.User.objects.create_user(
+            username="lease_security_locked_owner",
+            password="secret123",
+        )
+        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        landowner = LandownerProfile.objects.create(
+            user=owner_user,
+            national_id=SimpleUploadedFile("lease_security_locked_id.txt", b"id"),
+            kra_pin=SimpleUploadedFile("lease_security_locked_pin.txt", b"pin"),
+        )
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Lease Security Locked Plot",
+            location="Nakuru",
+            area=2.5,
+            price="900000.00",
+            lease_price_monthly="45000.00",
+            listing_type="lease",
+            land_type="agricultural",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=self.buyer,
+            seller=owner_user,
+            plot=plot,
+            title="Lease Security Locked Deal",
+            amount="45000.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.ESCROW_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.LEASE,
+            status=PaymentRequest.Status.PAID,
+            phone_number="254700000229",
+            lease_start_date=timezone.localdate() + timedelta(days=7),
+            lease_end_date=timezone.localdate() + timedelta(days=372),
+            lease_security_deposit="90000.00",
+        )
+        payment.ensure_closing_steps()
+        security_step = payment.closing_steps.get(code="payment_security")
+        self.client.login(username="lease_security_locked_owner", password="secret123")
+
+        response = self.client.get(
+            reverse("payments:closing_step_workspace", kwargs={"pk": payment.pk, "step_id": security_step.pk})
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Access control")
+        self.assertContains(response, "Seller / landowner")
+        self.assertContains(response, "Checkout locked")
+        self.assertContains(response, "Only the buyer / tenant can start the security-deposit checkout.")
+        self.assertNotContains(response, "Security deposit checkout form")
+
+    def test_workspace_redirects_future_step_back_to_current_open_task(self):
+        owner_user = self.User.objects.create_user(
+            username="future_step_owner",
+            password="secret123",
+        )
+        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        landowner = LandownerProfile.objects.create(
+            user=owner_user,
+            national_id=SimpleUploadedFile("future_step_id.txt", b"id"),
+            kra_pin=SimpleUploadedFile("future_step_pin.txt", b"pin"),
+        )
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Future Step Plot",
+            location="Nakuru",
+            area=2.0,
+            price="1200000.00",
+            sale_price="1200000.00",
+            listing_type="sale",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=self.buyer,
+            seller=owner_user,
+            plot=plot,
+            title="Future Step Deal",
+            amount="120000.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.ESCROW_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.PAID,
+            phone_number="254700000224",
+        )
+        payment.ensure_closing_steps()
+        current_step = payment.closing_steps.get(code="due_diligence")
+        future_step = payment.closing_steps.get(code="registration")
+        self.client.login(username="buyer_auth", password="secret123")
+
+        response = self.client.get(
+            reverse("payments:closing_step_workspace", kwargs={"pk": payment.pk, "step_id": future_step.pk})
+        )
+
+        self.assertRedirects(
+            response,
+            reverse("payments:closing_step_workspace", kwargs={"pk": payment.pk, "step_id": current_step.pk}),
+            fetch_redirect_response=False,
+        )
+
+    def test_invalid_step_update_renders_workspace_with_inline_errors(self):
+        owner_user = self.User.objects.create_user(
+            username="invalid_update_owner",
+            password="secret123",
+        )
+        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        landowner = LandownerProfile.objects.create(
+            user=owner_user,
+            national_id=SimpleUploadedFile("invalid_update_id.txt", b"id"),
+            kra_pin=SimpleUploadedFile("invalid_update_pin.txt", b"pin"),
+        )
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Invalid Update Plot",
+            location="Bomet",
+            area=3.5,
+            price="1800000.00",
+            sale_price="1800000.00",
+            listing_type="sale",
+            land_type="agricultural",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=self.buyer,
+            seller=owner_user,
+            plot=plot,
+            title="Invalid Update Deal",
+            amount="180000.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.ESCROW_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.PAID,
+            phone_number="254700000231",
+        )
+        payment.ensure_closing_steps()
+        step = payment.closing_steps.get(code="stamp_duty")
+        due_diligence_step = payment.closing_steps.get(code="due_diligence")
+        agreement_step = payment.closing_steps.get(code="agreement")
+        lcb_step = payment.closing_steps.get(code="lcb_consent")
+        due_diligence_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=self.buyer, bypass_evidence=True)
+        agreement_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=self.finance, bypass_evidence=True)
+        lcb_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=self.finance, bypass_evidence=True)
+        self.client.login(username="buyer_auth", password="secret123")
+
+        response = self.client.post(
+            reverse("payments:update_closing_step", kwargs={"pk": payment.pk, "step_id": step.pk}),
+            data={"status": PaymentClosingStep.Status.COMPLETED, "notes": "Attempting completion too early"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertContains(response, "Submission needs correction")
+        self.assertContains(response, "Please correct the closing tracker update and try again.")
+
+    def test_denied_step_update_renders_workspace_with_access_control_message(self):
+        owner_user = self.User.objects.create_user(
+            username="denied_update_owner",
+            password="secret123",
+        )
+        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        landowner = LandownerProfile.objects.create(
+            user=owner_user,
+            national_id=SimpleUploadedFile("denied_update_id.txt", b"id"),
+            kra_pin=SimpleUploadedFile("denied_update_pin.txt", b"pin"),
+        )
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Denied Update Plot",
+            location="Bomet",
+            area=3.5,
+            price="1800000.00",
+            sale_price="1800000.00",
+            listing_type="sale",
+            land_type="agricultural",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=self.buyer,
+            seller=owner_user,
+            plot=plot,
+            title="Denied Update Deal",
+            amount="180000.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.ESCROW_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.PAID,
+            phone_number="254700000232",
+        )
+        payment.ensure_closing_steps()
+        step = payment.closing_steps.get(code="lcb_consent")
+        due_diligence_step = payment.closing_steps.get(code="due_diligence")
+        agreement_step = payment.closing_steps.get(code="agreement")
+        due_diligence_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=self.buyer, bypass_evidence=True)
+        agreement_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=self.finance, bypass_evidence=True)
+        self.client.login(username="buyer_auth", password="secret123")
+
+        response = self.client.post(
+            reverse("payments:update_closing_step", kwargs={"pk": payment.pk, "step_id": step.pk}),
+            data={"status": PaymentClosingStep.Status.IN_PROGRESS, "notes": "Buyer trying admin step"},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, "Submission blocked by access control")
+        self.assertContains(response, "Access control")
 
     def test_security_deposit_checkout_uses_exact_agreed_amount(self):
         owner_user = self.User.objects.create_user(
@@ -1057,6 +1262,69 @@ class PaymentAuthorizationTests(TestCase):
         )
         self.assertEqual(paid_poll_response.status_code, 200)
         self.assertEqual(paid_poll_response.json()["state"], "paid")
+
+    def test_seller_cannot_start_inline_security_deposit_checkout(self):
+        owner_user = self.User.objects.create_user(
+            username="lease_inline_blocked_owner",
+            password="secret123",
+        )
+        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        landowner = LandownerProfile.objects.create(
+            user=owner_user,
+            national_id=SimpleUploadedFile("lease_inline_blocked_id.txt", b"id"),
+            kra_pin=SimpleUploadedFile("lease_inline_blocked_pin.txt", b"pin"),
+        )
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Lease Inline Blocked Plot",
+            location="Nyeri",
+            area=2.8,
+            price="950000.00",
+            lease_price_monthly="35000.00",
+            listing_type="lease",
+            land_type="agricultural",
+        )
+        anchor = PaymentRequest.objects.create(
+            buyer=self.buyer,
+            seller=owner_user,
+            plot=plot,
+            title="Lease Inline Blocked Deal",
+            amount="35000.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.COMMITMENT_FEE,
+            transaction_type=PaymentRequest.TransactionType.LEASE,
+            status=PaymentRequest.Status.PAID,
+            phone_number="254700000230",
+            lease_start_date=timezone.localdate() + timedelta(days=5),
+            lease_end_date=timezone.localdate() + timedelta(days=370),
+            intended_use="Potatoes",
+            lease_security_deposit="87500.00",
+        )
+        anchor.ensure_closing_steps()
+        offer_step = anchor.closing_steps.get(code="offer")
+        lcb_step = anchor.closing_steps.get(code="lcb_consent")
+        agreement_step = anchor.closing_steps.get(code="agreement")
+        offer_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=self.buyer, bypass_evidence=True)
+        lcb_step.document = SimpleUploadedFile("inline_blocked_lcb.pdf", b"lcb")
+        lcb_step.consent_reference_number = "LCB-789"
+        lcb_step.meeting_date = timezone.localdate()
+        lcb_step.save(update_fields=["document", "consent_reference_number", "meeting_date", "updated_at"])
+        lcb_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=self.finance, bypass_evidence=True)
+        agreement_step.buyer_confirmed_at = timezone.now()
+        agreement_step.seller_confirmed_at = timezone.now()
+        agreement_step.save(update_fields=["buyer_confirmed_at", "seller_confirmed_at", "updated_at"])
+        agreement_step.set_status(PaymentClosingStep.Status.COMPLETED, actor=self.finance, bypass_evidence=True)
+        security_step = anchor.closing_steps.get(code="payment_security")
+        self.client.login(username="lease_inline_blocked_owner", password="secret123")
+
+        response = self.client.post(
+            reverse("payments:closing_step_stk_push", kwargs={"pk": anchor.pk, "step_id": security_step.pk}),
+            data={"phone_number": "0718810504"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(response, "Only the buyer / tenant can start the security-deposit checkout.")
 
     def test_closing_step_update_resolves_anchor_payment_when_child_pk_is_used(self):
         owner_user = self.User.objects.create_user(

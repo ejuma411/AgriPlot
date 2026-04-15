@@ -2864,3 +2864,179 @@ class LeaseWaitlistEntry(models.Model):
         self.status = self.Status.WITHDRAWN
         if save:
             self.save(update_fields=["status", "updated_at"])
+
+# Add this to your existing payments/models.py file
+
+from django.db import models
+from django.contrib.auth import get_user_model
+from listings.models import Plot
+from django.utils import timezone
+
+User = get_user_model()
+
+class Deal(models.Model):
+    TRANSACTION_TYPES = [
+        ('purchase', 'Purchase'),
+        ('lease', 'Lease'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+        ('disputed', 'Disputed'),
+    ]
+    
+    # Basic Information
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name='deals')
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='purchases')
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sales')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    
+    # Financial Details
+    offer_price = models.DecimalField(max_digits=15, decimal_places=2)
+    final_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    platform_fee = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    
+    # For Lease Transactions
+    lease_duration_months = models.IntegerField(null=True, blank=True)
+    monthly_rent = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    security_deposit = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    lease_start_date = models.DateField(null=True, blank=True)
+    lease_end_date = models.DateField(null=True, blank=True)
+    
+    # Milestone Dates
+    offer_accepted_date = models.DateTimeField(null=True, blank=True)
+    due_diligence_date = models.DateTimeField(null=True, blank=True)
+    lcb_consent_date = models.DateTimeField(null=True, blank=True)
+    stamp_duty_date = models.DateTimeField(null=True, blank=True)
+    title_transfer_date = models.DateTimeField(null=True, blank=True)
+    final_payment_date = models.DateTimeField(null=True, blank=True)
+    completion_date = models.DateTimeField(null=True, blank=True)
+    
+    # Lease Specific Milestones
+    agreement_date = models.DateTimeField(null=True, blank=True)
+    handover_date = models.DateTimeField(null=True, blank=True)
+    lease_active_date = models.DateTimeField(null=True, blank=True)
+    
+    # Deadlines
+    offer_deadline = models.DateField(null=True, blank=True)
+    due_diligence_deadline = models.DateField(null=True, blank=True)
+    lcb_consent_deadline = models.DateField(null=True, blank=True)
+    stamp_duty_deadline = models.DateField(null=True, blank=True)
+    title_transfer_deadline = models.DateField(null=True, blank=True)
+    final_payment_deadline = models.DateField(null=True, blank=True)
+    completion_deadline = models.DateField(null=True, blank=True)
+    
+    # Notes and Documentation
+    notes = models.TextField(blank=True)
+    documents = models.JSONField(default=list)  # Store document references
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Deal {self.id} - {self.plot.title} - {self.buyer.username}"
+    
+    @property
+    def progress_percentage(self):
+        """Calculate transaction progress"""
+        if self.transaction_type == 'purchase':
+            milestones = [
+                self.offer_accepted_date,
+                self.due_diligence_date,
+                self.lcb_consent_date,
+                self.stamp_duty_date,
+                self.title_transfer_date,
+                self.final_payment_date,
+                self.completion_date
+            ]
+        else:
+            milestones = [
+                self.offer_accepted_date,
+                self.agreement_date,
+                self.security_deposit,
+                self.final_payment_date,
+                self.handover_date,
+                self.lease_active_date
+            ]
+        
+        completed = sum(1 for m in milestones if m is not None)
+        return (completed / len(milestones)) * 100
+    
+    @property
+    def days_elapsed(self):
+        """Days since deal was created"""
+        return (timezone.now().date() - self.created_at.date()).days
+
+    def get_bottlenecks(self):
+        """Identify stalled steps"""
+        bottlenecks = []
+        if self.offer_accepted_date and not self.due_diligence_date:
+            bottlenecks.append("Due Diligence pending")
+        if self.due_diligence_date and not self.lcb_consent_date:
+            bottlenecks.append("LCB Consent pending")
+        if self.lcb_consent_date and not self.title_transfer_date:
+            bottlenecks.append("Title Transfer pending")
+        return bottlenecks
+
+
+class Payment(models.Model):
+    """Payment model for tracking transactions"""
+    PAYMENT_TYPES = [
+        ('deposit', 'Deposit'),
+        ('installment', 'Installment'),
+        ('final', 'Final Payment'),
+        ('rent', 'Rent'),
+        ('security_deposit', 'Security Deposit'),
+        ('platform_fee', 'Platform Fee'),
+        ('professional_fee', 'Professional Fee'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
+    
+    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name='payments')
+    payer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments_made')
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments_received')
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    transaction_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
+    payment_method = models.CharField(max_length=50, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    paid_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Payment {self.id} - {self.payment_type} - {self.amount}"
+
+
+class EscrowAccount(models.Model):
+    """Escrow account for holding funds"""
+    deal = models.OneToOneField(Deal, on_delete=models.CASCADE, related_name='escrow_account')
+    buyer = models.ForeignKey(User, on_delete=models.CASCADE, related_name='escrow_as_buyer')
+    seller = models.ForeignKey(User, on_delete=models.CASCADE, related_name='escrow_as_seller')
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    released_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    is_released = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"Escrow for Deal {self.deal.id} - Balance: {self.balance}"
+    

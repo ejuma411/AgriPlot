@@ -164,6 +164,7 @@ INSTALLED_APPS = [
     "listings",
     "payments",
     "registry_mock",
+    "reports",
 ]
 
 MIDDLEWARE = [

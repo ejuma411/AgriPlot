@@ -5,6 +5,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import DisallowedHost
 from django.core.files.storage import default_storage
+from django.http import JsonResponse
 from django.shortcuts import redirect, render, resolve_url
 from django.utils.http import url_has_allowed_host_and_scheme
 
@@ -14,6 +15,7 @@ from listings.forms import (
     BuyerRegistrationForm,
     LandownerUpgradeForm,
 )
+from .validators import email_validation_report
 
 from .models import Agent, LandownerProfile, Profile
 
@@ -99,6 +101,7 @@ def register_buyer(request):
         {
             "form": form,
             "requested_role": requested_role,
+            "email_check_url": resolve_url("listings:validate_email_input"),
         },
     )
 
@@ -177,6 +180,7 @@ def register_agent(request):
             {
                 "form": form,
                 "is_upgrade_flow": False,
+                "email_check_url": resolve_url("listings:validate_email_input"),
             },
         )
 
@@ -218,3 +222,34 @@ def register_agent(request):
 def register_landowner_simple(request):
     """Backward-compatibility alias for the landowner registration path."""
     return redirect("listings:register_landowner_upgrade")
+
+
+def validate_email_input(request):
+    email = request.GET.get("email", "")
+    report = email_validation_report(email)
+    exists = False
+    if report["valid"]:
+        from django.contrib.auth.models import User
+
+        existing = User.objects.filter(email__iexact=report["normalized"])
+        if request.user.is_authenticated:
+            existing = existing.exclude(pk=request.user.pk)
+        exists = existing.exists()
+
+    valid = report["valid"] and not exists
+    message = report["message"]
+    if exists:
+        message = "An account with this email already exists."
+    elif valid:
+        message = "Email looks valid and available."
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "valid": valid,
+            "exists": exists,
+            "normalized": report["normalized"],
+            "message": message,
+            "domain_exists": report["domain_exists"],
+        }
+    )

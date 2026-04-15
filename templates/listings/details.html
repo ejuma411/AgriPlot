@@ -60,9 +60,50 @@
             </div>
         </div>
         <div class="hero-card-actions">
+            <!-- Report 1: Due Diligence Report -->
+            <a href="{% url 'reports:encumbrance_search' plot.id %}" class="btn hero-btn outline">
+                <i class="fas fa-file-search me-2"></i>Due Diligence Report
+            </a>
+            
+            <!-- More Reports Dropdown -->
+            <div class="dropdown d-inline-block">
+                <button class="btn hero-btn outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-chart-simple me-2"></i>More Reports
+                </button>
+                <ul class="dropdown-menu">
+                    <!-- Report 2: Land Use & Zoning (always visible for agricultural land) -->
+                    {% if plot.land_type == 'agricultural' %}
+                    <li><a class="dropdown-item" href="{% url 'reports:land_use_zoning' plot.id %}">
+                        <i class="fas fa-map me-2"></i>Land Use & Zoning Report
+                    </a></li>
+                    {% endif %}
+                    
+                    <!-- Owner-only reports -->
+                    {% if user.is_authenticated and plot.landowner == user %}
+                    <li><a class="dropdown-item" href="{% url 'reports:property_performance' plot.id %}">
+                        <i class="fas fa-chart-line me-2"></i>Property Performance Report
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'reports:occupancy_waitlist' plot.id %}">
+                        <i class="fas fa-users me-2"></i>Occupancy & Waitlist Report
+                    </a></li>
+                    {% endif %}
+                    
+                    <!-- Financial report for authenticated users -->
+                    {% if user.is_authenticated %}
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{% url 'reports:escrow_statement' %}">
+                        <i class="fas fa-file-invoice-dollar me-2"></i>My Escrow Statement
+                    </a></li>
+                    {% endif %}
+                </ul>
+            </div>
+            
+            <!-- Chat with Seller -->
             <a href="#agent" class="btn hero-btn primary">
                 <i class="fas fa-comment-dots me-2"></i>Chat with Seller
             </a>
+            
+            <!-- Save Plot -->
             {% if user.is_authenticated and not is_owner %}
             <form method="post" action="{% url 'listings:toggle_saved_plot' plot.id %}" class="inline-action-form">
                 {% csrf_token %}
@@ -77,6 +118,8 @@
                 <i class="far fa-heart me-2"></i>Login to Save
             </a>
             {% endif %}
+            
+            <!-- Transaction Actions -->
             {% if current_buyer_deal %}
             <a href="{% if current_buyer_deal.next_closing_step %}{% url 'payments:closing_step_workspace' current_buyer_deal.pk current_buyer_deal.next_closing_step.pk %}{% else %}{% url 'payments:detail' current_buyer_deal.pk %}{% endif %}" class="btn hero-btn payment">
                 <i class="fas fa-route me-2"></i>{% if current_buyer_deal.next_closing_step %}{{ current_buyer_deal.next_closing_step.action_cta_label }}{% else %}Continue Transaction{% endif %}
@@ -116,6 +159,8 @@
                 <i class="fas fa-scale-balanced me-2"></i>Login for Legal Workflow
             </a>
             {% endif %}
+            
+            <!-- Waitlist Actions -->
             {% if plot.next_lease_booking_open and not current_buyer_deal %}
             {% if show_waitlist_cta %}
             <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="inline-action-form">
@@ -137,10 +182,14 @@
             </a>
             {% endif %}
             {% endif %}
+            
+            <!-- Location & Full Details -->
             <a href="#location" class="btn hero-btn outline">
                 <i class="fas fa-map-marker-alt me-2"></i>View Location
             </a>
-            
+            <a href="{% url 'listings:land_full_details' plot.id %}" class="btn hero-btn outline">
+                <i class="fas fa-file-alt me-2"></i>Full Land Details
+            </a>
         </div>
     </div>
 </section>
@@ -156,6 +205,7 @@
 <div class="container-fluid py-4 detail-shell">
     <div class="detail-layout">
         <aside class="detail-nav">
+            <!-- Navigation Links -->
             <a href="{% url 'listings:home' %}" class="nav-link"><i class="fas fa-arrow-left me-2"></i>Back to Listings</a>
             <a href="#details" class="nav-link active">Overview</a>
             <a href="#about" class="nav-link">About</a>
@@ -163,603 +213,641 @@
             <a href="#gallery" class="nav-link">Gallery</a>
             <a href="#location" class="nav-link">Location</a>
             <a href="#agent" class="nav-link">Owner</a>
+            
+            <!-- Reports Section in Sidebar -->
+            <div class="nav-divider my-2" style="height: 1px; background: #e5e7eb;"></div>
+            
+            <!-- Report 1: Due Diligence -->
+            <a href="{% url 'reports:encumbrance_search' plot.id %}" class="nav-link">
+                <i class="fas fa-file-pdf me-2"></i>Due Diligence Report
+            </a>
+            
+            <!-- Report 2: Land Use & Zoning -->
+            {% if plot.land_type == 'agricultural' %}
+            <a href="{% url 'reports:land_use_zoning' plot.id %}" class="nav-link">
+                <i class="fas fa-map me-2"></i>Land Use & Zoning Report
+            </a>
+            {% endif %}
+            
+            <!-- Owner-only reports in sidebar -->
+            {% if user.is_authenticated and plot.landowner == user %}
+            <a href="{% url 'reports:property_performance' plot.id %}" class="nav-link">
+                <i class="fas fa-chart-line me-2"></i>Property Performance Report
+            </a>
+            <a href="{% url 'reports:occupancy_waitlist' plot.id %}" class="nav-link">
+                <i class="fas fa-users me-2"></i>Occupancy & Waitlist Report
+            </a>
+            {% endif %}
+            
+            <!-- Financial Report Link -->
+            {% if user.is_authenticated %}
+            <a href="{% url 'reports:escrow_statement' %}" class="nav-link">
+                <i class="fas fa-file-invoice-dollar me-2"></i>My Escrow Statement
+            </a>
+            {% endif %}
         </aside>
+        
         <main class="detail-main">
             <!-- Main Content Grid -->
             <div class="row">
-        <!-- Left Column: Location & Details -->
-        <div class="col-lg-8 mb-4">
-            <!-- About -->
-            <div class="dashboard-card mb-4" id="about">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-align-left me-2"></i>About
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <p class="mb-0">
-                        {{ plot.land_use_description|default:plot.special_features|default:"Detailed description will be added after verification." }}
-                    </p>
-                </div>
-            </div>
-
-            <!-- Amenities -->
-            <div class="dashboard-card mb-4" id="amenities">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-list-check me-2"></i>Amenities
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="amenities-grid">
-                        <span class="amenity-chip {% if plot.has_water %}ok{% else %}no{% endif %}">
-                            <i class="fas fa-tint me-1"></i>Water: {{ plot.water_source|default:"No" }}
-                        </span>
-                        <span class="amenity-chip {% if plot.has_electricity %}ok{% else %}no{% endif %}">
-                            <i class="fas fa-bolt me-1"></i>Electricity
-                        </span>
-                        <span class="amenity-chip {% if plot.has_road_access %}ok{% else %}no{% endif %}">
-                            <i class="fas fa-road me-1"></i>Road: {{ plot.road_type|default:"N/A" }}
-                        </span>
-                        <span class="amenity-chip {% if plot.has_buildings %}ok{% else %}no{% endif %}">
-                            <i class="fas fa-building me-1"></i>Buildings
-                        </span>
-                        <span class="amenity-chip">
-                            <i class="fas fa-border-all me-1"></i>Fencing: {{ plot.fencing|default:"Not specified" }}
-                        </span>
-                    </div>
-                    {% if plot.other_amenities %}
-                    <div class="mt-3">
-                        <strong>Other amenities</strong>
-                        <p class="mb-0 text-muted">{{ plot.other_amenities|linebreaksbr }}</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Gallery -->
-            <div class="dashboard-card mb-4" id="gallery">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-images me-2"></i>Gallery
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="gallery-grid">
-                        {% if plot.images.all %}
-                            {% for img in plot.images.all %}
-                                <img src="{{ img.image.url }}" alt="Plot photo" class="gallery-thumb">
-                            {% endfor %}
-                        {% elif plot.extension_reports.first and plot.extension_reports.first.site_photos %}
-                            {% for photo in plot.extension_reports.first.site_photos %}
-                                <img src="{{ photo }}" alt="Plot photo" class="gallery-thumb">
-                            {% endfor %}
-                        {% else %}
-                            <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
-                            <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
-                            <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            <!-- Location / GIS Map -->
-            <div class="dashboard-card mb-4" id="location">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-map-marker-alt me-2"></i>Location &amp; Map
-                    </h6>
-                </div>
-                <div class="card-body">
-                    {% if plot.has_coordinates %}
-                    <p class="mb-2">
-                        <i class="fas fa-globe me-2 text-primary"></i>
-                        <strong>Coordinates:</strong> {{ plot.latitude }}°, {{ plot.longitude }}°
-                    </p>
-                    {% if map_bbox %}
-                    <div class="map-embed rounded overflow-hidden border" style="height: 300px; background: #e9ecef;">
-                        <iframe
-                            width="100%"
-                            height="300"
-                            style="border:0"
-                            loading="lazy"
-                            allowfullscreen
-                            referrerpolicy="no-referrer-when-downgrade"
-                            src="https://www.openstreetmap.org/export/embed.html?bbox={{ map_bbox }}&amp;layer=map&amp;marker={{ plot.latitude }}%2C{{ plot.longitude }}">
-                        </iframe>
-                    </div>
-                    {% endif %}
-                    <p class="mt-2 mb-0">
-                        <a href="https://www.openstreetmap.org/?mlat={{ plot.latitude }}&amp;mlon={{ plot.longitude }}#map=15/{{ plot.latitude }}/{{ plot.longitude }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
-                            <i class="fas fa-external-link-alt me-1"></i>Open in OpenStreetMap
-                        </a>
-                    </p>
-                    {% else %}
-                    <div class="empty-gallery text-center py-5">
-                        <i class="fas fa-map fa-4x text-muted mb-3"></i>
-                        <h5>No coordinates set</h5>
-                        <p class="text-muted mb-0">Location: {{ plot.location }}</p>
-                        <p class="text-muted small">Coordinates can be added by the listing owner for map view.</p>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Plot Details Table -->
-            <div class="dashboard-card" id="details">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-info-circle me-2"></i>Plot Details
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="details-table">
-                        <table class="plot-details-table">
-                            <tbody>
-                                <tr>
-                                    <td class="detail-label">Title</td>
-                                    <td class="detail-value">{{ plot.title }}</td>
-                                </tr>
-                                <tr>
-                                    <td class="detail-label">Location</td>
-                                    <td class="detail-value">
-                                        <i class="fas fa-map-marker-alt text-danger me-2"></i>
-                                        {{ plot.location }}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="detail-label">Area</td>
-                                    <td class="detail-value">
-                                        <i class="fas fa-ruler-combined text-warning me-2"></i>
-                                        {{ plot.area|floatformat:1 }} {{ plot.get_area_unit_display|default:"Acres" }}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="detail-label">Parcel Number</td>
-                                    <td class="detail-value">
-                                        <i class="fas fa-hashtag text-secondary me-2"></i>
-                                        {{ plot.parcel_number|default:"Not provided" }}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="detail-label">Registration Section</td>
-                                    <td class="detail-value">
-                                        <i class="fas fa-map-marked-alt text-secondary me-2"></i>
-                                        {{ plot.registration_section|default:"Not provided" }}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="detail-label">Price</td>
-                                    <td class="detail-value">
-                                        <i class="fas fa-money-bill-wave text-success me-2"></i>
-                                        KES {{ plot.price|floatformat:0 }}
-                                        {% if plot.area_acres and plot.area_acres > 0 %}
-                                        <small class="text-muted d-block mt-1">
-                                            (KES {% widthratio plot.price plot.area_acres 1 as price_per_acre %}{{ price_per_acre|floatformat:0 }} per acre)
-                                        </small>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="detail-label">Soil Type</td>
-                                    <td class="detail-value">
-                                        <i class="fas fa-seedling text-success me-2"></i>
-                                        {{ plot.soil_type|default:"Not specified" }}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="detail-label">Crop Suitability</td>
-                                    <td class="detail-value">
-                                        <i class="fas fa-leaf text-info me-2"></i>
-                                        {{ plot.crop_suitability|default:"Various crops" }}
-                                    </td>
-                                </tr>
-                                {% if plot.ph_level %}
-                                <tr>
-                                    <td class="detail-label">pH Level</td>
-                                    <td class="detail-value">
-                                        <i class="fas fa-flask text-primary me-2"></i>
-                                        {{ plot.ph_level }}
-                                        <span class="ph-indicator 
-                                            {% if plot.ph_level < 5 %}text-danger{% elif plot.ph_level > 8 %}text-warning{% else %}text-success{% endif %}">
-                                            {% if plot.ph_level < 5 %}(Acidic){% elif plot.ph_level > 8 %}(Alkaline){% else %}(Neutral){% endif %}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% endif %}
-                                <tr>
-                                    <td class="detail-label">Verification Status</td>
-                                    <td class="detail-value">
-                                        {% if plot.verification_status.status == 'verified' %}
-                                        <span class="badge bg-success">
-                                            <i class="fas fa-check-circle me-1"></i>Verified
-                                        </span>
-                                        {% elif plot.verification_status.status == 'pending' %}
-                                        <span class="badge bg-warning">
-                                            <i class="fas fa-clock me-1"></i>Pending
-                                        </span>
-                                        {% elif plot.verification_status.status == 'rejected' %}
-                                        <span class="badge bg-danger">
-                                            <i class="fas fa-times-circle me-1"></i>Rejected
-                                        </span>
-                                        {% else %}
-                                        <span class="badge bg-secondary">
-                                            {{ plot.verification_status.status|title }}
-                                        </span>
-                                        {% endif %}
-                                        {% if plot.verification_status.reviewed_at %}
-                                        <small class="text-muted d-block mt-1">
-                                            Reviewed: {{ plot.verification_status.reviewed_at|date:"M d, Y" }}
-                                        </small>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td class="detail-label">Date Listed</td>
-                                    <td class="detail-value">
-                                        <i class="fas fa-calendar text-primary me-2"></i>
-                                        {{ plot.created_at|date:"F d, Y" }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            {% if show_public_lease_status %}
-            <div class="dashboard-card mt-4" id="lease-status">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-file-signature me-2"></i>Current Lease Status
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="lease-status-grid">
-                        <div class="lease-status-item">
-                            <span class="lease-status-label">Occupation Window</span>
-                            <strong>{{ public_lease_start_date|date:"M d, Y" }} to {{ public_lease_end_date|date:"M d, Y" }}</strong>
+                <!-- Left Column: Location & Details -->
+                <div class="col-lg-8 mb-4">
+                    <!-- About Section -->
+                    <div class="dashboard-card mb-4" id="about">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="fas fa-align-left me-2"></i>About
+                            </h6>
                         </div>
-                        <div class="lease-status-item">
-                            <span class="lease-status-label">Notice Window Opens</span>
-                            <strong>{% if active_lease_deal and active_lease_deal.vacation_notice_date %}{{ active_lease_deal.vacation_notice_date|date:"M d, Y" }}{% else %}Depends on the signed lease notice clause{% endif %}</strong>
-                        </div>
-                        <div class="lease-status-item">
-                            <span class="lease-status-label">Intended Use</span>
-                            <strong>{% if active_lease_deal %}{{ active_lease_deal.intended_use|default:"Not publicly stated" }}{% else %}Available on lease agreement record{% endif %}</strong>
-                        </div>
-                        <div class="lease-status-item">
-                            <span class="lease-status-label">Security Deposit</span>
-                            <strong>{% if active_lease_deal and active_lease_deal.lease_security_deposit %}KES {{ active_lease_deal.lease_security_deposit|floatformat:0|intcomma }}{% else %}Held in workflow{% endif %}</strong>
+                        <div class="card-body">
+                            <p class="mb-0">
+                                {{ plot.land_use_description|default:plot.special_features|default:"Detailed description will be added after verification." }}
+                            </p>
                         </div>
                     </div>
-                    <div class="workspace-notice mt-3">
-                        {% if active_lease_deal %}
-                        {{ active_lease_deal.public_lease_summary }}
-                        {% else %}
-                        Occupied until {{ public_lease_end_date|date:"M d, Y" }}. You can still join the queue now and reserve the next lease window once the current term ends.
-                        {% endif %}
-                    </div>
-                    <ul class="hero-list mt-3 mb-0">
-                        <li>Good husbandry clause: {% if active_lease_deal %}{% if active_lease_deal.good_husbandry_required %}required{% else %}not marked as required{% endif %}{% else %}tracked in the lease record{% endif %}.</li>
-                        <li>Soil exit test: {% if active_lease_deal %}{% if active_lease_deal.soil_exit_test_required %}required before final exit{% else %}not flagged{% endif %}{% else %}tracked in the lease record{% endif %}.</li>
-                        <li>Lease registry: {% if active_lease_deal %}{% if active_lease_deal.requires_registry_protection %}should be protected at the Lands Registry because the lease is over 2 years{% else %}formal registry protection is not mandatory from duration alone{% endif %}{% else %}depends on the lease term{% endif %}.</li>
-                        <li>Waitlist queue: {{ lease_waitlist_count }} interested {% if lease_waitlist_count == 1 %}user{% else %}users{% endif %} for the next lease slot.</li>
-                        {% if active_lease_deal and active_lease_deal.subject_to_sale %}
-                        <li>Subject to sale: this tenancy remains on the market for investors, and the lease should be honoured or terminated through the agreed notice path.</li>
-                        {% endif %}
-                    </ul>
-                    {% if user_waitlist_entry %}
-                    <div class="workspace-notice mt-3">
-                        You are already in the next-lease queue with status: <strong>{{ user_waitlist_entry.get_status_display }}</strong>.
-                    </div>
-                    {% if show_waitlist_confirm_cta %}
-                    <form method="post" action="{% url 'listings:confirm_lease_waitlist' plot.id %}" class="mt-3">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-check-circle me-2"></i>Confirm You Still Want This Lease
-                        </button>
-                    </form>
-                    {% endif %}
-                    {% elif show_waitlist_cta %}
-                    <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="mt-3">
-                        {% csrf_token %}
-                        <button type="submit" class="btn btn-outline-primary">
-                            <i class="fas fa-hourglass-half me-2"></i>Join Waitlist / Reserve Next
-                        </button>
-                    </form>
-                    {% endif %}
-                </div>
-            </div>
-            {% endif %}
-        </div>
 
-        <!-- Right Column: Documents & Broker Info -->
-        <div class="col-lg-4 mb-4">
-            
-
-            <!-- Owner/Agent Information & Contact -->
-            <div class="dashboard-card mb-4" id="agent">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-user-tie me-2"></i>Owner / Agent Information
-                    </h6>
-                </div>
-                <div class="card-body">
-                    {% if plot.agent %}
-                    <div class="agent-profile">
-                        <div class="agent-header">
-                            <div class="agent-avatar">
-                                {% if plot.agent.profile_picture %}
-                                <img src="{{ plot.agent.profile_picture.url }}" 
-                                    alt="{{ plot.agent.user.get_full_name }}" 
-                                    class="avatar-img">
-                                {% else %}
-                                <div class="avatar-placeholder">
-                                    {{ plot.agent.user.get_full_name|default:plot.agent.user.username|first|upper }}
-                                </div>
-                                {% endif %}
-                            </div>
-                            <div class="agent-name">
-                                <h5>{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}</h5>
-                                <span class="agent-badge {% if plot.agent.verified %}verified{% else %}pending{% endif %}">
-                                    {% if plot.agent.verified %}
-                                    <i class="fas fa-check-circle me-1"></i>Verified Agent
-                                    {% else %}
-                                    <i class="fas fa-clock me-1"></i>Pending Verification
-                                    {% endif %}
+                    <!-- Amenities Section -->
+                    <div class="dashboard-card mb-4" id="amenities">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="fas fa-list-check me-2"></i>Amenities
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="amenities-grid">
+                                <span class="amenity-chip {% if plot.has_water %}ok{% else %}no{% endif %}">
+                                    <i class="fas fa-tint me-1"></i>Water: {{ plot.water_source|default:"No" }}
                                 </span>
-                                {% if plot.agent.rating %}
-                                <div class="agent-rating">
-                                    {% for i in "12345" %}
-                                        {% if forloop.counter <= plot.agent.rating %}
-                                        <i class="fas fa-star text-warning"></i>
-                                        {% else %}
-                                        <i class="far fa-star text-warning"></i>
-                                        {% endif %}
+                                <span class="amenity-chip {% if plot.has_electricity %}ok{% else %}no{% endif %}">
+                                    <i class="fas fa-bolt me-1"></i>Electricity
+                                </span>
+                                <span class="amenity-chip {% if plot.has_road_access %}ok{% else %}no{% endif %}">
+                                    <i class="fas fa-road me-1"></i>Road: {{ plot.road_type|default:"N/A" }}
+                                </span>
+                                <span class="amenity-chip {% if plot.has_buildings %}ok{% else %}no{% endif %}">
+                                    <i class="fas fa-building me-1"></i>Buildings
+                                </span>
+                                <span class="amenity-chip">
+                                    <i class="fas fa-border-all me-1"></i>Fencing: {{ plot.fencing|default:"Not specified" }}
+                                </span>
+                            </div>
+                            {% if plot.other_amenities %}
+                            <div class="mt-3">
+                                <strong>Other amenities</strong>
+                                <p class="mb-0 text-muted">{{ plot.other_amenities|linebreaksbr }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Gallery Section -->
+                    <div class="dashboard-card mb-4" id="gallery">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="fas fa-images me-2"></i>Gallery
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="gallery-grid">
+                                {% if plot.images.all %}
+                                    {% for img in plot.images.all %}
+                                        <img src="{{ img.image.url }}" alt="Plot photo" class="gallery-thumb">
                                     {% endfor %}
-                                    <small class="text-muted ms-1">({{ plot.agent.review_count }})</small>
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Agent Stats -->
-                        <div class="agent-stats mt-3">
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <i class="fas fa-layer-group text-primary"></i>
-                                    <div>
-                                        <strong>{{ plot.agent.total_listings|default:"0" }}</strong>
-                                        <small>Listings</small>
-                                    </div>
-                                </div>
-                                <div class="stat-item">
-                                    <i class="fas fa-check-circle text-success"></i>
-                                    <div>
-                                        <strong>{{ plot.agent.verified_listings|default:"0" }}</strong>
-                                        <small>Verified</small>
-                                    </div>
-                                </div>
-                                <div class="stat-item">
-                                    <i class="fas fa-clock text-warning"></i>
-                                    <div>
-                                        <strong>{{ plot.agent.response_rate|default:"100" }}%</strong>
-                                        <small>Response Rate</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Direct Contact Section -->
-                        <div class="agent-contact mt-4">
-                            <h6>Contact Agent</h6>
-                            
-                            {% if user.is_authenticated %}
-                            <div class="contact-methods">
-                                <!-- Email -->
-                                <a href="mailto:{{ plot.agent.user.email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.agent.user.get_full_name|default:plot.agent.user.username }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user.get_full_name|default:user.username }}"
-                                class="btn btn-outline-primary w-100 mb-2">
-                                    <i class="fas fa-envelope me-2"></i>Send Email
-                                    <small class="d-block text-muted mt-1">{{ plot.agent.user.email }}</small>
-                                </a>
-                                
-                                <!-- Phone (if available) -->
-                                {% if plot.agent.phone %}
-                                <div class="phone-contact mb-2">
-                                    <button class="btn btn-success w-100" id="showPhoneNumber">
-                                        <i class="fas fa-phone me-2"></i>Show Phone Number
-                                    </button>
-                                    <div id="phoneNumber" class="text-center mt-2 d-none">
-                                        <strong>{{ plot.agent.phone }}</strong>
-                                        <div class="btn-group mt-2 w-100">
-                                            <a href="tel:{{ plot.agent.phone }}" 
-                                            class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-phone me-1"></i>Call
-                                            </a>
-                                            <a href="https://wa.me/{{ plot.agent.phone|cut:'+' }}?text=Hello {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
-                                            class="btn btn-sm btn-outline-success" 
-                                            target="_blank">
-                                                <i class="fab fa-whatsapp me-1"></i>WhatsApp
-                                            </a>
-                                            <a href="sms:{{ plot.agent.phone }}?body=Hello, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
-                                            class="btn btn-sm btn-outline-info">
-                                                <i class="fas fa-sms me-1"></i>SMS
-                                            </a>
-                                        </div>
-                                    </div>
-                                </div>
+                                {% elif plot.extension_reports.first and plot.extension_reports.first.site_photos %}
+                                    {% for photo in plot.extension_reports.first.site_photos %}
+                                        <img src="{{ photo }}" alt="Plot photo" class="gallery-thumb">
+                                    {% endfor %}
                                 {% else %}
-                                <button class="btn btn-outline-secondary w-100 mb-2" 
-                                        onclick="requestContactDetails()">
-                                    <i class="fas fa-phone me-2"></i>Request Phone Number
-                                </button>
+                                    <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
+                                    <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
+                                    <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
                                 {% endif %}
-
-                                <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#contactFormModal">
-                                    <i class="fas fa-paper-plane me-2"></i>Send Message
-                                </button>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Location / GIS Map -->
+                    <div class="dashboard-card mb-4" id="location">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="fas fa-map-marker-alt me-2"></i>Location &amp; Map
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            {% if plot.has_coordinates %}
+                            <p class="mb-2">
+                                <i class="fas fa-globe me-2 text-primary"></i>
+                                <strong>Coordinates:</strong> {{ plot.latitude }}°, {{ plot.longitude }}°
+                            </p>
+                            {% if map_bbox %}
+                            <div class="map-embed rounded overflow-hidden border" style="height: 300px; background: #e9ecef;">
+                                <iframe
+                                    width="100%"
+                                    height="300"
+                                    style="border:0"
+                                    loading="lazy"
+                                    allowfullscreen
+                                    referrerpolicy="no-referrer-when-downgrade"
+                                    src="https://www.openstreetmap.org/export/embed.html?bbox={{ map_bbox }}&amp;layer=map&amp;marker={{ plot.latitude }}%2C{{ plot.longitude }}">
+                                </iframe>
+                            </div>
+                            {% endif %}
+                            <p class="mt-2 mb-0">
+                                <a href="https://www.openstreetmap.org/?mlat={{ plot.latitude }}&amp;mlon={{ plot.longitude }}#map=15/{{ plot.latitude }}/{{ plot.longitude }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-external-link-alt me-1"></i>Open in OpenStreetMap
+                                </a>
+                            </p>
                             {% else %}
-                            <a href="{% url 'login' %}" class="btn btn-outline-primary w-100">Login to contact agent</a>
+                            <div class="empty-gallery text-center py-5">
+                                <i class="fas fa-map fa-4x text-muted mb-3"></i>
+                                <h5>No coordinates set</h5>
+                                <p class="text-muted mb-0">Location: {{ plot.location }}</p>
+                                <p class="text-muted small">Coordinates can be added by the listing owner for map view.</p>
+                            </div>
                             {% endif %}
                         </div>
                     </div>
-                    {% elif plot.landowner %}
-                    <div class="agent-profile">
-                        <div class="agent-header">
-                            <div class="agent-avatar">
-                                <div class="avatar-placeholder">
-                                    {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username|first|upper }}
-                                </div>
-                            </div>
-                            <div class="agent-name">
-                                <h5>{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}</h5>
-                                <span class="agent-badge {% if plot.landowner.verified %}verified{% else %}pending{% endif %}">
-                                    {% if plot.landowner.verified %}
-                                    <i class="fas fa-check-circle me-1"></i>Verified Landowner
-                                    {% else %}
-                                    <i class="fas fa-clock me-1"></i>Pending Verification
-                                    {% endif %}
-                                </span>
+
+                    <!-- Plot Details Table -->
+                    <div class="dashboard-card" id="details">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="fas fa-info-circle me-2"></i>Plot Details
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="details-table">
+                                <table class="plot-details-table">
+                                    <tbody>
+                                        <tr>
+                                            <td class="detail-label">Title</td>
+                                            <td class="detail-value">{{ plot.title }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="detail-label">Location</td>
+                                            <td class="detail-value">
+                                                <i class="fas fa-map-marker-alt text-danger me-2"></i>
+                                                {{ plot.location }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="detail-label">Area</td>
+                                            <td class="detail-value">
+                                                <i class="fas fa-ruler-combined text-warning me-2"></i>
+                                                {{ plot.area|floatformat:1 }} {{ plot.get_area_unit_display|default:"Acres" }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="detail-label">Parcel Number</td>
+                                            <td class="detail-value">
+                                                <i class="fas fa-hashtag text-secondary me-2"></i>
+                                                {{ plot.parcel_number|default:"Not provided" }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="detail-label">Registration Section</td>
+                                            <td class="detail-value">
+                                                <i class="fas fa-map-marked-alt text-secondary me-2"></i>
+                                                {{ plot.registration_section|default:"Not provided" }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="detail-label">Price</td>
+                                            <td class="detail-value">
+                                                <i class="fas fa-money-bill-wave text-success me-2"></i>
+                                                KES {{ plot.price|floatformat:0 }}
+                                                {% if plot.area_acres and plot.area_acres > 0 %}
+                                                <small class="text-muted d-block mt-1">
+                                                    (KES {% widthratio plot.price plot.area_acres 1 as price_per_acre %}{{ price_per_acre|floatformat:0 }} per acre)
+                                                </small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="detail-label">Soil Type</td>
+                                            <td class="detail-value">
+                                                <i class="fas fa-seedling text-success me-2"></i>
+                                                {{ plot.soil_type|default:"Not specified" }}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="detail-label">Crop Suitability</td>
+                                            <td class="detail-value">
+                                                <i class="fas fa-leaf text-info me-2"></i>
+                                                {{ plot.crop_suitability|default:"Various crops" }}
+                                            </td>
+                                        </tr>
+                                        {% if plot.ph_level %}
+                                        <tr>
+                                            <td class="detail-label">pH Level</td>
+                                            <td class="detail-value">
+                                                <i class="fas fa-flask text-primary me-2"></i>
+                                                {{ plot.ph_level }}
+                                                <span class="ph-indicator 
+                                                    {% if plot.ph_level < 5 %}text-danger{% elif plot.ph_level > 8 %}text-warning{% else %}text-success{% endif %}">
+                                                    {% if plot.ph_level < 5 %}(Acidic){% elif plot.ph_level > 8 %}(Alkaline){% else %}(Neutral){% endif %}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        <tr>
+                                            <td class="detail-label">Verification Status</td>
+                                            <td class="detail-value">
+                                                {% if plot.verification_status.status == 'verified' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check-circle me-1"></i>Verified
+                                                </span>
+                                                {% elif plot.verification_status.status == 'pending' %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-clock me-1"></i>Pending
+                                                </span>
+                                                {% elif plot.verification_status.status == 'rejected' %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-times-circle me-1"></i>Rejected
+                                                </span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">
+                                                    {{ plot.verification_status.status|title }}
+                                                </span>
+                                                {% endif %}
+                                                {% if plot.verification_status.reviewed_at %}
+                                                <small class="text-muted d-block mt-1">
+                                                    Reviewed: {{ plot.verification_status.reviewed_at|date:"M d, Y" }}
+                                                </small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="detail-label">Date Listed</td>
+                                            <td class="detail-value">
+                                                <i class="fas fa-calendar text-primary me-2"></i>
+                                                {{ plot.created_at|date:"F d, Y" }}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        <div class="agent-contact mt-4">
-                            <h6>Contact Landowner</h6>
-                            {% if user.is_authenticated %}
-                            <div class="contact-methods">
-                                <a href="mailto:{{ plot.landowner.user.email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user.get_full_name|default:user.username }}"
-                                class="btn btn-outline-primary w-100 mb-2">
-                                    <i class="fas fa-envelope me-2"></i>Send Email
-                                    <small class="d-block text-muted mt-1">{{ plot.landowner.user.email }}</small>
-                                </a>
+                    </div>
 
-                                {% if plot.landowner.phone %}
-                                <div class="phone-contact mb-2">
-                                    <button class="btn btn-success w-100" id="showPhoneNumber">
-                                        <i class="fas fa-phone me-2"></i>Show Phone Number
-                                    </button>
-                                    <div id="phoneNumber" class="text-center mt-2 d-none">
-                                        <strong>{{ plot.landowner.phone }}</strong>
-                                        <div class="btn-group mt-2 w-100">
-                                            <a href="tel:{{ plot.landowner.phone }}" 
-                                            class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-phone me-1"></i>Call
-                                            </a>
-                                            <a href="https://wa.me/{{ plot.landowner.phone|cut:'+' }}?text=Hello {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
-                                            class="btn btn-sm btn-outline-success" 
-                                            target="_blank">
-                                                <i class="fab fa-whatsapp me-1"></i>WhatsApp
-                                            </a>
-                                            <a href="sms:{{ plot.landowner.phone }}?body=Hello, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
-                                            class="btn btn-sm btn-outline-info">
-                                                <i class="fas fa-sms me-1"></i>SMS
-                                            </a>
-                                        </div>
-                                    </div>
+                    {% if show_public_lease_status %}
+                    <div class="dashboard-card mt-4" id="lease-status">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="fas fa-file-signature me-2"></i>Current Lease Status
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="lease-status-grid">
+                                <div class="lease-status-item">
+                                    <span class="lease-status-label">Occupation Window</span>
+                                    <strong>{{ public_lease_start_date|date:"M d, Y" }} to {{ public_lease_end_date|date:"M d, Y" }}</strong>
                                 </div>
-                                {% else %}
-                                <button class="btn btn-outline-secondary w-100 mb-2" 
-                                        onclick="requestContactDetails()">
-                                    <i class="fas fa-phone me-2"></i>Request Phone Number
-                                </button>
-                                {% endif %}
-
-                                <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#contactFormModal">
-                                    <i class="fas fa-paper-plane me-2"></i>Send Message
-                                </button>
+                                <div class="lease-status-item">
+                                    <span class="lease-status-label">Notice Window Opens</span>
+                                    <strong>{% if active_lease_deal and active_lease_deal.vacation_notice_date %}{{ active_lease_deal.vacation_notice_date|date:"M d, Y" }}{% else %}Depends on the signed lease notice clause{% endif %}</strong>
+                                </div>
+                                <div class="lease-status-item">
+                                    <span class="lease-status-label">Intended Use</span>
+                                    <strong>{% if active_lease_deal %}{{ active_lease_deal.intended_use|default:"Not publicly stated" }}{% else %}Available on lease agreement record{% endif %}</strong>
+                                </div>
+                                <div class="lease-status-item">
+                                    <span class="lease-status-label">Security Deposit</span>
+                                    <strong>{% if active_lease_deal and active_lease_deal.lease_security_deposit %}KES {{ active_lease_deal.lease_security_deposit|floatformat:0|intcomma }}{% else %}Held in workflow{% endif %}</strong>
+                                </div>
                             </div>
-                            {% else %}
-                            <a href="{% url 'login' %}" class="btn btn-outline-primary w-100">Login to contact owner</a>
+                            <div class="workspace-notice mt-3">
+                                {% if active_lease_deal %}
+                                {{ active_lease_deal.public_lease_summary }}
+                                {% else %}
+                                Occupied until {{ public_lease_end_date|date:"M d, Y" }}. You can still join the queue now and reserve the next lease window once the current term ends.
+                                {% endif %}
+                            </div>
+                            <ul class="hero-list mt-3 mb-0">
+                                <li>Good husbandry clause: {% if active_lease_deal %}{% if active_lease_deal.good_husbandry_required %}required{% else %}not marked as required{% endif %}{% else %}tracked in the lease record{% endif %}.</li>
+                                <li>Soil exit test: {% if active_lease_deal %}{% if active_lease_deal.soil_exit_test_required %}required before final exit{% else %}not flagged{% endif %}{% else %}tracked in the lease record{% endif %}.</li>
+                                <li>Lease registry: {% if active_lease_deal %}{% if active_lease_deal.requires_registry_protection %}should be protected at the Lands Registry because the lease is over 2 years{% else %}formal registry protection is not mandatory from duration alone{% endif %}{% else %}depends on the lease term{% endif %}.</li>
+                                <li>Waitlist queue: {{ lease_waitlist_count }} interested {% if lease_waitlist_count == 1 %}user{% else %}users{% endif %} for the next lease slot.</li>
+                                {% if active_lease_deal and active_lease_deal.subject_to_sale %}
+                                <li>Subject to sale: this tenancy remains on the market for investors, and the lease should be honoured or terminated through the agreed notice path.</li>
+                                {% endif %}
+                            </ul>
+                            {% if user_waitlist_entry %}
+                            <div class="workspace-notice mt-3">
+                                You are already in the next-lease queue with status: <strong>{{ user_waitlist_entry.get_status_display }}</strong>.
+                            </div>
+                            {% if show_waitlist_confirm_cta %}
+                            <form method="post" action="{% url 'listings:confirm_lease_waitlist' plot.id %}" class="mt-3">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-check-circle me-2"></i>Confirm You Still Want This Lease
+                                </button>
+                            </form>
+                            {% endif %}
+                            {% elif show_waitlist_cta %}
+                            <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="mt-3">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-primary">
+                                    <i class="fas fa-hourglass-half me-2"></i>Join Waitlist / Reserve Next
+                                </button>
+                            </form>
                             {% endif %}
                         </div>
                     </div>
-                    {% else %}
-                    <div class="alert alert-warning">Owner details not available.</div>
                     {% endif %}
+                </div>
 
-                    {% if user.is_authenticated %}
-                    <!-- Contact Form Modal -->
-                    <div class="modal fade" id="contactFormModal" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <form id="contactForm" method="POST" action="{% url 'listings:contact_agent' plot.id %}">
-                                    {% csrf_token %}
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">
-                                            <i class="fas fa-paper-plane me-2"></i>
-                                            Message {% if plot.agent %}Agent{% elif plot.landowner %}Owner{% else %}Contact{% endif %}
-                                        </h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <div class="mb-3">
-                                            <label for="messageSubject" class="form-label">Subject</label>
-                                            <input type="text" class="form-control" id="messageSubject" 
-                                                value="Inquiry about {{ plot.title }}" readonly>
+                <!-- Right Column: Documents & Broker Info -->
+                <div class="col-lg-4 mb-4">
+                    <!-- Owner/Agent Information & Contact -->
+                    <div class="dashboard-card mb-4" id="agent">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="fas fa-user-tie me-2"></i>Owner / Agent Information
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            {% if plot.agent %}
+                            <div class="agent-profile">
+                                <div class="agent-header">
+                                    <div class="agent-avatar">
+                                        {% if plot.agent.profile_picture %}
+                                        <img src="{{ plot.agent.profile_picture.url }}" 
+                                            alt="{{ plot.agent.user.get_full_name }}" 
+                                            class="avatar-img">
+                                        {% else %}
+                                        <div class="avatar-placeholder">
+                                            {{ plot.agent.user.get_full_name|default:plot.agent.user.username|first|upper }}
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="messageBody" class="form-label">Your Message</label>
-                                            <textarea class="form-control" id="messageBody" name="message" rows="6" required
-                                                    placeholder="Write your message here..."></textarea>
-                                            <div class="form-text">
-                                                Include specific questions about price, location, soil quality, etc.
+                                        {% endif %}
+                                    </div>
+                                    <div class="agent-name">
+                                        <h5>{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}</h5>
+                                        <span class="agent-badge {% if plot.agent.verified %}verified{% else %}pending{% endif %}">
+                                            {% if plot.agent.verified %}
+                                            <i class="fas fa-check-circle me-1"></i>Verified Agent
+                                            {% else %}
+                                            <i class="fas fa-clock me-1"></i>Pending Verification
+                                            {% endif %}
+                                        </span>
+                                        {% if plot.agent.rating %}
+                                        <div class="agent-rating">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= plot.agent.rating %}
+                                                <i class="fas fa-star text-warning"></i>
+                                                {% else %}
+                                                <i class="far fa-star text-warning"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                            <small class="text-muted ms-1">({{ plot.agent.review_count }})</small>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Agent Stats -->
+                                <div class="agent-stats mt-3">
+                                    <div class="stats-grid">
+                                        <div class="stat-item">
+                                            <i class="fas fa-layer-group text-primary"></i>
+                                            <div>
+                                                <strong>{{ plot.agent.total_listings|default:"0" }}</strong>
+                                                <small>Listings</small>
                                             </div>
                                         </div>
-                                        <div class="alert alert-info">
-                                            <i class="fas fa-info-circle me-2"></i>
-                                            Your contact information (email: {{ user.email }}) will be shared with the {% if plot.agent %}agent{% elif plot.landowner %}owner{% else %}contact{% endif %}.
+                                        <div class="stat-item">
+                                            <i class="fas fa-check-circle text-success"></i>
+                                            <div>
+                                                <strong>{{ plot.agent.verified_listings|default:"0" }}</strong>
+                                                <small>Verified</small>
+                                            </div>
+                                        </div>
+                                        <div class="stat-item">
+                                            <i class="fas fa-clock text-warning"></i>
+                                            <div>
+                                                <strong>{{ plot.agent.response_rate|default:"100" }}%</strong>
+                                                <small>Response Rate</small>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                        <button type="submit" class="btn btn-primary">
+                                </div>
+                                
+                                <!-- Direct Contact Section -->
+                                <div class="agent-contact mt-4">
+                                    <h6>Contact Agent</h6>
+                                    
+                                    {% if user.is_authenticated %}
+                                    <div class="contact-methods">
+                                        <!-- Email -->
+                                        <a href="mailto:{{ plot.agent.user.email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.agent.user.get_full_name|default:plot.agent.user.username }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user.get_full_name|default:user.username }}"
+                                            class="btn btn-outline-primary w-100 mb-2">
+                                            <i class="fas fa-envelope me-2"></i>Send Email
+                                            <small class="d-block text-muted mt-1">{{ plot.agent.user.email }}</small>
+                                        </a>
+                                        
+                                        <!-- Phone (if available) -->
+                                        {% if plot.agent.phone %}
+                                        <div class="phone-contact mb-2">
+                                            <button class="btn btn-success w-100" id="showPhoneNumber">
+                                                <i class="fas fa-phone me-2"></i>Show Phone Number
+                                            </button>
+                                            <div id="phoneNumber" class="text-center mt-2 d-none">
+                                                <strong>{{ plot.agent.phone }}</strong>
+                                                <div class="btn-group mt-2 w-100">
+                                                    <a href="tel:{{ plot.agent.phone }}" 
+                                                    class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-phone me-1"></i>Call
+                                                    </a>
+                                                    <a href="https://wa.me/{{ plot.agent.phone|cut:'+' }}?text=Hello {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                                    class="btn btn-sm btn-outline-success" 
+                                                    target="_blank">
+                                                        <i class="fab fa-whatsapp me-1"></i>WhatsApp
+                                                    </a>
+                                                    <a href="sms:{{ plot.agent.phone }}?body=Hello, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                                    class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-sms me-1"></i>SMS
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <button class="btn btn-outline-secondary w-100 mb-2" 
+                                                onclick="requestContactDetails()">
+                                            <i class="fas fa-phone me-2"></i>Request Phone Number
+                                        </button>
+                                        {% endif %}
+
+                                        <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#contactFormModal">
                                             <i class="fas fa-paper-plane me-2"></i>Send Message
                                         </button>
                                     </div>
-                                </form>
+                                    {% else %}
+                                    <a href="{% url 'login' %}" class="btn btn-outline-primary w-100">Login to contact agent</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% elif plot.landowner %}
+                            <div class="agent-profile">
+                                <div class="agent-header">
+                                    <div class="agent-avatar">
+                                        <div class="avatar-placeholder">
+                                            {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username|first|upper }}
+                                        </div>
+                                    </div>
+                                    <div class="agent-name">
+                                        <h5>{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}</h5>
+                                        <span class="agent-badge {% if plot.landowner.verified %}verified{% else %}pending{% endif %}">
+                                            {% if plot.landowner.verified %}
+                                            <i class="fas fa-check-circle me-1"></i>Verified Landowner
+                                            {% else %}
+                                            <i class="fas fa-clock me-1"></i>Pending Verification
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="agent-contact mt-4">
+                                    <h6>Contact Landowner</h6>
+                                    {% if user.is_authenticated %}
+                                    <div class="contact-methods">
+                                        <a href="mailto:{{ plot.landowner.user.email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user.get_full_name|default:user.username }}"
+                                        class="btn btn-outline-primary w-100 mb-2">
+                                            <i class="fas fa-envelope me-2"></i>Send Email
+                                            <small class="d-block text-muted mt-1">{{ plot.landowner.user.email }}</small>
+                                        </a>
+
+                                        {% if plot.landowner.phone %}
+                                        <div class="phone-contact mb-2">
+                                            <button class="btn btn-success w-100" id="showPhoneNumber">
+                                                <i class="fas fa-phone me-2"></i>Show Phone Number
+                                            </button>
+                                            <div id="phoneNumber" class="text-center mt-2 d-none">
+                                                <strong>{{ plot.landowner.phone }}</strong>
+                                                <div class="btn-group mt-2 w-100">
+                                                    <a href="tel:{{ plot.landowner.phone }}" 
+                                                    class="btn btn-sm btn-outline-primary">
+                                                        <i class="fas fa-phone me-1"></i>Call
+                                                    </a>
+                                                    <a href="https://wa.me/{{ plot.landowner.phone|cut:'+' }}?text=Hello {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                                    class="btn btn-sm btn-outline-success" 
+                                                    target="_blank">
+                                                        <i class="fab fa-whatsapp me-1"></i>WhatsApp
+                                                    </a>
+                                                    <a href="sms:{{ plot.landowner.phone }}?body=Hello, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                                    class="btn btn-sm btn-outline-info">
+                                                        <i class="fas fa-sms me-1"></i>SMS
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% else %}
+                                        <button class="btn btn-outline-secondary w-100 mb-2" 
+                                                onclick="requestContactDetails()">
+                                            <i class="fas fa-phone me-2"></i>Request Phone Number
+                                        </button>
+                                        {% endif %}
+
+                                        <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#contactFormModal">
+                                            <i class="fas fa-paper-plane me-2"></i>Send Message
+                                        </button>
+                                    </div>
+                                    {% else %}
+                                    <a href="{% url 'login' %}" class="btn btn-outline-primary w-100">Login to contact owner</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-warning">Owner details not available.</div>
+                            {% endif %}
+
+                            {% if user.is_authenticated %}
+                            <!-- Contact Form Modal -->
+                            <div class="modal fade" id="contactFormModal" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog">
+                                    <div class="modal-content">
+                                        <form id="contactForm" method="POST" action="{% url 'listings:contact_agent' plot.id %}">
+                                            {% csrf_token %}
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">
+                                                    <i class="fas fa-paper-plane me-2"></i>
+                                                    Message {% if plot.agent %}Agent{% elif plot.landowner %}Owner{% else %}Contact{% endif %}
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <label for="messageSubject" class="form-label">Subject</label>
+                                                    <input type="text" class="form-control" id="messageSubject" 
+                                                        value="Inquiry about {{ plot.title }}" readonly>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label for="messageBody" class="form-label">Your Message</label>
+                                                    <textarea class="form-control" id="messageBody" name="message" rows="6" required
+                                                            placeholder="Write your message here..."></textarea>
+                                                    <div class="form-text">
+                                                        Include specific questions about price, location, soil quality, etc.
+                                                    </div>
+                                                </div>
+                                                <div class="alert alert-info">
+                                                    <i class="fas fa-info-circle me-2"></i>
+                                                    Your contact information (email: {{ user.email }}) will be shared with the {% if plot.agent %}agent{% elif plot.landowner %}owner{% else %}contact{% endif %}.
+                                                </div>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="fas fa-paper-plane me-2"></i>Send Message
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h6 class="card-title">
+                                <i class="fas fa-bolt me-2"></i>Quick Actions
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="quick-actions-grid">
+                                {% if user.is_authenticated %}
+                                    {% if is_owner %}
+                                    <a href="{% url 'listings:edit_plot' plot.id %}" class="btn btn-outline-warning w-100 mb-2">
+                                        <i class="fas fa-edit me-2"></i>Edit Listing
+                                    </a>
+                                    <a href="{% url 'reports:property_performance' plot.id %}" class="btn btn-outline-success w-100 mb-2">
+                                        <i class="fas fa-chart-line me-2"></i>Performance Report
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'listings:add_plot' %}" class="btn btn-outline-primary w-100 mb-2">
+                                        <i class="fas fa-plus-circle me-2"></i>List Similar Plot
+                                    </a>
+                                    <a href="{% url 'reports:escrow_statement' %}" class="btn btn-outline-info w-100">
+                                        <i class="fas fa-file-invoice-dollar me-2"></i>My Escrow Statement
+                                    </a>
+                                {% else %}
+                                    <a href="{% url 'listings:register_buyer' %}?next={{ request.path }}" class="btn btn-primary w-100 mb-2">
+                                        <i class="fas fa-user-plus me-2"></i>Register to Contact
+                                    </a>
+                                    <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary w-100">
+                                        <i class="fas fa-sign-in-alt me-2"></i>Sign In
+                                    </a>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
-                    {% endif %}
                 </div>
             </div>
-
-            <!-- Quick Actions -->
-            <div class="dashboard-card">
-                <div class="card-header">
-                    <h6 class="card-title">
-                        <i class="fas fa-bolt me-2"></i>Quick Actions
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="quick-actions-grid">
-                        {% if user.is_authenticated %}
-                        
-                            {% if is_owner %}
-                            <a href="{% url 'listings:edit_plot' plot.id %}" class="btn btn-outline-warning w-100 mb-2">
-                                <i class="fas fa-edit me-2"></i>Edit Listing
-                            </a>
-                            {% endif %}
-                            <a href="{% url 'listings:add_plot' %}" class="btn btn-outline-primary w-100 mb-2">
-                                <i class="fas fa-plus-circle me-2"></i>List Similar Plot
-                            </a>
-                        {% else %}
-                            <a href="{% url 'listings:register_buyer' %}?next={{ request.path }}" class="btn btn-primary w-100 mb-2">
-                                <i class="fas fa-user-plus me-2"></i>Register to Contact
-                            </a>
-                            <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary w-100">
-                                <i class="fas fa-sign-in-alt me-2"></i>Sign In
-                            </a>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
         </main>
     </div>
 </div>
 
+<!-- CSS Styles -->
 <style>
 /* =========================
    GLOBAL STYLES
@@ -909,6 +997,12 @@ a:hover {
 .hero-btn.outline {
     border: 1px solid #1f7a4d;
     color: #1f7a4d;
+    background: transparent;
+}
+
+.hero-btn.outline:hover {
+    background: #1f7a4d;
+    color: #fff;
 }
 
 .detail-shell {
@@ -1068,308 +1162,7 @@ a:hover {
     border-radius: 10px;
 }
 
-@media (max-width: 992px) {
-    .detail-layout {
-        grid-template-columns: 1fr;
-    }
-    .detail-nav {
-        position: static;
-    }
-    .detail-hero-card {
-        grid-template-columns: 70px 1fr;
-    }
-    .hero-card-actions {
-        grid-column: 1 / -1;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
-
-@media (max-width: 640px) {
-    .detail-hero-card {
-        grid-template-columns: 1fr;
-        text-align: left;
-    }
-    .hero-stats {
-        grid-template-columns: 1fr;
-    }
-    .hero-card-actions {
-        grid-template-columns: 1fr;
-    }
-    .lease-status-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-.container-fluid {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 2rem;
-}
-
-/* =========================
-   DASHBOARD HEADER
-========================= */
-.dashboard-header {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.dashboard-header-content {
-    display: flex;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.dashboard-title h2 {
-    font-size: 2rem;
-}
-
-.dashboard-subtitle {
-    color: #6b7280;
-    font-size: 0.95rem;
-}
-
-.dashboard-stats-summary {
-    display: flex;
-    gap: 1.5rem;
-}
-
-.stat-badge {
-    text-align: center;
-}
-
-.stat-badge-value {
-    font-size: 1.25rem;
-    font-weight: 600;
-    display: block;
-}
-
-.stat-badge-label {
-    font-size: 0.85rem;
-    color: #6b7280;
-}
-
-/* =========================
-   NAVIGATION
-========================= */
-.detail-navigation {
-    display: flex;
-    gap: 1rem;
-    background: #fff;
-    padding: 0.75rem 1rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    overflow-x: auto;
-}
-
-.nav-link {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    color: #4b5563;
-    font-weight: 500;
-    white-space: nowrap;
-    transition: all 0.3s ease;
-}
-
-.nav-link:hover,
-.nav-link.active {
-    background-color: #1f7a4d;
-    color: #fff;
-}
-
-/* =========================
-   DASHBOARD CARDS
-========================= */
-.dashboard-card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-}
-
-.card-header {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid #e5e7eb;
-    background: #f3f4f6;
-}
-
-.card-title {
-    font-weight: 600;
-    font-size: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.card-body {
-    padding: 1rem 1.5rem;
-}
-
-/* =========================
-   IMAGE GALLERY
-========================= */
-.image-gallery {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.gallery-hover {
-    width: 100%;
-    height: 400px;
-    border-radius: 14px;
-    overflow: hidden;
-    border: 2px solid #e5e7eb;
-    position: relative;
-}
-
-.gallery-hover img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    transition: opacity 0.5s ease, transform 0.4s ease;
-    border-radius: 14px;
-}
-
-.gallery-hover img.active {
-    opacity: 1;
-}
-
-.gallery-hover img:hover {
-    transform: scale(1.05);
-}
-
-.thumbnail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.thumbnail-item {
-    border-radius: 10px;
-    overflow: hidden;
-    cursor: pointer;
-    border: 2px solid #e5e7eb;
-    height: 70px;
-    transition: all 0.3s ease;
-}
-
-.thumbnail-item.active,
-.thumbnail-item:hover {
-    border-color: #1f7a4d;
-    transform: translateY(-2px);
-}
-
-.thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* Empty gallery placeholder */
-.empty-gallery {
-    text-align: center;
-    padding: 3rem;
-    background: #f9fafb;
-    border-radius: 12px;
-    border: 2px dashed #d1d5db;
-}
-
-/* =========================
-   PLOT DETAILS TABLE
-========================= */
-.plot-details-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-}
-
-.plot-details-table tr {
-    border-bottom: 1px solid #e5e7eb;
-    transition: background 0.3s ease;
-}
-
-.plot-details-table tr:hover {
-    background-color: #f9fafb;
-}
-
-.plot-details-table td {
-    padding: 1rem;
-    vertical-align: top;
-}
-
-.detail-label {
-    width: 35%;
-    font-weight: 600;
-    color: #374151;
-    border-right: 1px solid #e5e7eb;
-}
-
-.detail-value {
-    width: 65%;
-    color: #1f2937;
-}
-
-.ph-indicator {
-    margin-left: 0.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-}
-
-/* =========================
-   DOCUMENTS
-========================= */
-.documents-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.document-item {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 12px;
-    border: 2px solid;
-    align-items: center;
-    transition: all 0.3s ease;
-}
-
-.document-item.available {
-    border-color: #10b981;
-    background: #d1fae5;
-}
-
-.document-item.missing {
-    border-color: #d1d5db;
-    background: #f3f4f6;
-}
-
-.document-icon {
-    flex-shrink: 0;
-    font-size: 1.75rem;
-}
-
-.document-info h6 {
-    margin-bottom: 0.25rem;
-    font-weight: 600;
-    color: #1f2937;
-}
-
-/* =========================
-   OWNER / AGENT PROFILE
-========================= */
+/* Owner/Agent Profile */
 .agent-profile {
     text-align: center;
 }
@@ -1391,6 +1184,27 @@ a:hover {
     justify-content: center;
     background: #f3f4f6;
     border-radius: 50%;
+}
+
+.agent-avatar .avatar-img {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid #1f7a4d;
+}
+
+.agent-avatar .avatar-placeholder {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #1f7a4d, #10b981);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
 }
 
 .agent-name h5 {
@@ -1416,161 +1230,10 @@ a:hover {
     color: #92400e;
 }
 
-.agent-contact h6 {
-    margin-bottom: 0.75rem;
-}
-
-/* =========================
-   BUTTONS
-========================= */
-.btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 500;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-}
-
-.btn-primary {
-    background-color: #1f7a4d;
-    color: #fff;
-    border: none;
-}
-
-.btn-primary:hover {
-    background-color: #16603a;
-}
-
-.btn-outline-primary {
-    background: transparent;
-    color: #1f7a4d;
-    border: 2px solid #1f7a4d;
-}
-
-.btn-outline-primary:hover {
-    background-color: #1f7a4d;
-    color: #fff;
-}
-
-.btn-success {
-    background-color: #10b981;
-    color: #fff;
-    border: none;
-}
-
-.btn-success:hover {
-    background-color: #059669;
-}
-
-.btn-outline-warning {
-    background: transparent;
-    color: #f59e0b;
-    border: 2px solid #f59e0b;
-}
-
-.btn-outline-warning:hover {
-    background-color: #f59e0b;
-    color: #fff;
-}
-
-/* =========================
-   RESPONSIVE
-========================= */
-@media (max-width: 992px) {
-    .main-image-container,
-    .gallery-hover {
-        height: 300px;
-    }
-}
-
-@media (max-width: 768px) {
-    .dashboard-header-content {
-        flex-direction: column;
-        gap: 1rem;
-    }
-    .plot-details-table {
-        display: block;
-    }
-    .plot-details-table tr {
-        display: block;
-        margin-bottom: 1rem;
-        padding: 0.75rem;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
-    }
-    .plot-details-table td {
-        display: block;
-        width: 100%;
-        border: none;
-        padding: 0.25rem 0;
-    }
-    .detail-label {
-        margin-bottom: 0.25rem;
-        font-size: 0.9rem;
-    }
-}
-
-@media (max-width: 576px) {
-    .dashboard-title h2 {
-        font-size: 1.5rem;
-    }
-    .main-image-container,
-    .gallery-hover {
-        height: 200px;
-    }
-    .thumbnail-grid {
-        grid-template-columns: repeat(3, 1fr);
-    }
-    .document-item {
-        flex-direction: column;
-        text-align: center;
-    }
-    .agent-header {
-        flex-direction: column;
-        text-align: center;
-    }
-}
-
-/* =========================
-   OWNER / AGENT CONTACT ENHANCEMENTS
-========================= */
-.agent-avatar .avatar-img {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 3px solid #1f7a4d;
-}
-
-.agent-avatar .avatar-placeholder {
-    width: 80px;
-    height: 80px;
-    background: linear-gradient(135deg, #1f7a4d, #10b981);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 2rem;
-    font-weight: bold;
-    border: 3px solid #1f7a4d;
-}
-
-.agent-rating {
-    margin-top: 0.5rem;
-}
-
-.agent-stats {
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 1rem;
-}
-
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 1rem;
+    gap: 12px;
 }
 
 .stat-item {
@@ -1584,748 +1247,108 @@ a:hover {
     display: block;
 }
 
-.stat-item strong {
-    display: block;
-    font-size: 1.25rem;
+.plot-details-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.plot-details-table tr {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.plot-details-table td {
+    padding: 1rem;
+    vertical-align: top;
+}
+
+.detail-label {
+    width: 35%;
+    font-weight: 600;
+    color: #374151;
+    border-right: 1px solid #e5e7eb;
+}
+
+.detail-value {
+    width: 65%;
     color: #1f2937;
 }
 
-.stat-item small {
-    font-size: 0.8rem;
-    color: #6b7280;
-}
-
-.contact-methods .btn {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    text-align: center;
-}
-
-.btn-group {
-    display: flex;
-    gap: 0.5rem;
-}
-
-.btn-group .btn {
-    flex: 1;
-}
-
-.guest-contact {
-    text-align: center;
-    padding: 1rem;
-    background: #f8f9fa;
-    border-radius: 10px;
-}
-
-/* =========================
-   CONTACT MODALS
-========================= */
-.modal-content {
+/* Dropdown Styles */
+.dropdown-menu {
     border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
     border: none;
+    padding: 8px 0;
 }
 
-.modal-header {
-    background: #1f7a4d;
-    color: white;
-    border-radius: 12px 12px 0 0;
+.dropdown-item {
+    padding: 10px 20px;
+    font-size: 14px;
 }
 
-.modal-header .btn-close {
-    filter: invert(1);
+.dropdown-item:hover {
+    background: #f3faf6;
+    color: #1f7a4d;
 }
 
-.form-text {
-    font-size: 0.85rem;
-    color: #6b7280;
+.dropdown-item i {
+    width: 20px;
+    color: #1f7a4d;
 }
 
-/* =========================
-   RESPONSIVE IMPROVEMENTS
-========================= */
-@media (max-width: 768px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
-        gap: 0.5rem;
-    }
-    
-    .agent-stats {
-        padding: 0.75rem;
-    }
-    
-    .contact-methods .btn {
-        padding: 0.75rem;
-    }
-    
-    .btn-group {
-        flex-direction: column;
-    }
-}
-</style>
-<!-- Add this to your existing styles section, replacing the problematic parts -->
-
-<style>
-/* =========================
-   FIXED RESPONSIVE STYLES FOR DETAIL PAGE
-========================= */
-
-/* Fix hero section responsiveness */
-.detail-hero {
-    position: relative;
-    min-height: auto;
-    padding: 20px 0 30px;
-}
-
-.detail-hero-card {
-    position: relative;
-    z-index: 2;
-    max-width: 1100px;
-    margin: 0 auto;
-    background: #fff;
-    border-radius: 18px;
-    padding: 20px 24px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 18px;
-    align-items: flex-start;
-    box-shadow: 0 16px 40px rgba(0,0,0,0.2);
-}
-
-.hero-card-logo {
-    flex-shrink: 0;
-}
-
-.hero-card-info {
-    flex: 2;
-    min-width: 200px;
-}
-
-.hero-card-actions {
-    flex: 1;
-    min-width: 180px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-/* Fix hero stats on mobile */
-.hero-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 12px;
-    margin-top: 12px;
-}
-
-/* Fix layout grid for detail page */
-.detail-layout {
-    display: grid;
-    grid-template-columns: 240px 1fr;
-    gap: 24px;
-}
-
+/* Responsive */
 @media (max-width: 992px) {
     .detail-layout {
         grid-template-columns: 1fr;
-        gap: 20px;
     }
-    
     .detail-nav {
         position: static;
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        overflow-x: auto;
-        padding: 12px;
-        margin-bottom: 20px;
     }
-    
     .detail-nav .nav-link {
-        white-space: nowrap;
         display: inline-flex;
+        white-space: nowrap;
     }
-}
-
-/* Fix detail navigation */
-.detail-nav {
-    position: sticky;
-    top: 90px;
-    align-self: start;
-    background: #fff;
-    border-radius: 12px;
-    padding: 14px;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
-}
-
-.detail-nav .nav-link {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    color: #4b5b56;
-    border-left: 3px solid transparent;
-    transition: all 0.3s ease;
-}
-
-.detail-nav .nav-link i {
-    width: 20px;
-    font-size: 14px;
+    .detail-hero-card {
+        grid-template-columns: 70px 1fr;
+    }
+    .hero-card-actions {
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 768px) {
-    .detail-nav {
-        position: relative;
-        top: 0;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
+    .plot-details-table tr {
+        display: block;
+        margin-bottom: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 12px;
     }
-    
-    .detail-nav .nav-link {
-        border-left: none;
-        border-bottom: 2px solid transparent;
-        padding: 8px 12px;
-        background: #f8f9fa;
-        border-radius: 8px;
-    }
-    
-    .detail-nav .nav-link.active {
-        border-bottom-color: #1f7a4d;
-        background: #e8f3ef;
-    }
-}
-
-/* Fix plot details table for mobile */
-.plot-details-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-@media (max-width: 768px) {
-    .plot-details-table,
-    .plot-details-table tbody,
-    .plot-details-table tr,
     .plot-details-table td {
         display: block;
         width: 100%;
-    }
-    
-    .plot-details-table tr {
-        margin-bottom: 16px;
-        padding: 12px;
-        background: #f9fafb;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
-    }
-    
-    .plot-details-table td {
-        padding: 8px 0;
         border: none;
+        padding: 4px 0;
     }
-    
     .detail-label {
-        font-weight: 700;
-        color: #1f7a4d;
-        margin-bottom: 4px;
         border-right: none;
     }
-    
-    .detail-value {
-        padding-left: 0;
+    .hero-card-actions {
+        grid-template-columns: 1fr;
     }
-}
-
-/* Fix gallery responsiveness */
-.gallery-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    gap: 12px;
-}
-
-.gallery-thumb {
-    width: 100%;
-    height: 140px;
-    object-fit: cover;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: transform 0.3s ease;
-}
-
-.gallery-thumb:hover {
-    transform: scale(1.05);
-}
-
-@media (max-width: 576px) {
-    .gallery-grid {
-        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    }
-    
-    .gallery-thumb {
-        height: 100px;
-    }
-}
-
-/* Fix amenities grid */
-.amenities-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
-.amenity-chip {
-    background: #f3f7f5;
-    padding: 8px 14px;
-    border-radius: 999px;
-    font-size: 0.85rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-@media (max-width: 480px) {
-    .amenity-chip {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-/* Fix lease status grid */
-.lease-status-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 14px;
-}
-
-@media (max-width: 640px) {
     .lease-status-grid {
         grid-template-columns: 1fr;
     }
 }
-
-/* Fix agent stats grid */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-    gap: 12px;
-}
-
-@media (max-width: 480px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
-    
-    .stat-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        text-align: left;
-        padding: 8px 12px;
-        background: #f8f9fa;
-        border-radius: 8px;
-    }
-    
-    .stat-item i {
-        margin-bottom: 0;
-        font-size: 1.2rem;
-    }
-    
-    .stat-item div {
-        display: flex;
-        align-items: baseline;
-        gap: 8px;
-    }
-}
-
-/* Fix contact buttons on mobile */
-.contact-methods .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 10px 16px;
-}
-
-@media (max-width: 576px) {
-    .contact-methods .btn {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    .btn-group {
-        flex-direction: column;
-        width: 100%;
-    }
-    
-    .btn-group .btn {
-        width: 100%;
-    }
-}
-
-/* Fix availability banner on mobile */
-.availability-banner {
-    margin-top: 1rem;
-    padding: 1rem;
-    border-radius: 18px;
-}
-
-.availability-status-line {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-@media (max-width: 480px) {
-    .availability-status-line {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-}
-
-/* Fix hero card actions on mobile */
-@media (max-width: 768px) {
-    .detail-hero-card {
-        flex-direction: column;
-    }
-    
-    .hero-card-logo {
-        align-self: center;
-    }
-    
-    .hero-card-info {
-        text-align: center;
-    }
-    
-    .hero-card-info h2 {
-        font-size: 1.3rem;
-    }
-    
-    .hero-stats {
-        justify-content: center;
-    }
-    
-    .hero-card-actions {
-        width: 100%;
-    }
-    
-    .hero-card-actions .hero-btn {
-        width: 100%;
-        justify-content: center;
-    }
-}
-
-/* Fix gallery hover for touch devices */
-@media (hover: none) {
-    .gallery-hover {
-        touch-action: pan-y pinch-zoom;
-    }
-    
-    .gallery-thumb:active {
-        transform: scale(0.98);
-    }
-}
-
-/* Fix modal on mobile */
-@media (max-width: 576px) {
-    .modal-dialog {
-        margin: 10px;
-    }
-    
-    .modal-body {
-        padding: 1rem;
-    }
-    
-    .modal-footer {
-        flex-direction: column;
-        gap: 8px;
-    }
-    
-    .modal-footer .btn {
-        width: 100%;
-    }
-}
-
-/* Fix container padding */
-.container-fluid {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1rem;
-}
-
-@media (max-width: 768px) {
-    .container-fluid {
-        padding: 0.75rem;
-    }
-}
-
-/* Fix workspace notice */
-.workspace-notice {
-    padding: 0.95rem 1rem;
-    border-radius: 14px;
-    font-size: 0.9rem;
-    word-wrap: break-word;
-}
-
-/* Fix hero list */
-.hero-list {
-    padding-left: 1.2rem;
-    margin: 0.5rem 0;
-}
-
-.hero-list li {
-    margin-bottom: 0.5rem;
-    word-wrap: break-word;
-}
-
-/* Improve touch targets on mobile */
-@media (max-width: 768px) {
-    button,
-    .btn,
-    .nav-link,
-    .filter-chip,
-    .size-pill,
-    .amenity-chip {
-        min-height: 44px;
-    }
-    
-    input,
-    select,
-    textarea {
-        font-size: 16px !important; /* Prevents zoom on focus in iOS */
-    }
-}
-
-/* Fix overflowing text */
-.plot-title,
-.hero-card-info h2,
-.availability-copy {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-}
-
-/* Improve scroll behavior */
-html {
-    scroll-behavior: smooth;
-    scroll-padding-top: 80px;
-}
-
-/* Fix image gallery */
-.gallery-hover {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
-    border-radius: 14px;
-    overflow: hidden;
-    position: relative;
-    background: #f0f0f0;
-}
-
-.gallery-hover img {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.gallery-hover img.active {
-    opacity: 1;
-}
-
-@media (max-width: 768px) {
-    .gallery-hover {
-        aspect-ratio: 4 / 3;
-    }
-}
-
-/* Fix thumbnail grid */
-.thumbnail-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-    gap: 8px;
-    margin-top: 12px;
-}
-
-.thumbnail-item {
-    border-radius: 8px;
-    overflow: hidden;
-    cursor: pointer;
-    border: 2px solid transparent;
-    aspect-ratio: 1 / 1;
-}
-
-.thumbnail-item.active,
-.thumbnail-item:hover {
-    border-color: #1f7a4d;
-}
-
-.thumbnail {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
 </style>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Image gallery functionality
-        const thumbnails = document.querySelectorAll('.thumbnail-item');
-        const mainImage = document.getElementById('mainImage');
-        
-        thumbnails.forEach(thumbnail => {
-            thumbnail.addEventListener('click', function() {
-                // Update active class
-                thumbnails.forEach(t => t.classList.remove('active'));
-                this.classList.add('active');
-                
-                // Update main image
-                const imageUrl = this.getAttribute('data-image');
-                if (mainImage && imageUrl) {
-                    mainImage.src = imageUrl;
-                    mainImage.alt = this.querySelector('img').alt;
-                }
-            });
-        });
-        
-        // Contact modal
-        const showContactBtn = document.getElementById('showContactBtn');
-        const contactModal = new bootstrap.Modal(document.getElementById('contactModal'));
-        const requestContactBtn = document.getElementById('requestContactBtn');
-        
-        if (showContactBtn) {
-            showContactBtn.addEventListener('click', function() {
-                contactModal.show();
-            });
-        }
-        
-        if (requestContactBtn) {
-            requestContactBtn.addEventListener('click', function() {
-                // In a real application, this would send a request to the server
-                AgriPlotUI.showToast({ message: 'Contact request sent. The owner/agent will contact you shortly.', type: 'success' });
-                AgriPlotUI.trackEvent('cta_click', { cta: 'request_contact_modal' });
-                contactModal.hide();
-            });
-        }
-        
-        // Smooth scroll for navigation
-        document.querySelectorAll('.nav-link[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function(e) {
-                e.preventDefault();
-                const targetId = this.getAttribute('href');
-                if (targetId !== '#') {
-                    const targetElement = document.querySelector(targetId);
-                    if (targetElement) {
-                        // Update active nav link
-                        document.querySelectorAll('.nav-link').forEach(link => {
-                            link.classList.remove('active');
-                        });
-                        this.classList.add('active');
-                        
-                        // Scroll to element
-                        targetElement.scrollIntoView({
-                            behavior: 'smooth',
-                            block: 'start'
-                        });
-                    }
-                }
-            });
-        });
-        
-        // Update active nav link on scroll
-        const sections = document.querySelectorAll('[id]');
-        const navLinks = document.querySelectorAll('.nav-link[href^="#"]');
-        
-        function updateActiveNavLink() {
-            let currentSection = '';
-            const scrollPosition = window.scrollY + 100;
-            
-            sections.forEach(section => {
-                const sectionTop = section.offsetTop;
-                const sectionHeight = section.clientHeight;
-                if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
-                    currentSection = '#' + section.id;
-                }
-            });
-            
-            navLinks.forEach(link => {
-                link.classList.remove('active');
-                if (link.getAttribute('href') === currentSection) {
-                    link.classList.add('active');
-                }
-            });
-        }
-        
-        window.addEventListener('scroll', updateActiveNavLink);
-        updateActiveNavLink(); // Initial call
-    });
-
 document.addEventListener('DOMContentLoaded', function() {
-    const galleries = document.querySelectorAll('.gallery-hover');
-
-    galleries.forEach(gallery => {
-        const images = gallery.querySelectorAll('img');
-        let index = 0;
-        let interval;
-
-        // Hover cycling for desktop
-        gallery.addEventListener('mouseenter', () => {
-            if (images.length <= 1) return;
-            interval = setInterval(() => {
-                images[index].classList.remove('active');
-                index = (index + 1) % images.length;
-                images[index].classList.add('active');
-            }, 1000);
-        });
-
-        gallery.addEventListener('mouseleave', () => {
-            clearInterval(interval);
-            images.forEach(img => img.classList.remove('active'));
-            images[0].classList.add('active');
-            index = 0;
-        });
-
-        // Swipe for mobile
-        let startX = 0;
-        let endX = 0;
-
-        gallery.addEventListener('touchstart', e => { startX = e.touches[0].clientX; clearInterval(interval); });
-        gallery.addEventListener('touchmove', e => { endX = e.touches[0].clientX; });
-        gallery.addEventListener('touchend', () => {
-            const diff = startX - endX;
-            if (Math.abs(diff) > 30) {
-                images[index].classList.remove('active');
-                if (diff > 0) index = (index + 1) % images.length;
-                else index = (index - 1 + images.length) % images.length;
-                images[index].classList.add('active');
-            }
-        });
-
-        // Thumbnail click
-        const thumbnails = gallery.parentElement.querySelectorAll('.thumbnail-item');
-        thumbnails.forEach(thumb => {
-            thumb.addEventListener('click', function() {
-                images.forEach(img => img.classList.remove('active'));
-                thumbnails.forEach(t => t.classList.remove('active'));
-                const imgUrl = this.getAttribute('data-image');
-                images.forEach(img => {
-                    if (img.src.includes(imgUrl)) img.classList.add('active');
-                });
-                this.classList.add('active');
-            });
-        });
-    });
-});
-
-// Simplified contact functionality - less prone to errors
-document.addEventListener('DOMContentLoaded', function() {
-    const plotId = {{ plot.id }};
     // Phone number toggle
     const showPhoneBtn = document.getElementById('showPhoneNumber');
     if (showPhoneBtn) {
@@ -2333,170 +1356,33 @@ document.addEventListener('DOMContentLoaded', function() {
             const phoneNumberDiv = document.getElementById('phoneNumber');
             if (phoneNumberDiv) {
                 phoneNumberDiv.classList.toggle('d-none');
-                if (!phoneNumberDiv.classList.contains('d-none')) {
-                    fetch(`/api/log-phone-view/${plotId}/`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': getCookie('csrftoken')
-                        }
-                    }).catch(() => {});
+            }
+        });
+    }
+    
+    // Smooth scroll for navigation
+    document.querySelectorAll('.detail-nav .nav-link[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+            const href = this.getAttribute('href');
+            if (href && href !== '#') {
+                e.preventDefault();
+                const target = document.querySelector(href);
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    // Update active state
+                    document.querySelectorAll('.detail-nav .nav-link').forEach(link => {
+                        link.classList.remove('active');
+                    });
+                    this.classList.add('active');
                 }
             }
         });
-    }
-    
-    // Contact form handling
-    const contactForm = document.getElementById('contactForm');
-    if (contactForm) {
-        contactForm.addEventListener('submit', function(e) {
-            const messageBody = document.getElementById('messageBody');
-            if (messageBody && messageBody.value.trim().length < 10) {
-                e.preventDefault();
-                messageBody.setAttribute('aria-invalid', 'true');
-                AgriPlotUI.showToast({ message: 'Please write a more detailed message (at least 10 characters).', type: 'warning' });
-                messageBody.focus();
-            } else if (messageBody) {
-                messageBody.removeAttribute('aria-invalid');
-            }
-        });
-    }
-    
-    // Visit form handling
-    const visitForm = document.getElementById('visitForm');
-    if (visitForm) {
-        // Set min date to today
-        const today = new Date().toISOString().split('T')[0];
-        const dateInput = document.getElementById('visitDate');
-        if (dateInput) {
-            dateInput.min = today;
-        }
-        
-        visitForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const date = document.getElementById('visitDate').value;
-            const time = document.getElementById('visitTime').value;
-            
-            if (date && time) {
-                AgriPlotUI.showToast({ message: `Visit request sent for ${date} at ${time}.`, type: 'success' });
-                AgriPlotUI.trackEvent('cta_click', { cta: 'schedule_visit', date, time });
-                visitForm.reset();
-                const modal = bootstrap.Modal.getInstance(document.getElementById('scheduleVisitModal'));
-                if (modal) modal.hide();
-            } else {
-                AgriPlotUI.showToast({ message: 'Please select both date and time.', type: 'warning' });
-            }
-        });
-    }
+    });
     
     // Global function for contact requests
     window.requestContactDetails = function() {
-        fetch(`/api/request-contact/${plotId}/`, {
-            method: 'POST',
-            headers: {
-                'X-CSRFToken': getCookie('csrftoken')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                AgriPlotUI.showToast({ message: data.message || 'Contact request sent. The owner/agent will contact you shortly.', type: 'success' });
-                AgriPlotUI.trackEvent('cta_click', { cta: 'request_contact_api' });
-            } else {
-                AgriPlotUI.showToast({ message: data.error || 'Failed to send request. Please try again.', type: 'danger' });
-            }
-        })
-        .catch(() => {
-            AgriPlotUI.showToast({ message: 'Failed to send request. Please try again.', type: 'danger' });
-        });
+        alert('Contact request sent. The owner/agent will contact you shortly.');
     };
-    
-    // Get CSRF token function
-    function getCookie(name) {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.startsWith(name + '=')) {
-                return decodeURIComponent(cookie.substring(name.length + 1));
-            }
-        }
-        return null;
-    }
-});
-// Add this to your existing script section for better mobile gallery
-document.addEventListener('DOMContentLoaded', function() {
-    // Fix for mobile gallery touch
-    const galleries = document.querySelectorAll('.gallery-hover');
-    
-    galleries.forEach(gallery => {
-        const images = gallery.querySelectorAll('img');
-        if (images.length <= 1) return;
-        
-        let currentIndex = 0;
-        let touchStartX = 0;
-        let touchEndX = 0;
-        
-        // Initialize first image
-        images[0].classList.add('active');
-        
-        // Desktop hover
-        if (window.matchMedia('(hover: hover)').matches) {
-            let interval;
-            gallery.addEventListener('mouseenter', () => {
-                interval = setInterval(() => {
-                    images[currentIndex].classList.remove('active');
-                    currentIndex = (currentIndex + 1) % images.length;
-                    images[currentIndex].classList.add('active');
-                }, 2000);
-            });
-            
-            gallery.addEventListener('mouseleave', () => {
-                clearInterval(interval);
-                images.forEach(img => img.classList.remove('active'));
-                images[0].classList.add('active');
-                currentIndex = 0;
-            });
-        }
-        
-        // Mobile touch swipe
-        gallery.addEventListener('touchstart', (e) => {
-            touchStartX = e.touches[0].clientX;
-        });
-        
-        gallery.addEventListener('touchend', (e) => {
-            touchEndX = e.changedTouches[0].clientX;
-            const diff = touchStartX - touchEndX;
-            
-            if (Math.abs(diff) > 50) {
-                images[currentIndex].classList.remove('active');
-                if (diff > 0) {
-                    currentIndex = (currentIndex + 1) % images.length;
-                } else {
-                    currentIndex = (currentIndex - 1 + images.length) % images.length;
-                }
-                images[currentIndex].classList.add('active');
-            }
-        });
-    });
-    
-    // Fix for smooth scrolling on mobile
-    document.querySelectorAll('.detail-nav .nav-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const targetId = this.getAttribute('href');
-            if (targetId && targetId !== '#') {
-                const target = document.querySelector(targetId);
-                if (target) {
-                    const offset = 80;
-                    const targetPosition = target.getBoundingClientRect().top + window.pageYOffset - offset;
-                    window.scrollTo({
-                        top: targetPosition,
-                        behavior: 'smooth'
-                    });
-                }
-            }
-        });
-    });
 });
 </script>
-
 {% endblock %}

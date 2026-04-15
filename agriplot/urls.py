@@ -26,7 +26,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("payments/", include("payments.urls")),
     path('', include('listings.urls')),
-    path('', include('verification.urls')),
+    path('staff', include('verification.urls')),
+    path('reports/', include('reports.urls')),
     path('login/', views_auth.TwoFactorLoginView.as_view(), name='login'),
 ]
 if settings.DEBUG:

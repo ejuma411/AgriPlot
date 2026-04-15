@@ -18,6 +18,7 @@ from .views_registration import (
     register_choice,
     register_landowner,
     register_landowner_simple,
+    validate_email_input,
 )
 from .views_wizard import FORMS, LandownerWizard
 
@@ -35,6 +36,7 @@ urlpatterns = [
         name="landowner_success",
     ),
     path("register/agent/", register_agent, name="register_agent"),
+    path("validate/email/", validate_email_input, name="validate_email_input"),
 
     # Dashboard
     path("dashboard/", dashboard_router, name="dashboard_router"),

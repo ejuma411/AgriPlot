@@ -1,0 +1,247 @@
+{% extends "reports/base_report.html" %}
+{% load humanize %}
+{% block extra_css %}
+<style>
+    .milestone-timeline {
+        margin: 30px 0;
+    }
+    
+    .milestone-item {
+        display: flex;
+        margin-bottom: 20px;
+        position: relative;
+    }
+    
+    .milestone-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 20px;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .milestone-icon.completed {
+        background: #4CAF50;
+        color: white;
+    }
+    
+    .milestone-icon.current {
+        background: #FF9800;
+        color: white;
+    }
+    
+    .milestone-icon.pending {
+        background: #e0e0e0;
+        color: #999;
+    }
+    
+    .milestone-content {
+        flex: 1;
+        padding-bottom: 20px;
+        border-left: 2px solid #e0e0e0;
+        padding-left: 20px;
+        position: relative;
+    }
+    
+    .milestone-item:last-child .milestone-content {
+        border-left: none;
+    }
+    
+    .milestone-title {
+        font-weight: bold;
+        font-size: 11pt;
+        margin-bottom: 5px;
+    }
+    
+    .milestone-date {
+        font-size: 8pt;
+        color: #666;
+    }
+    
+    .milestone-notes {
+        font-size: 9pt;
+        color: #888;
+        margin-top: 5px;
+    }
+    
+    .deal-summary {
+        background: linear-gradient(135deg, #1B5E20 0%, #2E7D32 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 25px;
+    }
+    
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        margin-top: 15px;
+    }
+    
+    .summary-item {
+        text-align: center;
+    }
+    
+    .summary-label {
+        font-size: 8pt;
+        opacity: 0.9;
+        margin-bottom: 5px;
+    }
+    
+    .summary-value {
+        font-size: 16pt;
+        font-weight: bold;
+    }
+    
+    .document-checklist {
+        background: #f9f9f9;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 20px 0;
+    }
+    
+    .document-item {
+        padding: 8px;
+        border-bottom: 1px solid #e0e0e0;
+        display: flex;
+        justify-content: space-between;
+    }
+    
+    .document-item:last-child {
+        border-bottom: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-title">
+    <h1>📊 Transaction Milestone Report</h1>
+    <div class="subtitle">Real-time Transaction Progress Tracker</div>
+</div>
+
+<!-- Deal Summary -->
+<div class="deal-summary">
+    <h3 style="color: white; margin-bottom: 15px;">Transaction Overview</h3>
+    <div class="summary-grid">
+        <div class="summary-item">
+            <div class="summary-label">Transaction ID</div>
+            <div class="summary-value">{{ deal.internal_reference|default:deal.id }}</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Transaction Type</div>
+            <div class="summary-value">{{ deal.transaction_type|upper }}</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Current Status</div>
+            <div class="summary-value">{{ deal.get_status_display }}</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Buyer</div>
+            <div class="summary-value">{{ deal.buyer.get_full_name|default:deal.buyer.username }}</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Seller</div>
+            <div class="summary-value">{{ deal.seller.get_full_name|default:deal.seller.username }}</div>
+        </div>
+        <div class="summary-item">
+            <div class="summary-label">Amount</div>
+            <div class="summary-value">KES {{ deal.amount|floatformat:0|intcomma }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Overview -->
+<h2>📈 Overall Progress</h2>
+<div class="progress-container">
+    <div class="progress-bar" style="width: {{ progress_percentage }}%;">
+        {{ progress_percentage|floatformat:0 }}% Complete
+    </div>
+</div>
+
+<div class="two-column">
+    <div class="column">
+        <div class="info-box">
+            <strong>Started:</strong> {{ deal.created_at|date:"F d, Y" }}<br>
+            <strong>Days Elapsed:</strong> {{ days_elapsed }} days
+        </div>
+    </div>
+    <div class="column">
+        <div class="info-box">
+            <strong>Completed Steps:</strong> {{ completed_steps }}/{{ total_steps }}<br>
+            <strong>Est. Completion:</strong> {{ estimated_completion|date:"F d, Y"|default:"Pending" }}
+        </div>
+    </div>
+</div>
+
+<!-- Milestone Timeline -->
+<h2>🎯 Transaction Milestones</h2>
+<div class="milestone-timeline">
+    {% for step in steps %}
+    <div class="milestone-item">
+        <div class="milestone-icon {% if step.status == 'completed' %}completed{% elif step.status == 'current' %}current{% else %}pending{% endif %}">
+            {% if step.status == 'completed' %}✓{% elif step.status == 'current' %}●{% else %}○{% endif %}
+        </div>
+        <div class="milestone-content">
+            <div class="milestone-title">{{ step.name }}</div>
+            <div class="milestone-date">
+                {% if step.completed_date %}
+                    Completed: {{ step.completed_date|date:"F d, Y H:i" }}
+                {% elif step.due_date %}
+                    Due: {{ step.due_date|date:"F d, Y" }}
+                {% else %}
+                    Status: {{ step.status|title }}
+                {% endif %}
+            </div>
+            {% if step.notes %}
+            <div class="milestone-notes">{{ step.notes }}</div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Document Checklist -->
+<h2>📋 Required Documents</h2>
+<div class="document-checklist">
+    {% for doc in required_documents %}
+    <div class="document-item">
+        <span>{{ doc.name }}</span>
+        <span>
+            {% if doc.uploaded %}
+                <span class="text-success">✓ Uploaded</span>
+            {% else %}
+                <span class="text-warning">⏳ Pending</span>
+            {% endif %}
+        </span>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Payment Breakdown -->
+{% if deal.transaction_type == 'purchase' %}
+<h2>💰 Financial Breakdown</h2>
+<table class="data-table">
+    <thead>
+        <tr><th>Item</th><th>Amount</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+        <tr><td>Agreement Deposit (10%)</td><td>KES {{ deal.agreement_deposit_amount|floatformat:0|intcomma }}</td><td>{% if deal.status == 'paid' %}Paid{% else %}Pending{% endif %}</td></tr>
+        <tr><td>Stamp Duty (4%)</td><td>KES {{ deal.purchase_stamp_duty_estimate|floatformat:0|intcomma }}</td><td>{% if deal.stamp_duty_date %}Paid{% else %}Pending{% endif %}</td></tr>
+        <tr><td>Platform Fee</td><td>KES {{ deal.platform_fee_amount|floatformat:0|intcomma }}</td><td>Due at completion</td></tr>
+        <tr><td>Completion Balance</td><td>KES {{ deal.completion_balance_amount|floatformat:0|intcomma }}</td><td>Due at registration</td></tr>
+    </tbody>
+</table>
+{% endif %}
+
+<!-- Next Steps -->
+<div class="info-box" style="background: #E3F2FD; border-left-color: #2196F3;">
+    <strong>🔮 Next Steps</strong><br>
+    {{ buyer_next_step_instruction|default:"Continue following the milestone tracker to complete your transaction." }}
+</div>
+{% endblock %}
