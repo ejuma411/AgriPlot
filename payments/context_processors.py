@@ -39,3 +39,12 @@ def payment_admin_nav(request):
         "show_payment_admin_nav": True,
         "payment_admin_task_count": task_count,
     }
+
+from .wallet_service import WalletService
+
+def wallet_balance(request):
+    """Add wallet balance to all templates"""
+    if request.user.is_authenticated:
+        balance = WalletService.get_balance(request.user)
+        return {'wallet_balance': balance}
+    return {'wallet_balance': 0}

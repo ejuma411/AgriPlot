@@ -1,345 +1,825 @@
 {% extends "base.html" %}
 {% load static %}
+{% load humanize %}
 
-{% block title %}Create Payment Request{% endblock %}
+{% block title %}Create Payment Request - AgriPlot{% endblock %}
 
 {% block extra_css %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/payments.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    .payment-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    /* Payment Methods Styles */
+    .payment-methods-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .payment-method-card {
+        background: white;
+        border: 2px solid #e8ece5;
+        border-radius: 16px;
+        padding: 1.25rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+    }
+    
+    .payment-method-card:hover {
+        border-color: #1f8b4c;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    
+    .payment-method-card.selected {
+        border-color: #1f8b4c;
+        background: linear-gradient(135deg, #f8faf5, #ffffff);
+        box-shadow: 0 4px 15px rgba(31,139,76,0.15);
+    }
+    
+    .payment-method-card.selected::before {
+        content: '✓';
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        width: 24px;
+        height: 24px;
+        background: #1f8b4c;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: bold;
+    }
+    
+    .method-icon {
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .method-name {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #0a2a1a;
+        margin-bottom: 0.25rem;
+    }
+    
+    .method-description {
+        font-size: 0.8rem;
+        color: #5a6e5a;
+    }
+    
+    /* Payment Form Sections */
+    .payment-detail-section {
+        background: #f8faf5;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-top: 1.5rem;
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    .payment-detail-section.active {
+        display: block;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #0a2a1a;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-group input,
+    .form-group select {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid #e0e5e0;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        background: white;
+    }
+    
+    .form-group input:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #1f8b4c;
+        box-shadow: 0 0 0 3px rgba(31,139,76,0.1);
+    }
+    
+    .amount-display {
+        background: linear-gradient(135deg, #0a2a1a, #0d3d22);
+        color: white;
+        padding: 1rem 1.5rem;
+        border-radius: 16px;
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .amount-label {
+        font-size: 0.8rem;
+        opacity: 0.8;
+        margin-bottom: 0.5rem;
+    }
+    
+    .amount-value {
+        font-size: 2rem;
+        font-weight: 700;
+        font-family: 'Space Grotesk', monospace;
+    }
+    
+    .workspace-notice {
+        background: #f8f9fa;
+        border-left: 4px solid #1f8b4c;
+        padding: 1rem;
+        border-radius: 8px;
+        font-size: 0.85rem;
+    }
+    
+    .form-actions {
+        display: flex;
+        gap: 1rem;
+        margin-top: 1.5rem;
+    }
+    
+    .hero-btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: 40px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: none;
+        font-size: 1rem;
+    }
+    
+    .hero-btn-primary {
+        background: linear-gradient(135deg, #1f8b4c, #0a5c30);
+        color: white;
+        flex: 1;
+    }
+    
+    .hero-btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(31,139,76,0.3);
+    }
+    
+    .hero-btn-secondary {
+        background: #e9ecef;
+        color: #2c3e2f;
+    }
+    
+    .hero-panel-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    
+    .panel-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #1f8b4c;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .side-panel-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .create-layout {
+        display: grid;
+        grid-template-columns: 1fr 320px;
+        gap: 2rem;
+    }
+    
+    @media (max-width: 1024px) {
+        .create-layout {
+            grid-template-columns: 1fr;
+        }
+        .payment-container {
+            padding: 1rem;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .payment-methods-grid {
+            grid-template-columns: 1fr;
+        }
+        .form-row {
+            grid-template-columns: 1fr;
+        }
+        .form-actions {
+            flex-direction: column;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<section class="payments-section create-page">
-    <div class="payments-shell create-layout">
+<div class="payment-container">
+    <div class="create-layout">
         <div class="form-card">
             <div class="section-heading compact">
                 <span class="section-kicker">Legal escrow workflow</span>
                 <h2>Start the land transfer workflow</h2>
                 <p>This checkout opens the Kenyan purchase or lease path: pay the commitment fee, lock the plot for due diligence or lease confirmation, then continue through the right agreement, consents, escrow security, handover, and registration steps.</p>
             </div>
+            
             {% if selected_plot %}
             <div class="workspace-notice mb-3">
                 <strong>Starting from plot:</strong> {{ selected_plot.title }} in {{ selected_plot.location }}
                 <div class="mt-2">{{ selected_plot_availability }}</div>
             </div>
             {% endif %}
-            <div class="workspace-notice mb-3">
-                <strong>Testing mode:</strong> this checkout simulates the commitment fee that opens the legal escrow workflow for direct land purchase and lease deals.
-                <div class="mt-2" id="amountPolicyHint">AgriPlot will calculate the amount for the selected sale stage from the plot price so the buyer cannot modify it manually.</div>
-            </div>
-            {% if current_payment_stage_label %}
-            <div class="workspace-notice mb-3">
-                <strong>Current payment stage:</strong> {{ current_payment_stage_label }}
-                {% if current_payment_stage_message %}
-                <div class="mt-2">{{ current_payment_stage_message }}</div>
-                {% endif %}
+
+            {% if form.errors %}
+            <div class="workspace-notice mb-3" style="background:#fff4f4;border-left-color:#dc3545;">
+                <strong>We could not start the payment yet.</strong>
+                <ul style="margin:0.75rem 0 0 1rem; padding:0;">
+                    {% for field in form %}
+                        {% for error in field.errors %}
+                            <li><strong>{{ field.label }}:</strong> {{ error }}</li>
+                        {% endfor %}
+                    {% endfor %}
+                    {% for error in form.non_field_errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
             </div>
             {% endif %}
-            <form method="post" class="payments-form">
-                {% csrf_token %}
-                {% if form.non_field_errors %}
-                <div class="alert alert-danger">{{ form.non_field_errors }}</div>
-                {% endif %}
-                {% if form.errors %}
-                <div class="workspace-notice mb-3" style="border-color: rgba(176, 42, 55, 0.18); background: rgba(176, 42, 55, 0.06);">
-                    <strong>Please fix the highlighted checkout fields.</strong>
-                    <ul class="hero-list" style="margin-top: 0.75rem;">
-                        {% for field in form %}
-                            {% for error in field.errors %}
-                            <li>{{ field.label }}: {{ error }}</li>
-                            {% endfor %}
-                        {% endfor %}
-                        {% for error in form.non_field_errors %}
-                        <li>{{ error }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                {% endif %}
-                <style>
-                    .method-detail-panel {
-                        display: none;
-                        gap: 1rem;
-                        padding: 1rem;
-                        border: 1px solid rgba(15, 74, 46, 0.1);
-                        border-radius: 18px;
-                        background: rgba(247, 243, 232, 0.4);
-                    }
-                </style>
-                {% for field in form %}
-                {% if field.is_hidden %}
-                {{ field }}
-                {% elif field.name != 'phone_number' and field.name != 'title' and field.name != 'description' and field.name != 'method' and field.name != 'escrow_enabled' and field.name != 'lease_start_date' and field.name != 'lease_end_date' and field.name != 'intended_use' and field.name != 'lease_security_deposit' and field.name != 'notice_period_days' and field.name != 'good_husbandry_required' and field.name != 'soil_exit_test_required' and field.name != 'subject_to_sale' and field.name != 'due_at' and field.name != 'mpesa_reference' and field.name != 'mpesa_account_reference' and field.name != 'cardholder_name' and field.name != 'card_last4' and field.name != 'bank_name' and field.name != 'bank_account_name' and field.name != 'bank_account_number' and field.name != 'airtel_number' and field.name != 'wallet_identifier' and field.name != 'manual_escrow_notes' %}
-                <div class="field-block {% if field.name == 'escrow_enabled' %}field-inline{% endif %}">
-                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                    {{ field }}
-                    {% if field.help_text %}
-                    <div class="help-copy">{{ field.help_text }}</div>
+            
+            <div class="amount-display">
+                <div class="amount-label">Total Amount to Pay</div>
+                <div class="amount-value" id="amountDisplay">
+                    KES 
+                    {% if forced_amount %}
+                        {{ forced_amount|floatformat:2|intcomma }}
+                    {% elif selected_plot and selected_plot.listing_type == 'lease' %}
+                        50.00
+                    {% elif selected_plot and selected_plot.listing_type == 'sale' %}
+                        {{ selected_plot.price|floatformat:2|intcomma }}
+                    {% else %}
+                        0.00
                     {% endif %}
-                    {% for error in field.errors %}
-                    <div class="error-copy">{{ error }}</div>
-                    {% endfor %}
                 </div>
-                {% endif %}
+                <div class="amount-label" style="font-size: 0.7rem; margin-top: 0.5rem;" id="amountHint">
+                    {% if selected_plot and selected_plot.listing_type == 'lease' %}Commitment fee for lease agreement{% else %}Transaction amount{% endif %}
+                </div>
+            </div>
+            
+            <form method="post" class="payments-form" id="paymentForm">
+                {% csrf_token %}
+                
+                <!-- Hidden fields -->
+                {% for field in form %}
+                    {% if field.is_hidden %}
+                        {{ field }}
+                    {% endif %}
                 {% endfor %}
 
-                <div class="workspace-notice mb-3">
-                    <strong>Due diligence lock:</strong> once payment succeeds, AgriPlot opens a 7-day lock so the buyer can review the search and survey pack before the legal sale stages continue.
-                </div>
+                <div class="payment-detail-section active" style="display:block; margin-top:0; margin-bottom:1.5rem;">
+                    <h4>Checkout details</h4>
+                    {% if current_payment_stage_label %}
+                    <div class="workspace-notice" style="margin-bottom:1rem;">
+                        <strong>Current payment stage:</strong> {{ current_payment_stage_label }}<br>
+                        <span>{{ current_payment_stage_message }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.amount.id_for_label }}">{{ form.amount.label }}</label>
+                            {{ form.amount }}
+                            {% if form.amount.help_text %}
+                                <small class="help-copy">{{ form.amount.help_text }}</small>
+                            {% endif %}
+                            <small class="help-copy">This amount is auto-selected from the current legal stage and cannot be changed here.</small>
+                            {% for error in form.amount.errors %}
+                                <small class="text-danger d-block mt-1">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            <label for="id_transaction_type_display">Deal type</label>
+                            <input
+                                type="text"
+                                id="id_transaction_type_display"
+                                class="form-control"
+                                value="{% if selected_plot and selected_plot.listing_type == 'lease' %}Lease{% elif selected_plot and selected_plot.listing_type == 'sale' %}Purchase{% else %}Service{% endif %}"
+                                readonly
+                            >
+                            <small class="help-copy">AgriPlot has already locked this checkout to the right transaction type for this plot.</small>
+                        </div>
+                    </div>
 
-                <div class="method-detail-panel" data-transaction-panel="lease">
-                    <h3 class="form-label">Lease Period</h3>
-                    <div class="workspace-notice">
-                        These fields capture the real Kenyan agricultural lease flow: lease dates, intended use, security deposit, notice period, soil protection, and hybrid sale clauses where needed.
+                    {% if selected_plot and selected_plot.listing_type == 'lease' %}
+                    <div class="workspace-notice" style="margin-bottom:1rem;">
+                        <strong>Lease information required before payment</strong><br>
+                        Tell AgriPlot when the lease should start, when it should end, and how the land will be used so the workflow, agreement, and handover stages reflect the real lease.
                     </div>
-                    <div class="field-block">
-                        <label for="{{ form.lease_start_date.id_for_label }}" class="form-label">{{ form.lease_start_date.label }}</label>
-                        {{ form.lease_start_date }}
-                        {% for error in form.lease_start_date.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.lease_start_date.id_for_label }}">{{ form.lease_start_date.label }}</label>
+                            {{ form.lease_start_date }}
+                            {% if form.lease_start_date.help_text %}
+                                <small class="help-copy">{{ form.lease_start_date.help_text }}</small>
+                            {% endif %}
+                            {% for error in form.lease_start_date.errors %}
+                                <small class="text-danger d-block mt-1">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.lease_end_date.id_for_label }}">{{ form.lease_end_date.label }}</label>
+                            {{ form.lease_end_date }}
+                            {% if form.lease_end_date.help_text %}
+                                <small class="help-copy">{{ form.lease_end_date.help_text }}</small>
+                            {% endif %}
+                            {% for error in form.lease_end_date.errors %}
+                                <small class="text-danger d-block mt-1">{{ error }}</small>
+                            {% endfor %}
+                        </div>
                     </div>
-                    <div class="field-block">
-                        <label for="{{ form.lease_end_date.id_for_label }}" class="form-label">{{ form.lease_end_date.label }}</label>
-                        {{ form.lease_end_date }}
-                        {% for error in form.lease_end_date.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="field-block">
-                        <label for="{{ form.intended_use.id_for_label }}" class="form-label">{{ form.intended_use.label }}</label>
+
+                    <div class="form-group">
+                        <label for="{{ form.intended_use.id_for_label }}">{{ form.intended_use.label }}</label>
                         {{ form.intended_use }}
-                        {% if form.intended_use.help_text %}<div class="help-copy">{{ form.intended_use.help_text }}</div>{% endif %}
-                        {% for error in form.intended_use.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                        {% if form.intended_use.help_text %}
+                            <small class="help-copy">{{ form.intended_use.help_text }}</small>
+                        {% endif %}
+                        {% for error in form.intended_use.errors %}
+                            <small class="text-danger d-block mt-1">{{ error }}</small>
+                        {% endfor %}
                     </div>
-                    <div class="field-block">
-                        <label for="{{ form.lease_security_deposit.id_for_label }}" class="form-label">{{ form.lease_security_deposit.label }}</label>
-                        {{ form.lease_security_deposit }}
-                        {% if form.lease_security_deposit.help_text %}<div class="help-copy">{{ form.lease_security_deposit.help_text }}</div>{% endif %}
-                        {% for error in form.lease_security_deposit.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="field-block">
-                        <label for="{{ form.notice_period_days.id_for_label }}" class="form-label">{{ form.notice_period_days.label }}</label>
-                        {{ form.notice_period_days }}
-                        {% if form.notice_period_days.help_text %}<div class="help-copy">{{ form.notice_period_days.help_text }}</div>{% endif %}
-                        {% for error in form.notice_period_days.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
-                    </div>
-                    <div class="field-block field-inline">
-                        <label for="{{ form.good_husbandry_required.id_for_label }}" class="form-label">{{ form.good_husbandry_required.label }}</label>
-                        {{ form.good_husbandry_required }}
-                        {% if form.good_husbandry_required.help_text %}<div class="help-copy">{{ form.good_husbandry_required.help_text }}</div>{% endif %}
-                    </div>
-                    <div class="field-block field-inline">
-                        <label for="{{ form.soil_exit_test_required.id_for_label }}" class="form-label">{{ form.soil_exit_test_required.label }}</label>
-                        {{ form.soil_exit_test_required }}
-                        {% if form.soil_exit_test_required.help_text %}<div class="help-copy">{{ form.soil_exit_test_required.help_text }}</div>{% endif %}
-                    </div>
-                    <div class="field-block field-inline">
-                        <label for="{{ form.subject_to_sale.id_for_label }}" class="form-label">{{ form.subject_to_sale.label }}</label>
-                        {{ form.subject_to_sale }}
-                        {% if form.subject_to_sale.help_text %}<div class="help-copy">{{ form.subject_to_sale.help_text }}</div>{% endif %}
-                    </div>
-                    <div class="workspace-notice">
-                        Agricultural leases over one month should capture Land Control Board consent before handover. Leases longer than 2 years should also be protected at the Lands Registry.
-                    </div>
-                </div>
 
-                <div class="method-detail-panel" style="display:grid;">
-                    <h3 class="form-label">M-Pesa Number</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="{{ form.lease_security_deposit.id_for_label }}">{{ form.lease_security_deposit.label }}</label>
+                            {{ form.lease_security_deposit }}
+                            {% if form.lease_security_deposit.help_text %}
+                                <small class="help-copy">{{ form.lease_security_deposit.help_text }}</small>
+                            {% endif %}
+                            {% for error in form.lease_security_deposit.errors %}
+                                <small class="text-danger d-block mt-1">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                        <div class="form-group">
+                            <label for="{{ form.notice_period_days.id_for_label }}">{{ form.notice_period_days.label }}</label>
+                            {{ form.notice_period_days }}
+                            {% if form.notice_period_days.help_text %}
+                                <small class="help-copy">{{ form.notice_period_days.help_text }}</small>
+                            {% endif %}
+                            {% for error in form.notice_period_days.errors %}
+                                <small class="text-danger d-block mt-1">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label style="display:flex; gap:0.5rem; align-items:center;">
+                                {{ form.good_husbandry_required }}
+                                <span>{{ form.good_husbandry_required.label }}</span>
+                            </label>
+                            {% if form.good_husbandry_required.help_text %}
+                                <small class="help-copy">{{ form.good_husbandry_required.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div class="form-group">
+                            <label style="display:flex; gap:0.5rem; align-items:center;">
+                                {{ form.soil_exit_test_required }}
+                                <span>{{ form.soil_exit_test_required.label }}</span>
+                            </label>
+                            {% if form.soil_exit_test_required.help_text %}
+                                <small class="help-copy">{{ form.soil_exit_test_required.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display:flex; gap:0.5rem; align-items:center;">
+                            {{ form.subject_to_sale }}
+                            <span>{{ form.subject_to_sale.label }}</span>
+                        </label>
+                        {% if form.subject_to_sale.help_text %}
+                            <small class="help-copy">{{ form.subject_to_sale.help_text }}</small>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Payment Method Selection -->
+                <h3 class="form-label" style="margin-bottom: 1rem;">Select Payment Method</h3>
+                <div class="payment-methods-grid">
+                    <div class="payment-method-card" data-method="mpesa_stk">
+                        <div class="method-icon">📱</div>
+                        <div class="method-name">M-Pesa</div>
+                        <div class="method-description">Pay using Safaricom M-Pesa</div>
+                    </div>
+                    <div class="payment-method-card" data-method="card">
+                        <div class="method-icon">💳</div>
+                        <div class="method-name">Card Payment</div>
+                        <div class="method-description">Visa, Mastercard, American Express</div>
+                    </div>
+                    <div class="payment-method-card" data-method="bank_transfer">
+                        <div class="method-icon">🏦</div>
+                        <div class="method-name">Bank Transfer</div>
+                        <div class="method-description">Direct bank transfer / RTGS</div>
+                    </div>
+                    <div class="payment-method-card" data-method="airtel_money">
+                        <div class="method-icon">📞</div>
+                        <div class="method-name">Airtel Money</div>
+                        <div class="method-description">Pay using Airtel Money</div>
+                    </div>
+                    <div class="payment-method-card" data-method="wallet">
+                        <div class="method-icon">👛</div>
+                        <div class="method-name">AgriPlot Wallet</div>
+                        <div class="method-description">Use your AgriPlot wallet balance</div>
+                    </div>
+                </div>
+                
+                <!-- Hidden fields for payment method -->
+                <input type="hidden" name="method" id="selectedMethod" value="">
+                <input type="hidden" name="transaction_type" id="id_transaction_type" value="{% if selected_plot and selected_plot.listing_type == 'lease' %}lease{% elif selected_plot and selected_plot.listing_type == 'sale' %}purchase{% else %}service{% endif %}">
+                
+                <!-- M-Pesa Section -->
+                <div class="payment-detail-section" id="mpesaSection">
+                    <h4>M-Pesa Payment Details</h4>
+                    <div class="form-group">
+                        <label for="mpesa_phone">M-Pesa Number</label>
+                        <input type="tel" name="phone_number" id="mpesa_phone" class="form-control" placeholder="0712345678">
+                        <small class="help-copy">Enter the M-Pesa registered phone number</small>
+                    </div>
                     <div class="workspace-notice">
-                        Enter the buyer's M-Pesa number for the commitment fee. The buyer will approve the payment on the phone, and AgriPlot will open the legal transaction tracker after success.
-                    </div>
-                    <div class="field-block">
-                        <label for="{{ form.phone_number.id_for_label }}" class="form-label">{{ form.phone_number.label }}</label>
-                        {{ form.phone_number }}
-                        {% if form.phone_number.help_text %}
-                        <div class="help-copy">{{ form.phone_number.help_text }}</div>
-                        {% endif %}
-                        {% for error in form.phone_number.errors %}<div class="error-copy">{{ error }}</div>{% endfor %}
+                        <strong>How it works:</strong> You will receive an STK push on your phone. Enter your M-Pesa PIN to complete the payment.
                     </div>
                 </div>
-                {% if forced_amount %}
-                <div class="workspace-notice mb-3">
-                    <strong>Exact agreed amount:</strong> KES {{ forced_amount|floatformat:2 }}
-                    <div class="mt-2">This STK push will use the amount already agreed in the active lease deal. It cannot be changed here.</div>
+                
+                <!-- Card Section -->
+                <div class="payment-detail-section" id="cardSection">
+                    <h4>Card Payment Details</h4>
+                    <div class="form-group">
+                        <label for="card_number">Card Number</label>
+                        <input type="text" name="card_number" id="card_number" class="form-control" placeholder="4111 1111 1111 1111" maxlength="19">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="card_expiry">Expiry Date</label>
+                            <input type="text" name="card_expiry" id="card_expiry" class="form-control" placeholder="MM/YY" maxlength="5">
+                        </div>
+                        <div class="form-group">
+                            <label for="card_cvv">CVV</label>
+                            <input type="text" name="card_cvv" id="card_cvv" class="form-control" placeholder="123" maxlength="4">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="cardholder_name">Cardholder Name</label>
+                        <input type="text" name="cardholder_name" id="cardholder_name" class="form-control" placeholder="John Doe">
+                    </div>
                 </div>
-                {% endif %}
+                
+                <!-- Bank Transfer Section -->
+                <div class="payment-detail-section" id="bankSection">
+                    <h4>Bank Transfer Instructions</h4>
+                    <div class="workspace-notice">
+                        <strong>Bank Account Details:</strong><br>
+                        Bank: Cooperative Bank of Kenya<br>
+                        Account Name: AgriPlot Escrow Services<br>
+                        Account Number: 0114123456789<br>
+                        SWIFT Code: KCOOKENA
+                    </div>
+                    <div class="form-group">
+                        <label for="bank_reference">Reference Number</label>
+                        <input type="text" name="bank_reference" id="bank_reference" class="form-control" placeholder="Enter your transaction reference">
+                    </div>
+                </div>
+                
+                <!-- Airtel Section -->
+                <div class="payment-detail-section" id="airtelSection">
+                    <h4>Airtel Money Payment Details</h4>
+                    <div class="form-group">
+                        <label for="airtel_number">Airtel Money Number</label>
+                        <input type="tel" name="airtel_number" id="airtel_number" class="form-control" placeholder="0712345678">
+                    </div>
+                    <div class="workspace-notice">
+                        <strong>How it works:</strong> You will receive a payment request on your Airtel Money.
+                    </div>
+                </div>
+                
+                <!-- Wallet Section -->
+                <div class="payment-detail-section" id="walletSection">
+                    <h4>AgriPlot Wallet Payment</h4>
+                    <div class="workspace-notice">
+                        <strong>Current Wallet Balance:</strong> KES <span id="walletBalance">{{ wallet_balance|default:"0.00" }}</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="wallet_pin">Wallet PIN</label>
+                        <input type="password" name="wallet_pin" id="wallet_pin" class="form-control" placeholder="Enter 4-digit PIN" maxlength="4">
+                    </div>
+                    <div id="walletError" class="workspace-notice" style="display: none; background: #f8d7da; border-left-color: #dc3545;"></div>
+                </div>
+                
                 <div class="form-actions">
-                    <button type="submit" class="hero-btn hero-btn-primary">
-                        {% if current_payment_stage_label %}
-                        Pay {{ current_payment_stage_label|lower }}
-                        {% else %}
-                        Continue to payment
-                        {% endif %}
-                    </button>
-                    <a href="{% url 'payments:dashboard' %}" class="hero-btn hero-btn-secondary hero-btn-light">Back to workspace</a>
+                    <button type="submit" class="hero-btn hero-btn-primary" id="submitPaymentBtn">Pay Now</button>
+                    <a href="{% url 'payments:dashboard' %}" class="hero-btn hero-btn-secondary">Cancel</a>
                 </div>
             </form>
         </div>
+        
         <aside class="side-panel-stack">
             <div class="hero-panel-card">
-                <span class="panel-label">Your next 3 moves</span>
-                <ul class="hero-list" id="checkoutJourneySteps">
-                    <li>AgriPlot checks the current legal step and opens only the valid payment stage.</li>
-                    <li>Pay the calculated amount for this stage without editing it manually.</li>
-                    <li>Return to the tracker and continue the assigned legal workspace, not guesswork.</li>
-                </ul>
+                <span class="panel-label">Payment Summary</span>
+                <div id="paymentSummary">
+                    <p><strong>Transaction Type:</strong> <span id="summaryType">
+                        {% if selected_plot and selected_plot.listing_type == 'lease' %}Lease{% elif selected_plot and selected_plot.listing_type == 'sale' %}Purchase{% else %}Service{% endif %}
+                    </span></p>
+                    <p><strong>Amount:</strong> <span id="summaryAmount">
+                        KES 
+                        {% if forced_amount %}
+                            {{ forced_amount|floatformat:2|intcomma }}
+                        {% elif selected_plot and selected_plot.listing_type == 'lease' %}
+                            50.00
+                        {% elif selected_plot and selected_plot.listing_type == 'sale' %}
+                            {{ selected_plot.price|floatformat:2|intcomma }}
+                        {% else %}
+                            0.00
+                        {% endif %}
+                    </span></p>
+                    <p><strong>Payment Method:</strong> <span id="summaryMethod">Not selected</span></p>
+                </div>
             </div>
             <div class="hero-panel-card">
-                <span class="panel-label">What happens after checkout</span>
-                <p class="mb-0 text-muted" id="checkoutJourneyTitle">The transaction tracker will open the real next legal step for this land deal so the buyer is not left guessing.</p>
-                <div class="workspace-notice mt-3" id="checkoutLandNote">
-                    AgriPlot adjusts the legal tracker to the selected land type, so agricultural land, residential plots, and commercial sites do not all follow the exact same closing path.
+                <span class="panel-label">Secure Payment</span>
+                <p>All payments are processed securely through our encrypted payment gateway.</p>
+                <div class="workspace-notice mt-3">
+                    <small>🔒 SSL Encrypted • PCI Compliant • 256-bit Security</small>
                 </div>
             </div>
         </aside>
     </div>
-</section>
-{{ checkout_amounts|json_script:"checkout-amounts" }}
-{{ plot_listing_types|json_script:"plot-listing-types" }}
-{{ plot_checkout_contexts|json_script:"plot-checkout-contexts" }}
+</div>
+
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-    const plot = document.getElementById("id_plot");
-    const transactionType = document.getElementById("id_transaction_type");
-    const category = document.getElementById("id_category");
-    const amount = document.getElementById("id_amount");
-    const hint = document.getElementById("amountPolicyHint");
-    const dataNode = document.getElementById("checkout-amounts");
-    const plotTypeNode = document.getElementById("plot-listing-types");
-    const plotContextNode = document.getElementById("plot-checkout-contexts");
-    const transactionPanels = document.querySelectorAll("[data-transaction-panel]");
-    const journeyTitle = document.getElementById("checkoutJourneyTitle");
-    const journeySteps = document.getElementById("checkoutJourneySteps");
-    const landNote = document.getElementById("checkoutLandNote");
-
-    if (!transactionType || !category || !amount || !hint || !dataNode || !plotTypeNode || !plotContextNode) {
-        return;
-    }
-
-    const presets = JSON.parse(dataNode.textContent);
-    const plotListingTypes = JSON.parse(plotTypeNode.textContent);
-    const plotContexts = JSON.parse(plotContextNode.textContent);
-
-    function formatKes(value) {
-        const number = Number(value);
-        if (Number.isNaN(number)) {
-            return value;
-        }
-        return "KES " + number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function updateAmountHint() {
-        const exactAmount = amount.dataset.exactAmount || "";
-        const tx = transactionType.value;
-        const cat = category.value;
-        if (exactAmount) {
-            amount.value = Number(exactAmount).toFixed(2);
-            hint.textContent = "Fixed amount for this stage: " + formatKes(exactAmount) + ". This is the exact agreed deal amount for the current lease step.";
-            return;
-        }
-        const suggested = presets?.[tx]?.[cat] || "";
-        if (suggested) {
-            amount.value = Number(suggested).toFixed(2);
-            hint.textContent = "Fixed amount for this stage: " + formatKes(suggested) + ". AgriPlot calculates this from the sale price and stage rules.";
-        } else {
-            hint.textContent = "AgriPlot will calculate the amount automatically once the deal type and payment stage are fully selected.";
-        }
-    }
-
-    function syncTransactionTypeFromPlot() {
-        if (!plot) {
-            return;
-        }
-        const listingType = plotListingTypes?.[plot.value];
-        if (listingType === "sale" && transactionType.value !== "purchase") {
-            transactionType.value = "purchase";
-        }
-        if (listingType === "lease" && transactionType.value !== "lease") {
-            transactionType.value = "lease";
-        }
-    }
-
-    function updateTransactionPanels() {
-        const selectedTransaction = transactionType.value;
-        transactionPanels.forEach((panel) => {
-            panel.style.display = panel.dataset.transactionPanel === selectedTransaction ? "grid" : "none";
-        });
-    }
-
-    function getJourneyContent() {
-        const plotContext = plot ? plotContexts?.[plot.value] : null;
-        const tx = transactionType.value;
-        const landType = plotContext?.land_type || "agricultural";
-        const landTypeDisplay = plotContext?.land_type_display || "land";
-
-        if (tx === "lease") {
-            return {
-                title: `After this ${landTypeDisplay.toLowerCase()} lease checkout`,
-                note: landType === "agricultural"
-                    ? "The tracker will guide the buyer through lease confirmation, site handover, and any farming-use confirmations before occupation."
-                    : "The tracker will guide the buyer through lease agreement review, payment proof, and handover for this site.",
-                steps: [
-                    "Complete the M-Pesa commitment and return to AgriPlot.",
-                    "Use the guided tracker to confirm the lease agreement and payment proof.",
-                    "Follow the handover step so possession is documented before occupation."
-                ]
-            };
-        }
-
-        if (landType === "agricultural") {
-            return {
-                title: "After this agricultural land checkout",
-                note: "Agricultural land follows the stricter Kenyan path: due diligence lock, agreement, Land Control Board consent, valuation and stamp duty, completion exchange, and final registration.",
-                steps: [
-                    "Complete the Safaricom Daraja STK push on the buyer's phone, then return to the due diligence workspace instead of guessing what comes next.",
-                    "Work through the agricultural purchase tracker, including the agreement, Land Control Board consent, and stamp duty stages.",
-                    "The plot only becomes sold after registry transfer is confirmed, not just because payment succeeded."
-                ]
-            };
-        }
-
-        return {
-            title: `After this ${landTypeDisplay.toLowerCase()} purchase checkout`,
-            note: "AgriPlot adapts the transfer journey for the selected land type, including the right consent, clearance, valuation, and registration steps.",
-            steps: [
-                "Complete the Safaricom Daraja STK push on the buyer's phone, then return to the due diligence workspace.",
-                "Work through the agreement, consent or clearance, valuation, and completion steps.",
-                "The plot only becomes sold after final registration proof is uploaded."
-            ]
+    document.addEventListener("DOMContentLoaded", function() {
+        // DOM Elements
+        const methodCards = document.querySelectorAll('.payment-method-card');
+        const methodSections = {
+            'mpesa_stk': document.getElementById('mpesaSection'),
+            'card': document.getElementById('cardSection'),
+            'bank_transfer': document.getElementById('bankSection'),
+            'airtel_money': document.getElementById('airtelSection'),
+            'wallet': document.getElementById('walletSection')
         };
-    }
-
-    function updateJourneyPanel() {
-        if (!journeyTitle || !journeySteps || !landNote) {
-            return;
+        const selectedMethodInput = document.getElementById('selectedMethod');
+        const submitBtn = document.getElementById('submitPaymentBtn');
+        const form = document.getElementById('paymentForm');
+        const summaryMethod = document.getElementById('summaryMethod');
+        const walletError = document.getElementById('walletError');
+        const initiallySelectedMethod = "{{ selected_method_slug|default:''|escapejs }}";
+        
+        function parseKesAmount(value) {
+            const normalized = String(value || '').replace(/[^\d.]/g, '');
+            return parseFloat(normalized || '0');
         }
-        const content = getJourneyContent();
-        journeyTitle.textContent = content.title;
-        landNote.textContent = content.note;
-        journeySteps.innerHTML = "";
-        content.steps.forEach((step) => {
-            const item = document.createElement("li");
-            item.textContent = step;
-            journeySteps.appendChild(item);
-        });
-    }
 
-    transactionType.addEventListener("change", updateAmountHint);
-    transactionType.addEventListener("change", updateTransactionPanels);
-    transactionType.addEventListener("change", updateJourneyPanel);
-    if (category.type !== "hidden") {
-        category.addEventListener("change", updateAmountHint);
-    }
-    if (plot) {
-        plot.addEventListener("change", function () {
-            syncTransactionTypeFromPlot();
-            updateTransactionPanels();
-            updateAmountHint();
-            updateJourneyPanel();
+        const amountDisplay = document.getElementById('amountDisplay');
+        const amountField = document.getElementById('id_amount');
+        const totalAmount = amountDisplay ? parseKesAmount(amountDisplay.textContent) : 0;
+
+        function syncAmountField() {
+            if (!amountField || !amountDisplay) {
+                return;
+            }
+            if (!amountField.value || parseKesAmount(amountField.value) === 0) {
+                amountField.value = totalAmount ? totalAmount.toFixed(2) : '';
+            }
+        }
+
+        function showWalletError(message) {
+            if (!walletError) {
+                return;
+            }
+            walletError.style.display = message ? 'block' : 'none';
+            walletError.textContent = message || '';
+        }
+        
+        // Method selection handler
+        methodCards.forEach(card => {
+            card.addEventListener('click', function(e) {
+                e.preventDefault();
+                const method = this.dataset.method;
+                
+                // Update UI
+                methodCards.forEach(c => c.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                // Hide all sections
+                Object.values(methodSections).forEach(section => {
+                    if (section) section.classList.remove('active');
+                });
+                
+                // Show selected section
+                if (methodSections[method]) {
+                    methodSections[method].classList.add('active');
+                }
+                
+                // Set the method value
+                if (selectedMethodInput) {
+                    selectedMethodInput.value = method;
+                }
+                
+                // Update summary
+                const methodNames = {
+                    'mpesa_stk': 'M-Pesa',
+                    'card': 'Card Payment',
+                    'bank_transfer': 'Bank Transfer',
+                    'airtel_money': 'Airtel Money',
+                    'wallet': 'AgriPlot Wallet'
+                };
+                if (summaryMethod) summaryMethod.textContent = methodNames[method] || method;
+                if (method !== 'wallet') {
+                    showWalletError('');
+                }
+            });
         });
-    }
-    syncTransactionTypeFromPlot();
-    updateAmountHint();
-    updateTransactionPanels();
-    updateJourneyPanel();
-});
+        
+        // Form submission
+        if (form) {
+            syncAmountField();
+            form.addEventListener('submit', function(e) {
+                const method = selectedMethodInput ? selectedMethodInput.value : '';
+                syncAmountField();
+                
+                if (!method) {
+                    e.preventDefault();
+                    alert('Please select a payment method');
+                    return false;
+                }
+                
+                // Validate M-Pesa
+                if (method === 'mpesa_stk') {
+                    const phoneNumber = document.getElementById('mpesa_phone')?.value;
+                    if (!phoneNumber || phoneNumber.length < 10) {
+                        e.preventDefault();
+                        alert('Please enter a valid M-Pesa number (e.g., 0712345678)');
+                        return false;
+                    }
+                }
+                
+                // Validate Card
+                if (method === 'card') {
+                    const cardNumber = document.getElementById('card_number')?.value.replace(/\s/g, '');
+                    const expiry = document.getElementById('card_expiry')?.value;
+                    const cvv = document.getElementById('card_cvv')?.value;
+                    
+                    if (!cardNumber || cardNumber.length < 16) {
+                        e.preventDefault();
+                        alert('Please enter a valid card number');
+                        return false;
+                    }
+                    if (!expiry || expiry.length < 5) {
+                        e.preventDefault();
+                        alert('Please enter expiry date (MM/YY)');
+                        return false;
+                    }
+                    if (!cvv || cvv.length < 3) {
+                        e.preventDefault();
+                        alert('Please enter CVV');
+                        return false;
+                    }
+                }
+                
+                // Validate Airtel
+                if (method === 'airtel_money') {
+                    const airtelNumber = document.getElementById('airtel_number')?.value;
+                    if (!airtelNumber || airtelNumber.length < 10) {
+                        e.preventDefault();
+                        alert('Please enter a valid Airtel Money number');
+                        return false;
+                    }
+                }
+
+                if (method === 'wallet') {
+                    const walletPin = document.getElementById('wallet_pin')?.value || '';
+                    const walletBalanceText = document.getElementById('walletBalance')?.textContent || '0';
+                    const walletBalance = parseKesAmount(walletBalanceText);
+
+                    if (!walletPin || walletPin.length !== 4) {
+                        e.preventDefault();
+                        showWalletError('Enter your 4-digit wallet PIN before paying with the wallet.');
+                        return false;
+                    }
+
+                    if (walletBalance < totalAmount) {
+                        e.preventDefault();
+                        showWalletError(`Your wallet balance is too low for this payment. Available: KES ${walletBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`);
+                        return false;
+                    }
+                }
+                
+                // Show loading state
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                }
+                
+                return true;
+            });
+        }
+        
+        // Format phone inputs
+        const phoneInputs = ['mpesa_phone', 'airtel_number'];
+        phoneInputs.forEach(id => {
+            const input = document.getElementById(id);
+            if (input) {
+                input.addEventListener('input', function(e) {
+                    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 12);
+                });
+            }
+        });
+        
+        // Format card inputs
+        const cardNumber = document.getElementById('card_number');
+        if (cardNumber) {
+            cardNumber.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length > 16) value = value.slice(0, 16);
+                let formatted = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+                e.target.value = formatted;
+            });
+        }
+        
+        const expiryInput = document.getElementById('card_expiry');
+        if (expiryInput) {
+            expiryInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length >= 2) {
+                    value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                }
+                e.target.value = value;
+            });
+        }
+        
+        const cvvInput = document.getElementById('card_cvv');
+        if (cvvInput) {
+            cvvInput.addEventListener('input', function(e) {
+                e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+            });
+        }
+
+        const defaultMethodCard = document.querySelector(
+            `.payment-method-card[data-method="${initiallySelectedMethod || 'mpesa_stk'}"]`
+        );
+        if (defaultMethodCard) {
+            defaultMethodCard.click();
+        }
+        syncAmountField();
+
+        {% if form.errors %}
+        const errorNotice = document.querySelector('.workspace-notice[style*="#dc3545"]');
+        if (errorNotice) {
+            errorNotice.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        {% endif %}
+    });
 </script>
 {% endblock %}

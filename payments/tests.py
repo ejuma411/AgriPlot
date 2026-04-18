@@ -323,6 +323,44 @@ class PaymentRequestModelTests(TestCase):
         self.assertEqual(payment.method, PaymentRequest.Method.MPESA_STK)
         self.assertIn("Reservation Deposit", payment.title)
 
+    def test_transactional_payment_form_rejects_missing_plot(self):
+        form = PaymentRequestForm(
+            user=None,
+            data={
+                "plot": "",
+                "transaction_type": PaymentRequest.TransactionType.PURCHASE,
+                "title": "",
+                "description": "",
+                "amount": "1.00",
+                "category": PaymentRequest.Category.COMMITMENT_FEE,
+                "method": PaymentRequest.Method.MPESA_STK,
+                "phone_number": "254700000123",
+                "lease_start_date": "",
+                "lease_end_date": "",
+                "escrow_enabled": "",
+                "due_at": "",
+            },
+        )
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("plot", form.errors)
+
+    def test_transactional_payment_model_rejects_missing_plot(self):
+        user = get_user_model().objects.create_user(username="buyer_no_plot", password="secret123")
+        payment = PaymentRequest(
+            buyer=user,
+            title="Commitment payment",
+            amount="50.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.COMMITMENT_FEE,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.PENDING,
+            phone_number="254700000321",
+        )
+
+        with self.assertRaisesMessage(ValidationError, "A plot is required"):
+            payment.full_clean()
+
     def test_form_limits_choices_to_purchase_and_lease_direct_deals(self):
         form = PaymentRequestForm(user=None)
         self.assertEqual(
@@ -1592,8 +1630,8 @@ class PaymentAuthorizationTests(TestCase):
         MPESA_ENVIRONMENT="sandbox",
         SITE_URL="http://testserver",
     )
-    @patch("payments.daraja.requests.get")
-    def test_create_request_handles_daraja_connection_failure(self, mock_get):
+    @patch("payments.daraja.requests.request")
+    def test_create_request_handles_daraja_connection_failure(self, mock_request):
         owner_user = self.User.objects.create_user(
             username="daraja_owner",
             password="secret123",
@@ -1613,7 +1651,7 @@ class PaymentAuthorizationTests(TestCase):
             sale_price="450000.00",
             listing_type="sale",
         )
-        mock_get.side_effect = RequestsConnectionError("remote closed")
+        mock_request.side_effect = RequestsConnectionError("remote closed")
         self.client.login(username="buyer_auth", password="secret123")
 
         response = self.client.post(
@@ -1630,8 +1668,91 @@ class PaymentAuthorizationTests(TestCase):
             follow=True,
         )
 
+        payment = PaymentRequest.objects.latest("created_at")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Safaricom Daraja STK push could not start yet")
+        self.assertEqual(
+            payment.metadata.get("provider_start_status"),
+            "pending_provider_confirmation",
+        )
+        self.assertTrue(payment.events.filter(event_type="provider_confirmation_pending").exists())
+
+    @override_settings(
+        MPESA_CONSUMER_KEY="consumer",
+        MPESA_CONSUMER_SECRET="secret",
+        MPESA_BUSINESS_SHORTCODE="123456",
+        MPESA_PASSKEY="passkey",
+        MPESA_ENVIRONMENT="sandbox",
+        SITE_URL="http://testserver",
+    )
+    @patch("payments.daraja.requests.request")
+    def test_create_request_marks_timeout_as_pending_provider_confirmation(self, mock_request):
+        owner_user = self.User.objects.create_user(
+            username="daraja_timeout_owner",
+            password="secret123",
+        )
+        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
+        landowner = LandownerProfile.objects.create(
+            user=owner_user,
+            national_id=SimpleUploadedFile("daraja_timeout_id.txt", b"id"),
+            kra_pin=SimpleUploadedFile("daraja_timeout_pin.txt", b"pin"),
+        )
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Daraja Timeout Plot",
+            location="Nakuru",
+            area=2,
+            price="450000.00",
+            sale_price="450000.00",
+            listing_type="sale",
+        )
+        mock_request.side_effect = RequestsConnectionError("remote closed")
+        self.client.login(username="buyer_auth", password="secret123")
+
+        response = self.client.post(
+            reverse("payments:create_request"),
+            data={
+                "plot": plot.pk,
+                "transaction_type": PaymentRequest.TransactionType.PURCHASE,
+                "amount": "10.00",
+                "category": PaymentRequest.Category.RESERVATION_DEPOSIT,
+                "phone_number": "254700123456",
+                "lease_start_date": "",
+                "lease_end_date": "",
+            },
+            follow=True,
+        )
+
+        payment = PaymentRequest.objects.latest("created_at")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payment.metadata.get("provider_start_status"), "pending_provider_confirmation")
+        self.assertTrue(
+            payment.events.filter(event_type="provider_confirmation_pending").exists()
+        )
+
+    def test_create_request_rejects_transactional_payment_without_plot(self):
+        self.client.login(username="buyer_auth", password="secret123")
+
+        response = self.client.post(
+            reverse("payments:create_request"),
+            data={
+                "plot": "",
+                "transaction_type": PaymentRequest.TransactionType.PURCHASE,
+                "amount": "50.00",
+                "category": PaymentRequest.Category.COMMITMENT_FEE,
+                "phone_number": "254700123456",
+                "lease_start_date": "",
+                "lease_end_date": "",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Select a plot before creating commitment")
+        self.assertFalse(
+            PaymentRequest.objects.filter(
+                buyer=self.buyer,
+                category=PaymentRequest.Category.COMMITMENT_FEE,
+            ).exists()
+        )
 
     @override_settings(
         PAYSTACK_ENABLED=True,

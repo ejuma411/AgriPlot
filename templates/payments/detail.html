@@ -1,508 +1,1054 @@
 {% extends "base.html" %}
 {% load static humanize %}
 
-{% block title %}{{ payment.internal_reference }}{% endblock %}
+{% block title %}{{ payment.internal_reference }} - Payment Details{% endblock %}
 
 {% block extra_css %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/payments.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    /* ============================================
+       PAYMENT DETAIL PAGE - COMPLETE REDESIGN
+    ============================================ */
+    
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    .payment-detail-page {
+        background: linear-gradient(135deg, #f5f7f0 0%, #eef2ea 100%);
+        min-height: 100vh;
+        padding: 2rem 0;
+    }
+    
+    .payment-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 2rem;
+    }
+    
+    /* Header Section */
+    .payment-header {
+        background: white;
+        border-radius: 24px;
+        padding: 1.5rem 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .payment-badge {
+        display: inline-block;
+        background: rgba(31,139,76,0.1);
+        color: #1f8b4c;
+        padding: 0.25rem 1rem;
+        border-radius: 30px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.75rem;
+    }
+    
+    .payment-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #0a2a1a;
+        margin-bottom: 0.5rem;
+    }
+    
+    .payment-ref {
+        color: #6c757d;
+        font-size: 0.9rem;
+    }
+    
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1.25rem;
+        border-radius: 40px;
+        font-weight: 600;
+        font-size: 0.85rem;
+    }
+    
+    .status-success {
+        background: #d4edda;
+        color: #155724;
+    }
+    
+    .status-warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-info {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+    
+    .status-danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-secondary {
+        background: #e2e3e5;
+        color: #383d41;
+    }
+    
+    .amount-display {
+        text-align: right;
+    }
+    
+    .amount-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 0.25rem;
+    }
+    
+    .amount-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1f8b4c;
+        font-family: 'Space Grotesk', monospace;
+    }
+    
+    /* Progress Section */
+    .progress-section {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    }
+    
+    .progress-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .progress-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #4a5568;
+    }
+    
+    .progress-percent {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #1f8b4c;
+    }
+    
+    .progress-track {
+        background: #e9ecef;
+        border-radius: 20px;
+        height: 8px;
+        overflow: hidden;
+    }
+    
+    .progress-fill {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, #1f8b4c, #34ce57);
+        border-radius: 20px;
+        transition: width 0.3s ease;
+    }
+    
+    /* Grid Layout */
+    .payment-grid {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 2rem;
+    }
+    
+    /* Cards */
+    .info-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .info-card:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    
+    .card-title {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #0a2a1a;
+        margin-bottom: 1.25rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e9ecef;
+    }
+    
+    .card-title i {
+        color: #1f8b4c;
+        font-size: 1.1rem;
+    }
+    
+    /* Summary Grid */
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+    }
+    
+    .summary-item {
+        padding: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 12px;
+    }
+    
+    .summary-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: #6c757d;
+        letter-spacing: 0.5px;
+        margin-bottom: 0.25rem;
+    }
+    
+    .summary-value {
+        font-weight: 600;
+        color: #2c3e2f;
+        font-size: 0.9rem;
+    }
+    
+    /* Milestone List */
+    .milestone-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .milestone-item {
+        display: flex;
+        gap: 1rem;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 16px;
+        transition: all 0.2s ease;
+    }
+    
+    .milestone-item:hover {
+        background: #f0f4ef;
+        transform: translateX(4px);
+    }
+    
+    .milestone-number {
+        width: 36px;
+        height: 36px;
+        background: linear-gradient(135deg, #1f8b4c, #0a5c30);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .milestone-content {
+        flex: 1;
+    }
+    
+    .milestone-title {
+        font-weight: 700;
+        font-size: 1rem;
+        color: #0a2a1a;
+        margin-bottom: 0.25rem;
+    }
+    
+    .milestone-status {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+    
+    .milestone-desc {
+        font-size: 0.85rem;
+        color: #4a5568;
+        line-height: 1.5;
+    }
+    
+    .milestone-meta {
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+        color: #1f8b4c;
+    }
+    
+    /* Payment List */
+    .payment-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .payment-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 16px;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    
+    .payment-info h4 {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .payment-meta {
+        font-size: 0.7rem;
+        color: #6c757d;
+    }
+    
+    .payment-amount {
+        font-weight: 700;
+        color: #1f8b4c;
+        font-size: 1.1rem;
+    }
+    
+    /* Timeline */
+    .timeline-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .timeline-item {
+        display: flex;
+        gap: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .timeline-dot {
+        width: 10px;
+        height: 10px;
+        background: #1f8b4c;
+        border-radius: 50%;
+        margin-top: 0.5rem;
+        flex-shrink: 0;
+        position: relative;
+    }
+    
+    .timeline-dot::before {
+        content: '';
+        position: absolute;
+        left: 4px;
+        top: 10px;
+        width: 2px;
+        height: 100%;
+        background: #e9ecef;
+    }
+    
+    .timeline-item:last-child .timeline-dot::before {
+        display: none;
+    }
+    
+    .timeline-content {
+        flex: 1;
+    }
+    
+    .timeline-message {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+    }
+    
+    .timeline-date {
+        font-size: 0.7rem;
+        color: #6c757d;
+    }
+    
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1.25rem;
+        border-radius: 40px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        border: none;
+        font-size: 0.9rem;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #1f8b4c, #0a5c30);
+        color: white;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(31,139,76,0.3);
+    }
+    
+    .btn-secondary {
+        background: #e9ecef;
+        color: #2c3e2f;
+    }
+    
+    .btn-secondary:hover {
+        background: #dee2e6;
+    }
+    
+    .btn-outline {
+        background: transparent;
+        border: 2px solid #1f8b4c;
+        color: #1f8b4c;
+    }
+    
+    .btn-outline:hover {
+        background: #1f8b4c;
+        color: white;
+    }
+    
+    .btn-danger {
+        background: #dc3545;
+        color: white;
+    }
+    
+    .btn-warning {
+        background: #ffc107;
+        color: #2c3e2f;
+    }
+    
+    .w-100 {
+        width: 100%;
+    }
+    
+    /* Form Styles */
+    .payment-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .form-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #2c3e2f;
+    }
+    
+    .form-control {
+        padding: 0.75rem 1rem;
+        border: 1px solid #e0e5e0;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #1f8b4c;
+        box-shadow: 0 0 0 3px rgba(31,139,76,0.1);
+    }
+    
+    select.form-control {
+        cursor: pointer;
+    }
+    
+    textarea.form-control {
+        resize: vertical;
+        min-height: 80px;
+    }
+    
+    /* Notice Box */
+    .notice-box {
+        background: #e8f5e9;
+        border-left: 4px solid #1f8b4c;
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+    
+    .notice-title {
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    
+    .notice-text {
+        font-size: 0.85rem;
+        color: #4a5568;
+    }
+    
+    .warning-box {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+
+    .waiting-box {
+        background: #eef8f1;
+        border: 1px solid rgba(31, 139, 76, 0.18);
+        border-radius: 16px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 1rem;
+    }
+
+    .waiting-box strong {
+        display: block;
+        color: #0a2a1a;
+        margin-bottom: 0.35rem;
+    }
+
+    .waiting-box .muted {
+        color: #5a6e5a;
+        font-size: 0.85rem;
+    }
+
+    .pulse-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #1f8b4c;
+        margin-right: 0.45rem;
+        animation: pulse 1.4s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(0.9); opacity: 0.6; }
+        50% { transform: scale(1.1); opacity: 1; }
+        100% { transform: scale(0.9); opacity: 0.6; }
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #6c757d;
+    }
+    
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .payment-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .summary-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .payment-container {
+            padding: 0 1rem;
+        }
+        
+        .payment-header {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .amount-display {
+            text-align: center;
+        }
+        
+        .summary-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .payment-title {
+            font-size: 1.35rem;
+        }
+        
+        .amount-value {
+            font-size: 1.5rem;
+        }
+        
+        .milestone-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .payment-item {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .action-buttons .btn {
+            width: 100%;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .info-card {
+            padding: 1rem;
+        }
+        
+        .card-title {
+            font-size: 1.1rem;
+        }
+        
+        .progress-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<section class="payments-section detail-page">
-    <div class="payments-shell">
-        <div class="detail-header">
+<div class="payment-detail-page">
+    <div class="payment-container">
+        <!-- Header Section -->
+        <div class="payment-header">
             <div>
-                <span class="section-kicker">Payment request</span>
-                <h1 class="detail-title">{{ payment.title }}</h1>
-                <p class="detail-subtitle">{{ payment.internal_reference }} {% if payment.plot %}· {{ payment.plot.title }}{% endif %}</p>
+                <div class="payment-badge">Payment Request</div>
+                <h1 class="payment-title">{{ payment.title }}</h1>
+                <div class="payment-ref">
+                    <i class="fas fa-hashtag"></i> {{ payment.internal_reference }}
+                    {% if payment.plot %}
+                    • <i class="fas fa-map-marker-alt"></i> {{ payment.plot.title }}
+                    {% endif %}
+                </div>
             </div>
-            <div class="detail-header-side">
-                <span class="status-pill status-{{ payment.status_badge }}">{{ payment.get_status_display }}</span>
-                <strong>KES {{ payment.amount|floatformat:2|intcomma }}</strong>
+            <div class="amount-display">
+                <div class="amount-label">Total Amount</div>
+                <div class="amount-value">KES {{ payment.amount|floatformat:2|intcomma }}</div>
+                <div class="status-badge status-{{ payment.status_badge }} mt-2">
+                    <i class="fas fa-circle" style="font-size: 0.6rem;"></i>
+                    {{ payment.get_status_display }}
+                </div>
             </div>
         </div>
-
-        <div class="progress-card">
-            <div class="progress-meta">
-                <span>Workflow progress</span>
-                <strong>{{ payment.progress_value }}%</strong>
+        
+        <!-- Progress Section -->
+        <div class="progress-section">
+            <div class="progress-header">
+                <span class="progress-label">Transaction Progress</span>
+                <span class="progress-percent">{{ payment.progress_value }}% Complete</span>
             </div>
             <div class="progress-track">
                 <span class="progress-fill" style="width: {{ payment.progress_value }}%;"></span>
             </div>
         </div>
-
-        <div class="detail-grid">
-            <div class="detail-main">
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Payment summary</h2>
-                    </div>
-                    {% if payment.transaction_type == 'purchase' %}
-                    <div class="workspace-notice mb-3">
-                        <strong>Legal escrow workflow</strong>
-                        <div>This checkout opens the Kenyan land-transfer workflow rather than ending at payment. The plot is held for due diligence first, then the agreement, consents, stamp duty, completion exchange, and registry transfer must all be evidenced in order.</div>
-                    </div>
-                    {% endif %}
-                    {% if is_payment_buyer and closing_steps %}
-                    <div class="mini-note mb-3">
-                        <strong>Buyer next step</strong>
-                        <div>{{ payment.buyer_next_step_summary }}</div>
-                        <div class="mt-1">{{ payment.buyer_next_step_instruction }}</div>
-                        <div class="mt-1">Assigned to: {{ payment.current_assigned_party }}</div>
-                    </div>
-                    {% endif %}
-                    {% if payment.transaction_type == 'purchase' or payment.transaction_type == 'lease' %}
-                    <div class="mini-note mb-3">
-                        <strong>{{ payment.transfer_status_label }}</strong>
-                        <div>{{ payment.transfer_status_detail }}</div>
-                        {% if payment.plot and payment.plot.availability_notes %}
-                        <div class="mt-1 text-muted">{{ payment.plot.availability_notes }}</div>
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    {% if payment.transaction_type == 'purchase' and payment.due_diligence_lock_message %}
-                    <div class="mini-note mb-3">
-                        <strong>Due diligence lock</strong>
-                        <div>{{ payment.due_diligence_lock_message }}</div>
-                    </div>
-                    {% endif %}
-                    {% if payment.transaction_type == 'purchase' and payment.advocate_details %}
-                    <div class="mini-note mb-3">
-                        <strong>Advocate details</strong>
-                        <div>Buyer advocate: {{ payment.advocate_details.buyer_name|default:"Pending" }}{% if payment.advocate_details.buyer_phone %} · {{ payment.advocate_details.buyer_phone }}{% endif %}</div>
-                        <div>Seller advocate: {{ payment.advocate_details.seller_name|default:"Pending" }}{% if payment.advocate_details.seller_phone %} · {{ payment.advocate_details.seller_phone }}{% endif %}</div>
-                    </div>
-                    {% endif %}
-                    {% if payment.transaction_type == 'purchase' and payment.due_diligence_documents %}
-                    <div class="mini-note mb-3">
-                        <strong>Due diligence pack</strong>
-                        {% for item in payment.due_diligence_documents %}
-                        <div><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.title }}</a> — {{ item.note }}</div>
-                        {% endfor %}
-                    </div>
-                    {% endif %}
+        
+        <!-- Main Grid -->
+        <div class="payment-grid">
+            <!-- Left Column - Main Content -->
+            <div>
+                <!-- Payment Summary Card -->
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-file-invoice"></i>
+                        Payment Summary
+                    </h3>
                     <div class="summary-grid">
-                        <div><span>Method</span><strong>{{ payment.get_method_display }}</strong></div>
-                        <div><span>Category</span><strong>{{ payment.get_category_display }}</strong></div>
-                        <div><span>Seller</span><strong>{{ payment.counterparty_label }}</strong></div>
-                        <div><span>Escrow</span><strong>{% if payment.escrow_enabled %}Enabled{% else %}Off{% endif %}</strong></div>
-                        <div><span>Phone</span><strong>{{ payment.phone_number|default:"-" }}</strong></div>
-                        <div><span>Due</span><strong>{% if payment.due_at %}{{ payment.due_at|date:"M d, Y H:i" }}{% else %}-{% endif %}</strong></div>
+                        <div class="summary-item">
+                            <div class="summary-label">Payment Method</div>
+                            <div class="summary-value">{{ payment.get_method_display }}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Category</div>
+                            <div class="summary-value">{{ payment.get_category_display }}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Seller / Recipient</div>
+                            <div class="summary-value">{{ payment.counterparty_label }}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Escrow Status</div>
+                            <div class="summary-value">{% if payment.escrow_enabled %}Enabled{% else %}Disabled{% endif %}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Phone Number</div>
+                            <div class="summary-value">{{ payment.phone_number|default:"-" }}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Due Date</div>
+                            <div class="summary-value">{{ payment.due_at|date:"M d, Y H:i"|default:"-" }}</div>
+                        </div>
                         {% if payment.transaction_type == 'purchase' or payment.transaction_type == 'lease' %}
-                        <div><span>Legal tracker</span><strong>{{ payment.closing_stage_summary }}</strong></div>
-                        <div><span>Transfer stage</span><strong>{{ payment.transfer_status_label }}</strong></div>
+                        <div class="summary-item">
+                            <div class="summary-label">Legal Tracker</div>
+                            <div class="summary-value">{{ payment.closing_stage_summary|truncatechars:50 }}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Transfer Stage</div>
+                            <div class="summary-value">{{ payment.transfer_status_label }}</div>
+                        </div>
                         {% endif %}
                     </div>
-                    {% if payment.workflow_related_payments %}
-                    <div class="mini-note mt-3">
-                        <strong>Recorded deal payments</strong>
-                        <div>Total requested across this deal: KES {{ payment.workflow_total_requested_amount|floatformat:2|intcomma }}</div>
-                        <div>Total paid so far: KES {{ payment.workflow_total_paid_amount|floatformat:2|intcomma }}</div>
-                    </div>
-                    {% endif %}
+                    
                     {% if payment.description %}
-                    <p class="summary-description">{{ payment.description }}</p>
-                    {% endif %}
-                </section>
-
-                {% if transaction_stage_matrix %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Clearing-House Process</h2>
-                            <p class="summary-description mb-0">Each stage shows the money expected, the form or filing, the information needed, and who must provide it through AgriPlot.</p>
-                        </div>
+                    <div class="notice-box mt-3">
+                        <div class="notice-title">Description</div>
+                        <div class="notice-text">{{ payment.description }}</div>
                     </div>
+                    {% endif %}
+                    
+                    {% if payment.transaction_type == 'purchase' %}
+                    <div class="notice-box">
+                        <div class="notice-title">⚖️ Legal Escrow Workflow</div>
+                        <div class="notice-text">This checkout opens the Kenyan land-transfer workflow rather than ending at payment. The plot is held for due diligence first, then the agreement, consents, stamp duty, completion exchange, and registry transfer must all be evidenced in order.</div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if payment.due_diligence_lock_message %}
+                    <div class="notice-box">
+                        <div class="notice-title">🔒 Due Diligence Lock</div>
+                        <div class="notice-text">{{ payment.due_diligence_lock_message }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Transaction Milestones -->
+                {% if transaction_stage_matrix %}
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-list-check"></i>
+                        Clearing-House Process
+                    </h3>
                     <div class="milestone-list">
                         {% for stage in transaction_stage_matrix %}
-                        <article class="milestone-item">
+                        <div class="milestone-item">
                             <div class="milestone-number">{{ forloop.counter }}</div>
-                            <div class="w-100">
-                                <h3>{{ stage.stage }}</h3>
-                                <div class="mini-note mt-2"><strong>Money required:</strong> {{ stage.money_required }}</div>
-                                <div class="mini-note mt-2"><strong>Form / document:</strong> {{ stage.form_document }}</div>
-                                <div class="mini-note mt-2"><strong>Required information:</strong> {{ stage.required_information }}</div>
-                                <div class="mini-note mt-2"><strong>Who provides / pays:</strong> {{ stage.who_provides }}</div>
-                                <div class="mini-note mt-2"><strong>Who files / uploads:</strong> {{ stage.who_files }}</div>
-                                <div class="mini-note mt-2"><strong>What AgriPlot issues:</strong> {{ stage.system_output }}</div>
-                            </div>
-                        </article>
-                        {% endfor %}
-                    </div>
-                </section>
-                {% endif %}
-
-                {% if payment.workflow_related_payments %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Deal payment record</h2>
-                    </div>
-                    <div class="payment-list">
-                        {% for related_payment in payment.workflow_related_payments %}
-                        <article class="payment-row">
-                            <div class="payment-row-main">
-                                <div class="payment-title-row">
-                                    <h3>{{ related_payment.get_category_display }}</h3>
-                                    <span class="status-pill status-{{ related_payment.status_badge }}">{{ related_payment.get_status_display }}</span>
+                            <div class="milestone-content">
+                                <div class="milestone-title">{{ stage.stage }}</div>
+                                <div class="milestone-status">
+                                    <i class="fas fa-money-bill-wave"></i> {{ stage.money_required }}
                                 </div>
-                                <p>{{ related_payment.internal_reference }}</p>
-                                <div class="payment-meta">
-                                    <span>{{ related_payment.get_method_display }}</span>
-                                    <span>{{ related_payment.created_at|date:"M d, Y H:i" }}</span>
+                                <div class="milestone-desc">
+                                    <strong>Document:</strong> {{ stage.form_document }}<br>
+                                    <strong>Required:</strong> {{ stage.required_information }}
+                                </div>
+                                <div class="milestone-meta">
+                                    <i class="fas fa-user"></i> {{ stage.who_provides }}
                                 </div>
                             </div>
-                            <div class="payment-row-side">
-                                <strong>KES {{ related_payment.amount|floatformat:2|intcomma }}</strong>
-                                {% if related_payment.pk != payment.pk %}
-                                <a href="{% url 'payments:detail' related_payment.pk %}" class="text-link">Open</a>
-                                {% endif %}
-                            </div>
-                        </article>
-                        {% endfor %}
-                    </div>
-                </section>
-                {% endif %}
-
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Milestones</h2>
-                    </div>
-                    <div class="milestone-list">
-                        {% for milestone in payment.milestones.all %}
-                        <article class="milestone-item">
-                            <div class="milestone-number">{{ milestone.sequence }}</div>
-                            <div>
-                                <h3>{{ milestone.title }}</h3>
-                                <p>{{ milestone.get_status_display }}{% if milestone.amount %} · KES {{ milestone.amount|floatformat:2|intcomma }}{% endif %}{% if milestone.due_at %} · Due {{ milestone.due_at|date:"M d, Y H:i" }}{% endif %}</p>
-                                {% if milestone.evidence_notes %}
-                                <div class="mini-note">{{ milestone.evidence_notes }}</div>
-                                {% endif %}
-                            </div>
-                        </article>
-                        {% empty %}
-                        <p class="empty-copy">No milestones have been added yet.</p>
-                        {% endfor %}
-                    </div>
-                </section>
-
-                {% if transaction_certificates %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Clearance Evidence</h2>
-                            <p class="summary-description mb-0">These are the system-issued certificates and digital receipts available to the buyer, seller, and lease parties as the transaction progresses.</p>
                         </div>
-                    </div>
-                    <div class="milestone-list">
-                        {% for certificate in transaction_certificates %}
-                        <article class="milestone-item">
-                            <div class="milestone-number">{{ forloop.counter }}</div>
-                            <div class="w-100">
-                                <h3>{{ certificate.title }}</h3>
-                                <p>{{ certificate.get_status_display }} · Audience: {{ certificate.get_audience_display }}</p>
-                                <div class="mini-note">{{ certificate.summary }}</div>
-                                {% if certificate.issued_at %}
-                                <div class="mini-note mt-2">Issued {{ certificate.issued_at|date:"M d, Y H:i" }}</div>
-                                {% endif %}
-                            </div>
-                        </article>
                         {% endfor %}
                     </div>
-                </section>
+                </div>
                 {% endif %}
-
-                {% if disbursement_plan %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Payout Waterfall</h2>
-                            <p class="summary-description mb-0">AgriPlot holds money centrally, then releases it to officers, government channels, the seller, the agent, and the platform only when each trigger is satisfied.</p>
-                        </div>
-                    </div>
-                    <div class="payment-list">
-                        {% for item in disbursement_plan %}
-                        <article class="payment-row">
-                            <div class="payment-row-main">
-                                <div class="payment-title-row">
-                                    <h3>{{ item.recipient_name }}</h3>
-                                    <span class="status-pill status-{% if item.status == 'released' %}success{% elif item.status == 'ready' %}info{% elif item.status == 'held' %}warning{% else %}secondary{% endif %}">{{ item.get_status_display }}</span>
-                                </div>
-                                <p>{{ item.get_recipient_role_display }} · Paid by {{ item.get_paid_by_side_display }}</p>
-                                <div class="mini-note">{{ item.release_trigger }}</div>
-                                {% if item.notes %}
-                                <div class="mini-note mt-2">{{ item.notes }}</div>
-                                {% endif %}
-                            </div>
-                            <div class="payment-row-side">
-                                <strong>KES {{ item.amount|floatformat:2|intcomma }}</strong>
-                                {% if item.released_at %}
-                                <div class="mini-note mt-2">Released {{ item.released_at|date:"M d, Y H:i" }}</div>
-                                {% endif %}
-                            </div>
-                        </article>
-                        {% endfor %}
-                    </div>
-                </section>
-                {% endif %}
-
+                
+                <!-- Closing Steps Tracker -->
                 {% if closing_steps %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Transaction tracker</h2>
-                            <p class="summary-description mb-0">{{ payment.closing_stage_summary }}</p>
-                        </div>
-                        <strong>{{ payment.closing_progress_value }}%</strong>
-                    </div>
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-line"></i>
+                        Transaction Tracker
+                        <span class="ms-auto" style="font-size: 0.85rem;">{{ payment.closing_progress_value }}%</span>
+                    </h3>
                     <div class="progress-track mb-3">
                         <span class="progress-fill" style="width: {{ payment.closing_progress_value }}%;"></span>
                     </div>
                     <div class="milestone-list">
                         {% for step in closing_steps %}
-                        <article class="milestone-item">
+                        <div class="milestone-item">
                             <div class="milestone-number">{{ step.sequence }}</div>
-                            <div class="w-100">
-                                <h3>{{ step.display_title }}</h3>
-                                <p>{{ step.get_status_display }} · Responsible: {{ step.responsible_party_label }}{% if step.display_document_name %} · Required: {{ step.display_document_name }}{% endif %}</p>
+                            <div class="milestone-content">
+                                <div class="milestone-title">{{ step.display_title }}</div>
+                                <div class="milestone-status">
+                                    {{ step.get_status_display }} • Assigned to: {{ step.responsible_party_label }}
+                                </div>
                                 {% if step.display_guidance %}
-                                <div class="mini-note">{{ step.display_guidance }}</div>
+                                <div class="milestone-desc">{{ step.display_guidance|truncatechars:100 }}</div>
                                 {% endif %}
-                                <div class="mini-note mt-2">
-                                    <a href="{% url 'payments:closing_step_workspace' payment.pk step.pk %}" class="text-link">Open dedicated step workspace</a>
+                                <div class="milestone-meta">
+                                    <a href="{% url 'payments:closing_step_workspace' payment.pk step.pk %}" class="text-link">
+                                        <i class="fas fa-external-link-alt"></i> Open step workspace
+                                    </a>
                                 </div>
-                                {% if is_payment_buyer %}
-                                <div class="mini-note mt-2"><strong>Your way forward:</strong> {{ step.buyer_instruction }}</div>
-                                {% endif %}
-                                {% if step.notes %}
-                                <div class="mini-note mt-2">{{ step.notes }}</div>
-                                {% endif %}
-                                {% if step.document %}
-                                <div class="mini-note mt-2">
-                                    Supporting document:
-                                    <a href="{{ step.document.url }}" target="_blank" rel="noopener">Open file</a>
-                                </div>
-                                {% endif %}
                                 {% if step.completed_at %}
-                                <div class="mini-note mt-2">Completed {{ step.completed_at|date:"M d, Y H:i" }}{% if step.completed_by %} · {{ step.completed_by.get_full_name|default:step.completed_by.username }}{% endif %}</div>
-                                {% endif %}
-                                {% if step.user_can_update %}
-                                <form method="post" action="{% url 'payments:update_closing_step' payment.pk step.pk %}" class="payments-form compact-form mt-3" enctype="multipart/form-data">
-                                    {% csrf_token %}
-                                    <div class="field-block">
-                                        <label class="form-label" for="id_status_{{ step.pk }}">Status</label>
-                                        <select name="status" id="id_status_{{ step.pk }}" class="form-select">
-                                            {% for value, label in closing_step_form.fields.status.choices %}
-                                            <option value="{{ value }}"{% if step.status == value %} selected{% endif %}>{{ label }}</option>
-                                            {% endfor %}
-                                        </select>
-                                    </div>
-                                    <div class="field-block">
-                                        <label class="form-label" for="id_notes_{{ step.pk }}">Notes</label>
-                                        <textarea name="notes" id="id_notes_{{ step.pk }}" class="form-control" rows="3" placeholder="Add document refs, meeting dates, or blocker notes.">{{ step.notes }}</textarea>
-                                    </div>
-                                    <div class="field-block">
-                                        <label class="form-label" for="id_document_{{ step.pk }}">Document</label>
-                                        <input type="file" name="document" id="id_document_{{ step.pk }}" class="form-control">
-                                    </div>
-                                    <button type="submit" class="hero-btn hero-btn-secondary">Update step</button>
-                                </form>
-                                {% elif step.requires_admin_action %}
-                                <div class="mini-note mt-3">
-                                    This step is handled by AgriPlot admin or the assigned official, so buyer and seller updates are disabled here.
-                                </div>
-                                {% elif step.update_restriction_reason %}
-                                <div class="mini-note mt-3">
-                                    {{ step.update_restriction_reason }}
+                                <div class="milestone-meta">
+                                    <i class="fas fa-check-circle"></i> Completed {{ step.completed_at|date:"M d, Y H:i" }}
                                 </div>
                                 {% endif %}
                             </div>
-                        </article>
-                        {% endfor %}
-                    </div>
-                </section>
-                {% endif %}
-
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Activity timeline</h2>
-                    </div>
-                    <div class="timeline-list">
-                        {% for event in payment.events.all %}
-                        <article class="timeline-item">
-                            <div class="timeline-dot"></div>
-                            <div>
-                                <strong>{{ event.message }}</strong>
-                                <p>{{ event.created_at|date:"M d, Y H:i" }}{% if event.actor %} · {{ event.actor.get_full_name|default:event.actor.username }}{% endif %}</p>
-                            </div>
-                        </article>
-                        {% empty %}
-                        <p class="empty-copy">No events recorded yet.</p>
-                        {% endfor %}
-                    </div>
-                </section>
-            </div>
-
-            <aside class="detail-side">
-                {% if officer_payment_rules %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>Officer Payments</h2>
-                            <p class="summary-description mb-0">Professionals and officers are paid through AgriPlot after verified work is delivered, not by side deals outside the platform.</p>
                         </div>
+                        {% endfor %}
                     </div>
+                </div>
+                {% endif %}
+                
+                <!-- Activity Timeline -->
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-clock"></i>
+                        Activity Timeline
+                    </h3>
+                    <div class="timeline-list">
+                        {% for event in payment.events.all|slice:":10" %}
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-message">{{ event.message }}</div>
+                                <div class="timeline-date">
+                                    {{ event.created_at|date:"M d, Y H:i" }}
+                                    {% if event.actor %} • {{ event.actor.get_full_name|default:event.actor.username }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="empty-state">No events recorded yet.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column - Sidebar -->
+            <div>
+                <!-- Quick Actions -->
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-bolt"></i>
+                        Quick Actions
+                    </h3>
+                    <div class="action-buttons">
+                        {% if payment_provider == 'paystack' and paystack_authorization_url and payment.status == 'pending' %}
+                        <a href="{{ paystack_authorization_url }}" class="btn btn-primary w-100">
+                            <i class="fas fa-credit-card"></i> Continue Paystack Checkout
+                        </a>
+                        {% elif payment_provider == 'daraja' and payment.status == 'pending' %}
+                        <div class="waiting-box" id="daraja-wait-box" data-poll-url="{{ payment_status_poll_url }}">
+                            <strong><span class="pulse-dot"></span>Waiting for M-Pesa confirmation</strong>
+                            <div class="notice-text" id="daraja-wait-message">
+                                {% if daraja_customer_message %}
+                                Check your phone and complete the M-Pesa prompt. {{ daraja_customer_message }}
+                                {% else %}
+                                A Safaricom Daraja STK push was sent to the buyer's phone. Complete it on your device.
+                                {% endif %}
+                            </div>
+                            <div class="muted mt-2" id="daraja-wait-hint">
+                                This page will update automatically as soon as Safaricom confirms the payment.
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        {% for action, label in transition_actions %}
+                        <form method="post" action="{% url 'payments:transition' payment.pk action %}" class="w-100">
+                            {% csrf_token %}
+                            <button type="submit" class="btn {% if action == 'release' %}btn-success{% elif action == 'refund' %}btn-danger{% elif action == 'dispute' %}btn-warning{% else %}btn-primary{% endif %} w-100">
+                                <i class="fas fa-arrow-right"></i> {{ label }}
+                            </button>
+                        </form>
+                        {% endfor %}
+                        
+                        <a href="{% url 'payments:dashboard' %}" class="btn btn-secondary w-100">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Officer Payments -->
+                {% if officer_payment_rules %}
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-user-tie"></i>
+                        Officer Payments
+                    </h3>
                     <div class="milestone-list">
                         {% for rule in officer_payment_rules %}
-                        <article class="milestone-item">
+                        <div class="milestone-item">
                             <div class="milestone-number">{{ forloop.counter }}</div>
-                            <div>
-                                <h3>{{ rule.officer }}</h3>
-                                <p>{{ rule.fee }} · Paid by {{ rule.paid_by }}</p>
-                                <div class="mini-note">{{ rule.purpose }}</div>
-                                <div class="mini-note mt-2">{{ rule.release_rule }}</div>
+                            <div class="milestone-content">
+                                <div class="milestone-title">{{ rule.officer }}</div>
+                                <div class="milestone-status">{{ rule.fee }} • Paid by {{ rule.paid_by }}</div>
+                                <div class="milestone-desc">{{ rule.purpose }}</div>
                             </div>
-                        </article>
+                        </div>
                         {% endfor %}
                     </div>
-                </section>
+                </div>
                 {% endif %}
-
+                
+                <!-- Platform Revenue -->
                 {% if platform_revenue_streams %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>AgriPlot Revenue</h2>
-                            <p class="summary-description mb-0">This is how the platform benefits transparently from the transaction instead of hiding charges in side conversations.</p>
-                        </div>
-                    </div>
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-chart-pie"></i>
+                        Platform Revenue
+                    </h3>
                     <div class="milestone-list">
                         {% for revenue in platform_revenue_streams %}
-                        <article class="milestone-item">
+                        <div class="milestone-item">
                             <div class="milestone-number">{{ forloop.counter }}</div>
-                            <div>
-                                <h3>{{ revenue.label }}</h3>
-                                <p>{{ revenue.amount }}</p>
-                                <div class="mini-note">{{ revenue.detail }}</div>
+                            <div class="milestone-content">
+                                <div class="milestone-title">{{ revenue.label }}</div>
+                                <div class="milestone-status">{{ revenue.amount }}</div>
+                                <div class="milestone-desc">{{ revenue.detail }}</div>
                             </div>
-                        </article>
-                        {% endfor %}
-                    </div>
-                </section>
-                {% endif %}
-
-                {% if is_payment_buyer and payment.buyer_journey_steps %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>{{ payment.buyer_journey_title }}</h2>
-                            <p class="summary-description mb-0">{{ payment.buyer_journey_intro }}</p>
                         </div>
-                        <strong>{{ payment.buyer_journey_progress_value }}%</strong>
-                    </div>
-                    <div class="progress-track mb-3">
-                        <span class="progress-fill" style="width: {{ payment.buyer_journey_progress_value }}%;"></span>
-                    </div>
-                    <div class="milestone-list">
-                        {% for journey_step in payment.buyer_journey_steps %}
-                        <article class="milestone-item">
-                            <div class="milestone-number">{{ forloop.counter }}</div>
-                            <div>
-                                <h3>{{ journey_step.title }}</h3>
-                                <p>
-                                    {% if journey_step.status == 'completed' %}Completed{% elif journey_step.status == 'in_progress' %}In progress{% elif journey_step.status == 'blocked' %}Blocked{% else %}Pending{% endif %}
-                                </p>
-                            </div>
-                        </article>
                         {% endfor %}
                     </div>
-                </section>
+                </div>
                 {% endif %}
-
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Quick actions</h2>
-                    </div>
-                    {% if payment_provider == 'paystack' and paystack_authorization_url and payment.status == 'pending' %}
-                    <a href="{{ paystack_authorization_url }}" class="hero-btn hero-btn-primary w-100 mb-3">
-                        Continue Paystack Checkout
-                    </a>
-                    {% elif payment_provider == 'daraja' and payment.status == 'pending' %}
-                    <div class="mini-note mb-3">
-                        {% if daraja_customer_message %}
-                        {{ daraja_customer_message }}
-                        {% else %}
-                        A Safaricom Daraja STK push was sent to the buyer's phone. Complete it on the handset, then wait for the callback to update this deal.
-                        {% endif %}
-                    </div>
-                    {% endif %}
-                    {% if is_finance_admin %}
-                    <p class="mini-note">Finance-level actions can change settlement state and should be used only after operational review.</p>
-                    {% endif %}
-                    <div class="action-grid">
-                        {% for action, label in transition_actions %}
-                        <form method="post" action="{% url 'payments:transition' payment.pk action %}">
-                            {% csrf_token %}
-                            <button type="submit" class="action-btn">{{ label }}</button>
-                        </form>
-                        {% empty %}
-                        <p class="empty-copy">No actions are currently available for your role at this payment stage.</p>
-                        {% endfor %}
-                    </div>
-                </section>
-
+                
+                <!-- Add Milestone (Admin only) -->
                 {% if can_add_milestone %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Add milestone</h2>
-                    </div>
-                    <form method="post" action="{% url 'payments:add_milestone' payment.pk %}" class="payments-form compact-form">
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-plus-circle"></i>
+                        Add Milestone
+                    </h3>
+                    <form method="post" action="{% url 'payments:add_milestone' payment.pk %}" class="payment-form">
                         {% csrf_token %}
-                        {% for field in milestone_form %}
-                        <div class="field-block">
-                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                            {{ field }}
-                            {% for error in field.errors %}
-                            <div class="error-copy">{{ error }}</div>
-                            {% endfor %}
+                        <div class="form-group">
+                            <label class="form-label">Title</label>
+                            <input type="text" name="title" class="form-control" required>
                         </div>
-                        {% endfor %}
-                        <button type="submit" class="hero-btn hero-btn-primary">Add milestone</button>
+                        <div class="form-group">
+                            <label class="form-label">Amount (Optional)</label>
+                            <input type="number" name="amount" class="form-control" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Due Date</label>
+                            <input type="datetime-local" name="due_at" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Add Milestone</button>
                     </form>
-                </section>
+                </div>
                 {% endif %}
-
+                
+                <!-- Open Dispute -->
                 {% if can_open_dispute %}
-                <section class="content-card">
-                    <div class="card-heading">
-                        <h2>Open dispute</h2>
-                    </div>
-                    <form method="post" action="{% url 'payments:open_dispute' payment.pk %}" class="payments-form compact-form">
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-gavel"></i>
+                        Open Dispute
+                    </h3>
+                    <form method="post" action="{% url 'payments:open_dispute' payment.pk %}" class="payment-form">
                         {% csrf_token %}
-                        {% for field in dispute_form %}
-                        <div class="field-block">
-                            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                            {{ field }}
-                            {% for error in field.errors %}
-                            <div class="error-copy">{{ error }}</div>
-                            {% endfor %}
+                        <div class="form-group">
+                            <label class="form-label">Reason</label>
+                            <select name="reason" class="form-control" required>
+                                <option value="">Select reason</option>
+                                <option value="seller_no_show">Seller No-show</option>
+                                <option value="missing_documents">Missing Documents</option>
+                                <option value="payment_not_recognized">Payment Not Recognized</option>
+                                <option value="fraud_signal">Fraud Signal</option>
+                                <option value="refund_request">Refund Request</option>
+                                <option value="other">Other</option>
+                            </select>
                         </div>
-                        {% endfor %}
-                        <button type="submit" class="hero-btn hero-btn-secondary hero-btn-dark">Record dispute</button>
+                        <div class="form-group">
+                            <label class="form-label">Details</label>
+                            <textarea name="details" class="form-control" rows="3" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">Open Dispute</button>
                     </form>
-                    {% if payment_dispute %}
-                    <div class="dispute-summary">
-                        <strong>{{ payment_dispute.get_reason_display }}</strong>
-                        <p>{{ payment_dispute.details }}</p>
-                    </div>
-                    {% endif %}
-                </section>
+                </div>
                 {% endif %}
-            </aside>
+            </div>
         </div>
     </div>
-</section>
+</div>
+{% if payment_provider == 'daraja' and payment.status == 'pending' %}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const waitBox = document.getElementById("daraja-wait-box");
+    if (!waitBox) {
+        return;
+    }
+
+    const pollUrl = waitBox.dataset.pollUrl;
+    const statusBadge = document.querySelector(".status-badge");
+    const waitMessage = document.getElementById("daraja-wait-message");
+    const waitHint = document.getElementById("daraja-wait-hint");
+    let pollTimer = null;
+
+    function setWaitingMessage(message, isError) {
+        if (waitMessage && message) {
+            waitMessage.textContent = message;
+        }
+        if (waitHint) {
+            waitHint.textContent = isError
+                ? "The payment has not been confirmed yet. Please retry if the prompt expired."
+                : "This page will update automatically as soon as Safaricom confirms the payment.";
+        }
+        waitBox.style.borderColor = isError ? "rgba(220,53,69,0.35)" : "rgba(31, 139, 76, 0.18)";
+        waitBox.style.background = isError ? "#fff4f4" : "#eef8f1";
+    }
+
+    function markPaid(message) {
+        if (statusBadge) {
+            statusBadge.className = "status-badge status-success";
+            statusBadge.innerHTML = '<i class="fas fa-check-circle"></i> Paid';
+        }
+        setWaitingMessage(message || "Safaricom confirmed the payment successfully.", false);
+        if (waitHint) {
+            waitHint.textContent = "Redirecting you to the next step now...";
+        }
+    }
+
+    async function pollStatus() {
+        try {
+            const response = await fetch(pollUrl, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+                credentials: "same-origin",
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.ok) {
+                setWaitingMessage(payload.message || "We could not confirm the M-Pesa payment yet.", true);
+                return;
+            }
+            if (payload.state === "paid") {
+                window.clearInterval(pollTimer);
+                markPaid(payload.message || payload.status_label || "Payment confirmed.");
+                window.setTimeout(function () {
+                    window.location.href = payload.redirect_url || window.location.href;
+                }, 1500);
+            } else if (payload.state === "failed") {
+                window.clearInterval(pollTimer);
+                setWaitingMessage(payload.message || "The M-Pesa request did not complete successfully.", true);
+            } else {
+                setWaitingMessage(payload.message || "Waiting for Safaricom to confirm the payment...", false);
+            }
+        } catch (error) {
+            setWaitingMessage("Still waiting for Safaricom confirmation...", false);
+        }
+    }
+
+    pollStatus();
+    pollTimer = window.setInterval(pollStatus, 4000);
+});
+</script>
+{% endif %}
 {% endblock %}

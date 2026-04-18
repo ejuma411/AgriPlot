@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.utils.html import format_html, format_html_join
+from .models import Wallet, WalletTransaction, WalletDepositRequest, WalletWithdrawalRequest
 
 from .models import (
     PaymentClosingStep,
@@ -150,3 +151,29 @@ class PaymentDisputeAdmin(admin.ModelAdmin):
     list_display = ("payment", "reason", "status", "opened_by", "created_at")
     list_filter = ("reason", "status", "created_at")
     search_fields = ("payment__internal_reference", "details", "resolution_notes")
+
+
+@admin.register(Wallet)
+class WalletAdmin(admin.ModelAdmin):
+    list_display = ['user', 'balance', 'is_active', 'created_at']
+    list_filter = ['is_active', 'created_at']
+    search_fields = ['user__username', 'user__email']
+    readonly_fields = ['balance', 'created_at', 'updated_at']
+
+@admin.register(WalletTransaction)
+class WalletTransactionAdmin(admin.ModelAdmin):
+    list_display = ['reference', 'wallet', 'amount', 'transaction_type', 'status', 'created_at']
+    list_filter = ['transaction_type', 'status', 'created_at']
+    search_fields = ['reference', 'wallet__user__username']
+
+@admin.register(WalletDepositRequest)
+class WalletDepositRequestAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'amount', 'status', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['user__username', 'mpesa_receipt']
+
+@admin.register(WalletWithdrawalRequest)
+class WalletWithdrawalRequestAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'amount', 'status', 'created_at']
+    list_filter = ['status', 'created_at']
+    search_fields = ['user__username']

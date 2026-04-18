@@ -1,13 +1,18 @@
 import base64
 import logging
+import time
 from datetime import datetime
 
 import requests
-from requests import RequestException
 from django.conf import settings
+from django.core.cache import cache
 
 
 logger = logging.getLogger(__name__)
+
+TOKEN_CACHE_KEY = "payments:daraja:access_token"
+TOKEN_TTL_SECONDS = 3300
+REQUEST_RETRY_ATTEMPTS = 2
 
 
 class DarajaError(Exception):
@@ -25,6 +30,25 @@ def _safe_json(response):
             raw[:300] or "<empty body>",
         )
         return {"raw": raw}
+
+
+def _request_with_retry(method, url, **kwargs):
+    last_exception = None
+    for attempt in range(1, REQUEST_RETRY_ATTEMPTS + 1):
+        try:
+            return requests.request(method, url, **kwargs)
+        except (requests.Timeout, requests.ConnectionError) as exc:
+            last_exception = exc
+            logger.warning(
+                "Daraja %s request failed on attempt %s/%s: %s",
+                method.upper(),
+                attempt,
+                REQUEST_RETRY_ATTEMPTS,
+                exc,
+            )
+            if attempt < REQUEST_RETRY_ATTEMPTS:
+                time.sleep(attempt)
+    raise DarajaError("Daraja provider request timed out. Payment is awaiting provider confirmation.") from last_exception
 
 
 def daraja_ready():
@@ -63,20 +87,19 @@ def _password(timestamp):
 
 
 def _access_token():
-    consumer = settings.MPESA_CONSUMER_KEY
-    secret = settings.MPESA_CONSUMER_SECRET
-    auth = base64.b64encode(f"{consumer}:{secret}".encode("utf-8")).decode("utf-8")
-    try:
-        response = requests.get(
-            f"{_base_url()}/oauth/v1/generate?grant_type=client_credentials",
-            headers={"Authorization": f"Basic {auth}"},
-            timeout=20,
-        )
-    except RequestException as exc:
-        logger.exception("Daraja auth connection failed")
-        raise DarajaError(
-            "Unable to reach Safaricom Daraja right now. Please try again shortly."
-        ) from exc
+    cached_token = cache.get(TOKEN_CACHE_KEY)
+    if cached_token:
+        return cached_token
+
+    auth = base64.b64encode(
+        f"{settings.MPESA_CONSUMER_KEY}:{settings.MPESA_CONSUMER_SECRET}".encode("utf-8")
+    ).decode("utf-8")
+    response = _request_with_retry(
+        "get",
+        f"{_base_url()}/oauth/v1/generate?grant_type=client_credentials",
+        headers={"Authorization": f"Basic {auth}"},
+        timeout=(5, 12),
+    )
     data = _safe_json(response)
     token = data.get("access_token")
     if response.status_code >= 400 or not token:
@@ -88,6 +111,7 @@ def _access_token():
         )
         logger.error("Daraja auth failed: %s", message)
         raise DarajaError(message)
+    cache.set(TOKEN_CACHE_KEY, token, TOKEN_TTL_SECONDS)
     return token
 
 
@@ -108,21 +132,16 @@ def initiate_stk_push(payment, callback_url):
         "AccountReference": payment.internal_reference[:12],
         "TransactionDesc": (payment.title or payment.internal_reference)[:182],
     }
-    try:
-        response = requests.post(
-            f"{_base_url()}/mpesa/stkpush/v1/processrequest",
-            headers={
-                "Authorization": f"Bearer {token}",
-                "Content-Type": "application/json",
-            },
-            json=payload,
-            timeout=20,
-        )
-    except RequestException as exc:
-        logger.exception("Daraja STK connection failed for payment %s", payment.internal_reference)
-        raise DarajaError(
-            "Safaricom Daraja is temporarily unreachable. Please try again shortly."
-        ) from exc
+    response = _request_with_retry(
+        "post",
+        f"{_base_url()}/mpesa/stkpush/v1/processrequest",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=(5, 15),
+    )
     data = _safe_json(response)
     if response.status_code >= 400 or data.get("errorCode"):
         message = (
@@ -137,13 +156,10 @@ def initiate_stk_push(payment, callback_url):
 
 
 def extract_callback_metadata(callback):
-    metadata_items = (
-        callback.get("CallbackMetadata", {}) or {}
-    ).get("Item", [])
+    metadata_items = ((callback.get("CallbackMetadata") or {}).get("Item") or [])
     extracted = {}
     for item in metadata_items:
         name = item.get("Name")
-        if not name:
-            continue
-        extracted[name] = item.get("Value")
+        if name:
+            extracted[name] = item.get("Value")
     return extracted

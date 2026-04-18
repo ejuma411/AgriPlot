@@ -13,7 +13,6 @@ urlpatterns = [
     path("plot/<int:plot_id>/lease-waitlist/", views.join_lease_waitlist, name="join_lease_waitlist"),
     path("plot/<int:plot_id>/lease-waitlist/confirm/", views.confirm_lease_waitlist, name="confirm_lease_waitlist"),
     path("plot/<int:plot_id>/save/", views.toggle_saved_plot, name="toggle_saved_plot"),
-    path("ajax/search/", views.ajax_search, name="ajax_search"),
     path("browse-plots/", TemplateView.as_view(template_name="listings/info/browse_plots.html"), name="browse_plots"),
     path("how-it-works/", TemplateView.as_view(template_name="listings/info/how_it_works.html"), name="how_it_works"),
     path("contact-us/", TemplateView.as_view(template_name="listings/info/contact_us.html"), name="contact_us"),
@@ -32,9 +31,6 @@ urlpatterns = [
     path("", include("authentication.urls")),
     path("", include("accounts.urls")),
     path("", include("notifications.urls")),
-
-    # Registration (moved to accounts app; kept here via include above)
-    path("", include("verification.urls")),
 
     # Password reset and 2FA URLs live under authentication app (included above)
     

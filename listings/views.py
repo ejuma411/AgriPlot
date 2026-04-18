@@ -15,7 +15,6 @@ from django.db.models import Q, Count, Avg
 from django.db.models.functions import TruncMonth
 from django.http import Http404, JsonResponse, HttpResponse
 from django.shortcuts import render, redirect, get_object_or_404, resolve_url
-from django.template.loader import render_to_string
 from django.core.exceptions import DisallowedHost, ValidationError
 from django.urls import reverse
 from decimal import Decimal
@@ -216,56 +215,6 @@ def build_remove_url(request, params_to_remove):
             del new_params[param]
 
     return f"?{new_params.urlencode()}"
-
-def ajax_search(request):
-    """Return rendered market grid fragment for AJAX search requests."""
-    search_form = PlotSearchForm(request.GET or None)
-    filtered_plots = search_form.apply(
-        Plot.objects.filter(
-            verification__current_stage="approved"
-        ).select_related('agent__user')
-    )
-
-    # Pagination
-    paginator = Paginator(filtered_plots, 15)
-    page_number = request.GET.get('page')
-    featured_plots = paginator.get_page(page_number)
-    saved_plot_ids = []
-    if request.user.is_authenticated:
-        saved_plot_ids = list(
-            UserInterest.objects.filter(user=request.user).values_list("plot_id", flat=True)
-        )
-    active_filters = []
-    if search_form.is_valid():
-        for active_filter in search_form.active_filters():
-            active_filter["remove_url"] = build_remove_url(request, active_filter["params"])
-            active_filters.append(active_filter)
-
-    html = render_to_string('listings/_market_grid.html', {
-        'featured_plots': featured_plots,
-        'request': request,
-        'saved_plot_ids': saved_plot_ids,
-    })
-    active_filters_html = render_to_string(
-        'listings/_active_filters.html',
-        {
-            'active_filters': active_filters,
-            'request': request,
-        },
-    )
-
-    count = paginator.count
-    results_label = (
-        f"{count} plot found" if count == 1 else f"{count} plots found"
-    ) if count else "No plots found"
-
-    return JsonResponse({
-        'html': html,
-        'count': count,
-        'results_label': results_label,
-        'active_filters_html': active_filters_html,
-        'active_filters_count': len(active_filters),
-    })
 
 
 @login_required
@@ -2014,4 +1963,3 @@ def land_full_details(request, pk):
         'map_bbox': map_bbox,
     }
     return render(request, 'listings/land_full_details.html', context)
-

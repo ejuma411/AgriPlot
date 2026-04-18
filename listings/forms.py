@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import hashlib
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
@@ -10,12 +11,12 @@ from django.urls import reverse
 from django.utils import timezone
 from .models import *
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from .location_utils import validate_kenyan_location, get_subcounties_for_county
 from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 from registry_mock.services import verify_with_registry
 from registry_mock.models import RegistryMismatchAttempt
-import re
-
+from decimal import Decimal, InvalidOperation
+from accounts.models import Agent, Profile
+from security.models import PhoneEmailVerification
 from accounts.validators import (
     normalize_email,
     validate_kenyan_phone,
@@ -37,9 +38,6 @@ PARCEL_PATTERN_LR = re.compile(r"^L\.?R\.?\s*(NO\.?|NO|NUMBER)?\s*\d+(?:/\d+)*$"
 
 
 def _phone_exists_in_system(phone_value):
-    from accounts.models import Agent, Profile
-    from security.models import PhoneEmailVerification
-
     normalized_input = validate_kenyan_phone(phone_value)
     if not normalized_input:
         return False
@@ -521,10 +519,14 @@ class BaseUserRegistrationForm(UserCreationForm):
     phone = forms.CharField(
         max_length=15,
         required=True,
-        help_text="Phone number for verification (e.g., +254718810503)",
+        help_text="Enter your Kenyan phone number",
         widget=forms.TextInput(attrs={
             'class': 'form-control', 
-            'placeholder': '+254718810503'
+            'placeholder': '0712345678',
+            'autocomplete': 'tel',
+            'inputmode': 'numeric',
+            'pattern': '^[0-9+]{9,13}$',
+            'title': 'Format: 0712345678 (10 digits), 0112345678 (10 digits), +254712345678 (12 digits), or 712345678 (9 digits)'
         })
     )
     
@@ -536,8 +538,17 @@ class BaseUserRegistrationForm(UserCreationForm):
         super().__init__(*args, **kwargs)
         # Add Bootstrap classes to all fields
         for field_name, field in self.fields.items():
-            field.widget.attrs.update({'class': 'form-control'})
+            if 'class' not in field.widget.attrs:
+                field.widget.attrs.update({'class': 'form-control'})
+        
         self.fields["email"].widget.attrs["data-email-check-url"] = reverse("listings:validate_email_input")
+        
+        # Add better placeholder and help text for phone
+        self.fields["phone"].widget.attrs.update({
+            'placeholder': '0712345678',
+            'autocomplete': 'tel',
+            'inputmode': 'tel'
+        })
 
     def clean_email(self):
         email = validate_realistic_email(self.cleaned_data.get("email"))
@@ -552,11 +563,17 @@ class BaseUserRegistrationForm(UserCreationForm):
         return validate_person_name(self.cleaned_data.get("last_name"), "Last name")
 
     def clean_phone(self):
-        phone = validate_kenyan_phone(self.cleaned_data.get("phone"))
-        if _phone_exists_in_system(phone):
+        phone = self.cleaned_data.get("phone")
+        try:
+            validated_phone = validate_kenyan_phone(phone)
+        except ValidationError as e:
+            raise forms.ValidationError(e.message)
+        
+        # Check if phone already exists (normalize before checking)
+        if _phone_exists_in_system(validated_phone):
             raise forms.ValidationError("An account with this phone number already exists.")
-        return phone
-
+        
+        return validated_phone
 class BuyerRegistrationForm(BaseUserRegistrationForm):
     """Simple buyer registration form"""
     pass
@@ -861,11 +878,6 @@ class AgentUpgradeForm(BaseUpgradeForm):
 
 # ============ PLOT FORMS ============
 # forms.py
-import os
-from decimal import Decimal, InvalidOperation
-from django import forms
-from .models import Plot, Agent, LandownerProfile
-from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
 
 class PlotForm(forms.ModelForm):
     # Soil type choices

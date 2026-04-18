@@ -66,6 +66,18 @@ class PaymentRequestForm(forms.ModelForm):
         "wallet_identifier",
         "manual_escrow_notes",
     ]
+    METHOD_SLUG_MAP = {
+        "mpesa": PaymentRequest.Method.MPESA_STK,
+        "mpesa_stk": PaymentRequest.Method.MPESA_STK,
+        "card": PaymentRequest.Method.CARD,
+        "bank": PaymentRequest.Method.BANK_TRANSFER,
+        "bank_transfer": PaymentRequest.Method.BANK_TRANSFER,
+        "airtel": PaymentRequest.Method.AIRTEL_MONEY,
+        "airtel_money": PaymentRequest.Method.AIRTEL_MONEY,
+        "wallet": PaymentRequest.Method.WALLET,
+        "manual_escrow": PaymentRequest.Method.MANUAL_ESCROW,
+    }
+    PLOT_REQUIRED_CATEGORIES = PaymentRequest.PLOT_REQUIRED_CATEGORIES
 
     mpesa_reference = forms.CharField(
         required=False,
@@ -196,7 +208,7 @@ class PaymentRequestForm(forms.ModelForm):
         self.fields["plot"].queryset = Plot.objects.order_by("title")
         self.fields["plot"].required = False
         self.fields["due_at"].required = False
-        self.fields["phone_number"].required = True
+        self.fields["phone_number"].required = False
         self.fields["lease_start_date"].required = False
         self.fields["lease_end_date"].required = False
         self.fields["intended_use"].required = False
@@ -377,9 +389,24 @@ class PaymentRequestForm(forms.ModelForm):
         transaction_type = cleaned_data.get("transaction_type")
         category = self.forced_category or cleaned_data.get("category")
         cleaned_data["category"] = category
-        cleaned_data["method"] = PaymentRequest.Method.MPESA_STK
-        self.instance.method = PaymentRequest.Method.MPESA_STK
-        method = PaymentRequest.Method.MPESA_STK
+        selected_method = (
+            self.data.get("payment_method")
+            or self.data.get("method")
+            or cleaned_data.get("method")
+            or self.fields["method"].initial
+            or PaymentRequest.Method.MPESA_STK
+        )
+        method = self.METHOD_SLUG_MAP.get(selected_method, selected_method)
+        valid_methods = {choice[0] for choice in PaymentRequest.Method.choices}
+        if method not in valid_methods:
+            method = PaymentRequest.Method.MPESA_STK
+        cleaned_data["method"] = method
+        self.instance.method = method
+        if category in self.PLOT_REQUIRED_CATEGORIES and not plot:
+            self.add_error(
+                "plot",
+                "Select a plot before creating commitment, reservation, agreement, escrow, stamp duty, or completion payments.",
+            )
         amount = cleaned_data.get("amount")
         calculated_amount = self.forced_amount if self.forced_amount is not None else self.calculate_amount(plot, transaction_type, category)
         if transaction_type in {
@@ -408,15 +435,7 @@ class PaymentRequestForm(forms.ModelForm):
                 "mpesa_reference",
                 "mpesa_account_reference",
             ],
-            PaymentRequest.Method.CARD: ["cardholder_name", "card_last4"],
-            PaymentRequest.Method.BANK_TRANSFER: [
-                "bank_name",
-                "bank_account_name",
-                "bank_account_number",
-            ],
             PaymentRequest.Method.AIRTEL_MONEY: ["phone_number"],
-            PaymentRequest.Method.WALLET: ["wallet_identifier"],
-            PaymentRequest.Method.MANUAL_ESCROW: ["manual_escrow_notes"],
         }
         for field_name in method_requirements.get(method, []):
             if not cleaned_data.get(field_name):
@@ -427,6 +446,16 @@ class PaymentRequestForm(forms.ModelForm):
                 cleaned_data["phone_number"] = cleaned_data["airtel_number"]
             elif cleaned_data.get("phone_number"):
                 cleaned_data["airtel_number"] = cleaned_data["phone_number"]
+        elif method == PaymentRequest.Method.WALLET:
+            cleaned_data["phone_number"] = cleaned_data.get("phone_number") or ""
+
+        if method in {
+            PaymentRequest.Method.MPESA_STK,
+            PaymentRequest.Method.MPESA_PAYBILL,
+            PaymentRequest.Method.AIRTEL_MONEY,
+        } and cleaned_data.get("phone_number"):
+            cleaned_data["phone_number"] = validate_kenyan_phone(cleaned_data["phone_number"])
+            self.instance.phone_number = cleaned_data["phone_number"]
 
         computed_due_at = self.calculate_due_at(
             transaction_type,
@@ -483,7 +512,10 @@ class PaymentRequestForm(forms.ModelForm):
         return cleaned_data
 
     def clean_phone_number(self):
-        return validate_kenyan_phone(self.cleaned_data.get("phone_number"))
+        value = self.cleaned_data.get("phone_number")
+        if not value:
+            return value
+        return validate_kenyan_phone(value)
 
     def save(self, commit=True):
         instance = super().save(commit=False)

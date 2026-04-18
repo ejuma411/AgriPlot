@@ -56,6 +56,15 @@ class PaymentRequest(models.Model):
         CANCELLED = "cancelled", "Cancelled"
         FAILED = "failed", "Failed"
 
+    PLOT_REQUIRED_CATEGORIES = {
+        Category.COMMITMENT_FEE,
+        Category.RESERVATION_DEPOSIT,
+        Category.AGREEMENT_DEPOSIT,
+        Category.ESCROW_DEPOSIT,
+        Category.STAMP_DUTY,
+        Category.COMPLETION_BALANCE,
+    }
+
     TRANSITION_RULES = {
         Status.DRAFT: {"submit", "cancel", "fail"},
         Status.PENDING: {"mark_paid", "cancel", "fail", "dispute"},
@@ -244,6 +253,10 @@ class PaymentRequest(models.Model):
         if self.transaction_type == self.TransactionType.PURCHASE:
             if self.lease_start_date or self.lease_end_date:
                 raise ValidationError("Purchase transactions should not include lease dates.")
+        if self.category in self.PLOT_REQUIRED_CATEGORIES and not self.plot:
+            raise ValidationError(
+                {"plot": "A plot is required for commitment, reservation, agreement, escrow, stamp duty, and completion payments."}
+            )
         if self.plot:
             if self.transaction_type == self.TransactionType.PURCHASE and self.plot.market_status == "sold":
                 raise ValidationError("This plot has already been sold.")
@@ -1937,6 +1950,18 @@ class PaymentRequest(models.Model):
         if not self.plot:
             return
         if self.transaction_type == self.TransactionType.PURCHASE:
+            purchase_payment_active_statuses = {
+                self.Status.PAID,
+                self.Status.IN_ESCROW,
+                self.Status.PARTIALLY_RELEASED,
+                self.Status.RELEASED,
+            }
+            settled_related_payments = [
+                related
+                for related in self.workflow_related_payments
+                if related.status in purchase_payment_active_statuses
+            ]
+            latest_settled_payment = settled_related_payments[-1] if settled_related_payments else None
             lock_message = ""
             if self.due_diligence_lock_expires_at:
                 lock_message = (
@@ -1961,6 +1986,14 @@ class PaymentRequest(models.Model):
                 self.plot.lease_end_date = None
                 self.plot.availability_notes = (
                     f"Reserved under active purchase transaction {self.internal_reference}.{lock_message}"
+                )
+            elif settled_related_payments:
+                self.plot.market_status = "reserved"
+                self.plot.lease_start_date = None
+                self.plot.lease_end_date = None
+                self.plot.availability_notes = (
+                    f"Reserved under active purchase transaction {(latest_settled_payment or self).internal_reference}."
+                    f"{lock_message}"
                 )
             elif self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
                 self.plot.market_status = "available"
@@ -1988,6 +2021,12 @@ class PaymentRequest(models.Model):
                 self.Status.PARTIALLY_RELEASED,
                 self.Status.RELEASED,
             }
+            settled_related_payments = [
+                related
+                for related in self.workflow_related_payments
+                if related.status in lease_payment_active_statuses
+            ]
+            latest_settled_payment = settled_related_payments[-1] if settled_related_payments else None
 
             if self.lease_currently_active:
                 self.plot.market_status = "leased"
@@ -2010,12 +2049,13 @@ class PaymentRequest(models.Model):
                     f"Lease approved via payment {self.internal_reference}. "
                     f"Tenant occupation may begin on {self.lease_start_date:%b %d, %Y} and ends on {self.lease_end_date:%b %d, %Y}."
                 )
-            elif self.status in lease_payment_active_statuses:
+            elif settled_related_payments:
                 self.plot.market_status = "reserved"
                 self.plot.lease_start_date = self.lease_start_date
                 self.plot.lease_end_date = self.lease_end_date
                 self.plot.availability_notes = (
-                    f"Lease in progress via payment {self.internal_reference}. Awaiting final handover completion."
+                    f"Lease in progress via payment {(latest_settled_payment or self).internal_reference}. "
+                    "The commitment has been paid and the land is no longer open for a competing tenant while handover is pending."
                 )
             elif self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
                 self.plot.market_status = "available"
@@ -3039,4 +3079,146 @@ class EscrowAccount(models.Model):
     
     def __str__(self):
         return f"Escrow for Deal {self.deal.id} - Balance: {self.balance}"
+
+
+# Wallet System Models
+from django.db import models
+from django.contrib.auth import get_user_model
+from django.core.validators import MinValueValidator, MaxValueValidator
+from decimal import Decimal
+import uuid
+
+User = get_user_model()
+
+class Wallet(models.Model):
+    """User wallet for storing funds"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='wallet')
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
+    pin_hash = models.CharField(max_length=128, null=True, blank=True)  # Hashed PIN
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
+    def __str__(self):
+        return f"{self.user.username} - Balance: KES {self.balance}"
+    
+    def can_debit(self, amount):
+        """Check if sufficient balance"""
+        return self.balance >= amount
+    
+    def debit(self, amount, description=""):
+        """Debit wallet"""
+        if not self.can_debit(amount):
+            raise ValueError("Insufficient balance")
+        self.balance -= amount
+        self.save()
+        return WalletTransaction.objects.create(
+            wallet=self,
+            amount=amount,
+            transaction_type='debit',
+            status='completed',
+            description=description
+        )
+    
+    def credit(self, amount, description=""):
+        """Credit wallet"""
+        self.balance += amount
+        self.save()
+        return WalletTransaction.objects.create(
+            wallet=self,
+            amount=amount,
+            transaction_type='credit',
+            status='completed',
+            description=description
+        )
+
+
+class WalletTransaction(models.Model):
+    """Wallet transaction record"""
+    TRANSACTION_TYPES = [
+        ('credit', 'Credit (Deposit)'),
+        ('debit', 'Debit (Withdrawal/Payment)'),
+    ]
+    
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+        ('cancelled', 'Cancelled'),
+    ]
+    
+    wallet = models.ForeignKey(Wallet, on_delete=models.CASCADE, related_name='transactions')
+    amount = models.DecimalField(max_digits=15, decimal_places=2)
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    reference = models.CharField(max_length=50, unique=True, editable=False)
+    description = models.TextField(blank=True)
+    mpesa_receipt = models.CharField(max_length=50, blank=True)  # For deposits
+    related_payment = models.ForeignKey('PaymentRequest', on_delete=models.SET_NULL, null=True, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def save(self, *args, **kwargs):
+        if not self.reference:
+            self.reference = f"WLT-{uuid.uuid4().hex[:12].upper()}"
+        super().save(*args, **kwargs)
+    
+    def mark_completed(self):
+        self.status = 'completed'
+        self.completed_at = timezone.now()
+        self.save()
+    
+    def mark_failed(self, reason=""):
+        self.status = 'failed'
+        if reason:
+            self.metadata['failure_reason'] = reason
+        self.save()
+
+
+class WalletDepositRequest(models.Model):
+    """Request to deposit money into wallet via M-Pesa"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='deposit_requests')
+    amount = models.DecimalField(max_digits=15, decimal_places=2, validators=[MinValueValidator(Decimal('10'))])
+    phone_number = models.CharField(max_length=15)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    mpesa_receipt = models.CharField(max_length=50, blank=True)
+    checkout_request_id = models.CharField(max_length=100, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    transaction = models.OneToOneField(WalletTransaction, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    
+    def __str__(self):
+        return f"Deposit {self.amount} by {self.user.username}"
+
+
+class WalletWithdrawalRequest(models.Model):
+    """Request to withdraw money from wallet to M-Pesa"""
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('processing', 'Processing'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='withdrawal_requests')
+    amount = models.DecimalField(max_digits=15, decimal_places=2, validators=[MinValueValidator(Decimal('50'))])
+    phone_number = models.CharField(max_length=15)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    mpesa_receipt = models.CharField(max_length=50, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    transaction = models.OneToOneField(WalletTransaction, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)

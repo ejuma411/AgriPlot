@@ -6,123 +6,690 @@
 {% block extra_css %}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'css/payments.css' %}">
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    /* Reset & Base */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: 'Inter', sans-serif;
+        background: #fafbf8;
+        color: #1a2e1a;
+        line-height: 1.5;
+    }
+    
+    /* Hero Section - Improved for mobile */
+    .legal-hero {
+        background: #0d3d22;
+        padding: 3rem 0 2rem;
+        position: relative;
+    }
+    
+    /* Add a subtle overlay pattern instead of complex gradient */
+    .legal-hero::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23f0b429' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        opacity: 0.3;
+        pointer-events: none;
+    }
+    
+    .container {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 2rem;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .hero-grid {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 3rem;
+        align-items: start;
+    }
+    
+    .hero-content {
+        color: #f5f7f2;
+    }
+    
+    .hero-badge {
+        display: inline-block;
+        background: rgba(240,180,41,0.2);
+        color: #f0b429;
+        padding: 0.4rem 1rem;
+        border-radius: 30px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .hero-content h1 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 3.5rem;
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 1.25rem;
+        letter-spacing: -0.02em;
+    }
+    
+    .hero-lead {
+        font-size: 1.125rem;
+        color: rgba(245,247,242,0.85);
+        margin-bottom: 2rem;
+        max-width: 90%;
+        line-height: 1.6;
+    }
+    
+    .hero-buttons {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.875rem 2rem;
+        border-radius: 40px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+        cursor: pointer;
+        border: none;
+    }
+    
+    .btn-primary {
+        background: #f0b429;
+        color: #0a2a1a;
+        box-shadow: 0 4px 15px rgba(240,180,41,0.3);
+    }
+    
+    .btn-primary:hover {
+        background: #e0a820;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(240,180,41,0.4);
+    }
+    
+    .btn-secondary {
+        background: rgba(255,255,255,0.1);
+        color: #f5f7f2;
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    .btn-secondary:hover {
+        background: rgba(255,255,255,0.2);
+        transform: translateY(-2px);
+    }
+    
+    /* Hero Panel */
+    .hero-panel {
+        background: white;
+        border-radius: 24px;
+        padding: 1.5rem;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+    }
+    
+    .hero-panel-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    .hero-panel-card:last-child {
+        margin-bottom: 0;
+    }
+    
+    .panel-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #f0b429;
+        font-weight: 600;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .hero-panel-card strong {
+        font-size: 1.1rem;
+        color: #0a2a1a;
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+    
+    .hero-panel-card p {
+        color: #4a5b4a;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    
+    .hero-list {
+        list-style: none;
+        padding: 0;
+    }
+    
+    .hero-list li {
+        padding: 0.5rem 0;
+        color: #4a5b4a;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .hero-list li::before {
+        content: '✓';
+        color: #1f8b4c;
+        font-weight: bold;
+    }
+    
+    /* Section Styles */
+    .section {
+        padding: 5rem 0;
+    }
+    
+    .section-light {
+        background: white;
+    }
+    
+    .section-accent {
+        background: #f8faf5;
+    }
+    
+    .section-header {
+        text-align: center;
+        max-width: 700px;
+        margin: 0 auto 3rem;
+    }
+    
+    .section-badge {
+        display: inline-block;
+        background: rgba(31,139,76,0.1);
+        color: #1f8b4c;
+        padding: 0.3rem 1rem;
+        border-radius: 30px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 1rem;
+    }
+    
+    .section-header h2 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #0a2a1a;
+        margin-bottom: 1rem;
+        letter-spacing: -0.01em;
+    }
+    
+    .section-header p {
+        color: #4a5b4a;
+        font-size: 1.1rem;
+    }
+    
+    /* Journey Grid */
+    .journey-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+    
+    .journey-card {
+        background: white;
+        border-radius: 20px;
+        padding: 1.75rem;
+        transition: all 0.3s ease;
+        border: 1px solid #e8ece5;
+        position: relative;
+    }
+    
+    .journey-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+        border-color: #1f8b4c;
+    }
+    
+    .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #1f8b4c, #0a5c30);
+        color: white;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 1.25rem;
+    }
+    
+    .journey-card h3 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #0a2a1a;
+        margin-bottom: 0.75rem;
+    }
+    
+    .journey-card p {
+        color: #5a6e5a;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    
+    /* Two Column Layout */
+    .two-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 2.5rem;
+    }
+    
+    .info-card {
+        background: white;
+        border-radius: 20px;
+        padding: 2rem;
+        border: 1px solid #e8ece5;
+    }
+    
+    .info-card h3 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #0a2a1a;
+        margin-bottom: 1.5rem;
+    }
+    
+    .chip-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .info-chip {
+        background: #f8faf5;
+        padding: 1rem 1.25rem;
+        border-radius: 12px;
+        color: #2a4a2a;
+        font-weight: 500;
+        font-size: 0.9rem;
+        border-left: 3px solid #1f8b4c;
+    }
+    
+    .rule-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .rule-card {
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+        padding: 1rem;
+        background: #f8faf5;
+        border-radius: 12px;
+    }
+    
+    .rule-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        background: #0a2a1a;
+        color: #f0b429;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+    
+    .rule-card p {
+        color: #3a5a3a;
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin: 0;
+    }
+    
+    /* CTA Section */
+    .cta-section {
+        background: linear-gradient(135deg, #0a2a1a 0%, #0d3d22 100%);
+        padding: 4rem 0;
+        text-align: center;
+        border-radius: 0;
+    }
+    
+    .cta-content h2 {
+        font-family: 'Space Grotesk', sans-serif;
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: white;
+        margin-bottom: 1rem;
+    }
+    
+    .cta-content p {
+        color: rgba(255,255,255,0.8);
+        margin-bottom: 2rem;
+        font-size: 1.1rem;
+    }
+    
+    .cta-content .btn-primary {
+        background: #f0b429;
+        color: #0a2a1a;
+        font-size: 1.1rem;
+        padding: 1rem 2.5rem;
+    }
+    
+    /* Responsive Breakpoints */
+    @media (max-width: 1024px) {
+        .hero-grid {
+            grid-template-columns: 1fr;
+            gap: 2rem;
+        }
+        
+        .hero-panel {
+            max-width: 500px;
+        }
+        
+        .journey-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .two-columns {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .legal-hero {
+            padding: 2rem 0;
+        }
+        
+        .container {
+            padding: 0 1.25rem;
+        }
+        
+        .hero-content h1 {
+            font-size: 2.2rem;
+            line-height: 1.3;
+        }
+        
+        .hero-content h1 br {
+            display: none;
+        }
+        
+        .hero-lead {
+            font-size: 1rem;
+            max-width: 100%;
+        }
+        
+        .hero-buttons {
+            flex-direction: column;
+            width: 100%;
+        }
+        
+        .hero-buttons .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .hero-panel {
+            max-width: 100%;
+            padding: 1.25rem;
+        }
+        
+        .section {
+            padding: 3rem 0;
+        }
+        
+        .section-header h2 {
+            font-size: 1.8rem;
+        }
+        
+        .section-header p {
+            font-size: 1rem;
+        }
+        
+        .journey-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .journey-card {
+            padding: 1.25rem;
+        }
+        
+        .info-card {
+            padding: 1.25rem;
+        }
+        
+        .info-card h3 {
+            font-size: 1.1rem;
+        }
+        
+        .info-chip {
+            font-size: 0.85rem;
+            padding: 0.875rem 1rem;
+        }
+        
+        .rule-card {
+            padding: 0.875rem;
+        }
+        
+        .rule-card p {
+            font-size: 0.85rem;
+        }
+        
+        .cta-section {
+            padding: 3rem 0;
+        }
+        
+        .cta-content h2 {
+            font-size: 1.6rem;
+        }
+        
+        .cta-content p {
+            font-size: 1rem;
+        }
+        
+        .cta-content .btn-primary {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .container {
+            padding: 0 1rem;
+        }
+        
+        .hero-content h1 {
+            font-size: 1.8rem;
+        }
+        
+        .hero-badge {
+            font-size: 0.7rem;
+        }
+        
+        .hero-lead {
+            font-size: 0.9rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.25rem;
+            font-size: 0.9rem;
+        }
+        
+        .section-header h2 {
+            font-size: 1.5rem;
+        }
+        
+        .step-number {
+            width: 32px;
+            height: 32px;
+            font-size: 0.9rem;
+        }
+        
+        .journey-card h3 {
+            font-size: 1.1rem;
+        }
+        
+        .journey-card p {
+            font-size: 0.85rem;
+        }
+        
+        .rule-number {
+            width: 28px;
+            height: 28px;
+            font-size: 0.8rem;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<section class="payments-hero payments-hero-flow">
-    <div class="payments-shell">
-        <div class="hero-copy">
-            <span class="hero-kicker">Legal escrow workflow</span>
-            <h1>AgriPlot land transfer workflow</h1>
-            <p class="hero-lead">This is the guided Kenyan land-transfer path that starts after a buyer expresses serious intent. The commitment fee opens due diligence first, then the deal moves through agreement, consents, tax, completion, and final registration.</p>
-            <div class="hero-actions">
-                <a href="{{ workflow_start_url }}" class="hero-btn hero-btn-primary">{% if selected_plot %}Proceed to Commitment Fee{% else %}Start Legal Workflow{% endif %}</a>
-                <a href="#journey" class="hero-btn hero-btn-secondary">See the steps</a>
+<!-- Hero Section -->
+<section class="legal-hero">
+    <div class="container">
+        <div class="hero-grid">
+            <div class="hero-content">
+                <span class="hero-badge">🔒 Legal Escrow Workflow</span>
+                <h1>Secure Land Transfer Made Simple</h1>
+                <p class="hero-lead">AgriPlot's guided Kenyan land-transfer path starts after a buyer expresses serious intent. The commitment fee opens due diligence first, then the deal moves through agreement, consents, tax, completion, and final registration.</p>
+                <div class="hero-buttons">
+                    <a href="{{ workflow_start_url }}" class="btn btn-primary">
+                        <i class="fas fa-file-signature"></i>
+                        {% if selected_plot %}Proceed to Commitment Fee{% else %}Start Legal Workflow{% endif %}
+                    </a>
+                </div>
+            </div>
+            <div class="hero-panel">
+                <div class="hero-panel-card">
+                    <span class="panel-label">✨ Why this matters</span>
+                    <strong>Checkout opens legal due diligence, not a blind money request</strong>
+                    <p>AgriPlot uses the commitment fee to lock the plot, deliver the due diligence pack, and then move the buyer through the real closing sequence.</p>
+                </div>
+                <div class="hero-panel-card">
+                    <span class="panel-label">📍 This plot</span>
+                    {% if selected_plot %}
+                    <strong>{{ selected_plot.title }}</strong>
+                    <p>{{ selected_plot.location }} · {{ selected_plot.get_land_type_display }} · {{ selected_plot.get_listing_type_display }}</p>
+                    {% if selected_plot.availability_summary %}
+                    <p>{{ selected_plot.availability_summary }}</p>
+                    {% endif %}
+                    {% else %}
+                    <ul class="hero-list">
+                        {% for principle in platform_principles %}
+                        <li>{{ principle }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
             </div>
         </div>
-        <aside class="hero-panel">
-            <div class="hero-panel-card pulse-card">
-                <span class="panel-label">Why this matters</span>
-                <strong>Checkout should open legal due diligence, not a blind money request</strong>
-                <p>AgriPlot uses the commitment fee to lock the plot, deliver the due diligence pack, and then move the buyer through the real closing sequence.</p>
-            </div>
-            <div class="hero-panel-card">
-                <span class="panel-label">This plot</span>
-                {% if selected_plot %}
-                <strong>{{ selected_plot.title }}</strong>
-                <p>{{ selected_plot.location }} · {{ selected_plot.get_land_type_display }} · {{ selected_plot.get_listing_type_display }}</p>
-                {% if selected_plot.availability_summary %}
-                <p>{{ selected_plot.availability_summary }}</p>
-                {% endif %}
-                {% else %}
-                <ul class="hero-list">
-                    {% for principle in platform_principles %}
-                    <li>{{ principle }}</li>
-                    {% endfor %}
-                </ul>
-                {% endif %}
-            </div>
-        </aside>
     </div>
 </section>
 
-<section class="payments-section" id="journey">
-    <div class="payments-shell">
-        <div class="section-heading">
-            <span class="section-kicker">Journey</span>
-            <h2>The 6 legal steps from commitment to title handover</h2>
+<!-- Journey Section -->
+<section class="section section-light" id="journey">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-badge">📋 The Journey</span>
+            <h2>6 Legal Steps from Commitment to Title Handover</h2>
             <p>The buyer should understand this flow before any payment begins.</p>
         </div>
         <div class="journey-grid">
-            <article class="journey-card">
-                <span class="journey-eyebrow">Step 1</span>
+            <div class="journey-card">
+                <div class="step-number">01</div>
                 <h3>Due Diligence Lock</h3>
                 <p>Buyer pays the commitment fee, AgriPlot locks the plot for 7 days, and the official search plus survey or beacon pack is released for review.</p>
-            </article>
-            <article class="journey-card">
-                <span class="journey-eyebrow">Step 2</span>
+            </div>
+            <div class="journey-card">
+                <div class="step-number">02</div>
                 <h3>Sale Agreement</h3>
-                <p>The seller’s lawyer drafts the agreement, both sides capture advocate details, and the 10% deposit arrangement is secured in the legal framework.</p>
-            </article>
-            <article class="journey-card">
-                <span class="journey-eyebrow">Step 3</span>
+                <p>The seller's lawyer drafts the agreement, both sides capture advocate details, and the 10% deposit arrangement is secured in the legal framework.</p>
+            </div>
+            <div class="journey-card">
+                <div class="step-number">03</div>
                 <h3>LCB Consent</h3>
                 <p>For agricultural land, the Land Control Board consent and any spousal approvals must be uploaded before the process moves forward.</p>
-            </article>
-            <article class="journey-card">
-                <span class="journey-eyebrow">Step 4</span>
-                <h3>Valuation &amp; Stamp Duty</h3>
+            </div>
+            <div class="journey-card">
+                <div class="step-number">04</div>
+                <h3>Valuation & Stamp Duty</h3>
                 <p>The government valuation is recorded and the buyer uploads the KRA or eCitizen stamp duty receipt before the completion exchange can proceed.</p>
-            </article>
-            <article class="journey-card">
-                <span class="journey-eyebrow">Step 5</span>
+            </div>
+            <div class="journey-card">
+                <div class="step-number">05</div>
                 <h3>Completion Exchange</h3>
                 <p>The buyer clears the remaining balance to the legal side while the seller hands over the original title, signed transfer forms, and ID/KRA copies.</p>
-            </article>
-            <article class="journey-card">
-                <span class="journey-eyebrow">Step 6</span>
-                <h3>Registration &amp; Handover</h3>
-                <p>The lawyer lodges the transfer at the registry or Ardhisasa, and only a fresh registry result showing the buyer’s name flips the plot to sold.</p>
-            </article>
+            </div>
+            <div class="journey-card">
+                <div class="step-number">06</div>
+                <h3>Registration & Handover</h3>
+                <p>The lawyer lodges the transfer at the registry or Ardhisasa, and only a fresh registry result showing the buyer's name flips the plot to sold.</p>
+            </div>
         </div>
     </div>
 </section>
 
-<section class="payments-section section-accent">
-    <div class="payments-shell dual-grid">
-        <div>
-            <div class="section-heading compact">
-                <span class="section-kicker">Lock rules</span>
-                <h2>What stays blocked until evidence is uploaded</h2>
+<!-- Lock Rules & Next Move Section -->
+<section class="section section-accent">
+    <div class="container">
+        <div class="two-columns">
+            <div class="info-card">
+                <h3>🔒 What stays blocked until evidence is uploaded</h3>
+                <div class="chip-list">
+                    <div class="info-chip">LCB consent step stays pending until the consent letter is uploaded.</div>
+                    <div class="info-chip">Stamp duty step stays pending until valuation and the tax receipt are both captured.</div>
+                    <div class="info-chip">Completion exchange stays pending until the title, RL1 forms, and seller identity pack are confirmed.</div>
+                    <div class="info-chip">Registration is the only step that can flip the plot to sold.</div>
+                </div>
             </div>
-            <div class="chip-list">
-                <div class="info-chip">LCB consent step stays pending until the consent letter is uploaded.</div>
-                <div class="info-chip">Stamp duty step stays pending until valuation and the tax receipt are both captured.</div>
-                <div class="info-chip">Completion exchange stays pending until the title, RL1 forms, and seller identity pack are confirmed.</div>
-                <div class="info-chip">Registration is the only step that can flip the plot to sold.</div>
+            <div class="info-card">
+                <h3>🎯 What AgriPlot should do from this page</h3>
+                <div class="rule-list">
+                    <div class="rule-card">
+                        <span class="rule-number">01</span>
+                        <p>The buyer first understands the legal workflow here instead of landing directly on a payment screen.</p>
+                    </div>
+                    <div class="rule-card">
+                        <span class="rule-number">02</span>
+                        <p>Only after this overview should the buyer continue to the commitment-fee checkout.</p>
+                    </div>
+                    <div class="rule-card">
+                        <span class="rule-number">03</span>
+                        <p>After payment success, AgriPlot should open the Due Diligence workspace, not a generic payment detail page.</p>
+                    </div>
+                </div>
             </div>
         </div>
-        <div>
-            <div class="section-heading compact">
-                <span class="section-kicker">Next move</span>
-                <h2>What AgriPlot should do from this page</h2>
-            </div>
-            <div class="rule-list">
-                <article class="rule-card">
-                    <span class="rule-index">01</span>
-                    <p>The buyer first understands the legal workflow here instead of landing directly on a payment screen.</p>
-                </article>
-                <article class="rule-card">
-                    <span class="rule-index">02</span>
-                    <p>Only after this overview should the buyer continue to the commitment-fee checkout.</p>
-                </article>
-                <article class="rule-card">
-                    <span class="rule-index">03</span>
-                    <p>After payment success, AgriPlot should open the Due Diligence workspace, not a generic payment detail page.</p>
-                </article>
-            </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-content">
+            <h2>Ready to start your land transfer?</h2>
+            <p>Begin the secure, legally-compliant workflow today.</p>
+            <a href="{{ workflow_start_url }}" class="btn btn-primary">
+                <i class="fas fa-file-signature"></i>
+                Start Legal Workflow
+            </a>
         </div>
     </div>
 </section>

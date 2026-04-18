@@ -12,7 +12,7 @@
     <div class="market-grid">
         {% for plot in featured_plots %}
         <div class="market-card fb-card" data-land-type="{{ plot.land_type }}">
-            <div class="fb-image" style="background-image: url('{% if plot.images.first %}{{ plot.images.first.image.url }}{% elif plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
+            <div class="fb-image" style="background-image: url('{% if plot.images.first %}{{ plot.images.first.image.url }}{% elif plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static "images/placeholder-plot.jpeg" %}{% endif %}');">
                 <span class="fb-badge">{{ plot.get_land_type_display }}</span>
                 <span class="fb-status-badge {{ plot.market_status_css }}">
                     {{ plot.market_status_label }}
@@ -76,7 +76,7 @@
     <div class="pagination-wrapper">
         <div class="pagination">
             {% if featured_plots.has_previous %}
-                <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.previous_page_number }}" class="page-link ajax-page" aria-label="Previous">
+                <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.previous_page_number }}" class="page-link" aria-label="Previous">
                     <i class="fas fa-chevron-left"></i>
                 </a>
             {% else %}
@@ -89,12 +89,12 @@
                 {% if featured_plots.number == i %}
                     <span class="page-link active">{{ i }}</span>
                 {% elif i > featured_plots.number|add:'-3' and i < featured_plots.number|add:'3' %}
-                    <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ i }}" class="page-link ajax-page">{{ i }}</a>
+                    <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ i }}" class="page-link">{{ i }}</a>
                 {% endif %}
             {% endfor %}
 
             {% if featured_plots.has_next %}
-                <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.next_page_number }}" class="page-link ajax-page" aria-label="Next">
+                <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ featured_plots.next_page_number }}" class="page-link" aria-label="Next">
                     <i class="fas fa-chevron-right"></i>
                 </a>
             {% else %}
@@ -110,207 +110,3 @@
     </div>
     {% endif %}
 </section>
-
-<style>
-.container95{
-    max-width:95%;
-    margin:auto;
-}
-
-.section-head {
-    text-align: center;
-    margin-bottom: 40px;
-}
-
-.section-head h2 {
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: #2c3e50;
-    margin-bottom: 10px;
-    position: relative;
-    display: inline-block;
-}
-
-.section-head h2::after {
-    content: '';
-    position: absolute;
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 80px;
-    height: 4px;
-    background: linear-gradient(90deg, #1f7a4d, #2ecc71);
-    border-radius: 2px;
-}
-
-.fb-fav-form {
-    margin: 0;
-}
-
-.section-subtitle {
-    color: #7f8c8d;
-    font-size: 1.1rem;
-    margin-top: 15px;
-}
-
-.market-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 30px;
-    margin: 30px 0;
-}
-
-.market-card {
-    background: #fff;
-    border-radius: 18px;
-    overflow: hidden;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-    position: relative;
-    border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-.market-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.12);
-}
-
-.fb-image {
-    position: relative;
-    height: 230px;
-    background-size: cover;
-    background-position: center;
-}
-
-.fb-badge {
-    position: absolute;
-    top: 14px;
-    left: 14px;
-    background: rgba(255, 255, 255, 0.9);
-    color: #1a1a1a;
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 6px 10px;
-    border-radius: 14px;
-}
-
-.fb-status-badge {
-    position: absolute;
-    top: 14px;
-    right: 14px;
-    padding: 6px 10px;
-    border-radius: 14px;
-    font-size: 0.72rem;
-    font-weight: 700;
-    color: #fff;
-}
-
-.fb-status-badge.is-available {
-    background: rgba(6, 145, 50, 0.92);
-}
-
-.fb-status-badge.is-reserved {
-    background: rgba(180, 83, 9, 0.92);
-}
-
-.fb-status-badge.is-leased,
-.fb-status-badge.is-sold {
-    background: rgba(153, 27, 27, 0.92);
-}
-
-.fb-fav {
-    position: absolute;
-    right: 14px;
-    bottom: -16px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: 0;
-    background: #fff;
-    box-shadow: 0 6px 14px rgba(0,0,0,0.15);
-    color: #1f7a4d;
-}
-
-.fb-logo {
-    position: absolute;
-    left: 16px;
-    bottom: -26px;
-    width: 56px;
-    height: 56px;
-    background: #fff;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    box-shadow: 0 6px 14px rgba(0,0,0,0.12);
-}
-
-.fb-logo img {
-    width: 38px;
-    height: 38px;
-    object-fit: contain;
-}
-
-.fb-info {
-    padding: 32px 18px 18px;
-}
-
-.fb-title {
-    font-size: 1.05rem;
-    font-weight: 700;
-    margin: 0 0 6px;
-}
-
-.fb-location {
-    color: #5a6b66;
-    font-size: 0.9rem;
-    margin-bottom: 12px;
-}
-
-.fb-meta {
-    display: flex;
-    align-items: baseline;
-    gap: 10px;
-    margin-bottom: 14px;
-}
-
-.fb-price {
-    font-weight: 800;
-    color: #1f7a4d;
-}
-
-.fb-area {
-    font-size: 0.85rem;
-    color: #7a8b86;
-}
-
-.fb-status-copy {
-    margin: 0 0 14px;
-    font-size: 0.9rem;
-    color: #4b5563;
-    line-height: 1.45;
-    min-height: 2.6em;
-}
-
-.fb-actions {
-    display: flex;
-    justify-content: flex-end;
-}
-
-.fb-cta {
-    background: #f4b13d;
-    color: #1f2a24;
-    font-weight: 700;
-    padding: 6px 16px;
-    border-radius: 10px;
-    text-decoration: none;
-}
-
-@media (max-width: 768px) {
-    .market-grid {
-        grid-template-columns: 1fr;
-    }
-    .fb-image {
-        height: 200px;
-    }
-}
-</style>

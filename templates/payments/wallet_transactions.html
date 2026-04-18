@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load static humanize %}
+
+{% block title %}Wallet Transactions - AgriPlot{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Wallet Transactions</h2>
+        <a href="{% url 'payments:wallet_dashboard' %}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left"></i> Back to Wallet
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover" id="transactionsTable">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Reference</th>
+                            <th>Description</th>
+                            <th>Type</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsBody">
+                        <tr>
+                            <td colspan="6" class="text-center">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+async function loadTransactions() {
+    try {
+        const response = await fetch("{% url 'payments:wallet_transactions' %}?limit=100");
+        const data = await response.json();
+        
+        if (data.success && data.transactions) {
+            const tbody = document.getElementById('transactionsBody');
+            tbody.innerHTML = '';
+            
+            data.transactions.forEach(t => {
+                const row = `
+                    <tr>
+                        <td>${t.date}</td>
+                        <td><code>${t.reference}</code></td>
+                        <td>${t.description}</td>
+                        <td>
+                            <span class="badge ${t.type === 'Credit (Deposit)' ? 'bg-success' : 'bg-warning'}">
+                                ${t.type}
+                            </span>
+                        </td>
+                        <td class="${t.type === 'Credit (Deposit)' ? 'text-success' : 'text-danger'}">
+                            ${t.type === 'Credit (Deposit)' ? '+' : '-'} KES ${t.amount.toLocaleString()}
+                        </td>
+                        <td>
+                            <span class="badge ${t.status === 'completed' ? 'bg-success' : 'bg-secondary'}">
+                                ${t.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+                tbody.innerHTML += row;
+            });
+        }
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+    }
+}
+
+loadTransactions();
+</script>
+{% endblock %}

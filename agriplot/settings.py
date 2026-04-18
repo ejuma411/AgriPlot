@@ -99,7 +99,7 @@ SECRET_KEY = (
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool("DJANGO_DEBUG", default=False)
+DEBUG = _env_bool("DJANGO_DEBUG", default=True)
 
 # Host/domain validation
 ALLOWED_HOSTS = _env_csv("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1,testserver")
@@ -191,9 +191,9 @@ WSGI_APPLICATION = "agriplot.wsgi.application"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
+        'NAME': config('DB_NAME', default='agriplot'),
+        'USER': config('DB_USER', default='postgres'),
+        'PASSWORD': config('DB_PASSWORD', default='postgres'),
         'HOST': config('DB_HOST', default='localhost'),
         'PORT': config('DB_PORT', default='5432'),
         
@@ -224,6 +224,7 @@ TEMPLATES = [
                 "notifications.context_processors.nav_activity",
                 "payments.context_processors.payment_admin_nav",
                 "security.context_processors.contact_verification_banner",
+                'payments.context_processors.wallet_balance',
             ],
         },
     },
@@ -381,6 +382,28 @@ MPESA_TRANSACTION_TYPE = os.environ.get(
 )
 MPESA_CALLBACK_URL = os.environ.get("MPESA_CALLBACK_URL", "")
 
+CARD_PAYMENTS_ENABLED = _env_bool("CARD_PAYMENTS_ENABLED", default=False)
+CARD_PROVIDER = os.environ.get("CARD_PROVIDER", "")
+CARD_PUBLIC_KEY = os.environ.get("CARD_PUBLIC_KEY", "")
+CARD_SECRET_KEY = os.environ.get("CARD_SECRET_KEY", "")
+CARD_WEBHOOK_SECRET = os.environ.get("CARD_WEBHOOK_SECRET", "")
+
+BANK_TRANSFER_ENABLED = _env_bool("BANK_TRANSFER_ENABLED", default=False)
+BANK_TRANSFER_BANK_NAME = os.environ.get("BANK_TRANSFER_BANK_NAME", "")
+BANK_TRANSFER_ACCOUNT_NAME = os.environ.get("BANK_TRANSFER_ACCOUNT_NAME", "")
+BANK_TRANSFER_ACCOUNT_NUMBER = os.environ.get("BANK_TRANSFER_ACCOUNT_NUMBER", "")
+BANK_TRANSFER_SWIFT_CODE = os.environ.get("BANK_TRANSFER_SWIFT_CODE", "")
+
+AIRTEL_MONEY_ENABLED = _env_bool("AIRTEL_MONEY_ENABLED", default=False)
+AIRTEL_MONEY_CLIENT_ID = os.environ.get("AIRTEL_MONEY_CLIENT_ID", "")
+AIRTEL_MONEY_CLIENT_SECRET = os.environ.get("AIRTEL_MONEY_CLIENT_SECRET", "")
+AIRTEL_MONEY_CALLBACK_URL = os.environ.get("AIRTEL_MONEY_CALLBACK_URL", "")
+
+WALLET_ENABLED = _env_bool("WALLET_ENABLED", default=True)
+WALLET_MPESA_CALLBACK_URL = os.environ.get("WALLET_MPESA_CALLBACK_URL", "")
+
+# Enable test mode for wallet deposits (bypass M-Pesa for testing)
+WALLET_TEST_MODE = _env_bool("WALLET_TEST_MODE", default=True)
 
 # =============================================================================
 # FEATURE FLAGS & SECURITY CONTROLS
@@ -406,12 +429,9 @@ ENABLE_SMS_NOTIFICATIONS = _env_bool("ENABLE_SMS_NOTIFICATIONS", default=False)
 # ENHANCED LOGGING CONFIGURATION
 # =============================================================================
 
-# Log file paths
-ERROR_LOG_FILE = LOG_DIR / "error.log"
-DEBUG_LOG_FILE = LOG_DIR / "debug.log"
-DJANGO_LOG_FILE = LOG_DIR / "django.log"
-LISTINGS_LOG_FILE = LOG_DIR / "listings.log"
-SECURITY_LOG_FILE = LOG_DIR / "security.log"
+# Log file paths - only two main log files
+SYSTEM_LOG_FILE = LOG_DIR / "system.log"      # All system activity (INFO and above)
+ERROR_LOG_FILE = LOG_DIR / "errors.log"       # Only errors and critical issues
 
 LOGGING = {
     "version": 1,
@@ -423,15 +443,15 @@ LOGGING = {
             "style": "{",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
-        "detailed": {
-            "format": "{levelname} | {asctime} | {name} | {module}.{funcName}:{lineno} | {message}",
-            "style": "{",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
         "simple": {
             "format": "{levelname} | {asctime} | {message}",
             "style": "{",
             "datefmt": "%H:%M:%S",
+        },
+        "error_detail": {
+            "format": "{levelname} | {asctime} | {name} | {module}.{funcName}:{lineno} | {message}\n{exc_info}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
         },
         "security": {
             "format": "{levelname} | {asctime} | SECURITY | {module}:{lineno} | {message} | User: {user} | IP: {ip}",
@@ -453,62 +473,31 @@ LOGGING = {
     },
 
     "handlers": {
-        # Console Handler - shows all logs in terminal
+        # Console Handler - shows all logs in terminal (development only)
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "simple" if DEBUG else "verbose",
             "level": "DEBUG" if DEBUG else "INFO",
         },
 
-        # Error Handler - captures all ERROR and above
-        "error_file": {
+        # System Log Handler - captures all INFO and above
+        "system_file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": ERROR_LOG_FILE,
-            "formatter": "detailed",
-            "level": "ERROR",
-            "maxBytes": 10485760,  # 10MB
-            "backupCount": 5,
-        },
-
-        # Debug File Handler - detailed debugging
-        "debug_file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": DEBUG_LOG_FILE,
-            "formatter": "detailed",
-            "level": "DEBUG",
-            "maxBytes": 10485760,  # 10MB
-            "backupCount": 3,
-        },
-
-        # Django-specific log file
-        "django_file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": DJANGO_LOG_FILE,
+            "filename": SYSTEM_LOG_FILE,
             "formatter": "verbose",
             "level": "INFO",
             "maxBytes": 10485760,  # 10MB
-            "backupCount": 3,
-        },
-
-        # Listings app specific log file
-        "listings_file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "filename": LISTINGS_LOG_FILE,
-            "formatter": "detailed",
-            "level": "DEBUG",
-            "maxBytes": 10485760,  # 10MB
             "backupCount": 5,
         },
 
-        # Security events log file
-        "security_file": {
+        # Error Log Handler - captures ERROR and CRITICAL only
+        "error_file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": SECURITY_LOG_FILE,
-            "formatter": "security",
-            "level": "INFO",
-            "filters": ["security_context_defaults"],
+            "filename": ERROR_LOG_FILE,
+            "formatter": "error_detail",
+            "level": "ERROR",
             "maxBytes": 10485760,  # 10MB
-            "backupCount": 5,
+            "backupCount": 10,
         },
 
         # Mail handler for critical errors (production only)
@@ -523,14 +512,14 @@ LOGGING = {
     "loggers": {
         # Root logger - captures everything
         "": {
-            "handlers": ["console", "error_file"],
-            "level": "DEBUG" if DEBUG else "INFO",
+            "handlers": ["console", "system_file", "error_file"],
+            "level": "INFO",
             "propagate": True,
         },
 
         # Django Framework Logs
         "django": {
-            "handlers": ["console", "django_file", "error_file"],
+            "handlers": ["system_file", "error_file"],
             "level": "INFO",
             "propagate": False,
         },
@@ -549,65 +538,93 @@ LOGGING = {
             "propagate": False,
         },
 
-        # Django DB logs (SQL queries when DEBUG=True)
-        "django.db.backends": {
-            "handlers": ["debug_file"],
-            "level": "DEBUG" if DEBUG else "WARNING",
-            "propagate": False,
-        },
-
         # Django Security logs
         "django.security": {
-            "handlers": ["security_file", "error_file", "console"],
+            "handlers": ["system_file", "error_file", "console"],
             "level": "INFO",
             "propagate": False,
         },
 
-        # Listings App - all logs from your app
-        "listings": {
-            "handlers": ["console", "listings_file", "error_file"],
-            "level": "DEBUG",
-            "propagate": False,
-        },
-
-        # Forms and Validation errors
-        "django.contrib.messages": {
-            "handlers": ["console", "debug_file"],
-            "level": "INFO",
+        # Django DB logs (only errors in production)
+        "django.db.backends": {
+            "handlers": ["error_file"],
+            "level": "ERROR",
             "propagate": False,
         },
 
         # Authentication logs
         "django.contrib.auth": {
-            "handlers": ["console", "security_file", "error_file"],
+            "handlers": ["system_file", "error_file"],
             "level": "INFO",
             "propagate": False,
         },
 
-        # Validation logging
-        "listings.validation": {
-            "handlers": ["debug_file", "error_file"],
+        # Listings App
+        "listings": {
+            "handlers": ["system_file", "error_file"],
             "level": "INFO",
             "propagate": False,
         },
 
-        # Third-party apps (set to WARNING to reduce noise)
-        "formtools": {
-            "handlers": ["error_file"],
-            "level": "WARNING",
+        # Payments App
+        "payments": {
+            "handlers": ["system_file", "error_file"],
+            "level": "INFO",
             "propagate": False,
         },
-        "jazzmin": {
-            "handlers": ["error_file"],
+
+        # Verification App
+        "verification": {
+            "handlers": ["system_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+
+        # Reports App
+        "reports": {
+            "handlers": ["system_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+
+        # Security App
+        "security": {
+            "handlers": ["system_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+
+        # Notifications App
+        "notifications": {
+            "handlers": ["system_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+
+        # Accounts App
+        "accounts": {
+            "handlers": ["system_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+
+        # Registry Mock App
+        "registry_mock": {
+            "handlers": ["system_file", "error_file"],
             "level": "WARNING",
             "propagate": False,
         },
     },
 }
 
-# Create custom loggers
-validation_logger = logging.getLogger('listings.validation')
+# Create logger instances for easy access
+system_logger = logging.getLogger('')
+error_logger = logging.getLogger('django.request')
 security_logger = logging.getLogger('django.security')
+payments_logger = logging.getLogger('payments')
+listings_logger = logging.getLogger('listings')
+verification_logger = logging.getLogger('verification')
+reports_logger = logging.getLogger('reports')
 
 
 # =============================================================================
@@ -641,12 +658,9 @@ JAZZMIN_SETTINGS = {
     
     # Custom icons per app/model
     "icons": {
-        # Auth app
         "auth": "fas fa-users-cog",
         "auth.user": "fas fa-user",
         "auth.group": "fas fa-users",
-        
-        # Listings app models
         "listings.Profile": "fas fa-id-card",
         "listings.LandownerProfile": "fas fa-user-tie",
         "listings.Agent": "fas fa-handshake",
@@ -675,23 +689,20 @@ JAZZMIN_SETTINGS = {
         "listings.VerificationDocument": "fas fa-file-pdf",
     },
     
-    # Icons for default models
     "default_icon_parents": "fas fa-chevron-circle-right",
     "default_icon_children": "fas fa-circle",
     
-    # Custom links to append to app groups
     "custom_links": {
         "listings": [
             {
                 "name": "System Journal",
-                "url": "system_construction_journal",
+                "url": "/verify/system-construction/",
                 "icon": "fas fa-journal-whills",
                 "permissions": ["listings.view_verificationstatus"],
             }
         ]
     },
     
-    # Menu structure (order and grouping)
     "order_with_respect_to": [
         "auth",
         "listings.Profile",
@@ -717,7 +728,6 @@ JAZZMIN_SETTINGS = {
         "listings.VerificationLog",
     ],
     
-    # Custom menu structure
     "menu": [
         {"app": "auth", "label": "Users & Groups", "icon": "fas fa-users-cog"},
         {
@@ -784,7 +794,6 @@ JAZZMIN_SETTINGS = {
         },
     ],
     
-    # UI Customization
     "show_ui_builder": DEBUG,
     "changeform_format": "horizontal_tabs",
     "language_chooser": False,

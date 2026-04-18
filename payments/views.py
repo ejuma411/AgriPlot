@@ -3,26 +3,29 @@ import hashlib
 import hmac
 import json
 from datetime import timedelta
-
+from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required  # ← Fixed this line
+from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, HttpResponseRedirect, JsonResponse
-from django.shortcuts import get_object_or_404, redirect
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, TemplateView
 from django.views.decorators.csrf import csrf_exempt
-
 from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 from accounts.validators import validate_kenyan_phone
 from listings.models import Plot, UserInterest
 from notifications.notification_service import NotificationService
-
+from .wallet_service import WalletService
+from .models import Wallet, WalletTransaction, WalletDepositRequest, WalletWithdrawalRequest
 from .forms import (
     PaymentClosingStepForm,
     PaymentDisputeForm,
@@ -77,6 +80,33 @@ def _gateway_ready():
     return paystack_ready()
 
 
+def _payment_method_backend_enabled(method):
+    if method == PaymentRequest.Method.MPESA_STK:
+        return daraja_ready()
+    if method == PaymentRequest.Method.WALLET:
+        return getattr(settings, "WALLET_ENABLED", True)
+    if method == PaymentRequest.Method.CARD:
+        return getattr(settings, "CARD_PAYMENTS_ENABLED", False)
+    if method == PaymentRequest.Method.BANK_TRANSFER:
+        return getattr(settings, "BANK_TRANSFER_ENABLED", False)
+    if method == PaymentRequest.Method.AIRTEL_MONEY:
+        return getattr(settings, "AIRTEL_MONEY_ENABLED", False)
+    if method == PaymentRequest.Method.MANUAL_ESCROW:
+        return True
+    return False
+
+
+def _payment_method_unavailable_message(method):
+    messages_map = {
+        PaymentRequest.Method.MPESA_STK: "Safaricom Daraja is not configured yet.",
+        PaymentRequest.Method.CARD: "Card payments are scaffolded but not configured yet. Add your card gateway credentials first.",
+        PaymentRequest.Method.BANK_TRANSFER: "Bank transfer is scaffolded but not configured yet. Add your settlement account details first.",
+        PaymentRequest.Method.AIRTEL_MONEY: "Airtel Money is scaffolded but not configured yet. Add the Airtel credentials first.",
+        PaymentRequest.Method.WALLET: "The AgriPlot Wallet is currently disabled in backend settings.",
+    }
+    return messages_map.get(method, "This payment method is not configured yet.")
+
+
 def _payment_counterparty(payment):
     return payment.seller
 
@@ -93,6 +123,30 @@ def _payment_timeline_label(payment):
             f"to {payment.lease_end_date:%b %d, %Y}"
         )
     return label
+
+
+def _is_provider_timeout_error(exc):
+    message = str(exc or "").lower()
+    return "timed out" in message or "awaiting provider confirmation" in message
+
+
+def _mark_payment_provider_confirmation_pending(payment, provider, actor=None, *, context="checkout"):
+    metadata = dict(payment.metadata or {})
+    metadata.update(
+        {
+            "provider_start_status": "pending_provider_confirmation",
+            "provider_start_provider": provider,
+            "provider_start_context": context,
+            "provider_start_recorded_at": timezone.now().isoformat(),
+        }
+    )
+    payment.metadata = metadata
+    payment.save(update_fields=["metadata", "updated_at"])
+    payment.add_event(
+        "provider_confirmation_pending",
+        f"{provider.title()} did not confirm the payment start immediately. AgriPlot kept the checkout pending for follow-up.",
+        actor=actor,
+    )
 
 
 def _notify_payment_activity(payment, event):
@@ -140,6 +194,32 @@ def _notify_payment_activity(payment, event):
     )
 
 
+def _notify_buyer_payment_success(payment):
+    """Send buyer/tenant payment success acknowledgement over email + SMS."""
+    buyer = payment.buyer
+    if not buyer:
+        return
+
+    plot_title = payment.plot.title if payment.plot else payment.title
+    payment_label = payment.get_transaction_type_display().lower()
+    category_label = payment.get_category_display().lower()
+    title = "Payment received successfully"
+    message = (
+        f"Your {category_label} payment of KES {payment.amount:,.2f} for '{plot_title}' "
+        f"({payment_label}) was successful. Reference: {payment.internal_reference}. "
+        "Thank you for partnering with AgriPlot."
+    )
+    subject = f"AgriPlot payment confirmed - {payment.internal_reference}"
+    NotificationService.notify_user(
+        user=buyer,
+        notification_type="payment_update",
+        title=title,
+        message=message,
+        plot=payment.plot,
+        email_subject=subject,
+    )
+
+
 def _handle_successful_paystack_payment(payment, verification, actor=None):
     _handle_successful_gateway_payment(
         payment,
@@ -168,6 +248,7 @@ def _handle_successful_gateway_payment(payment, provider, verification, actor=No
     if payment.status == PaymentRequest.Status.PENDING:
         payment.apply_transition("mark_paid", actor=actor)
         _notify_payment_activity(payment, "paid")
+        _notify_buyer_payment_success(payment)
 
     if anchor.pk != payment.pk:
         category_to_step = {
@@ -202,6 +283,9 @@ def _handle_successful_gateway_payment(payment, provider, verification, actor=No
                     f"{payment.get_category_display()} recorded for {target_step.display_title}: KES {payment.amount:,.2f}.",
                     actor=actor,
                 )
+
+    if anchor and anchor.pk != payment.pk:
+        anchor.sync_plot_market_state()
 
     _maybe_auto_complete_test_deal(payment)
     payment.save(update_fields=["metadata", "updated_at"])
@@ -484,7 +568,23 @@ def _create_workspace_stage_payment(payment, step, phone_number, actor):
     callback_url = settings.MPESA_CALLBACK_URL or (
         f"{settings.SITE_URL.rstrip('/')}{reverse('payments:daraja_callback')}"
     )
-    stk_data = initiate_stk_push(child_payment, callback_url)
+    try:
+        stk_data = initiate_stk_push(child_payment, callback_url)
+    except DarajaError as exc:
+        if not _is_provider_timeout_error(exc):
+            raise
+        _mark_payment_provider_confirmation_pending(
+            child_payment,
+            "daraja",
+            actor=actor,
+            context="workspace_step_checkout",
+        )
+        return child_payment, {
+            "CustomerMessage": (
+                "Checkout was created, but Safaricom has not confirmed the STK push yet. "
+                "AgriPlot saved the payment as pending for follow-up."
+            )
+        }
     child_payment.provider_reference = (
         stk_data.get("CheckoutRequestID")
         or stk_data.get("MerchantRequestID")
@@ -723,6 +823,11 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             return active_deal.lease_security_deposit or active_deal.amount
         return None
 
+    def get_payment_method_from_request(self):
+        """Get payment method from POST data"""
+        method = self.request.POST.get('payment_method') or self.request.POST.get('method')
+        return method
+
     def get_stage_gate(self):
         selected_plot = self.get_selected_plot()
         transaction_type = self.get_selected_transaction_type()
@@ -810,6 +915,12 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         context["forced_amount"] = stage_gate["forced_amount"]
         context["current_payment_stage_label"] = stage_gate["stage_title"]
         context["current_payment_stage_message"] = stage_gate["stage_message"]
+        
+        # ADD THIS - Get wallet balance and PIN status
+        from .wallet_service import WalletService
+        context["wallet_balance"] = WalletService.get_balance(self.request.user)
+        context["has_wallet_pin"] = WalletService.has_pin(self.request.user)  # Add this line
+        
         context["plot_listing_types"] = {
             str(plot.pk): plot.listing_type
             for plot in context["form"].fields["plot"].queryset
@@ -891,8 +1002,18 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                 ) or ""),
             },
         }
+        bound_form = context.get("form")
+        selected_method = ""
+        if bound_form and getattr(bound_form, "is_bound", False):
+            selected_method = (
+                bound_form.data.get("method")
+                or bound_form.data.get("payment_method")
+                or ""
+            )
+        context["selected_method_slug"] = selected_method
         return context
-
+    
+    
     def dispatch(self, request, *args, **kwargs):
         decision = user_can_create_payment(request.user)
         if not decision.allowed:
@@ -915,6 +1036,7 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
     def form_valid(self, form):
         stage_gate = self.get_stage_gate()
         payment = form.save(commit=False)
+
         if self.request.user.is_authenticated:
             payment.buyer = self.request.user
 
@@ -924,21 +1046,52 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             elif payment.plot.agent_id and payment.plot.agent.user_id:
                 payment.seller = payment.plot.agent.user
 
+        selected_method = self.request.POST.get("method") or self.request.POST.get("payment_method")
+        method_mapping = {
+            "mpesa": PaymentRequest.Method.MPESA_STK,
+            "card": PaymentRequest.Method.CARD,
+            "bank": PaymentRequest.Method.BANK_TRANSFER,
+            "airtel": PaymentRequest.Method.AIRTEL_MONEY,
+            "wallet": PaymentRequest.Method.WALLET,
+        }
+        payment.method = method_mapping.get(selected_method, form.cleaned_data.get("method", PaymentRequest.Method.MPESA_STK))
+
+        phone_number = self.request.POST.get("phone_number") or payment.phone_number
+        if payment.method in {PaymentRequest.Method.MPESA_STK, PaymentRequest.Method.AIRTEL_MONEY} and phone_number:
+            payment.phone_number = validate_kenyan_phone(phone_number)
+
         metadata = dict(payment.metadata or {})
+        if stage_gate["active_deal"] and payment.plot_id:
+            if payment.plot_id != stage_gate["active_deal"].plot_id:
+                messages.error(
+                    self.request,
+                    "Selected plot does not match the active payment workflow. Please retry from the plot page.",
+                )
+                return redirect("payments:create_request")
         if (
             stage_gate["active_deal"]
             and stage_gate["active_deal"].pk != payment.pk
             and stage_gate["payment_required"]
         ):
             metadata["workflow_root_id"] = stage_gate["active_deal"].pk
+            payment.plot = stage_gate["active_deal"].plot
+        if payment.category in PaymentRequest.PLOT_REQUIRED_CATEGORIES and not payment.plot:
+            raise ValidationError(
+                "A plot must be linked before AgriPlot can create this payment request."
+            )
         payment.metadata = metadata
 
         payment.status = PaymentRequest.Status.PENDING
         if not payment.internal_reference:
             payment.internal_reference = PaymentRequest.generate_reference()
-        provider = _active_payment_provider()
+
+        wallet_pin = (self.request.POST.get("wallet_pin") or "").strip()
+
         try:
             with transaction.atomic():
+                if not _payment_method_backend_enabled(payment.method):
+                    raise ValidationError(_payment_method_unavailable_message(payment.method))
+
                 payment.save()
                 self.object = payment
 
@@ -947,15 +1100,6 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                         f"Buyer initiated a {payment.get_transaction_type_display().lower()} flow "
                         f"through checkout. Reference: {payment.internal_reference}."
                     )
-                    if (
-                        payment.transaction_type == PaymentRequest.TransactionType.LEASE
-                        and payment.lease_start_date
-                        and payment.lease_end_date
-                    ):
-                        activity_message = (
-                            f"{activity_message} Requested lease period: "
-                            f"{payment.lease_start_date:%b %d, %Y} to {payment.lease_end_date:%b %d, %Y}."
-                        )
                     UserInterest.objects.update_or_create(
                         user=payment.buyer,
                         plot=payment.plot,
@@ -968,32 +1112,65 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
 
                 _ensure_payment_workflow_seeded(payment)
 
-                if provider == "daraja" and daraja_ready():
+                if payment.method == PaymentRequest.Method.WALLET:
+                    if not wallet_pin:
+                        raise ValidationError("Enter your wallet PIN to complete this payment.")
+                    wallet_result = WalletService.make_payment(
+                        user=self.request.user,
+                        amount=payment.amount,
+                        pin=wallet_pin,
+                        payment_request=payment,
+                        description=payment.title,
+                    )
+                    payment.add_event(
+                        "wallet_payment_completed",
+                        f"AgriPlot Wallet payment completed instantly. New wallet balance: KES {wallet_result['new_balance']:,.2f}.",
+                        actor=self.request.user if self.request.user.is_authenticated else None,
+                    )
+                    _notify_payment_activity(payment, "initiated")
+                    if payment.status in {
+                        PaymentRequest.Status.PAID,
+                        PaymentRequest.Status.IN_ESCROW,
+                        PaymentRequest.Status.PARTIALLY_RELEASED,
+                        PaymentRequest.Status.RELEASED,
+                    }:
+                        _notify_buyer_payment_success(payment)
+                    messages.success(self.request, wallet_result["message"])
+                    return redirect("payments:detail", pk=payment.pk)
+
+                if payment.method == PaymentRequest.Method.MPESA_STK:
                     callback_url = settings.MPESA_CALLBACK_URL or (
                         f"{settings.SITE_URL.rstrip('/')}{reverse('payments:daraja_callback')}"
                     )
-                    stk_data = initiate_stk_push(payment, callback_url)
+                    try:
+                        stk_data = initiate_stk_push(payment, callback_url)
+                    except DarajaError as exc:
+                        if not _is_provider_timeout_error(exc):
+                            raise
+                        _mark_payment_provider_confirmation_pending(
+                            payment,
+                            "daraja",
+                            actor=self.request.user if self.request.user.is_authenticated else None,
+                            context="payment_create",
+                        )
+                        messages.warning(
+                            self.request,
+                            "Checkout was created, but Safaricom has not confirmed the STK push yet. The payment remains pending for provider follow-up.",
+                        )
+                        return redirect("payments:detail", pk=payment.pk)
                     payment.provider_reference = (
                         stk_data.get("CheckoutRequestID")
                         or stk_data.get("MerchantRequestID")
                         or payment.internal_reference
                     )
-                    metadata = dict(payment.metadata or {})
-                    metadata.update(
-                        {
-                            "daraja_checkout_request_id": stk_data.get("CheckoutRequestID", ""),
-                            "daraja_merchant_request_id": stk_data.get("MerchantRequestID", ""),
-                            "daraja_customer_message": stk_data.get("CustomerMessage", ""),
-                            "daraja_response_description": stk_data.get("ResponseDescription", ""),
-                        }
-                    )
-                    payment.metadata = metadata
+                    payment.metadata = {
+                        **(payment.metadata or {}),
+                        "daraja_checkout_request_id": stk_data.get("CheckoutRequestID", ""),
+                        "daraja_merchant_request_id": stk_data.get("MerchantRequestID", ""),
+                        "daraja_customer_message": stk_data.get("CustomerMessage", ""),
+                        "daraja_response_description": stk_data.get("ResponseDescription", ""),
+                    }
                     payment.save(update_fields=["provider_reference", "metadata", "updated_at"])
-                    payment.add_event(
-                        "created",
-                        "Payment request created in the AgriPlot payments workspace.",
-                        actor=self.request.user if self.request.user.is_authenticated else None,
-                    )
                     payment.add_event(
                         "daraja_stk_initialized",
                         "Safaricom Daraja STK push sent to the buyer's phone.",
@@ -1003,66 +1180,67 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                     messages.success(
                         self.request,
                         stk_data.get("CustomerMessage")
-                        or "Safaricom Daraja STK push sent. Complete the prompt on your phone.",
+                        or "STK push sent. Check your phone to complete payment.",
                     )
-                    self.success_url = reverse("payments:detail", kwargs={"pk": payment.pk})
-                    return HttpResponseRedirect(self.get_success_url())
+                    return redirect("payments:detail", pk=payment.pk)
 
-                if provider == "paystack" and paystack_ready():
-                    callback_url = f"{settings.SITE_URL.rstrip('/')}{reverse('payments:paystack_callback')}"
-                    checkout_data = initialize_transaction(payment, callback_url)
-                    payment.provider_reference = checkout_data.get("reference", payment.internal_reference)
-                    metadata = dict(payment.metadata or {})
-                    metadata.update(
-                        {
-                            "paystack_access_code": checkout_data.get("access_code", ""),
-                            "paystack_authorization_url": checkout_data.get("authorization_url", ""),
-                        }
-                    )
-                    payment.metadata = metadata
-                    payment.save(update_fields=["provider_reference", "metadata", "updated_at"])
-                    payment.add_event(
-                        "created",
-                        "Payment request created in the AgriPlot payments workspace.",
-                        actor=self.request.user if self.request.user.is_authenticated else None,
-                    )
-                    payment.add_event(
-                        "paystack_initialized",
-                        "Redirecting buyer to Paystack checkout.",
-                        actor=self.request.user if self.request.user.is_authenticated else None,
-                    )
-                    _notify_payment_activity(payment, "initiated")
-                    return redirect(checkout_data["authorization_url"])
-        except DarajaError as exc:
-            logger.exception("Daraja STK push failed for payment %s", payment.internal_reference)
-            messages.error(
-                self.request,
-                f"Safaricom Daraja STK push could not start yet: {exc}",
-            )
-            target_url = reverse("payments:create_request")
-            if payment.plot_id:
-                target_url = f"{target_url}?plot={payment.plot_id}"
-            return HttpResponseRedirect(target_url)
-        except PaystackError as exc:
-            logger.exception("Paystack initialization failed for payment %s", payment.internal_reference)
-            messages.error(
-                self.request,
-                f"Paystack checkout could not start yet: {exc}",
-            )
-            target_url = reverse("payments:create_request")
-            if payment.plot_id:
-                target_url = f"{target_url}?plot={payment.plot_id}"
-            return HttpResponseRedirect(target_url)
+                gateway_messages = {
+                    PaymentRequest.Method.CARD: "Card payment request created. Connect the configured card gateway credentials to take this live.",
+                    PaymentRequest.Method.BANK_TRANSFER: "Bank transfer request created. Share the configured settlement instructions with the buyer.",
+                    PaymentRequest.Method.AIRTEL_MONEY: "Airtel Money request created. Finish the provider credentials to take this live.",
+                }
+                payment.add_event(
+                    "created",
+                    "Payment request created in the AgriPlot payments workspace.",
+                    actor=self.request.user if self.request.user.is_authenticated else None,
+                )
+                messages.info(self.request, gateway_messages.get(payment.method, f"Payment request {payment.internal_reference} created."))
+                return redirect("payments:detail", pk=payment.pk)
 
-        provider_label = "Safaricom Daraja" if provider == "daraja" else "Paystack"
-        messages.success(
-            self.request,
-            f"Payment request {payment.internal_reference} created. Configure {provider_label} to continue with live checkout.",
+        except (DarajaError, ValidationError) as exc:
+            logger.warning(
+                "Payment gateway start failed for %s: %s",
+                payment.internal_reference or "unsaved-payment",
+                exc,
+            )
+            messages.error(self.request, str(exc))
+        except Exception as exc:
+            logger.exception("Unexpected payment error for payment %s", payment.internal_reference)
+            messages.error(self.request, f"Payment failed: {exc}")
+
+        retry_url = reverse("payments:create_request")
+        if payment.plot_id:
+            retry_url = f"{retry_url}?plot={payment.plot_id}"
+        return redirect(retry_url)
+
+    def form_invalid(self, form):
+        error_messages = []
+        for field_name, errors in form.errors.items():
+            if field_name == "__all__":
+                label = "Payment request"
+            else:
+                label = form.fields.get(field_name).label if field_name in form.fields else field_name
+            for error in errors:
+                error_messages.append(f"{label}: {error}")
+
+        logger.warning(
+            "Payment request form invalid for user %s on plot %s: %s",
+            getattr(self.request.user, "id", None),
+            getattr(self.get_selected_plot(), "pk", None),
+            error_messages,
         )
-        self.success_url = reverse("payments:detail", kwargs={"pk": payment.pk})
-        return HttpResponseRedirect(self.get_success_url())
-
-
+        if error_messages:
+            messages.error(
+                self.request,
+                "We could not start the payment yet. " + " ".join(error_messages[:3]),
+            )
+        else:
+            messages.error(
+                self.request,
+                "We could not start the payment yet. Please review the form and try again.",
+            )
+        return super().form_invalid(form)
+    
 class PaymentAccessMixin(UserPassesTestMixin):
     def test_func(self):
         payment = self.get_object()
@@ -1139,6 +1317,13 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
         context["gateway_ready"] = _gateway_ready()
         context["daraja_customer_message"] = (self.object.metadata or {}).get(
             "daraja_customer_message", ""
+        )
+        context["payment_status_poll_url"] = reverse(
+            "payments:payment_status_poll",
+            kwargs={
+                "pk": workspace_payment.pk,
+                "payment_id": self.object.pk,
+            },
         )
         context["paystack_authorization_url"] = (self.object.metadata or {}).get(
             "paystack_authorization_url", ""
@@ -1684,6 +1869,7 @@ class PaymentTransitionView(LoginRequiredMixin, View):
             return redirect("payments:detail", pk=payment.pk)
         if action == "mark_paid":
             _notify_payment_activity(payment, "paid")
+            _notify_buyer_payment_success(payment)
         messages.success(request, f"{payment.internal_reference} updated to {payment.get_status_display()}.")
         return redirect("payments:detail", pk=payment.pk)
 
@@ -1808,3 +1994,239 @@ class PaymentDisputeCreateView(LoginRequiredMixin, View):
         else:
             messages.error(request, "Please correct the dispute details and try again.")
         return redirect("payments:detail", pk=payment.pk)
+
+# ==================== WALLET VIEWS ====================
+
+@login_required
+def wallet_dashboard(request):
+    """Wallet dashboard view"""
+    wallet = WalletService.get_or_create_wallet(request.user)
+    transactions = WalletService.get_transaction_history(request.user, limit=20)
+    
+    context = {
+        'wallet': wallet,
+        'transactions': transactions,
+        'has_pin': bool(wallet.pin_hash),
+    }
+    return render(request, 'payments/wallet_dashboard.html', context)
+
+
+@login_required
+def wallet_set_pin(request):
+    """Set wallet PIN"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body) if request.body else request.POST
+            pin = data.get('pin')
+            confirm_pin = data.get('confirm_pin')
+        except:
+            pin = request.POST.get('pin')
+            confirm_pin = request.POST.get('confirm_pin')
+        
+        if not pin or not confirm_pin:
+            return JsonResponse({'success': False, 'message': 'Please enter PIN'})
+        
+        if pin != confirm_pin:
+            return JsonResponse({'success': False, 'message': 'PINs do not match'})
+        
+        if len(pin) != 4 or not pin.isdigit():
+            return JsonResponse({'success': False, 'message': 'PIN must be 4 digits'})
+        
+        try:
+            WalletService.set_pin(request.user, pin)
+            return JsonResponse({'success': True, 'message': 'PIN set successfully'})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+
+@login_required
+def wallet_deposit(request):
+    """Initiate wallet deposit"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body) if request.body else request.POST
+            amount = Decimal(str(data.get('amount', '0')))
+            phone_number = data.get('phone_number', '')
+        except:
+            amount = Decimal(request.POST.get('amount', '0'))
+            phone_number = request.POST.get('phone_number', '')
+        
+        try:
+            callback_url = (
+                settings.WALLET_MPESA_CALLBACK_URL
+                or f"{settings.SITE_URL.rstrip('/')}{reverse('payments:mpesa_wallet_callback')}"
+            )
+            result = WalletService.initiate_deposit(request.user, amount, phone_number, callback_url)
+            return JsonResponse(result)
+        except ValidationError as e:
+            return JsonResponse({'success': False, 'message': e.message})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+
+@login_required
+def wallet_withdraw(request):
+    """Initiate wallet withdrawal"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body) if request.body else request.POST
+            amount = Decimal(str(data.get('amount', '0')))
+            phone_number = data.get('phone_number', '')
+            pin = data.get('pin', '')
+        except:
+            amount = Decimal(request.POST.get('amount', '0'))
+            phone_number = request.POST.get('phone_number', '')
+            pin = request.POST.get('pin', '')
+        
+        try:
+            result = WalletService.initiate_withdrawal(request.user, amount, phone_number, pin)
+            return JsonResponse(result)
+        except ValidationError as e:
+            return JsonResponse({'success': False, 'message': e.message})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+
+@login_required
+def wallet_pay(request):
+    """Make payment from wallet"""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body) if request.body else request.POST
+            amount = Decimal(str(data.get('amount', '0')))
+            pin = data.get('pin', '')
+            payment_request_id = data.get('payment_request_id')
+        except:
+            amount = Decimal(request.POST.get('amount', '0'))
+            pin = request.POST.get('pin', '')
+            payment_request_id = request.POST.get('payment_request_id')
+        
+        payment_request = None
+        if payment_request_id:
+            payment_request = get_object_or_404(PaymentRequest, id=payment_request_id)
+        
+        try:
+            result = WalletService.make_payment(
+                user=request.user,
+                amount=amount,
+                pin=pin,
+                payment_request=payment_request,
+                description=request.POST.get('description', '')
+            )
+            return JsonResponse(result)
+        except ValidationError as e:
+            return JsonResponse({'success': False, 'message': e.message})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+    
+    return JsonResponse({'success': False, 'message': 'Invalid request'})
+
+
+@login_required
+def wallet_transactions(request):
+    """Get wallet transactions (AJAX)"""
+    limit = request.GET.get('limit', 50)
+    try:
+        limit = int(limit)
+    except:
+        limit = 50
+    
+    transactions = WalletService.get_transaction_history(request.user, limit=limit)
+    
+    data = [{
+        'id': t.id,
+        'date': t.created_at.strftime('%Y-%m-%d %H:%M'),
+        'type': t.get_transaction_type_display(),
+        'amount': float(t.amount),
+        'status': t.status,
+        'description': t.description,
+        'reference': t.reference,
+    } for t in transactions]
+    
+    return JsonResponse({'success': True, 'transactions': data})
+
+
+@login_required
+def wallet_balance_api(request):
+    """API endpoint to get wallet balance"""
+    balance = WalletService.get_balance(request.user)
+    return JsonResponse({'success': True, 'balance': float(balance)})
+
+
+@csrf_exempt
+def mpesa_wallet_callback(request):
+    """M-Pesa callback for wallet deposits"""
+    try:
+        data = json.loads(request.body)
+        logger.info(f"Wallet callback received: {data}")
+    except json.JSONDecodeError:
+        return JsonResponse({'ResultCode': 1, 'ResultDesc': 'Invalid data'})
+    
+    body = data.get('Body', {})
+    stk_callback = body.get('stkCallback', {})
+    result_code = stk_callback.get('ResultCode')
+    checkout_request_id = stk_callback.get('CheckoutRequestID')
+    result_desc = stk_callback.get('ResultDesc')
+    
+    if result_code == 0:  # Success
+        callback_metadata = extract_callback_metadata(stk_callback)
+        receipt = callback_metadata.get('MpesaReceiptNumber')
+        amount = callback_metadata.get('Amount')
+        if receipt and amount and checkout_request_id:
+            amount = Decimal(str(amount))
+            result = WalletService.complete_deposit(checkout_request_id, receipt, amount)
+            if result['success']:
+                return JsonResponse({'ResultCode': 0, 'ResultDesc': 'Success'})
+    
+    # Log failure
+    logger.error(f"Wallet deposit failed: {result_desc}")
+    return JsonResponse({'ResultCode': result_code or 1, 'ResultDesc': result_desc or 'Failed'})
+
+# TEST VIEW
+@login_required
+def test_stk_push(request):
+    from .daraja import initiate_stk_push, daraja_ready
+    
+    if not request.user.is_superuser:
+        return JsonResponse({'error': 'Only superusers can test'}, status=403)
+    
+    if request.method == 'POST':
+        phone = request.POST.get('phone', '')
+        amount = request.POST.get('amount', '')
+        
+        if not phone or not amount:
+            return JsonResponse({'error': 'Phone and amount required'}, status=400)
+        
+        if not daraja_ready():
+            return JsonResponse({'error': 'M-Pesa not configured'}, status=500)
+        
+        callback_url = settings.MPESA_CALLBACK_URL or (
+            f"{settings.SITE_URL.rstrip('/')}{reverse('payments:daraja_callback')}"
+        )
+        
+        class MockPayment:
+            def __init__(self, phone, amount):
+                self.phone_number = phone
+                self.amount = float(amount)
+                self.internal_reference = f"TEST-{int(timezone.now().timestamp())}"
+                self.title = "Test Payment"
+        
+        mock_payment = MockPayment(phone, amount)
+        
+        try:
+            result = initiate_stk_push(mock_payment, callback_url)
+            return JsonResponse({
+                'success': True,
+                'message': 'STK push sent successfully!',
+                'result': result
+            })
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)}, status=500)
+    
+    return render(request, 'payments/test_stk.html')
