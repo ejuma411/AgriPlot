@@ -47,8 +47,8 @@ class SurveyorUploadTests(TestCase):
                 verified=True,
             )
             owner = get_user_model().objects.create_user(
-                username="plot_owner",
-                password="secret123",
+                username="",
+                password="",
             )
             Profile.objects.get_or_create(user=owner, defaults={"role": "landowner"})
             landowner = LandownerProfile.objects.create(
