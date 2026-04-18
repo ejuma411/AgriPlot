@@ -13,9 +13,9 @@
     }
     
     .balance-amount {
-        font-size: 36pt;
-        font-weight: bold;
-        margin: 15px 0;
+        font-size: 32px;
+        font-weight: 700;
+        margin: 10px 0;
     }
     
     .stats-grid {
@@ -29,20 +29,22 @@
         background: #f8f9fa;
         padding: 20px;
         text-align: center;
-        border-radius: 10px;
+        border-radius: 12px;
         border: 1px solid #e0e0e0;
     }
     
     .stat-value {
-        font-size: 24pt;
-        font-weight: bold;
+        font-size: 24px;
+        font-weight: 700;
         color: #2E7D32;
     }
     
     .stat-label {
-        font-size: 10pt;
+        font-size: 10px;
         color: #666;
-        margin-top: 8px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-top: 5px;
     }
     
     .payment-table {
@@ -54,7 +56,7 @@
     .payment-table th {
         background: #2E7D32;
         color: white;
-        padding: 12px;
+        padding: 10px;
         text-align: left;
     }
     
@@ -63,15 +65,11 @@
         border-bottom: 1px solid #e0e0e0;
     }
     
-    .payment-table tr:hover {
-        background: #f5f5f5;
-    }
-    
     .badge {
         display: inline-block;
         padding: 4px 10px;
         border-radius: 20px;
-        font-size: 9pt;
+        font-size: 9px;
         font-weight: 500;
     }
     
@@ -94,38 +92,17 @@
         background: #e2e3e5;
         color: #383d41;
     }
-    
-    .badge-danger {
-        background: #f8d7da;
-        color: #721c24;
-    }
-    
-    .progress-container {
-        background-color: #e0e0e0;
-        border-radius: 10px;
-        overflow: hidden;
-        height: 20px;
-    }
-    
-    .progress-bar {
-        background-color: #4CAF50;
-        height: 20px;
-        text-align: center;
-        line-height: 20px;
-        color: white;
-        font-size: 9pt;
-    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="report-title">
+<div class="text-center mb-3">
     <h1>💰 Escrow Statement</h1>
-    <div class="subtitle">Proof of Funds & Escrow Account Statement</div>
+    <p class="text-muted">Proof of Funds & Escrow Account Statement</p>
 </div>
 
 <!-- Account Holder Info -->
-<div class="info-box">
+<div class="info-card">
     <strong>Account Holder:</strong> {{ user.get_full_name|default:user.username }}<br>
     <strong>Email:</strong> {{ user.email }}<br>
     <strong>Member Since:</strong> {{ user.date_joined|date:"F d, Y" }}
@@ -133,9 +110,9 @@
 
 <!-- Balance Summary -->
 <div class="balance-card">
-    <div style="font-size: 14pt; opacity: 0.9;">Current Escrow Balance</div>
+    <div style="font-size: 12px; opacity: 0.9;">Current Escrow Balance</div>
     <div class="balance-amount">KES {{ escrow_balance|floatformat:2|intcomma }}</div>
-    <div style="font-size: 10pt; opacity: 0.8;">Available for withdrawal / release</div>
+    <div style="font-size: 10px; opacity: 0.8;">Available for withdrawal / release</div>
 </div>
 
 <!-- Statistics -->
@@ -154,7 +131,7 @@
     </div>
 </div>
 
-<!-- Payment Breakdown by Type -->
+<!-- Payment Breakdown -->
 {% if payment_types %}
 <h2>📊 Payment Breakdown by Type</h2>
 <table class="payment-table">
@@ -169,15 +146,15 @@
         {% for item in payment_types %}
         <tr>
             <td>{{ item.category|title }}</td>
-            <td>KES {{ item.total|floatformat:2|intcomma }}</td>
+            <td class="text-right">KES {{ item.total|floatformat:2|intcomma }}</td>
             <td>
                 <div class="progress-container">
                     <div class="progress-bar" style="width: {% widthratio item.total total_paid 100 %}%;">
                         {% widthratio item.total total_paid 100 %}%
                     </div>
                 </div>
-             </td>
-         </tr>
+            </td>
+        </tr>
         {% endfor %}
     </tbody>
 </table>
@@ -201,32 +178,32 @@
             <td>{{ payment.created_at|date:"Y-m-d H:i" }}</td>
             <td>{{ payment.internal_reference }}</td>
             <td>{{ payment.get_category_display|default:payment.category|title }}</td>
-            <td>KES {{ payment.amount|floatformat:2|intcomma }}</td>
+            <td class="text-right">KES {{ payment.amount|floatformat:2|intcomma }}</td>
             <td>
                 <span class="badge badge-{{ payment.status_badge|default:'secondary' }}">
                     {{ payment.get_status_display }}
                 </span>
-             </td>
-         </tr>
+            </td>
+        </tr>
         {% empty %}
         <tr>
             <td colspan="5" class="text-center">No transactions found</td>
-         </tr>
+        </tr>
         {% endfor %}
     </tbody>
 </table>
 
 <!-- Certification -->
-<div class="signature-line">
+<div class="text-center mt-3">
     <p><strong>Digital Certificate</strong></p>
     <p>This statement is electronically generated and certified by AgriPlot.</p>
-    <p><strong>Verification Code:</strong> {{ verification_code }}</p>
-    <p><strong>Document ID:</strong> {{ report_id }}</p>
+    <p><strong>Verification Code:</strong> {{ verification_code|default:"N/A" }}</p>
+    <p><strong>Document ID:</strong> {{ report_id|default:"N/A" }}</p>
     <p><strong>Generated:</strong> {{ generated_date|date:"Y-m-d H:i:s" }}</p>
 </div>
 
 <!-- Legal Note -->
-<div class="warning-box">
+<div class="warning-card">
     <strong>📌 Legal Note:</strong> This escrow statement serves as official proof of funds for legal and tax purposes. 
     All funds are held in a regulated escrow account and released only upon fulfillment of agreed conditions.
 </div>

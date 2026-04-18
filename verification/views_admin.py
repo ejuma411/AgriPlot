@@ -1505,3 +1505,93 @@ def admin_dashboard(request):
     
     return render(request, 'listings/admin/dashboard.html', context)
 
+def export_audit_logs_pdf(request):
+    """Export audit logs as PDF using WeasyPrint"""
+    from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from weasyprint import HTML, CSS
+    from weasyprint.text.fonts import FontConfiguration
+    from io import BytesIO
+    from django.utils import timezone
+    from django.db.models import Count
+    
+    # Get filtered queryset (same as main view)
+    qs = AuditLog.objects.select_related('user').all()
+    
+    # Apply filters
+    filters = []
+    user_filter = request.GET.get('user')
+    if user_filter:
+        qs = qs.filter(
+            Q(user__username__icontains=user_filter) |
+            Q(user__email__icontains=user_filter)
+        )
+        filters.append(f"User: {user_filter}")
+    
+    action_filter = request.GET.get('action')
+    if action_filter:
+        qs = qs.filter(action=action_filter)
+        filters.append(f"Action: {dict(AuditLog.ACTION_CHOICES).get(action_filter, action_filter)}")
+    
+    object_type_filter = request.GET.get('object_type')
+    if object_type_filter:
+        qs = qs.filter(object_type__icontains=object_type_filter)
+        filters.append(f"Object: {object_type_filter}")
+    
+    severity_filter = request.GET.get('severity')
+    if severity_filter:
+        qs = qs.filter(severity=severity_filter)
+        filters.append(f"Severity: {severity_filter.upper()}")
+    
+    start_date = request.GET.get('start_date')
+    if start_date:
+        qs = qs.filter(created_at__date__gte=start_date)
+        filters.append(f"From: {start_date}")
+    
+    end_date = request.GET.get('end_date')
+    if end_date:
+        qs = qs.filter(created_at__date__lte=end_date)
+        filters.append(f"To: {end_date}")
+    
+    # Limit to 1000 records for PDF performance
+    logs = qs[:1000]
+    
+    # Calculate stats
+    unique_users = qs.values('user').distinct().count()
+    unique_ips = qs.exclude(ip_address__isnull=True).values('ip_address').distinct().count()
+    unique_actions = qs.values('action').distinct().count()
+    
+    context = {
+        'logs': logs,
+        'total_count': qs.count(),
+        'unique_users': unique_users,
+        'unique_ips': unique_ips,
+        'unique_actions': unique_actions,
+        'export_date': timezone.now(),
+        'request': request,
+        'filter_summary': filters if filters else None,
+    }
+    
+    # Render HTML template
+    html_string = render_to_string('verification/admin/audit_logs_pdf.html', context)
+    
+    # Generate PDF
+    font_config = FontConfiguration()
+    pdf_file = BytesIO()
+    
+    HTML(string=html_string).write_pdf(
+        pdf_file,
+        font_config=font_config,
+        presentational_hints=True
+    )
+    
+    pdf_file.seek(0)
+    
+    # Create response
+    response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+    timestamp = timezone.now().strftime("%Y%m%d_%H%M%S")
+    response['Content-Disposition'] = f'attachment; filename="audit_logs_{timestamp}.pdf"'
+    response['Content-Length'] = pdf_file.tell()
+    
+    return response
+

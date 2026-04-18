@@ -29,6 +29,10 @@ urlpatterns = [
     path("", include("verification.urls")),
     path('reports/', include('reports.urls')),
     path('login/', views_auth.TwoFactorLoginView.as_view(), name='login'),
+    
+    path('security/', include('security.urls'))
+
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

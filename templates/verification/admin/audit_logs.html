@@ -1,693 +1,713 @@
-{% extends "verification/admin/base_admin.html" %}
-{% load static %}
+{% extends "base.html" %}
+{% load static humanize %}
 
-{% block title %}Audit Logs | Security & Compliance - AgriPlot Admin{% endblock %}
+{% block title %}Audit Logs - AgriPlot Verification{% endblock %}
 
-{% block admin_content %}
-<!-- Page Header with Mobile-First Approach -->
-<div class="page-header">
-    <div class="page-header-content flex-column flex-md-row">
-        <div class="page-header-title mb-3 mb-md-0">
-            <h1 class="h2 mb-2">
-                <i class="fas fa-shield-alt me-2" aria-hidden="true"></i>
-                Audit Logs
-            </h1>
-            <p class="page-header-subtitle mb-0">
-                Complete security trail of system activities and user actions
-                <span class="badge bg-secondary ms-2 d-inline-block d-md-inline mt-1 mt-md-0">Compliance Ready</span>
-            </p>
-        </div>
-        <div class="page-header-actions d-flex flex-wrap gap-2">
-            <a href="{% url 'verification:verification_dashboard' %}" 
-               class="btn btn-outline-primary flex-fill flex-md-grow-0"
-               data-analytics="audit_dashboard_home">
-                <i class="fas fa-chart-pie me-2" aria-hidden="true"></i>
-                <span class="d-inline d-md-none">Home</span>
-                <span class="d-none d-md-inline">Dashboard</span>
-            </a>
-            <div class="btn-group flex-fill flex-md-grow-0" role="group" aria-label="Export options">
-                <a href="{% url 'verification:audit_logs_export' %}?format=csv{% if base_querystring %}&{{ base_querystring }}{% endif %}" 
-                   class="btn btn-outline-secondary"
-                   title="Export as CSV"
-                   data-analytics="audit_export_csv">
-                    <i class="fas fa-file-csv me-2" aria-hidden="true"></i>
-                    <span class="d-inline d-md-none">CSV</span>
-                    <span class="d-none d-md-inline">CSV</span>
-                </a>
-                <a href="{% url 'verification:audit_logs_export_pdf' %}{% if base_querystring %}?{{ base_querystring }}{% endif %}" 
-                   class="btn btn-outline-secondary"
-                   title="Export as PDF"
-                   data-analytics="audit_export_pdf">
-                    <i class="fas fa-file-pdf me-2" aria-hidden="true"></i>
-                    <span class="d-inline d-md-none">PDF</span>
-                    <span class="d-none d-md-inline">PDF</span>
-                </a>
+{% block extra_css %}
+<style>
+    /* ============================================
+       AUDIT LOGS - CLEAN READABLE DESIGN
+    ============================================ */
+    
+    :root {
+        --primary: #1f8b4c;
+        --primary-dark: #0f4a2e;
+        --primary-light: #e8f5e9;
+        --secondary: #6c757d;
+        --success: #28a745;
+        --danger: #dc3545;
+        --warning: #ffc107;
+        --info: #17a2b8;
+        --dark: #1a2e1a;
+        --light: #f8f9fa;
+        --border: #e9ecef;
+        --gray-100: #f8f9fa;
+        --gray-200: #e9ecef;
+        --gray-300: #dee2e6;
+        --gray-400: #ced4da;
+        --gray-500: #adb5bd;
+        --gray-600: #6c757d;
+        --gray-700: #495057;
+        --gray-800: #343a40;
+        --gray-900: #212529;
+    }
+    
+    /* Page Header - Dark text on light gradient */
+    .page-header {
+        background: linear-gradient(135deg, var(--primary-light), #ffffff);
+        border-radius: 16px;
+        padding: 25px 30px;
+        margin-bottom: 30px;
+        border: 1px solid var(--border);
+    }
+    
+    .page-header h1 {
+        color: var(--primary-dark);
+        margin: 0 0 8px 0;
+        font-size: 28px;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .page-header h1 i {
+        color: var(--primary);
+    }
+    
+    .page-header p {
+        color: var(--gray-700);
+        margin: 0;
+        font-size: 14px;
+    }
+    
+    /* Stats Cards - White background, dark text */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border: 1px solid var(--border);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    
+    .stat-icon {
+        font-size: 32px;
+        color: var(--primary);
+        margin-bottom: 10px;
+    }
+    
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        color: var(--gray-900);
+        line-height: 1.2;
+        margin-bottom: 5px;
+    }
+    
+    .stat-label {
+        font-size: 12px;
+        color: var(--gray-600);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+    }
+    
+    /* Filter Panel - White background */
+    .filter-panel {
+        background: white;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 25px;
+        border: 1px solid var(--border);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    
+    .filter-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--primary-dark);
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid var(--primary);
+        display: inline-block;
+    }
+    
+    .form-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--gray-700);
+        margin-bottom: 6px;
+        display: block;
+    }
+    
+    .form-control, .form-select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: 8px;
+        font-size: 13px;
+        transition: all 0.2s ease;
+        background: white;
+        color: var(--gray-900);
+    }
+    
+    .form-control:focus, .form-select:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(31,139,76,0.1);
+    }
+    
+    /* Export Buttons */
+    .export-buttons {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+    }
+    
+    .btn {
+        padding: 10px 20px;
+        border-radius: 30px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+        cursor: pointer;
+        border: none;
+    }
+    
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); color: white; }
+    .btn-success { background: var(--success); color: white; }
+    .btn-success:hover { background: #218838; transform: translateY(-1px); color: white; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: #c82333; transform: translateY(-1px); color: white; }
+    .btn-info { background: var(--info); color: white; }
+    .btn-info:hover { background: #138496; transform: translateY(-1px); color: white; }
+    .btn-secondary { background: var(--gray-500); color: white; }
+    .btn-secondary:hover { background: var(--gray-600); transform: translateY(-1px); color: white; }
+    
+    /* Audit Table */
+    .audit-table-wrapper {
+        background: white;
+        border-radius: 16px;
+        overflow-x: auto;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        border: 1px solid var(--border);
+    }
+    
+    .audit-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+    }
+    
+    .audit-table th {
+        background: var(--gray-100);
+        color: var(--gray-800);
+        padding: 14px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-align: left;
+        border-bottom: 2px solid var(--border);
+        white-space: nowrap;
+    }
+    
+    .audit-table td {
+        padding: 12px;
+        font-size: 12px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: top;
+        color: var(--gray-700);
+        background: white;
+    }
+    
+    .audit-table tbody tr:hover td {
+        background-color: var(--primary-light);
+    }
+    
+    /* Badges - Good contrast */
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 30px;
+        font-size: 10px;
+        font-weight: 600;
+    }
+    
+    .badge-create { background: #d4edda; color: #155724; }
+    .badge-update { background: #cce5ff; color: #004085; }
+    .badge-delete { background: #f8d7da; color: #721c24; }
+    .badge-login { background: #d1ecf1; color: #0c5460; }
+    .badge-logout { background: #e2e3e5; color: #383d41; }
+    .badge-payment { background: #fff3cd; color: #856404; }
+    .badge-verify { background: #d4edda; color: #155724; }
+    .badge-view { background: #e2e3e5; color: #383d41; }
+    .badge-default { background: #e2e3e5; color: #383d41; }
+    
+    /* Severity indicators - Clear contrast */
+    .severity-critical {
+        display: inline-block;
+        background: #dc3545;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 600;
+        margin-left: 6px;
+    }
+    
+    .severity-warning {
+        display: inline-block;
+        background: #ffc107;
+        color: #212529;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 600;
+        margin-left: 6px;
+    }
+    
+    .severity-info {
+        display: inline-block;
+        background: #17a2b8;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 9px;
+        font-weight: 600;
+        margin-left: 6px;
+    }
+    
+    /* Hash Code */
+    .hash-code {
+        font-family: 'Monaco', 'Menlo', monospace;
+        font-size: 10px;
+        background: var(--gray-100);
+        padding: 3px 6px;
+        border-radius: 4px;
+        color: var(--gray-700);
+    }
+    
+    /* User info */
+    .user-name {
+        font-weight: 600;
+        color: var(--gray-900);
+    }
+    
+    .user-email {
+        font-size: 10px;
+        color: var(--gray-600);
+        margin-top: 2px;
+    }
+    
+    /* Object info */
+    .object-type {
+        font-weight: 600;
+        color: var(--gray-800);
+    }
+    
+    .object-id {
+        color: var(--gray-600);
+        font-size: 10px;
+        margin-left: 4px;
+    }
+    
+    /* Pagination */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 25px;
+        flex-wrap: wrap;
+    }
+    
+    .page-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        height: 36px;
+        padding: 0 10px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        text-decoration: none;
+        color: var(--gray-700);
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        background: white;
+    }
+    
+    .page-link:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .page-active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 50px;
+        color: var(--gray-500);
+    }
+    
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+    
+    /* Footer Note */
+    .footer-note {
+        text-align: center;
+        margin-top: 30px;
+        padding: 15px;
+        background: var(--gray-100);
+        border-radius: 8px;
+        color: var(--gray-600);
+        font-size: 11px;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 1200px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+    }
+    
+    @media (max-width: 992px) {
+        .page-header h1 {
+            font-size: 24px;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .page-header {
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .page-header h1 {
+            font-size: 20px;
+            flex-direction: column;
+            text-align: center;
+            gap: 8px;
+        }
+        
+        .page-header p {
+            text-align: center;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        
+        .stat-card {
+            padding: 15px;
+        }
+        
+        .stat-value {
+            font-size: 28px;
+        }
+        
+        .filter-panel {
+            padding: 15px;
+        }
+        
+        .export-buttons {
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .page-header h1 {
+            font-size: 18px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+        }
+        
+        .stat-icon {
+            font-size: 28px;
+        }
+        
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+        
+        .export-buttons {
+            flex-direction: column;
+        }
+        
+        .pagination {
+            gap: 5px;
+        }
+        
+        .page-link {
+            min-width: 32px;
+            height: 32px;
+            font-size: 12px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Page Header -->
+    <div class="page-header">
+        <h1>
+            <i class="fas fa-history"></i>
+            Audit Trail Report
+        </h1>
+        <p>Complete audit log of all system activities with cryptographic verification and non-repudiation</p>
+    </div>
+    
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-database"></i>
             </div>
+            <div class="stat-value">{{ total_count|default:"0"|intcomma }}</div>
+            <div class="stat-label">Total Records</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stat-value">{{ unique_users|default:"0"|intcomma }}</div>
+            <div class="stat-label">Unique Users</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-network-wired"></i>
+            </div>
+            <div class="stat-value">{{ unique_ips|default:"0"|intcomma }}</div>
+            <div class="stat-label">Unique IPs</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="fas fa-tags"></i>
+            </div>
+            <div class="stat-value">{{ unique_actions|default:"0"|intcomma }}</div>
+            <div class="stat-label">Action Types</div>
         </div>
     </div>
-</div>
-
-<!-- Responsive Filter Section -->
-<div class="admin-card mb-4">
-    <div class="admin-card-header d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2">
-        <h5 class="admin-card-title mb-0">
-            <i class="fas fa-sliders-h me-2" aria-hidden="true"></i>
-            Filter Audit Records
-        </h5>
-        <span class="badge bg-info ms-sm-auto">{{ total_count }} total records</span>
-    </div>
-    <div class="admin-card-body">
-        <form method="get" class="row g-3" id="audit-filter-form">
-            <!-- Mobile Filter Toggle (visible only on small screens) -->
-            <div class="col-12 d-md-none mb-2">
-                <button class="btn btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse" aria-expanded="false" aria-controls="filterCollapse">
-                    <i class="fas fa-filter me-2"></i>Toggle Filters
-                </button>
-            </div>
-            
-            <!-- Filter Fields - Collapsible on mobile -->
-            <div class="collapse d-md-block" id="filterCollapse">
-                <div class="row g-3">
-                    <!-- Primary Filters Row - Responsive grid -->
-                    <div class="col-12 col-sm-6 col-md-3">
-                        <label for="action-filter" class="form-label fw-medium">Action Type</label>
-                        <select name="action" id="action-filter" class="form-select">
-                            <option value="">All actions</option>
-                            {% for value, label in action_choices %}
-                                <option value="{{ value }}" {% if filters.action == value %}selected{% endif %}>
-                                    {{ label }}
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    
-                    <div class="col-12 col-sm-6 col-md-3">
-                        <label for="user-filter" class="form-label fw-medium">User</label>
-                        <input type="text" 
-                               name="user" 
-                               id="user-filter"
-                               value="{{ filters.user }}" 
-                               class="form-control" 
-                               placeholder="Username or email">
-                    </div>
-                    
-                    <div class="col-12 col-sm-6 col-md-2">
-                        <label for="ip-filter" class="form-label fw-medium">IP Address</label>
-                        <input type="text" 
-                               name="ip" 
-                               id="ip-filter"
-                               value="{{ filters.ip }}" 
-                               class="form-control" 
-                               placeholder="e.g., 192.168.1.1">
-                    </div>
-                    
-                    <div class="col-12 col-sm-6 col-md-2">
-                        <label for="object-type-filter" class="form-label fw-medium">Object Type</label>
-                        <input type="text" 
-                               name="object_type" 
-                               id="object-type-filter"
-                               value="{{ filters.object_type }}" 
-                               class="form-control" 
-                               placeholder="e.g., Plot, User">
-                    </div>
-                    
-                    <div class="col-12 col-md-2">
-                        <label for="object-id-filter" class="form-label fw-medium">Object ID</label>
-                        <input type="text" 
-                               name="object_id" 
-                               id="object-id-filter"
-                               value="{{ filters.object_id }}" 
-                               class="form-control" 
-                               placeholder="ID number">
-                    </div>
-
-                    <!-- Secondary Filters Row -->
-                    <div class="col-12 col-sm-6 col-md-3">
-                        <label for="date-from" class="form-label fw-medium">Date From</label>
-                        <input type="date" 
-                               name="date_from" 
-                               id="date-from"
-                               value="{{ filters.date_from }}" 
-                               class="form-control">
-                    </div>
-                    
-                    <div class="col-12 col-sm-6 col-md-3">
-                        <label for="date-to" class="form-label fw-medium">Date To</label>
-                        <input type="date" 
-                               name="date_to" 
-                               id="date-to"
-                               value="{{ filters.date_to }}" 
-                               class="form-control">
-                    </div>
-                    
-                    <div class="col-12 col-md-4">
-                        <label for="search-filter" class="form-label fw-medium">Free Text Search</label>
-                        <input type="text" 
-                               name="q" 
-                               id="search-filter"
-                               value="{{ filters.q }}" 
-                               class="form-control" 
-                               placeholder="Search in actions, users, objects...">
-                    </div>
-                    
-                    <div class="col-12 col-md-2">
-                        <label for="per-page" class="form-label fw-medium">Per page</label>
-                        <select name="per_page" id="per-page" class="form-select">
-                            <option value="25" {% if filters.per_page == 25 %}selected{% endif %}>25</option>
-                            <option value="50" {% if filters.per_page == 50 %}selected{% endif %}>50</option>
-                            <option value="100" {% if filters.per_page == 100 %}selected{% endif %}>100</option>
-                        </select>
-                    </div>
+    
+    <!-- Filter Panel -->
+    <div class="filter-panel">
+        <div class="filter-title">
+            <i class="fas fa-filter"></i> Filter Records
+        </div>
+        <form method="get">
+            <div class="row g-3">
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label">User</label>
+                    <input type="text" name="user" class="form-control" placeholder="Username or email" value="{{ request.GET.user|default:'' }}">
                 </div>
-            </div>
-
-            <!-- Filter Actions - Always visible -->
-            <div class="col-12">
-                <div class="d-flex flex-column flex-sm-row gap-2 align-items-stretch align-items-sm-center">
-                    <button class="btn btn-primary flex-fill" type="submit" data-analytics="audit_apply_filters">
-                        <i class="fas fa-filter me-2" aria-hidden="true"></i>
-                        Apply Filters
-                    </button>
-                    <a class="btn btn-outline-secondary flex-fill" href="{% url 'verification:audit_logs' %}" data-analytics="audit_clear_filters">
-                        <i class="fas fa-times me-2" aria-hidden="true"></i>
-                        Clear All
-                    </a>
-                    <span class="text-muted small ms-sm-3 mt-2 mt-sm-0 text-center text-sm-start">
-                        <i class="fas fa-info-circle me-1" aria-hidden="true"></i>
-                        Active filters: {{ active_filters_count|default:"0" }}
-                    </span>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label">Action</label>
+                    <select name="action" class="form-select">
+                        <option value="">All Actions</option>
+                        {% for action_value, action_label in action_choices %}
+                        <option value="{{ action_value }}" {% if request.GET.action == action_value %}selected{% endif %}>{{ action_label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label">Object Type</label>
+                    <select name="object_type" class="form-select">
+                        <option value="">All</option>
+                        {% for obj_type in object_types %}
+                        <option value="{{ obj_type }}" {% if request.GET.object_type == obj_type %}selected{% endif %}>{{ obj_type }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label">Severity</label>
+                    <select name="severity" class="form-select">
+                        <option value="">All</option>
+                        <option value="info" {% if request.GET.severity == 'info' %}selected{% endif %}>Info</option>
+                        <option value="warning" {% if request.GET.severity == 'warning' %}selected{% endif %}>Warning</option>
+                        <option value="critical" {% if request.GET.severity == 'critical' %}selected{% endif %}>Critical</option>
+                    </select>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label">IP Address</label>
+                    <input type="text" name="ip_address" class="form-control" placeholder="IP address" value="{{ request.GET.ip_address|default:'' }}">
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label">Start Date</label>
+                    <input type="date" name="start_date" class="form-control" value="{{ request.GET.start_date|default:'' }}">
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <label class="form-label">End Date</label>
+                    <input type="date" name="end_date" class="form-control" value="{{ request.GET.end_date|default:'' }}">
+                </div>
+                <div class="col-md-2 col-sm-6">
+                    <label class="form-label">Page Size</label>
+                    <select name="page_size" class="form-select">
+                        <option value="50" {% if page_size == 50 %}selected{% endif %}>50</option>
+                        <option value="100" {% if page_size == 100 %}selected{% endif %}>100</option>
+                        <option value="200" {% if page_size == 200 %}selected{% endif %}>200</option>
+                        <option value="500" {% if page_size == 500 %}selected{% endif %}>500</option>
+                    </select>
+                </div>
+                <div class="col-md-2 col-sm-12">
+                    <label class="form-label">&nbsp;</label>
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="fas fa-search"></i> Apply
+                        </button>
+                        <a href="{% url 'verification:audit_logs' %}" class="btn btn-secondary w-100">
+                            <i class="fas fa-undo"></i> Clear
+                        </a>
+                    </div>
                 </div>
             </div>
         </form>
     </div>
-</div>
-
-<!-- Responsive Analytics Summary Cards -->
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-lg-3">
-        <div class="stat-card h-100">
-            <div class="stat-card-body d-flex align-items-center gap-3 p-3">
-                <div class="stat-card-icon bg-primary bg-opacity-10 p-3 rounded">
-                    <i class="fas fa-database text-primary" aria-hidden="true"></i>
-                </div>
-                <div class="stat-card-content flex-grow-1">
-                    <span class="stat-card-label d-block small text-muted">Total Records</span>
-                    <span class="stat-card-value h3 mb-0">{{ total_count|default:"0" }}</span>
-                </div>
-            </div>
-        </div>
+    
+    <!-- Export Buttons -->
+    <div class="export-buttons">
+        <a href="?{{ request.GET.urlencode }}&export=csv" class="btn btn-success">
+            <i class="fas fa-file-csv"></i> Export CSV
+        </a>
+        <a href="?{{ request.GET.urlencode }}&export=json" class="btn btn-info">
+            <i class="fas fa-file-code"></i> Export JSON
+        </a>
+        <a href="{% url 'verification:export_audit_logs_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-danger">
+            <i class="fas fa-file-pdf"></i> Export PDF
+        </a>
     </div>
     
-    <div class="col-12 col-sm-6 col-lg-3">
-        <div class="stat-card h-100">
-            <div class="stat-card-body d-flex align-items-center gap-3 p-3">
-                <div class="stat-card-icon bg-info bg-opacity-10 p-3 rounded">
-                    <i class="fas fa-clock text-info" aria-hidden="true"></i>
-                </div>
-                <div class="stat-card-content flex-grow-1">
-                    <span class="stat-card-label d-block small text-muted">Last 24 Hours</span>
-                    <span class="stat-card-value h3 mb-0">{{ last_24h|default:"0" }}</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-12 col-sm-6 col-lg-3">
-        <div class="stat-card h-100">
-            <div class="stat-card-body d-flex align-items-center gap-3 p-3">
-                <div class="stat-card-icon bg-success bg-opacity-10 p-3 rounded">
-                    <i class="fas fa-chart-line text-success" aria-hidden="true"></i>
-                </div>
-                <div class="stat-card-content flex-grow-1">
-                    <span class="stat-card-label d-block small text-muted">Most Frequent</span>
-                    <span class="stat-card-value h5 mb-0">
-                        {% if action_counts %}
-                            {{ action_counts.0.action|truncatechars:10 }}
-                            <small class="text-muted d-block d-sm-inline d-lg-block">({{ action_counts.0.count }})</small>
-                        {% else %}
-                            —
-                        {% endif %}
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-12 col-sm-6 col-lg-3">
-        <div class="stat-card h-100">
-            <div class="stat-card-body d-flex align-items-center gap-3 p-3">
-                <div class="stat-card-icon bg-warning bg-opacity-10 p-3 rounded">
-                    <i class="fas fa-user text-warning" aria-hidden="true"></i>
-                </div>
-                <div class="stat-card-content flex-grow-1">
-                    <span class="stat-card-label d-block small text-muted">Most Active</span>
-                    <span class="stat-card-value h5 mb-0">
-                        {% if top_users %}
-                            {{ top_users.0.user__username|default:"System"|truncatechars:8 }}
-                            <small class="text-muted d-block d-sm-inline d-lg-block">({{ top_users.0.count }})</small>
-                        {% else %}
-                            —
-                        {% endif %}
-                    </span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Responsive Audit Logs Table -->
-<div class="admin-card">
-    <div class="admin-card-header d-flex flex-column flex-sm-row align-items-start align-items-sm-center gap-2">
-        <h5 class="admin-card-title mb-0">
-            <i class="fas fa-history me-2" aria-hidden="true"></i>
-            Audit Trail
-            <span class="badge bg-secondary ms-2">{{ page_obj.paginator.count }} records</span>
-        </h5>
-        <div class="admin-card-tools ms-sm-auto">
-            <span class="text-muted small">
-                <i class="fas fa-sync-alt me-1" aria-hidden="true"></i>
-                <span class="d-none d-sm-inline">Updated in real-time</span>
-            </span>
-        </div>
-    </div>
-    
-    <div class="admin-card-body p-0">
-        <!-- Desktop Table View (hidden on mobile) -->
-        <div class="d-none d-md-block">
-            <div class="table-responsive">
-                <table class="admin-table admin-table-hover mb-0" aria-describedby="auditTableCaption">
-                    <caption id="auditTableCaption" class="visually-hidden">
-                        Audit log entries including user, action, and IP address details.
-                    </caption>
-                    <thead>
-                        <tr>
-                            <th scope="col">Timestamp</th>
-                            <th scope="col">User</th>
-                            <th scope="col">Action</th>
-                            <th scope="col">Object</th>
-                            <th scope="col">IP</th>
-                            <th scope="col">Details</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for log in logs %}
-                        <tr>
-                            <td class="text-nowrap">
-                                <span class="fw-medium">{{ log.created_at|date:"Y-m-d H:i:s" }}</span>
-                                <small class="text-muted d-block">{{ log.created_at|timesince }} ago</small>
-                            </td>
-                            <td>
-                                {% if log.user %}
-                                    <div class="fw-medium">{{ log.user.get_full_name|default:log.user.username }}</div>
-                                    <small class="text-muted">{{ log.user.email|truncatechars:20 }}</small>
-                                {% else %}
-                                    <span class="badge bg-secondary">System</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="badge 
-                                    {% if 'CREATE' in log.action %}bg-success
-                                    {% elif 'UPDATE' in log.action %}bg-info
-                                    {% elif 'DELETE' in log.action %}bg-danger
-                                    {% elif 'LOGIN' in log.action %}bg-primary
-                                    {% else %}bg-secondary{% endif %}">
-                                    {{ log.get_action_display|default:log.action|truncatechars:15 }}
-                                </span>
-                            </td>
-                            <td>
-                                {% if log.object_type %}
-                                    <span class="fw-medium">{{ log.object_type }}</span>
-                                    {% if log.object_id %}
-                                        <span class="badge bg-light text-dark">#{{ log.object_id }}</span>
-                                    {% endif %}
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if log.ip_address %}
-                                    <code>{{ log.ip_address }}</code>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if log.extra %}
-                                    <button class="btn btn-sm btn-outline-secondary" 
-                                            type="button"
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#extraModal{{ log.id }}"
-                                            aria-controls="extraModal{{ log.id }}"
-                                            aria-label="View additional details for audit entry {{ log.id }}">
-                                        <i class="fas fa-eye me-1" aria-hidden="true"></i>
-                                        View
-                                    </button>
-                                    
-                                    <!-- Modal for extra data (better mobile experience) -->
-                                    <div class="modal fade" id="extraModal{{ log.id }}" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-scrollable">
-                                            <div class="modal-content">
-                                                <div class="modal-header">
-                                                    <h5 class="modal-title">Additional Data</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                </div>
-                                                <div class="modal-body">
-                                                    <pre class="bg-light p-3 rounded small mb-0"><code>{{ log.extra|pprint }}</code></pre>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                {% else %}
-                                    <span class="text-muted">—</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center py-5">
-                                <div class="empty-state">
-                                    <i class="fas fa-search fa-3x text-muted mb-3" aria-hidden="true"></i>
-                                    <h5 class="text-muted">No audit logs found</h5>
-                                    <p class="text-muted small">Try adjusting your filters</p>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Mobile Card View (visible only on mobile) -->
-        <div class="d-md-none">
-            {% for log in logs %}
-            <div class="mobile-audit-card p-3 border-bottom">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                        <span class="badge 
-                            {% if 'CREATE' in log.action %}bg-success
-                            {% elif 'UPDATE' in log.action %}bg-info
-                            {% elif 'DELETE' in log.action %}bg-danger
-                            {% elif 'LOGIN' in log.action %}bg-primary
-                            {% else %}bg-secondary{% endif %} mb-2">
-                            {{ log.get_action_display|default:log.action|truncatechars:20 }}
-                        </span>
-                        <div class="fw-medium">{{ log.created_at|date:"Y-m-d H:i:s" }}</div>
-                        <small class="text-muted">{{ log.created_at|timesince }} ago</small>
-                    </div>
-                    {% if log.extra %}
-                    <button class="btn btn-sm btn-outline-secondary" 
-                            type="button"
-                            data-bs-toggle="modal" 
-                            data-bs-target="#extraModal{{ log.id }}_mobile">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <!-- Mobile Modal -->
-                    <div class="modal fade" id="extraModal{{ log.id }}_mobile" tabindex="-1" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-scrollable">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title">Additional Data</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <pre class="bg-light p-3 rounded small mb-0"><code>{{ log.extra|pprint }}</code></pre>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-                </div>
-                
-                <div class="row g-2 mb-2">
-                    <div class="col-6">
-                        <small class="text-muted d-block">User</small>
-                        <span>
-                            {% if log.user %}
-                                {{ log.user.get_full_name|default:log.user.username }}
-                            {% else %}
-                                System
+    <!-- Audit Table -->
+    <div class="audit-table-wrapper">
+        <table class="audit-table">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Object</th>
+                    <th>IP Address</th>
+                    <th>User Agent</th>
+                    <th>Hash</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td style="white-space: nowrap;">
+                        <div>{{ log.created_at|date:"Y-m-d" }}</div>
+                        <small class="text-muted">{{ log.created_at|date:"H:i:s" }}</small>
+                    </td>
+                    <td>
+                        {% if log.user %}
+                            <div class="user-name">{{ log.user.get_full_name|default:log.user.username }}</div>
+                            {% if log.user.email %}
+                                <div class="user-email">{{ log.user.email|truncatechars:25 }}</div>
                             {% endif %}
+                        {% else %}
+                            <span class="text-muted">System</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ log.action|cut:'_' }}">
+                            {{ log.get_action_display|default:log.action|title }}
                         </span>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Object</small>
-                        <span>
-                            {% if log.object_type %}
-                                {{ log.object_type }}{% if log.object_id %} #{{ log.object_id }}{% endif %}
-                            {% else %}
-                                —
+                        {% if log.severity == 'critical' %}
+                            <span class="severity-critical">CRITICAL</span>
+                        {% elif log.severity == 'warning' %}
+                            <span class="severity-warning">WARNING</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if log.object_type %}
+                            <span class="object-type">{{ log.object_type }}</span>
+                            {% if log.object_id %}
+                                <span class="object-id">#{{ log.object_id }}</span>
                             {% endif %}
-                        </span>
-                    </div>
-                </div>
-                
-                <div class="row g-2">
-                    <div class="col-6">
-                        <small class="text-muted d-block">IP Address</small>
-                        <span class="text-break">{{ log.ip_address|default:"—" }}</span>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">User Agent</small>
-                        <span class="small text-break">{{ log.user_agent|default:"—"|truncatechars:30 }}</span>
-                    </div>
-                </div>
-            </div>
-            {% empty %}
-            <div class="text-center py-5">
-                <i class="fas fa-search fa-3x text-muted mb-3" aria-hidden="true"></i>
-                <p class="text-muted">No audit logs found</p>
-            </div>
-            {% endfor %}
-        </div>
+                            {% if log.object_repr %}
+                                <div class="text-muted small mt-1">{{ log.object_repr|truncatechars:30 }}</div>
+                            {% endif %}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td><code class="small">{{ log.ip_address|default:"—" }}</code></td>
+                    <td>
+                        <small class="text-muted" title="{{ log.user_agent|default:'' }}">
+                            {{ log.user_agent|truncatechars:35|default:"—" }}
+                        </small>
+                    </td>
+                    <td>
+                        <code class="hash-code" title="{{ log.hash_signature }}">
+                            {{ log.hash_signature|truncatechars:12 }}
+                        </code>
+                        <br>
+                        <small class="text-muted" title="Previous hash: {{ log.previous_hash|default:'Genesis' }}">
+                            prev: {{ log.previous_hash|truncatechars:8|default:"Genesis" }}
+                        </small>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        <i class="fas fa-database"></i>
+                        <p>No audit records found matching your criteria.</p>
+                        <a href="{% url 'verification:audit_logs' %}" class="btn btn-primary btn-sm">Clear Filters</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if num_pages > 1 %}
+    <div class="pagination">
+        {% if has_previous %}
+            <a href="?page=1&{{ request.GET.urlencode }}" class="page-link">
+                <i class="fas fa-angle-double-left"></i>
+            </a>
+            <a href="?page={{ previous_page_number }}&{{ request.GET.urlencode }}" class="page-link">
+                <i class="fas fa-angle-left"></i>
+            </a>
+        {% endif %}
+        
+        <span class="page-link page-active">Page {{ page }} of {{ num_pages }}</span>
+        
+        {% if has_next %}
+            <a href="?page={{ next_page_number }}&{{ request.GET.urlencode }}" class="page-link">
+                <i class="fas fa-angle-right"></i>
+            </a>
+            <a href="?page={{ num_pages }}&{{ request.GET.urlencode }}" class="page-link">
+                <i class="fas fa-angle-double-right"></i>
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
+    
+    <!-- Footer Note -->
+    <div class="footer-note">
+        <i class="fas fa-lock"></i> This audit log is cryptographically secured using SHA-256 blockchain-style chaining.
+        Any tampering will break the chain and be immediately detectable.
     </div>
 </div>
-
-<!-- Responsive Pagination -->
-{% if page_obj.paginator.num_pages > 1 %}
-<div class="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-4 gap-3">
-    <div class="text-muted small order-2 order-sm-1">
-        Showing <span class="fw-medium">{{ page_obj.start_index }}</span> 
-        to <span class="fw-medium">{{ page_obj.end_index }}</span> 
-        of <span class="fw-medium">{{ page_obj.paginator.count }}</span>
-    </div>
-    
-    <nav aria-label="Audit logs pagination" class="order-1 order-sm-2">
-        <ul class="pagination pagination-responsive mb-0">
-            {% if page_obj.has_previous %}
-                <li class="page-item">
-                    <a class="page-link" href="?page=1{% if base_querystring %}&{{ base_querystring }}{% endif %}" aria-label="First">
-                        <i class="fas fa-angle-double-left" aria-hidden="true"></i>
-                    </a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if base_querystring %}&{{ base_querystring }}{% endif %}" aria-label="Previous">
-                        <i class="fas fa-angle-left" aria-hidden="true"></i>
-                    </a>
-                </li>
-            {% endif %}
-            
-            {% for num in page_obj.paginator.page_range %}
-                {% if num >= page_obj.number|add:'-2' and num <= page_obj.number|add:'2' %}
-                    <li class="page-item {% if page_obj.number == num %}active{% endif %} d-none d-sm-block">
-                        <a class="page-link" href="?page={{ num }}{% if base_querystring %}&{{ base_querystring }}{% endif %}">
-                            {{ num }}
-                        </a>
-                    </li>
-                {% endif %}
-            {% endfor %}
-            
-            <!-- Mobile page indicator -->
-            <li class="page-item d-sm-none">
-                <span class="page-link disabled">Page {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</span>
-            </li>
-            
-            {% if page_obj.has_next %}
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if base_querystring %}&{{ base_querystring }}{% endif %}" aria-label="Next">
-                        <i class="fas fa-angle-right" aria-hidden="true"></i>
-                    </a>
-                </li>
-                <li class="page-item">
-                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if base_querystring %}&{{ base_querystring }}{% endif %}" aria-label="Last">
-                        <i class="fas fa-angle-double-right" aria-hidden="true"></i>
-                    </a>
-                </li>
-            {% endif %}
-        </ul>
-    </nav>
-</div>
-{% endif %}
-
-<!-- Responsive Styles -->
-<style>
-/* Mobile-First Base Styles */
-:root {
-    --spacing-xs: 0.5rem;
-    --spacing-sm: 0.75rem;
-    --spacing-md: 1rem;
-    --spacing-lg: 1.5rem;
-    --spacing-xl: 2rem;
-}
-
-/* Stat Cards */
-.stat-card {
-    background: white;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    border: 1px solid #e9ecef;
-    transition: all 0.2s ease;
-    height: 100%;
-}
-
-.stat-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-    border-color: #dee2e6;
-}
-
-.stat-card-icon {
-    width: 3rem;
-    height: 3rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.25rem;
-    flex-shrink: 0;
-}
-
-/* Mobile Audit Cards */
-.mobile-audit-card {
-    background: white;
-    transition: background-color 0.2s ease;
-}
-
-.mobile-audit-card:hover {
-    background-color: #f8f9fa;
-}
-
-.mobile-audit-card:last-child {
-    border-bottom: none !important;
-}
-
-/* Responsive Pagination */
-.pagination-responsive {
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-.pagination-responsive .page-link {
-    min-width: 2.5rem;
-    text-align: center;
-}
-
-/* Empty State */
-.empty-state {
-    text-align: center;
-    padding: var(--spacing-xl);
-    max-width: 400px;
-    margin: 0 auto;
-}
-
-/* Text Utilities */
-.text-break {
-    word-break: break-word;
-    overflow-wrap: break-word;
-}
-
-/* Touch-friendly buttons on mobile */
-@media (max-width: 768px) {
-    .btn, 
-    .page-link {
-        padding: 0.6rem 1rem;
-        font-size: 1rem;
-    }
-    
-    .form-control,
-    .form-select {
-        font-size: 16px; /* Prevents zoom on iOS */
-    }
-    
-    .stat-card-icon {
-        width: 2.5rem;
-        height: 2.5rem;
-        font-size: 1rem;
-    }
-    
-    .modal-dialog {
-        margin: 0.5rem;
-    }
-}
-
-/* Tablet Adjustments */
-@media (min-width: 768px) and (max-width: 992px) {
-    .stat-card-value {
-        font-size: 1.25rem;
-    }
-    
-    .admin-table {
-        font-size: 0.9rem;
-    }
-}
-
-/* Print Styles */
-@media print {
-    .page-header-actions,
-    .admin-card-header .badge,
-    .btn,
-    .modal,
-    .pagination,
-    [data-bs-toggle="modal"] {
-        display: none !important;
-    }
-    
-    .admin-card {
-        border: 1px solid #ddd !important;
-        box-shadow: none !important;
-    }
-    
-    .stat-card {
-        border: 1px solid #ddd !important;
-        break-inside: avoid;
-    }
-    
-    table {
-        break-inside: auto;
-    }
-    
-    tr {
-        break-inside: avoid;
-        page-break-inside: avoid;
-    }
-    
-    .badge {
-        border: 1px solid #000 !important;
-        color: #000 !important;
-        background: transparent !important;
-    }
-}
-</style>
-
-<!-- Add Bootstrap JS for modal functionality (if not already included) -->
-{% block extra_js %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle responsive filter toggle state
-    const filterCollapse = document.getElementById('filterCollapse');
-    if (filterCollapse) {
-        // Remember filter state across page reloads on mobile
-        if (localStorage.getItem('filterCollapseOpen') === 'true' && window.innerWidth < 768) {
-            filterCollapse.classList.add('show');
-        }
-        
-        filterCollapse.addEventListener('shown.bs.collapse', function() {
-            localStorage.setItem('filterCollapseOpen', 'true');
-        });
-        
-        filterCollapse.addEventListener('hidden.bs.collapse', function() {
-            localStorage.setItem('filterCollapseOpen', 'false');
-        });
-    }
-});
-</script>
-{% endblock %}
 {% endblock %}

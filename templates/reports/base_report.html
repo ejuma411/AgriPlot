@@ -23,12 +23,108 @@
             box-sizing: border-box;
         }
         
+        /* ============================================
+           TYPOGRAPHY - Consistent Font Settings
+           Primary: Inter (modern, clean, readable)
+           Fallback: Helvetica, Arial, sans-serif
+           Base size: 11pt (approx 12px at 96dpi)
+        ============================================ */
+        
         body {
-            font-family: 'Helvetica', 'Arial', sans-serif;
-            font-size: 10pt;
+            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
+            font-size: 11pt;
             line-height: 1.5;
-            color: #333;
+            color: #1a2e1a;
             position: relative;
+            font-weight: 400;
+        }
+        
+        /* Headers */
+        h1 {
+            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
+            font-size: 22pt;
+            font-weight: 700;
+            color: #1B5E20;
+            margin: 0 0 10px 0;
+            letter-spacing: -0.5px;
+        }
+        
+        h2 {
+            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
+            font-size: 16pt;
+            font-weight: 600;
+            color: #2E7D32;
+            margin: 20px 0 12px 0;
+            border-left: 3px solid #4CAF50;
+            padding-left: 12px;
+        }
+        
+        h3 {
+            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
+            font-size: 13pt;
+            font-weight: 600;
+            color: #333;
+            margin: 15px 0 8px 0;
+        }
+        
+        h4 {
+            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
+            font-size: 12pt;
+            font-weight: 600;
+            color: #555;
+            margin: 12px 0 6px 0;
+        }
+        
+        p {
+            font-size: 11pt;
+            line-height: 1.5;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        /* Links */
+        a {
+            color: #2E7D32;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Lists */
+        ul, ol {
+            margin: 10px 0 10px 20px;
+        }
+        
+        li {
+            font-size: 11pt;
+            line-height: 1.5;
+            margin-bottom: 5px;
+        }
+        
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 10pt;
+        }
+        
+        th {
+            background-color: #2E7D32;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 10pt;
+        }
+        
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            vertical-align: top;
+            font-size: 10pt;
         }
         
         /* Watermark */
@@ -39,7 +135,7 @@
             left: 50%;
             transform: translate(-50%, -50%) rotate(-45deg);
             font-size: 60pt;
-            color: rgba(46, 125, 50, 0.05);
+            color: rgba(46, 125, 50, 0.03);
             white-space: nowrap;
             pointer-events: none;
             z-index: -1;
@@ -113,6 +209,7 @@
             justify-content: space-between;
             align-items: center;
             gap: 20px;
+            flex-wrap: wrap;
         }
         
         .seal-left {
@@ -128,8 +225,8 @@
         }
         
         .stamp-outer {
-            width: 120px;
-            height: 120px;
+            width: 100px;
+            height: 100px;
             border: 3px solid #2E7D32;
             border-radius: 50%;
             display: inline-flex;
@@ -144,7 +241,7 @@
         }
         
         .stamp-text {
-            font-size: 12pt;
+            font-size: 11pt;
             font-weight: bold;
             color: #2E7D32;
             border-bottom: 1px solid #2E7D32;
@@ -153,7 +250,7 @@
         }
         
         .stamp-subtext {
-            font-size: 8pt;
+            font-size: 7pt;
             color: #666;
         }
         
@@ -216,21 +313,105 @@
         
         .progress-bar {
             background-color: #4CAF50;
-            height: 30px;
+            height: 24px;
             text-align: center;
-            line-height: 30px;
+            line-height: 24px;
             color: white;
             font-weight: bold;
             font-size: 10pt;
             border-radius: 10px;
         }
         
-        /* Other Utility Classes */
+        /* Card Styles */
+        .info-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #2E7D32;
+        }
+        
+        .warning-card {
+            background: #fff3cd;
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+            border-left: 4px solid #ffc107;
+        }
+        
+        /* Utility Classes */
         .text-center { text-align: center; }
         .text-right { text-align: right; }
+        .text-left { text-align: left; }
         .text-success { color: #4CAF50; }
         .text-warning { color: #FF9800; }
         .text-danger { color: #f44336; }
+        .text-muted { color: #6c757d; }
+        
+        .mt-1 { margin-top: 5px; }
+        .mt-2 { margin-top: 10px; }
+        .mt-3 { margin-top: 15px; }
+        .mb-1 { margin-bottom: 5px; }
+        .mb-2 { margin-bottom: 10px; }
+        .mb-3 { margin-bottom: 15px; }
+        
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 9pt;
+            font-weight: 500;
+        }
+        
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .badge-danger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        
+        .badge-primary {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        /* Grid */
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: -10px;
+        }
+        
+        .col {
+            flex: 1;
+            padding: 10px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 600px) {
+            .seal-container {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .row {
+                flex-direction: column;
+            }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>

@@ -176,8 +176,16 @@ MIDDLEWARE = [
     "payments.middleware.LeaseLifecycleHeartbeatMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "security.middleware.EnforceTwoFactorEnrollmentMiddleware",
+    
+    # Security middleware (in correct order)
+    'security.middleware.SecurityHeadersMiddleware',  # Add security headers
+    'security.middleware.EnforceTwoFactorEnrollmentMiddleware',  # Enforce 2FA
+    'security.middleware.AuditLogMiddleware',  # Auto-audit all requests
 ]
+
+# 2FA Settings
+# REQUIRE_2FA = True  # Require 2FA for all users
+# REQUIRE_2FA_ENROLLMENT = True  # Force enrollment
 
 ROOT_URLCONF = "agriplot.urls"
 

@@ -323,3 +323,257 @@ footer {
         padding-inline: 12px;
     }
 }
+
+/* ============================================
+   SCREENSHOT PROTECTION FOR SENSITIVE PAGES
+   ============================================ */
+
+/* Base protection for all pages */
+body {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Allow text selection on non-sensitive elements */
+input, textarea, [contenteditable="true"] {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* ============================================
+   SENSITIVE PAGE CLASSES
+   ============================================ */
+
+/* High sensitivity pages (Payments, Wallet, Contracts) */
+.page-sensitive-high,
+.payment-page,
+.wallet-page,
+.contract-page,
+.checkout-page {
+    position: relative;
+}
+
+/* Anti-screenshot overlay */
+.page-sensitive-high::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(31, 139, 76, 0.02) 0px,
+        rgba(31, 139, 76, 0.02) 2px,
+        transparent 2px,
+        transparent 8px
+    );
+    pointer-events: none;
+    z-index: 9998;
+}
+
+/* User-specific watermark for traceability */
+.page-sensitive-high::after {
+    content: attr(data-watermark);
+    position: fixed;
+    bottom: 5px;
+    right: 5px;
+    font-size: 7px;
+    font-family: 'Courier New', monospace;
+    color: rgba(0, 0, 0, 0.08);
+    pointer-events: none;
+    z-index: 9999;
+    white-space: pre;
+}
+
+/* ============================================
+   SPECIFIC PAGE PROTECTORS
+   ============================================ */
+
+/* Payment Pages */
+body.payment-page,
+body[data-page-type="payment"] {
+    position: relative;
+}
+
+/* Profile Pages */
+body.profile-page,
+body[data-page-type="profile"] .sensitive-data {
+    position: relative;
+}
+
+/* Admin Pages */
+body.admin-page,
+body[data-page-type="admin"] {
+    position: relative;
+}
+
+/* Transaction Pages */
+body.transaction-page,
+body[data-page-type="transaction"] {
+    position: relative;
+}
+
+/* ============================================
+   DYNAMIC WATERMARK (via data attribute)
+   ============================================ */
+
+/* This will be populated by JavaScript */
+body[data-watermark-enabled="true"]::after {
+    content: attr(data-watermark-text);
+    position: fixed;
+    bottom: 8px;
+    right: 8px;
+    font-size: 8px;
+    font-family: monospace;
+    color: rgba(0, 0, 0, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 10000;
+    white-space: nowrap;
+}
+
+/* ============================================
+   PRINT PREVENTION
+   ============================================ */
+
+@media print {
+    /* Hide sensitive content when printing */
+    body.sensitive-page,
+    body.payment-page,
+    body.wallet-page,
+    body.contract-page {
+        visibility: hidden;
+    }
+    
+    body.sensitive-page::after,
+    body.payment-page::after,
+    body.wallet-page::after,
+    body.contract-page::after {
+        content: "SCREENSHOT PROTECTED - Printing disabled for security";
+        visibility: visible;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 16px;
+        color: red;
+        background: white;
+        padding: 20px;
+        border: 2px solid red;
+        z-index: 100000;
+        white-space: nowrap;
+    }
+}
+
+/* ============================================
+   SCREENSHOT DETECTION VISUAL FEEDBACK
+   ============================================ */
+
+/* Blur effect when screenshot is attempted (visual deterrent) */
+.sensitive-page:active {
+    transition: filter 0.1s ease;
+}
+
+/* Keyboard shortcut detection visual feedback */
+body.screenshot-attempt {
+    animation: screenshotWarning 0.5s ease-in-out;
+}
+
+@keyframes screenshotWarning {
+    0% {
+        opacity: 1;
+        filter: blur(0);
+    }
+    25% {
+        opacity: 0.5;
+        filter: blur(2px);
+    }
+    50% {
+        opacity: 0.3;
+        filter: blur(4px);
+    }
+    75% {
+        opacity: 0.5;
+        filter: blur(2px);
+    }
+    100% {
+        opacity: 1;
+        filter: blur(0);
+    }
+}
+
+/* ============================================
+   SELECTION PREVENTION FOR SENSITIVE DATA
+   ============================================ */
+
+.sensitive-data,
+.payment-details,
+.card-number,
+.wallet-balance,
+.contract-content {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    position: relative;
+}
+
+/* Allow selection on non-sensitive parts of sensitive pages */
+.non-sensitive,
+.help-text,
+.page-header p {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+}
+
+/* ============================================
+   DEVTOOLS DETECTION INDICATOR (Optional)
+   ============================================ */
+
+/* Visual indicator if DevTools is open (deterrent) */
+@keyframes devtoolsWarning {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+}
+
+body.devtools-open::after {
+    content: "⚠️ Developer Tools Detected - Screenshot protection active";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: rgba(220, 53, 69, 0.9);
+    color: white;
+    text-align: center;
+    padding: 5px;
+    font-size: 12px;
+    z-index: 10001;
+    animation: devtoolsWarning 0.3s ease;
+}
+
+/* ============================================
+   RESPONSIVE PROTECTION
+   ============================================ */
+
+@media (max-width: 768px) {
+    body[data-watermark-enabled="true"]::after {
+        font-size: 6px;
+        bottom: 4px;
+        right: 4px;
+    }
+    
+    .page-sensitive-high::after {
+        font-size: 5px;
+    }
+}

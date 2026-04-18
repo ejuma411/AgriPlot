@@ -15,6 +15,16 @@
     .tax-header h1 {
         color: white;
         margin: 0;
+        font-size: 22px;
+    }
+    
+    .tax-badge {
+        display: inline-block;
+        background: rgba(255,255,255,0.2);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 10px;
+        margin-top: 10px;
     }
     
     .tax-summary {
@@ -22,11 +32,12 @@
         border-radius: 12px;
         padding: 20px;
         margin-bottom: 25px;
+        border: 1px solid #e0e0e0;
     }
     
     .total-tax {
-        font-size: 28pt;
-        font-weight: bold;
+        font-size: 32px;
+        font-weight: 700;
         color: #c62828;
         text-align: center;
         margin: 15px 0;
@@ -34,22 +45,22 @@
     
     .tax-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
         gap: 20px;
         margin: 25px 0;
     }
     
     .tax-card {
         background: white;
-        border-radius: 10px;
+        border-radius: 12px;
         padding: 20px;
         text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid #e0e0e0;
         border-top: 4px solid #2E7D32;
     }
     
     .tax-card .tax-label {
-        font-size: 11px;
+        font-size: 10px;
         text-transform: uppercase;
         color: #6c757d;
         letter-spacing: 1px;
@@ -57,16 +68,45 @@
     }
     
     .tax-card .tax-amount {
-        font-size: 20pt;
-        font-weight: bold;
+        font-size: 20px;
+        font-weight: 700;
         color: #2E7D32;
     }
     
     .property-details {
         background: #e8f5e9;
         padding: 20px;
-        border-radius: 10px;
+        border-radius: 12px;
         margin: 20px 0;
+        border: 1px solid #c8e6c9;
+    }
+    
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+    }
+    
+    .info-card {
+        background: white;
+        border-radius: 8px;
+        padding: 10px;
+    }
+    
+    .info-label {
+        font-size: 9px;
+        text-transform: uppercase;
+        color: #6c757d;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+    }
+    
+    .info-value {
+        font-size: 11px;
+        font-weight: 600;
+        color: #1a2e1a;
+        word-break: break-word;
     }
     
     .payment-reference {
@@ -76,6 +116,11 @@
         font-family: monospace;
         text-align: center;
         margin: 20px 0;
+        border: 1px solid #bbdefb;
+    }
+    
+    .payment-reference strong {
+        color: #1565c0;
     }
     
     .kra-notice {
@@ -83,6 +128,65 @@
         border-left: 4px solid #FF9800;
         padding: 15px;
         margin: 20px 0;
+        border-radius: 8px;
+    }
+    
+    .kra-notice ul {
+        margin-top: 10px;
+        margin-left: 20px;
+    }
+    
+    .kra-notice li {
+        font-size: 10px;
+        margin-bottom: 5px;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    
+    .data-table th {
+        background-color: #2E7D32;
+        color: white;
+        padding: 10px;
+        text-align: left;
+        font-size: 10px;
+    }
+    
+    .data-table td {
+        padding: 10px;
+        border-bottom: 1px solid #e0e0e0;
+        font-size: 10px;
+    }
+    
+    .warning-box {
+        background: #f8d7da;
+        border-left: 4px solid #dc3545;
+        padding: 15px;
+        margin: 20px 0;
+        border-radius: 8px;
+    }
+    
+    .warning-box ul {
+        margin-top: 10px;
+        margin-left: 20px;
+    }
+    
+    .signature-line {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+        text-align: center;
+    }
+    
+    .info-box {
+        background: #e8f5e9;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        border-left: 4px solid #2E7D32;
     }
 </style>
 {% endblock %}
@@ -90,20 +194,20 @@
 {% block content %}
 <div class="tax-header">
     <h1>📋 Stamp Duty & Tax Clearance Schedule</h1>
-    <div class="zoning-badge">Official Tax Document</div>
+    <div class="tax-badge">Official Tax Document</div>
 </div>
 
 <!-- Transaction Information -->
 <div class="property-details">
-    <h2 style="color: #2E7D32; margin-bottom: 15px;">Transaction Information</h2>
+    <h3 style="color: #2E7D32; margin-bottom: 15px; font-size: 14px;">Transaction Information</h3>
     <div class="info-grid">
         <div class="info-card">
             <div class="info-label">Transaction ID</div>
-            <div class="info-value">{{ deal.internal_reference }}</div>
+            <div class="info-value">{{ deal.internal_reference|default:"N/A" }}</div>
         </div>
         <div class="info-card">
             <div class="info-label">Transaction Type</div>
-            <div class="info-value">{{ deal.transaction_type|upper }}</div>
+            <div class="info-value">{{ deal.transaction_type|upper|default:"N/A" }}</div>
         </div>
         <div class="info-card">
             <div class="info-label">Property</div>
@@ -115,11 +219,11 @@
         </div>
         <div class="info-card">
             <div class="info-label">Buyer/Tenant</div>
-            <div class="info-value">{{ deal.buyer.get_full_name|default:deal.buyer.username }}</div>
+            <div class="info-value">{{ deal.buyer.get_full_name|default:deal.buyer.username|default:"N/A" }}</div>
         </div>
         <div class="info-card">
             <div class="info-label">Seller/Landlord</div>
-            <div class="info-value">{{ deal.counterparty_label }}</div>
+            <div class="info-value">{{ deal.counterparty_label|default:"N/A" }}</div>
         </div>
     </div>
 </div>
@@ -128,38 +232,38 @@
 <h2>💰 Tax Liability Summary</h2>
 <div class="tax-summary">
     <div class="total-tax">
-        KES {{ total_tax_liability|floatformat:2|intcomma }}
+        KES {{ total_tax_liability|floatformat:2|intcomma|default:"0" }}
     </div>
-    <div style="text-align: center; color: #666;">Total Tax Liability</div>
+    <div style="text-align: center; color: #666; font-size: 11px;">Total Tax Liability</div>
 </div>
 
 <!-- Tax Breakdown -->
 <div class="tax-grid">
     <div class="tax-card">
         <div class="tax-label">Stamp Duty</div>
-        <div class="tax-amount">KES {{ stamp_duty|floatformat:2|intcomma }}</div>
-        <div style="font-size: 10pt; color: #666; margin-top: 5px;">
+        <div class="tax-amount">KES {{ stamp_duty|floatformat:2|intcomma|default:"0" }}</div>
+        <div style="font-size: 10px; color: #666; margin-top: 5px;">
             {% if deal.plot.market_zone == 'rural' %}2% Rural Rate{% else %}4% Urban Rate{% endif %}
         </div>
     </div>
     
     <div class="tax-card">
         <div class="tax-label">Capital Gains Tax (CGT)</div>
-        <div class="tax-amount">KES {{ capital_gains_tax|floatformat:2|intcomma }}</div>
-        <div style="font-size: 10pt; color: #666; margin-top: 5px;">15% on gain</div>
+        <div class="tax-amount">KES {{ capital_gains_tax|floatformat:2|intcomma|default:"0" }}</div>
+        <div style="font-size: 10px; color: #666; margin-top: 5px;">15% on gain</div>
     </div>
     
     <div class="tax-card">
         <div class="tax-label">Value Added Tax (VAT)</div>
-        <div class="tax-amount">KES {{ vat|floatformat:2|intcomma }}</div>
-        <div style="font-size: 10pt; color: #666; margin-top: 5px;">16% on fees</div>
+        <div class="tax-amount">KES {{ vat|floatformat:2|intcomma|default:"0" }}</div>
+        <div style="font-size: 10px; color: #666; margin-top: 5px;">16% on fees</div>
     </div>
     
     {% if withholding_tax > 0 %}
     <div class="tax-card">
         <div class="tax-label">Withholding Tax</div>
         <div class="tax-amount">KES {{ withholding_tax|floatformat:2|intcomma }}</div>
-        <div style="font-size: 10pt; color: #666; margin-top: 5px;">10% on rent</div>
+        <div style="font-size: 10px; color: #666; margin-top: 5px;">10% on rent</div>
     </div>
     {% endif %}
 </div>
@@ -167,23 +271,30 @@
 <!-- Payment Reference -->
 <div class="payment-reference">
     <strong>Payment Reference Number</strong><br>
-    {{ payment_reference }}<br>
+    {{ payment_reference|default:"N/A" }}<br>
     <small>Use this reference when making tax payments to KRA</small>
 </div>
 
 <!-- KRA Information -->
 <div class="kra-notice">
     <strong>🏦 Kenya Revenue Authority (KRA) Information</strong><br><br>
-    <strong>Buyer KRA PIN:</strong> {{ deal.buyer.profile.kra_pin|default:"Not provided"|upper }}<br>
-    <strong>Seller KRA PIN:</strong> 
-    {% if deal.seller %}
-        {{ deal.seller.profile.kra_pin|default:"Not provided"|upper }}
+    <strong>Buyer KRA PIN:</strong> 
+    {% if deal.buyer and deal.buyer.profile %}
+        {{ deal.buyer.profile.kra_pin|default:"Not provided"|upper }}
     {% else %}
-        {{ deal.plot.owner_kra_pin_number|default:"Not provided"|upper }}
+        Not provided
+    {% endif %}<br>
+    <strong>Seller KRA PIN:</strong> 
+    {% if deal.seller and deal.seller.profile %}
+        {{ deal.seller.profile.kra_pin|default:"Not provided"|upper }}
+    {% elif deal.plot.owner_kra_pin_number %}
+        {{ deal.plot.owner_kra_pin_number|upper }}
+    {% else %}
+        Not provided
     {% endif %}
     <br><br>
     <strong>Payment Instructions:</strong>
-    <ul style="margin-top: 10px; margin-left: 20px;">
+    <ul>
         <li>iTax Portal: www.itax.kra.go.ke</li>
         <li>Payment Account: KRA - Stamp Duty Collection</li>
         <li>Reference: Use the Payment Reference Number above</li>
@@ -196,23 +307,23 @@
     <thead>
         <tr>
             <th>Item</th>
-            <th>Value (KES)</th>
-            <th>Rate</th>
-            <th>Amount (KES)</th>
+            <th class="text-right">Value (KES)</th>
+            <th class="text-right">Rate</th>
+            <th class="text-right">Amount (KES)</th>
         </tr>
     </thead>
     <tbody>
         <tr>
             <td>Property Value / Consideration</td>
-            <td>{{ deal.sale_price_value|floatformat:2|intcomma }}</td>
-            <td>—</td>
-            <td>—</td>
+            <td class="text-right">{{ deal.sale_price_value|floatformat:2|intcomma|default:"0" }}</td>
+            <td class="text-right">—</td>
+            <td class="text-right">—</td>
         </tr>
         <tr>
             <td>Stamp Duty</td>
-            <td>{{ deal.sale_price_value|floatformat:2|intcomma }}</td>
-            <td>{% if deal.plot.market_zone == 'rural' %}2%{% else %}4%{% endif %}</td>
-            <td>{{ stamp_duty|floatformat:2|intcomma }}</td>
+            <td class="text-right">{{ deal.sale_price_value|floatformat:2|intcomma|default:"0" }}</td>
+            <td class="text-right">{% if deal.plot.market_zone == 'rural' %}2%{% else %}4%{% endif %}</td>
+            <td class="text-right">{{ stamp_duty|floatformat:2|intcomma|default:"0" }}</td>
         </tr>
     </tbody>
 </table>
@@ -221,7 +332,7 @@
 <div class="warning-box">
     <strong>⚖️ Legal Notice</strong><br>
     This tax clearance schedule is for informational purposes. Final tax liability may vary based on:
-    <ul style="margin-top: 10px; margin-left: 20px;">
+    <ul>
         <li>Official government valuation report</li>
         <li>Actual acquisition cost for CGT calculation</li>
         <li>Applicable exemptions or reliefs</li>
@@ -241,7 +352,7 @@
 </div>
 
 <!-- Footer Note -->
-<div class="info-box" style="margin-top: 20px; background: #E8F5E9;">
+<div class="info-box">
     <strong>📌 Important:</strong> This tax schedule must be submitted to KRA along with the transfer documents. 
     Stamp duty must be paid before registration of the transfer at the Lands Registry.
 </div>
