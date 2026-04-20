@@ -30,6 +30,10 @@ from security.models import TwoFactorSettings, TwoFactorBackupCode, EmailOTP, Ph
 from authentication.forms import TwoFactorSetupForm, TwoFactorVerifyForm
 from notifications.notification_service import NotificationService
 from notifications.services.sms_service import TextSMSService
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+import json
+from django.http import HttpResponseRedirect
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +47,7 @@ class TwoFactorLoginView(LoginView):
         if profile and profile.has_2fa_enabled:
             self.request.session['pre_2fa_user_id'] = user.id
             self.request.session['pre_2fa_next'] = self.get_success_url()
-            return redirect('listings:two_factor_verify')
+            return HttpResponseRedirect('/two-factor/verify/')
         return super().form_valid(form)
 
 
@@ -296,6 +300,31 @@ def two_factor_verify(request):
         "phone": getattr(profile, "phone", ""),
     })
 
+@require_http_methods(["POST"])
+def resend_2fa_code(request):
+    """Resend 2FA verification code via email or SMS"""
+    try:
+        data = json.loads(request.body)
+        method = data.get('method')
+        
+        user_id = request.session.get('pre_2fa_user_id')
+        if not user_id:
+            return JsonResponse({'success': False, 'error': 'Session expired. Please login again.'}, status=400)
+        
+        user = User.objects.filter(id=user_id).first()
+        if not user:
+            return JsonResponse({'success': False, 'error': 'User not found.'}, status=400)
+        
+        ok, msg = _issue_login_otp(user, method)
+        
+        if ok:
+            return JsonResponse({'success': True, 'message': msg})
+        else:
+            return JsonResponse({'success': False, 'error': msg}, status=400)
+            
+    except Exception as e:
+        logger.error(f"Resend 2FA code error: {e}")
+        return JsonResponse({'success': False, 'error': 'An error occurred. Please try again.'}, status=500)
 
 def sign_out_all_sessions(request):
     if not request.user.is_authenticated:

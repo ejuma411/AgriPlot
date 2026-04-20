@@ -184,8 +184,8 @@ MIDDLEWARE = [
 ]
 
 # 2FA Settings
-# REQUIRE_2FA = True  # Require 2FA for all users
-# REQUIRE_2FA_ENROLLMENT = True  # Force enrollment
+REQUIRE_2FA = True  # Require 2FA for all users
+REQUIRE_2FA_ENROLLMENT = True  # Force enrollment
 
 ROOT_URLCONF = "agriplot.urls"
 

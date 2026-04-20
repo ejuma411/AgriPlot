@@ -35,7 +35,8 @@
             <input type="checkbox" name="remember_me">
             Remember me
         </label>
-        <a class="auth-link" href="{% url 'listings:password_reset' %}">Forgot your password?</a>
+        <!-- Changed to direct URL -->
+        <a class="auth-link" href="/password-reset/">Forgot your password?</a>
     </div>
 
     <button type="submit" class="auth-btn">Log In</button>

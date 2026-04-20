@@ -29,7 +29,7 @@ urlpatterns = [
     path("", include("verification.urls")),
     path('reports/', include('reports.urls')),
     path('login/', views_auth.TwoFactorLoginView.as_view(), name='login'),
-    
+    path('', include('authentication.urls')),
     path('security/', include('security.urls'))
 
 ]

@@ -2,6 +2,7 @@ from django.urls import path
 
 from authentication import views_auth
 
+app_name = 'authentication'
 
 urlpatterns = [
     path("two-factor/setup/", views_auth.two_factor_setup, name="two_factor_setup"),
@@ -12,6 +13,7 @@ urlpatterns = [
         views_auth.CustomPasswordResetView.as_view(),
         name="password_reset",
     ),
+    path("two-factor/resend-code/", views_auth.resend_2fa_code, name="resend_2fa_code"),
     path(
         "password-reset/confirm/",
         views_auth.password_reset_confirm_request,
