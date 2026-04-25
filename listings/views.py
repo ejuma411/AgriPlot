@@ -390,7 +390,7 @@ def plot_detail(request, id):
         'map_bbox': map_bbox,
         'today': date.today().strftime('%Y-%m-%d'),
         'can_start_payment': request.user.is_authenticated and not is_owner and plot.is_checkout_open,
-        'legal_workflow_url': f"{reverse('payments:flow_overview')}?plot={plot.id}",
+        'legal_workflow_url': f"{reverse('payments:create_request')}?plot={plot.id}",
         'payment_create_url': f"{reverse('payments:create_request')}?plot={plot.id}",
         'is_saved_plot': (
             request.user.is_authenticated

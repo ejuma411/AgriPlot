@@ -565,25 +565,6 @@
             </div>
             {% endif %}
 
-            <!-- Registry Owner Info -->
-            {% if plot.registry_owner_name %}
-            <div class="mt-3">
-                <div class="detail-field">
-                    <div class="detail-label">
-                        <i class="fas fa-landmark"></i> Registry Recorded Owner
-                    </div>
-                    <div class="detail-value">
-                        <strong>{{ plot.registry_owner_name }}</strong>
-                        {% if plot.registry_owner_id_number %}
-                            <br><small>ID: {{ plot.registry_owner_id_number }}</small>
-                        {% endif %}
-                        {% if plot.registry_owner_kra_pin %}
-                            <br><small>KRA PIN: {{ plot.registry_owner_kra_pin }}</small>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
 
             <div class="mt-3">
                 <div class="detail-field">

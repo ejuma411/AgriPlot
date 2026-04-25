@@ -1049,9 +1049,12 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         selected_method = self.request.POST.get("method") or self.request.POST.get("payment_method")
         method_mapping = {
             "mpesa": PaymentRequest.Method.MPESA_STK,
+            "mpesa_stk": PaymentRequest.Method.MPESA_STK,
             "card": PaymentRequest.Method.CARD,
             "bank": PaymentRequest.Method.BANK_TRANSFER,
+            "bank_transfer": PaymentRequest.Method.BANK_TRANSFER,
             "airtel": PaymentRequest.Method.AIRTEL_MONEY,
+            "airtel_money": PaymentRequest.Method.AIRTEL_MONEY,
             "wallet": PaymentRequest.Method.WALLET,
         }
         payment.method = method_mapping.get(selected_method, form.cleaned_data.get("method", PaymentRequest.Method.MPESA_STK))

@@ -292,19 +292,10 @@
             <div class="amount-display">
                 <div class="amount-label">Total Amount to Pay</div>
                 <div class="amount-value" id="amountDisplay">
-                    KES 
-                    {% if forced_amount %}
-                        {{ forced_amount|floatformat:2|intcomma }}
-                    {% elif selected_plot and selected_plot.listing_type == 'lease' %}
-                        50.00
-                    {% elif selected_plot and selected_plot.listing_type == 'sale' %}
-                        {{ selected_plot.price|floatformat:2|intcomma }}
-                    {% else %}
-                        0.00
-                    {% endif %}
+                    KES {{ form.amount.value|default:"0"|floatformat:2|intcomma }}
                 </div>
                 <div class="amount-label" style="font-size: 0.7rem; margin-top: 0.5rem;" id="amountHint">
-                    {% if selected_plot and selected_plot.listing_type == 'lease' %}Commitment fee for lease agreement{% else %}Transaction amount{% endif %}
+                    {% if current_payment_stage_label %}{{ current_payment_stage_label }}{% elif selected_plot and selected_plot.listing_type == 'lease' %}Commitment fee for lease agreement{% else %}Transaction amount{% endif %}
                 </div>
             </div>
             
@@ -317,6 +308,26 @@
                         {{ field }}
                     {% endif %}
                 {% endfor %}
+
+                <!-- Plot Selection: hidden when already pre-selected from the plot detail page -->
+                {% if selected_plot %}
+                    <input type="hidden" name="plot" value="{{ selected_plot.pk }}">
+                {% else %}
+                <div class="payment-detail-section active" style="display:block; margin-top:0; margin-bottom:1.5rem;">
+                    <h4>Select Property</h4>
+                    <div class="form-group">
+                        <label for="{{ form.plot.id_for_label }}">{{ form.plot.label }} <span class="text-danger">*</span></label>
+                        {{ form.plot }}
+                        {% if form.plot.help_text %}
+                            <small class="help-copy">{{ form.plot.help_text }}</small>
+                        {% endif %}
+                        {% for error in form.plot.errors %}
+                            <small class="text-danger d-block mt-1">{{ error }}</small>
+                        {% endfor %}
+                        <small class="help-copy">Select the land you wish to transact on. A plot is required for all payment types.</small>
+                    </div>
+                </div>
+                {% endif %}
 
                 <div class="payment-detail-section active" style="display:block; margin-top:0; margin-bottom:1.5rem;">
                     <h4>Checkout details</h4>
@@ -486,7 +497,7 @@
                     <h4>M-Pesa Payment Details</h4>
                     <div class="form-group">
                         <label for="mpesa_phone">M-Pesa Number</label>
-                        <input type="tel" name="phone_number" id="mpesa_phone" class="form-control" placeholder="0712345678">
+                        <input type="tel" name="phone_number" id="mpesa_phone" class="form-control" placeholder="0712345678" value="{{ form.phone_number.value|default:'' }}">
                         <small class="help-copy">Enter the M-Pesa registered phone number</small>
                     </div>
                     <div class="workspace-notice">
@@ -572,18 +583,7 @@
                     <p><strong>Transaction Type:</strong> <span id="summaryType">
                         {% if selected_plot and selected_plot.listing_type == 'lease' %}Lease{% elif selected_plot and selected_plot.listing_type == 'sale' %}Purchase{% else %}Service{% endif %}
                     </span></p>
-                    <p><strong>Amount:</strong> <span id="summaryAmount">
-                        KES 
-                        {% if forced_amount %}
-                            {{ forced_amount|floatformat:2|intcomma }}
-                        {% elif selected_plot and selected_plot.listing_type == 'lease' %}
-                            50.00
-                        {% elif selected_plot and selected_plot.listing_type == 'sale' %}
-                            {{ selected_plot.price|floatformat:2|intcomma }}
-                        {% else %}
-                            0.00
-                        {% endif %}
-                    </span></p>
+                    <p><strong>Amount:</strong> <span id="summaryAmount">KES {{ form.amount.value|default:"0"|floatformat:2|intcomma }}</span></p>
                     <p><strong>Payment Method:</strong> <span id="summaryMethod">Not selected</span></p>
                 </div>
             </div>
