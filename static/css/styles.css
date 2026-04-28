@@ -36,7 +36,7 @@
 }
 
 html, body {
-    font-family: Arial, sans-serif;
+    font-family: "Outfit", sans-serif;
     line-height: 1.6;
     background: var(--ag-sand-100);
     color: #1f2937;
@@ -73,12 +73,31 @@ button {
     font: inherit;
 }
 
+.form-check-input {
+    border-color: rgba(15, 74, 46, 0.28);
+}
+
+.form-check-input:checked {
+    background-color: var(--ag-green-700);
+    border-color: var(--ag-green-700);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M4.5 10.5l3.2 3.2 7.8-8.2'/%3e%3c/svg%3e");
+    background-size: 0.82rem;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.form-check-input:focus {
+    border-color: rgba(31, 139, 76, 0.48);
+    box-shadow: 0 0 0 0.2rem rgba(31, 139, 76, 0.14);
+}
+
 h1,
 h2,
 h3,
 h4,
 h5,
 h6 {
+    font-family: "Newsreader", serif;
     line-height: 1.15;
     overflow-wrap: anywhere;
 }

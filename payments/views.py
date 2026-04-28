@@ -21,6 +21,7 @@ from django.views.generic import CreateView, DetailView, ListView, TemplateView
 from django.views.decorators.csrf import csrf_exempt
 from django.utils import timezone
 from django.contrib.auth.decorators import login_required
+from accounts.access_control import resolve_access_profile
 from accounts.validators import validate_kenyan_phone
 from listings.models import Plot, UserInterest
 from notifications.notification_service import NotificationService
@@ -701,6 +702,13 @@ class PaymentDashboardView(ListView):
     model = PaymentRequest
     context_object_name = "payments"
     paginate_by = 12
+
+    def dispatch(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            access_profile = resolve_access_profile(request.user)
+            if access_profile.is_staff_workspace:
+                return redirect(f"{reverse('listings:dashboard_router')}?section=finance")
+        return super().dispatch(request, *args, **kwargs)
 
     def get_queryset(self):
         if not self.request.user.is_authenticated:
@@ -2003,9 +2011,13 @@ class PaymentDisputeCreateView(LoginRequiredMixin, View):
 @login_required
 def wallet_dashboard(request):
     """Wallet dashboard view"""
+    access_profile = resolve_access_profile(request.user)
+    if access_profile.can("wallet.view_own"):
+        return redirect(f"{reverse('listings:dashboard_router')}?section=wallet")
+    if access_profile.can("wallet.manage") or access_profile.can("finance.view_escrow"):
+        return redirect(f"{reverse('listings:dashboard_router')}?section=finance")
     wallet = WalletService.get_or_create_wallet(request.user)
     transactions = WalletService.get_transaction_history(request.user, limit=20)
-    
     context = {
         'wallet': wallet,
         'transactions': transactions,

@@ -90,5 +90,5 @@ class SurveyorUploadTests(TestCase):
                 },
             )
 
-            self.assertRedirects(response, reverse("verification:surveyor_dashboard"))
+            self.assertRedirects(response, reverse("listings:dashboard_router") + "?section=tasks")
             self.assertTrue(PlotImage.objects.filter(plot=plot, uploaded_by=user).exists())

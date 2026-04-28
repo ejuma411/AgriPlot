@@ -1963,3 +1963,49 @@ def land_full_details(request, pk):
         'map_bbox': map_bbox,
     }
     return render(request, 'listings/land_full_details.html', context)
+
+
+@login_required
+def two_factor_setup(request):
+    """
+    Two-factor authentication setup view.
+    Currently a placeholder - full implementation coming soon.
+    """
+    messages.info(request, "Two-factor authentication setup will be available in the next release.")
+    return redirect('listings:profile_management')
+
+
+@login_required
+def two_factor_verify(request):
+    """
+    Two-factor authentication verification view.
+    Currently a placeholder - full implementation coming soon.
+    """
+    messages.info(request, "Two-factor authentication verification will be available in the next release.")
+    return redirect('listings:profile_management')
+
+
+@login_required
+def sign_out_all_sessions(request):
+    """
+    Sign out all other sessions except the current one.
+    """
+    if request.method == 'POST':
+        # Get the current session key
+        current_session_key = request.session.session_key
+        
+        # Get all sessions for the user
+        from django.contrib.sessions.models import Session
+        from django.utils import timezone
+        
+        # Delete all other sessions
+        for session in Session.objects.filter(expire_date__gt=timezone.now()):
+            session_data = session.get_decoded()
+            if session_data.get('_auth_user_id') == str(request.user.id):
+                if session.session_key != current_session_key:
+                    session.delete()
+        
+        messages.success(request, "All other sessions have been signed out successfully.")
+        return redirect('listings:profile_management')
+    
+    return redirect('listings:profile_management')

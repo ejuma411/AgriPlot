@@ -285,7 +285,7 @@
         <div style="background: white; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideDown 0.3s ease;">
             
             <!-- Modal Header -->
-            <div style="background: linear-gradient(135deg, #069132 0%, #047a29 100%); color: white; padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
+            <div style="background: linear-gradient(135deg, var(--acc-olive) 0%, var(--acc-forest) 100%); color: white; padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
                 <h5 style="margin: 0; font-size: 1.25rem; font-weight: 600;">
                     <i class="fas fa-user-plus me-2"></i><span id="assignModalTitle">Assign Task</span>
                 </h5>
@@ -294,7 +294,7 @@
             
             <!-- Modal Body -->
             <div style="padding: 1.5rem;">
-                <div id="customTaskInfo" style="background: #e8f5e9; border-left: 4px solid #069132; padding: 1rem; margin-bottom: 1.5rem; border-radius: 4px; display: none;">
+                <div id="customTaskInfo" style="background: rgba(54, 95, 68, 0.10); border-left: 4px solid var(--acc-olive); padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; display: none;">
                     <p style="margin: 0 0 0.5rem 0;"><strong>Task:</strong> <span id="customTaskType"></span></p>
                     <p style="margin: 0 0 0.5rem 0;"><strong>Plot:</strong> <span id="customPlotTitle"></span></p>
                     <p style="margin: 0;"><strong>County:</strong> <span id="customPlotCounty"></span></p>
@@ -358,7 +358,7 @@
                 <button type="button" onclick="closeCustomModal()" style="padding: 0.6rem 1.2rem; border: 2px solid #6c757d; background: white; color: #6c757d; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
                     Cancel
                 </button>
-                <button type="button" onclick="assignTask()" style="padding: 0.6rem 1.2rem; background: #069132; color: white; border: none; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <button type="button" onclick="assignTask()" style="padding: 0.6rem 1.2rem; background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest)); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem;">
                     <i class="fas fa-check"></i> Assign to Officer
                 </button>
             </div>
@@ -389,18 +389,18 @@
     }
     
     .btn-success {
-        background: #069132;
+        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
         color: white;
         border: none;
     }
     
     .btn-success:hover {
-        background: #047a29;
+        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
     }
     
     /* Ensure modal is above everything */
     #customModal {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-family: "Outfit", sans-serif;
     }
 
     .officer-card {

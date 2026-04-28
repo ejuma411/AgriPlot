@@ -12,8 +12,8 @@
             <p class="page-header-subtitle">Welcome back, {{ request.user.get_full_name|default:request.user.username }}</p>
         </div>
         <div class="page-header-actions">
-            <a href="{% url 'verification:verification_dashboard' %}" class="btn">
-                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+            <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn">
+                <i class="fas fa-arrow-left me-2"></i>Back to Workspace
             </a>
         </div>
     </div>

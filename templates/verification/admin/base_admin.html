@@ -1,1496 +1,665 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}{{ page_title|default:"Admin Dashboard" }} - AgriPlot Admin{% endblock %}
+{% block title %}{{ page_title|default:"Verification Workspace" }} - AgriPlot{% endblock %}
 
 {% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/account.css' %}">
 <style>
-    :root {
-        /* Ensure admin palette is always defined */
-        --ag-green-900: #0f4a2e;
-        --ag-green-700: #1f8b4c;
-        --ag-ochre-500: #f0b429;
-        --ag-sand-100: #f7f3e8;
-
-        --primary: #1f8b4c;
-        --primary-dark: #0f4a2e;
-        --primary-light: #e8f5e9;
-        --secondary: #6c757d;
-        --success: #28a745;
-        --info: #17a2b8;
-        --warning: #f0b429;
-        --danger: #dc3545;
-        --dark: #1f2325;
-        --light: #f7f3e8;
+    .verification-workspace-shell {
+        --verify-surface: rgba(255, 255, 255, 0.95);
+        --verify-surface-soft: rgba(251, 248, 241, 0.96);
+        --verify-border: rgba(14, 45, 35, 0.12);
+        --verify-border-strong: rgba(14, 45, 35, 0.18);
+        --verify-text-soft: #5f6f63;
     }
 
-    /* Admin Layout */
-    .admin-wrapper {
-        display: flex;
-        min-height: 100vh;
-        background: var(--ag-sand-100);
-        overflow-x: hidden;
-    }
-
-    /* Footer should not sit under fixed sidebar */
-    footer {
-        margin-left: 280px;
-        width: auto;
-    }
-
-    /* Hide public site navbar on admin pages */
-    .navbar {
-        display: none;
-    }
-
-    /* Admin Sidebar */
-    .admin-sidebar {
-        width: 280px;
-        background: linear-gradient(180deg, var(--dark) 0%, #161a1c 100%);
-        color: white;
-        position: fixed;
-        height: 100vh;
-        overflow-y: auto;
-        z-index: 1000;
-        transition: all 0.3s ease;
-    }
-
-    .sidebar-header {
-        padding: 1.5rem;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-
-    .sidebar-brand {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: white;
-        text-decoration: none;
-    }
-
-    .sidebar-brand i {
-        color: var(--primary);
-        font-size: 2rem;
-    }
-
-    .sidebar-brand span {
-        background: linear-gradient(135deg, #fff, var(--primary-light));
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .sidebar-user {
-        padding: 1.5rem;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-
-    .user-avatar {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: var(--primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1.2rem;
-        color: white;
-        flex-shrink: 0;
-    }
-
-    .user-info {
-        flex: 1;
-        min-width: 0; /* Prevents text overflow */
-    }
-
-    .user-name {
-        font-weight: 600;
-        margin-bottom: 0.25rem;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .user-role {
-        font-size: 0.8rem;
-        opacity: 0.7;
-    }
-
-    /* Sidebar Navigation */
-    .sidebar-nav {
-        padding: 1.5rem 0;
-    }
-
-    .nav-section {
-        margin-bottom: 1.5rem;
-    }
-
-    .nav-section-title {
-        padding: 0 1.5rem;
-        margin-bottom: 0.75rem;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        color: rgba(255,255,255,0.5);
-    }
-
-    .nav-item {
-        display: flex;
-        align-items: center;
-        padding: 0.75rem 1.5rem;
-        color: rgba(255,255,255,0.8);
-        text-decoration: none;
-        transition: all 0.3s ease;
-        position: relative;
-    }
-
-    .nav-item:hover {
-        background: rgba(255,255,255,0.1);
-        color: white;
-    }
-
-    .nav-item.active {
-        background: var(--primary);
-        color: white;
-    }
-
-    .nav-item.active::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        width: 4px;
-        background: white;
-    }
-
-    .nav-item i {
-        width: 24px;
-        font-size: 1.1rem;
-        margin-right: 0.75rem;
-        flex-shrink: 0;
-    }
-
-    .nav-item span {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-
-    .nav-badge {
-        margin-left: auto;
-        background: var(--danger);
-        color: white;
-        padding: 0.25rem 0.5rem;
-        border-radius: 30px;
-        font-size: 0.7rem;
-        font-weight: 600;
-        flex-shrink: 0;
-    }
-
-    /* Main Content */
-    .admin-main {
-        flex: 1;
-        margin-left: 280px;
-        min-height: 100vh;
+    .verification-workspace-shell .dashboard-sidebar {
         display: flex;
         flex-direction: column;
-        max-width: 100%;
-        overflow-x: hidden;
+        min-height: calc(100vh - 2rem);
     }
 
-    /* Top Navigation */
-    .admin-topbar {
-        background: white;
-        padding: 1rem 2rem;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-        display: flex;
-        justify-content: space-between;
+    .verification-workspace-shell .dashboard-main {
+        min-height: calc(100vh - 5.5rem);
+    }
+
+    .verification-workspace-shell .dashboard-topbar {
         align-items: center;
-        position: sticky;
-        top: 0;
-        z-index: 100;
     }
 
-    .topbar-left {
+    .verification-shell-copy {
         display: flex;
-        align-items: center;
-        gap: 1rem;
-        min-width: 0; /* Allows text truncation */
+        flex-direction: column;
+        gap: 0.35rem;
     }
 
-    .sidebar-toggle {
-        display: none;
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        color: var(--secondary);
-        cursor: pointer;
-        padding: 0.5rem;
-        border-radius: 8px;
-        transition: all 0.3s ease;
-    }
-
-    .sidebar-toggle:hover {
-        background: var(--light);
-    }
-
-    .page-title {
-        font-size: 1.25rem;
-        font-weight: 600;
-        color: var(--dark);
+    .verification-shell-copy .page-title {
         margin: 0;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
-    .topbar-right {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
-        flex-shrink: 0;
+    .verification-shell-copy .page-subtitle {
+        margin: 0;
+        color: var(--verify-text-soft);
+        font-size: 0.95rem;
+        line-height: 1.45;
     }
 
-    .topbar-notifications {
-        position: relative;
-    }
-
-    .notifications-btn {
-        background: none;
-        border: none;
-        font-size: 1.2rem;
-        color: var(--secondary);
-        cursor: pointer;
-        position: relative;
-        padding: 0.5rem;
-        border-radius: 50%;
-        transition: all 0.3s ease;
-    }
-
-    .notifications-btn:hover {
-        background: var(--light);
-    }
-
-    .notifications-badge {
-        position: absolute;
-        top: 0;
-        right: 0;
-        background: var(--danger);
-        color: white;
-        font-size: 0.6rem;
-        padding: 0.2rem 0.4rem;
-        border-radius: 30px;
-        min-width: 18px;
-        text-align: center;
-    }
-
-    .topbar-profile {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        cursor: pointer;
-        padding: 0.5rem 1rem;
-        border-radius: 30px;
-        transition: all 0.3s ease;
-    }
-
-    .topbar-profile:hover {
-        background: var(--light);
-    }
-
-    .profile-avatar {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: var(--primary);
-        display: flex;
+    .workspace-sidebar-toggle {
+        display: none !important;
+        width: 2.75rem;
+        height: 2.75rem;
+        border: 1px solid rgba(14, 45, 35, 0.12);
+        border-radius: 0.9rem;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--acc-forest);
         align-items: center;
         justify-content: center;
-        color: white;
-        font-weight: 600;
-        flex-shrink: 0;
+        box-shadow: 0 12px 24px rgba(14, 45, 35, 0.08);
     }
 
-    .profile-name {
-        font-weight: 500;
-        color: var(--dark);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 150px;
+    .verification-dashboard-content {
+        display: block;
     }
 
-    /* Content Area */
-    .admin-content {
-        padding: 2rem;
-        flex: 1;
-        color: #1f2937;
-        max-width: 100%;
-        overflow-x: hidden;
+    .verification-admin-body {
+        width: 100%;
+        padding-top: 1.25rem;
     }
 
-    /* Page Header with Tabs */
     .page-header {
-        background: linear-gradient(135deg, #1f8b4c 0%, #0f4a2e 100%);
-        border-radius: 12px;
-        padding: 2rem;
-        color: white;
-        margin-bottom: 2rem;
-        max-width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--verify-border-strong);
+        border-radius: 1.1rem;
+        background:
+            linear-gradient(135deg, rgba(25, 83, 58, 0.98) 0%, rgba(15, 74, 46, 0.98) 100%);
+        color: #fff;
+        box-shadow: 0 22px 38px rgba(14, 45, 35, 0.16);
     }
 
     .page-header-content {
         display: flex;
+        align-items: flex-start;
         justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
         gap: 1rem;
+        flex-wrap: wrap;
     }
 
     .page-header-title {
-        min-width: 0; /* Allows text truncation */
-        flex: 1;
+        min-width: 0;
+        flex: 1 1 18rem;
     }
 
     .page-header-title h1 {
         margin: 0;
-        font-size: 1.8rem;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        font-size: clamp(1.65rem, 2.5vw, 2.15rem);
+        line-height: 1.1;
+        color: #fff;
     }
 
     .page-header-subtitle {
-        margin: 0.25rem 0 0 0;
-        opacity: 0.9;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        margin: 0.45rem 0 0;
+        font-size: 1rem;
+        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.86);
     }
 
     .page-header-actions {
         display: flex;
+        align-items: center;
         gap: 0.75rem;
         flex-wrap: wrap;
-        flex-shrink: 0;
     }
 
     .page-header-actions .btn {
-        background: white;
-        color: var(--primary);
-        border: none;
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        border-radius: 30px;
-        text-decoration: none;
         display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        transition: all 0.3s ease;
-        white-space: nowrap;
-    }
-
-    .page-header-actions .btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-
-    .page-header-actions .btn i {
-        font-size: 1rem;
-    }
-
-    /* Navigation Tabs */
-    .admin-tabs {
-        margin-top: 1.5rem;
-        border-top: 1px solid rgba(255,255,255,0.2);
-        padding-top: 1.5rem;
-    }
-
-    .admin-tabs .nav-tabs {
-        border-bottom: none;
-        gap: 0.5rem;
-        display: flex;
-        flex-wrap: wrap;
-    }
-
-    .admin-tabs .nav-tabs .nav-link {
-        border: none;
-        color: rgba(255,255,255,0.8);
-        font-weight: 500;
-        padding: 0.75rem 1.5rem;
-        border-radius: 30px;
-        background: rgba(255,255,255,0.1);
-        transition: all 0.3s ease;
-        display: inline-flex;
-        align-items: center;
+        justify-content: center;
+        min-height: 2.8rem;
+        padding: 0.7rem 1.1rem;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.96);
+        color: var(--acc-olive);
+        font-weight: 700;
         text-decoration: none;
-        white-space: nowrap;
+        box-shadow: 0 14px 26px rgba(14, 45, 35, 0.14);
     }
 
-    .admin-tabs .nav-tabs .nav-link:hover {
-        background: rgba(255,255,255,0.2);
-        color: white;
-        transform: translateY(-2px);
+    .page-header-actions .btn:hover,
+    .page-header-actions .btn:focus-visible {
+        transform: translateY(-1px);
     }
 
-    .admin-tabs .nav-tabs .nav-link.active {
-        background: white;
-        color: var(--primary);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    }
-
-    .admin-tabs .nav-tabs .nav-link i {
-        margin-right: 0.5rem;
-        font-size: 1rem;
-    }
-
-    .admin-tabs .nav-tabs .badge {
-        margin-left: 0.5rem;
-        font-size: 0.7rem;
-        padding: 0.35rem 0.65rem;
-    }
-
-    /* Cards */
     .admin-card {
-        background: white;
-        border-radius: 12px;
-        border: none;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
         margin-bottom: 1.5rem;
-        transition: all 0.3s ease;
-        max-width: 100%;
-    }
-
-    .admin-card:hover {
-        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        border: 1px solid var(--verify-border);
+        border-radius: 1rem;
+        background: var(--verify-surface);
+        box-shadow: 0 18px 34px rgba(14, 45, 35, 0.08);
+        overflow: hidden;
     }
 
     .admin-card-header {
-        background: white;
-        border-bottom: 2px solid #e9ecef;
-        padding: 1.25rem 1.5rem;
-        border-radius: 12px 12px 0 0 !important;
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        justify-content: space-between;
+        gap: 0.8rem;
+        padding: 1rem 1.2rem;
+        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 243, 234, 0.88));
     }
 
     .admin-card-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--dark);
         margin: 0;
-        display: flex;
+        font-size: 1.08rem;
+        line-height: 1.35;
+        color: var(--acc-forest);
+        display: inline-flex;
         align-items: center;
-        gap: 0.5rem;
-        flex-wrap: wrap;
+        gap: 0.6rem;
     }
 
     .admin-card-body {
-        padding: 1.5rem;
+        padding: 1.2rem;
+        background: var(--verify-surface);
     }
 
     .admin-card-footer {
-        background: var(--light);
-        border-top: 1px solid #e9ecef;
-        padding: 1rem 1.5rem;
-        border-radius: 0 0 12px 12px;
+        padding: 1rem 1.2rem;
+        border-top: 1px solid rgba(14, 45, 35, 0.08);
+        background: var(--verify-surface-soft);
     }
 
-    /* Stats Cards */
-    .stats-grid {
+    .verification-workspace-shell .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 2.7rem;
+        padding: 0.7rem 1.05rem;
+        border-radius: 0.9rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+    }
+
+    .verification-workspace-shell .btn:hover,
+    .verification-workspace-shell .btn:focus-visible {
+        transform: translateY(-1px);
+    }
+
+    .verification-workspace-shell .btn-primary,
+    .verification-workspace-shell .btn-success {
+        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
+        border: 1px solid rgba(14, 45, 35, 0.12);
+        color: #fff;
+        box-shadow: 0 12px 24px rgba(14, 45, 35, 0.14);
+    }
+
+    .verification-workspace-shell .btn-primary:hover,
+    .verification-workspace-shell .btn-success:hover,
+    .verification-workspace-shell .btn-primary:focus-visible,
+    .verification-workspace-shell .btn-success:focus-visible {
+        color: #fff;
+        box-shadow: 0 16px 26px rgba(14, 45, 35, 0.18);
+    }
+
+    .verification-workspace-shell .btn-outline-primary,
+    .verification-workspace-shell .btn-outline-success,
+    .verification-workspace-shell .btn-outline-secondary,
+    .verification-workspace-shell .btn-info {
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid rgba(54, 95, 68, 0.18);
+        color: var(--acc-forest);
+        box-shadow: 0 10px 18px rgba(14, 45, 35, 0.08);
+    }
+
+    .verification-workspace-shell .btn-outline-primary:hover,
+    .verification-workspace-shell .btn-outline-success:hover,
+    .verification-workspace-shell .btn-outline-secondary:hover,
+    .verification-workspace-shell .btn-info:hover,
+    .verification-workspace-shell .btn-outline-primary:focus-visible,
+    .verification-workspace-shell .btn-outline-success:focus-visible,
+    .verification-workspace-shell .btn-outline-secondary:focus-visible,
+    .verification-workspace-shell .btn-info:focus-visible {
+        background: rgba(54, 95, 68, 0.12);
+        border-color: rgba(54, 95, 68, 0.28);
+        color: var(--acc-forest);
+    }
+
+    .verification-workspace-shell .btn-warning,
+    .verification-workspace-shell .btn-outline-warning {
+        background: rgba(216, 166, 79, 0.18);
+        border: 1px solid rgba(216, 166, 79, 0.32);
+        color: #6e4c12;
+    }
+
+    .verification-workspace-shell .btn-danger,
+    .verification-workspace-shell .btn-outline-danger {
+        background: rgba(184, 59, 59, 0.12);
+        border: 1px solid rgba(184, 59, 59, 0.24);
+        color: #8d2f2f;
+    }
+
+    .verification-workspace-shell .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 1.9rem;
+        padding: 0.32rem 0.7rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+    }
+
+    .verification-workspace-shell .bg-primary,
+    .verification-workspace-shell .bg-success,
+    .verification-workspace-shell .bg-info {
+        background: rgba(54, 95, 68, 0.12) !important;
+        color: var(--acc-forest) !important;
+        border-color: rgba(54, 95, 68, 0.2);
+    }
+
+    .verification-workspace-shell .bg-warning {
+        background: rgba(216, 166, 79, 0.16) !important;
+        color: #6e4c12 !important;
+        border-color: rgba(216, 166, 79, 0.28);
+    }
+
+    .verification-workspace-shell .bg-danger {
+        background: rgba(184, 59, 59, 0.14) !important;
+        color: #8d2f2f !important;
+        border-color: rgba(184, 59, 59, 0.24);
+    }
+
+    .verification-workspace-shell .bg-secondary {
+        background: rgba(95, 111, 99, 0.14) !important;
+        color: #425247 !important;
+        border-color: rgba(95, 111, 99, 0.22);
+    }
+
+    .verification-workspace-shell .nav-tabs .nav-link,
+    .verification-workspace-shell .admin-tabs .nav-link {
+        border: 1px solid rgba(54, 95, 68, 0.12);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.92);
+        color: var(--acc-forest);
+        font-weight: 700;
+        box-shadow: 0 10px 18px rgba(14, 45, 35, 0.06);
+    }
+
+    .verification-workspace-shell .nav-tabs .nav-link.active,
+    .verification-workspace-shell .admin-tabs .nav-link.active {
+        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
+        color: #fff;
+        border-color: transparent;
+    }
+
+    .stats-grid,
+    .task-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 2rem;
+        grid-template-columns: repeat( auto-fit, minmax(220px, 1fr) );
+        gap: 1rem;
+    }
+
+    .stat-card,
+    .task-card {
+        border: 1px solid var(--verify-border);
+        border-radius: 1rem;
+        background: rgba(255, 255, 255, 0.98);
+        box-shadow: 0 14px 28px rgba(14, 45, 35, 0.08);
     }
 
     .stat-card {
-        background: white;
-        border-radius: 12px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-        border: 1px solid #e9ecef;
-        position: relative;
-        overflow: hidden;
-        transition: all 0.3s ease;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        padding: 1.15rem;
     }
 
     .stat-icon {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
-        font-size: 2.5rem;
-        color: rgba(6, 145, 50, 0.1);
+        width: 2.8rem;
+        height: 2.8rem;
+        margin-bottom: 0.9rem;
+        border-radius: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
+        box-shadow: 0 14px 24px rgba(14, 45, 35, 0.14);
     }
 
     .stat-value {
-        font-size: 2.2rem;
-        font-weight: 700;
-        color: var(--primary);
-        margin-bottom: 0.25rem;
-        line-height: 1.2;
+        font-size: clamp(1.5rem, 2vw, 2rem);
+        line-height: 1.05;
+        font-weight: 800;
+        color: var(--acc-forest);
     }
 
     .stat-label {
-        color: var(--secondary);
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
+        margin-top: 0.3rem;
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #2c4336;
     }
 
     .stat-trend {
-        margin-top: 0.5rem;
-        font-size: 0.85rem;
+        margin-top: 0.4rem;
+        color: var(--verify-text-soft);
+        font-size: 0.86rem;
+        line-height: 1.4;
     }
 
-    .trend-up {
-        color: var(--success);
+    .task-header,
+    .task-body,
+    .task-footer {
+        padding: 1rem 1.05rem;
     }
 
-    .trend-down {
-        color: var(--danger);
+    .task-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
+        background: rgba(247, 243, 234, 0.52);
     }
 
-    /* Tables */
-    .table-responsive {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    .task-title {
+        margin: 0 0 0.7rem;
+        font-size: 1rem;
+        line-height: 1.4;
+    }
+
+    .task-title a {
+        color: var(--acc-forest);
+        text-decoration: none;
+    }
+
+    .task-details {
+        display: flex;
+        flex-direction: column;
+        gap: 0.55rem;
+    }
+
+    .task-detail {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.55rem;
+        color: var(--verify-text-soft);
+        font-size: 0.92rem;
+        line-height: 1.45;
+    }
+
+    .task-footer {
+        border-top: 1px solid rgba(14, 45, 35, 0.08);
+    }
+
+    .details-table {
         width: 100%;
-        margin: 0 -1px; /* Prevents border cutoff */
-        overscroll-behavior-x: contain;
+        border-collapse: collapse;
+    }
+
+    .details-table th,
+    .details-table td {
+        padding: 0.8rem 0;
+        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
+        text-align: left;
+        vertical-align: top;
+    }
+
+    .details-table tr:last-child th,
+    .details-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .details-table th {
+        width: 38%;
+        color: var(--verify-text-soft);
+        font-weight: 600;
+    }
+
+    .details-table td {
+        color: #22372b;
+    }
+
+    .document-checklist {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+    }
+
+    .document-checklist li {
+        padding: 0.8rem 0;
+        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
+        color: #22372b;
+    }
+
+    .document-checklist li:last-child {
+        border-bottom: none;
+    }
+
+    .section-subtitle {
+        margin-bottom: 1rem;
+        color: var(--acc-forest);
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .verification-section .card,
+    .verification-section .table,
+    .verification-section .form-control,
+    .verification-section .form-select,
+    .verification-section textarea,
+    .verification-section input[type="text"],
+    .verification-section input[type="number"],
+    .verification-section input[type="date"],
+    .verification-section input[type="datetime-local"],
+    .verification-section input[type="file"] {
+        border-radius: 0.9rem;
+    }
+
+    .verification-section .card {
+        border: 1px solid rgba(14, 45, 35, 0.1);
+        box-shadow: none;
+    }
+
+    .verification-section .card-header {
+        background: rgba(247, 243, 234, 0.72);
+        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
     }
 
     .admin-table {
         width: 100%;
-        border-collapse: collapse;
-        min-width: 720px; /* Ensures table doesn't get too squished */
     }
 
-    .admin-table th {
-        background: var(--light);
-        color: var(--secondary);
-        font-weight: 600;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        padding: 1rem;
-        text-align: left;
-        border-bottom: 2px solid #e9ecef;
-        white-space: nowrap;
-    }
-
-    .admin-table td {
-        padding: 1rem;
-        border-bottom: 1px solid #e9ecef;
-        vertical-align: middle;
-        white-space: nowrap;
-    }
-
-    .admin-table tbody tr:hover td {
-        background: var(--light);
-    }
-
-    /* Badges */
-    .badge {
-        padding: 0.5rem 0.75rem;
-        font-size: 0.8rem;
-        font-weight: 500;
-        border-radius: 30px;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        white-space: nowrap;
-    }
-
-    .badge.bg-success {
-        background: #d4edda !important;
-        color: #155724;
-    }
-
-    .badge.bg-warning {
-        background: #fff3cd !important;
-        color: #856404;
-    }
-
-    .badge.bg-danger {
-        background: #f8d7da !important;
-        color: #721c24;
-    }
-
-    .badge.bg-info {
-        background: #d1ecf1 !important;
-        color: #0c5460;
-    }
-
-    .badge.bg-primary {
-        background: var(--primary) !important;
-        color: white;
-    }
-
-    .badge.bg-secondary {
-        background: var(--secondary) !important;
-        color: white;
-    }
-
-    /* Buttons */
-    .btn {
-        padding: 0.6rem 1.2rem;
-        border-radius: 8px;
-        font-weight: 500;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.3s ease;
-        border: none;
-        cursor: pointer;
-        white-space: nowrap;
-    }
-
-    .btn-sm {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.875rem;
-    }
-
-    .btn-primary {
-        background: var(--primary);
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: var(--primary-dark);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(6, 145, 50, 0.3);
-    }
-
-    .btn-outline-primary {
-        background: transparent;
-        border: 2px solid var(--primary);
-        color: var(--primary);
-    }
-
-    .btn-outline-primary:hover {
-        background: var(--primary);
-        color: white;
-    }
-
-    .btn-success {
-        background: var(--success);
-        color: white;
-    }
-
-    .btn-danger {
-        background: var(--danger);
-        color: white;
-    }
-
-    .btn-warning {
-        background: var(--warning);
-        color: #333;
-    }
-
-    .btn-info {
-        background: var(--info);
-        color: white;
-    }
-
-    /* Progress Bar */
-    .progress {
-        height: 10px;
-        background: #e9ecef;
-        border-radius: 5px;
-        overflow: hidden;
-    }
-
-    .progress-bar {
-        height: 100%;
-        background: var(--primary);
-        border-radius: 5px;
-        transition: width 0.3s ease;
-    }
-
-    /* Alert Messages */
     .alert {
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        flex-wrap: wrap;
+        border-radius: 0.95rem;
     }
 
-    .alert-success {
-        background: #d4edda;
-        color: #155724;
-        border: 1px solid #c3e6cb;
-    }
-
-    .alert-warning {
-        background: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeeba;
-    }
-
-    .alert-danger {
-        background: #f8d7da;
-        color: #721c24;
-        border: 1px solid #f5c6cb;
-    }
-
-    .alert-info {
-        background: #d1ecf1;
-        color: #0c5460;
-        border: 1px solid #bee5eb;
-    }
-
-    .alert .btn-close {
-        background: none;
-        border: none;
-        font-size: 1.2rem;
-        cursor: pointer;
-        padding: 0.5rem;
-        opacity: 0.7;
-        transition: opacity 0.3s ease;
-    }
-
-    .alert .btn-close:hover {
-        opacity: 1;
-    }
-
-    /* Modal */
-    .modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0,0,0,0.5);
-        z-index: 1050;
-        overflow-y: auto;
-        padding: 1rem;
-    }
-
-    .modal.show {
-        display: block;
-    }
-
-    .modal-dialog {
-        max-width: 500px;
-        margin: 1.75rem auto;
-    }
-
-    .modal-content {
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-        overflow: hidden;
-    }
-
-    .modal-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 2px solid #e9ecef;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-title {
-        font-size: 1.2rem;
-        font-weight: 600;
-        color: var(--dark);
-        margin: 0;
-    }
-
-    .modal-body {
-        padding: 1.5rem;
-    }
-
-    .modal-footer {
-        padding: 1.25rem 1.5rem;
-        border-top: 1px solid #e9ecef;
-        display: flex;
-        justify-content: flex-end;
-        gap: 0.5rem;
-    }
-
-    /* Form Controls */
-    .form-control,
-    .form-select {
-        width: 100%;
-        padding: 0.6rem 1rem;
-        border: 2px solid #e9ecef;
-        border-radius: 8px;
-        font-size: 1rem;
-        transition: all 0.3s ease;
-    }
-
-    .form-control:focus,
-    .form-select:focus {
-        border-color: var(--primary);
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(6, 145, 50, 0.1);
-    }
-
-    .form-label {
-        font-weight: 500;
-        color: var(--dark);
-        margin-bottom: 0.5rem;
-        display: block;
-    }
-
-    .form-check {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .form-check-input {
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-    }
-
-    .form-check-label {
-        cursor: pointer;
-    }
-
-    /* Responsive Breakpoints */
-    @media (max-width: 1200px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-    }
-
-    @media (max-width: 992px) {
-        .admin-sidebar {
-            transform: translateX(-100%);
-            box-shadow: none;
+    @media (max-width: 1024px) {
+        .verification-workspace-shell .dashboard-sidebar {
+            min-height: auto;
+            padding-bottom: 0.75rem;
         }
 
-        .admin-sidebar.show {
-            transform: translateX(0);
-            box-shadow: 0 0 30px rgba(0,0,0,0.3);
+        .verification-workspace-shell .sidebar-footer {
+            display: none;
         }
 
-        .admin-main {
+        .verification-workspace-shell .sidebar-nav {
+            padding-top: 0.75rem;
+        }
+
+        .verification-workspace-shell .dashboard-main {
             margin-left: 0;
         }
 
-        .sidebar-toggle {
-            display: block;
-        }
-
-        .profile-name {
-            max-width: 120px;
-        }
-
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-        }
-
-        footer {
-            margin-left: 0;
+        .verification-workspace-shell .dashboard-content {
+            padding-top: 0.5rem;
         }
     }
 
     @media (max-width: 768px) {
-        .admin-content {
-            padding: 1rem;
+        .verification-workspace-shell .dashboard-sidebar {
+            padding-top: 0.85rem;
         }
 
-        .page-header {
-            padding: 1.5rem;
+        .verification-workspace-shell .sidebar-brand {
+            padding-bottom: 0.85rem;
         }
 
-        .page-header-content {
-            flex-direction: column;
-            text-align: center;
+        .verification-workspace-shell .sidebar-nav {
+            gap: 0.25rem;
+            padding-top: 0.65rem;
         }
 
-        .page-header-title {
-            width: 100%;
+        .verification-workspace-shell .dashboard-main .dashboard-topbar {
+            padding-top: 0.9rem;
         }
 
-        .page-header-title h1 {
-            font-size: 1.5rem;
-            white-space: normal;
-            word-break: break-word;
+        .verification-workspace-shell .verification-admin-body {
+            padding-top: 0.75rem;
         }
 
-        .page-header-subtitle {
-            white-space: normal;
-            word-break: break-word;
+        .page-header,
+        .admin-card-body,
+        .admin-card-header,
+        .admin-card-footer,
+        .task-header,
+        .task-body,
+        .task-footer {
+            padding-left: 1rem;
+            padding-right: 1rem;
         }
 
-        .page-header-actions {
-            width: 100%;
-            justify-content: center;
-        }
-
-        .page-header-actions .btn {
-            flex: 1;
-            min-width: 140px;
-            justify-content: center;
-        }
-
-        .admin-tabs .nav-tabs {
-            flex-wrap: wrap;
-            overflow-x: visible;
-            padding-bottom: 0;
-        }
-
-        .admin-tabs .nav-tabs .nav-link {
-            padding: 0.6rem 1.2rem;
-            flex: 1 1 auto;
-            justify-content: center;
-        }
-
-        .stats-grid {
-            grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-
-        .stat-card {
-            padding: 1.25rem;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-        }
-
-        .admin-card-header {
-            padding: 1rem;
-            flex-direction: column;
-            align-items: flex-start;
-        }
-
-        .admin-card-body {
-            padding: 1rem;
-        }
-
-        .admin-card-title {
-            font-size: 1rem;
-        }
-
-        .admin-content .row {
-            row-gap: 1rem;
-        }
-
-        .badge {
-            padding: 0.4rem 0.6rem;
-            font-size: 0.75rem;
-        }
-
-        .topbar-right {
-            gap: 0.5rem;
-        }
-
-        .notifications-btn {
-            padding: 0.4rem;
-        }
-
-        .topbar-profile {
-            padding: 0.4rem 0.8rem;
-        }
-
-        .profile-name {
-            max-width: 100px;
-        }
-
-        .page-title {
-            white-space: normal;
-            overflow: visible;
-            text-overflow: clip;
-        }
-
-        .table-responsive {
-            overflow-x: visible;
-        }
-
-        .admin-table {
-            min-width: 0;
-        }
-
-        .admin-table th,
-        .admin-table td {
-            white-space: normal;
-            word-break: break-word;
-        }
-    }
-
-    @media (max-width: 640px) {
-        .admin-topbar {
-            padding: 0.75rem 1rem;
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 0.75rem;
-        }
-        .topbar-right {
-            width: 100%;
-            justify-content: space-between;
-        }
-        .page-title {
-            font-size: 1.1rem;
-        }
-    }
-    @media (max-width: 576px) {
-        .page-header-actions {
-            flex-direction: column;
-        }
-
-        .page-header-actions .btn {
-            width: 100%;
-        }
-
-        .admin-tabs .nav-tabs .nav-link span {
-            display: none;
-        }
-
-        .admin-tabs .nav-tabs .nav-link i {
-            margin-right: 0;
-            font-size: 1.2rem;
-        }
-
-        .admin-tabs .nav-tabs .badge {
-            display: none;
-        }
-
-        .stat-card {
-            padding: 1rem;
-        }
-
-        .stat-value {
-            font-size: 1.8rem;
-        }
-
-        .stat-icon {
-            font-size: 2rem;
-        }
-
-        .btn-group {
-            flex-direction: column;
-            width: 100%;
-        }
-
-        .btn-group .btn {
-            width: 100%;
-            border-radius: 8px !important;
-            margin: 0.25rem 0;
-        }
-
-        .modal-dialog {
-            margin: 0.5rem;
-        }
-
-        .modal-header,
-        .modal-body,
-        .modal-footer {
-            padding: 1rem;
-        }
-    }
-
-    @media (max-width: 992px) {
-        .admin-content .row > [class*="col-"] {
-            flex: 0 0 100%;
-            max-width: 100%;
-        }
-    }
-
-    /* Landscape mode on phones */
-    @media (max-height: 500px) and (orientation: landscape) {
-        .admin-sidebar {
-            width: 240px;
-        }
-
-        .sidebar-user {
-            padding: 1rem;
-        }
-
-        .user-avatar {
-            width: 36px;
-            height: 36px;
-            font-size: 1rem;
-        }
-
-        .nav-item {
-            padding: 0.5rem 1rem;
-        }
-
-        .admin-content {
-            padding: 0.75rem;
-        }
-
-        .page-header {
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .page-header-title h1 {
-            font-size: 1.3rem;
-        }
-    }
-
-    /* Touch-friendly improvements */
-    @media (hover: none) and (pointer: coarse) {
-        .btn, 
-        .nav-link,
-        .sidebar-toggle,
-        .notifications-btn,
-        .topbar-profile {
-            min-height: 44px;
-        }
-
-        .btn-sm {
-            min-height: 36px;
-        }
-
-        input, 
-        select, 
-        textarea {
-            font-size: 16px !important; /* Prevents zoom on iOS */
-        }
-    }
-
-    /* Print styles */
-    @media print {
-        .admin-sidebar,
-        .admin-topbar,
         .page-header-actions,
-        .btn,
-        .admin-tabs,
-        .badge {
-            display: none !important;
+        .verification-workspace-shell .topbar-right {
+            width: 100%;
         }
 
-        .admin-main {
-            margin-left: 0;
+        .page-header-actions .btn,
+        .verification-workspace-shell .topbar-right a {
+            width: 100%;
+            justify-content: center;
         }
 
-        .admin-card {
-            break-inside: avoid;
-            box-shadow: none;
-            border: 1px solid #ddd;
+        .details-table th,
+        .details-table td {
+            display: block;
+            width: 100%;
+            padding-top: 0.45rem;
+            padding-bottom: 0.45rem;
         }
 
-        .page-header {
-            background: none;
-            color: black;
-            padding: 1rem;
+        .details-table th {
+            padding-bottom: 0.15rem;
         }
-
-        .page-header-title h1 {
-            color: black;
-        }
-    }
-
-    /* Loading states */
-    .btn:disabled {
-        opacity: 0.65;
-        cursor: not-allowed;
-        pointer-events: none;
-    }
-
-    /* Focus states for accessibility */
-    .btn:focus,
-    .nav-link:focus,
-    .form-control:focus,
-    .sidebar-toggle:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(6, 145, 50, 0.25);
-    }
-
-    /* Smooth transitions */
-    .admin-card,
-    .btn,
-    .nav-link,
-    .sidebar-toggle,
-    .stat-card {
-        transition: all 0.3s ease;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="admin-wrapper">
-    <!-- Sidebar -->
-    <aside class="admin-sidebar" id="adminSidebar">
-        <div class="sidebar-header">
-            <a href="{% url 'verification:verification_dashboard' %}" class="sidebar-brand">
-                <i class="fas fa-leaf"></i>
-                <span>AgriPlot Admin</span>
-            </a>
-        </div>
-
-        <div class="sidebar-user">
-            <div class="user-avatar">
-                {{ request.user.get_full_name|default:request.user.username|first|upper }}
-            </div>
-            <div class="user-info">
-                <div class="user-name">{{ request.user.get_full_name|default:request.user.username }}</div>
-                <div class="user-role">
-                    {% if request.user.is_superuser %}
-                        Super Administrator
-                    {% elif request.user.is_staff %}
-                        Administrator
-                    {% else %}
-                        Staff
-                    {% endif %}
-                </div>
-            </div>
+<div class="dashboard-wrapper workspace-dashboard verification-workspace-shell">
+    <aside class="dashboard-sidebar" id="verificationSidebar">
+        <div class="sidebar-brand">
+            <i class="fas fa-shield-alt" aria-hidden="true"></i>
+            <span>Verification</span>
         </div>
 
         <nav class="sidebar-nav">
-            <!-- Main Navigation -->
-            <div class="nav-section">
-                <div class="nav-section-title">Main</div>
-                {% if request.user.is_superuser %}
-                <a href="{% url 'verification:verification_dashboard' %}" 
-                   class="nav-item {% if request.resolver_match.url_name == 'verification_dashboard' %}active{% endif %}">
-                    <i class="fas fa-chart-pie"></i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="{% url 'verification:verification_queue' %}" 
-                   class="nav-item {% if request.resolver_match.url_name == 'verification_queue' %}active{% endif %}">
-                    <i class="fas fa-list"></i>
-                    <span>Verification Queue</span>
-                    {% if stats and stats.pending_review %}
-                        {% if stats.pending_review > 0 %}
-                        <span class="nav-badge">{{ stats.pending_review }}</span>
-                        {% endif %}
-                    {% endif %}
-                </a>
-                {% endif %}
-                {% if request.user.is_superuser %}
-                <a href="{% url 'verification:task_assignment' %}" 
-                   class="nav-item {% if request.resolver_match.url_name == 'task_assignment' %}active{% endif %}">
-                    <i class="fas fa-tasks"></i>
-                    <span>Task Assignment</span>
-                    {% if task_stats and task_stats.pending %}
-                        {% if task_stats.pending > 0 %}
-                        <span class="nav-badge">{{ task_stats.pending }}</span>
-                        {% endif %}
-                    {% endif %}
-                </a>
-                {% endif %}
-                <a href="{% url 'verification:my_tasks' %}" 
-                   class="nav-item {% if request.resolver_match.url_name == 'my_tasks' %}active{% endif %}">
-                    <i class="fas fa-user-check"></i>
-                    <span>My Tasks</span>
-                    {% if my_tasks_count %}
-                        {% if my_tasks_count > 0 %}
-                        <span class="nav-badge">{{ my_tasks_count }}</span>
-                        {% endif %}
-                    {% endif %}
-                </a>
-            </div>
-
-            <!-- Reports Section -->
-            {% if request.user.is_superuser %}
-            <div class="nav-section">
-                <div class="nav-section-title">Reports</div>
-                <a href="{% url 'verification:analytics_dashboard' %}" 
-                class="nav-item {% if request.resolver_match.url_name == 'analytics_dashboard' %}active{% endif %}">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Analytics</span>
-                </a>
-                <a href="{% url 'verification:export_report' %}?type=verification&days=30" class="nav-item">
-                    <i class="fas fa-download"></i>
-                    <span>Export Data</span>
-                </a>
-            </div>
+            <a href="{% url 'listings:dashboard_router' %}?section=overview" class="nav-item{% if request.resolver_match.url_name == 'dashboard_router' and request.GET.section != 'tasks' %} active{% endif %}">
+                <i class="fas fa-home" aria-hidden="true"></i>
+                <span>Workspace Home</span>
+            </a>
+            <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="nav-item{% if request.GET.section == 'tasks' %} active{% endif %}">
+                <i class="fas fa-list-check" aria-hidden="true"></i>
+                <span>Task Inbox</span>
+            </a>
+            <a href="{% url 'listings:dashboard_router' %}?section=verification" class="nav-item{% if request.GET.section == 'verification' %} active{% endif %}">
+                <i class="fas fa-check-circle" aria-hidden="true"></i>
+                <span>Verification Queue</span>
+            </a>
+            <a href="{% url 'verification:my_tasks' %}" class="nav-item{% if request.resolver_match.url_name == 'my_tasks' %} active{% endif %}">
+                <i class="fas fa-clipboard-list" aria-hidden="true"></i>
+                <span>Detailed Task View</span>
+            </a>
+            {% if request.user.is_staff or request.user.is_superuser %}
+            <a href="{% url 'verification:task_assignment' %}" class="nav-item{% if request.resolver_match.url_name == 'task_assignment' %} active{% endif %}">
+                <i class="fas fa-user-check" aria-hidden="true"></i>
+                <span>Task Assignment</span>
+            </a>
+            <a href="{% url 'verification:verification_queue' %}" class="nav-item{% if request.resolver_match.url_name == 'verification_queue' %} active{% endif %}">
+                <i class="fas fa-layer-group" aria-hidden="true"></i>
+                <span>Review Board</span>
+            </a>
             {% endif %}
-
-            <!-- Management -->
             {% if request.user.is_superuser %}
-            <div class="nav-section">
-                <div class="nav-section-title">Management</div>
-                <a href="{% url 'listings:my_plots' %}" class="nav-item">
-                    <i class="fas fa-map-marked-alt"></i>
-                    <span>All Plots</span>
-                </a>
-                <a href="{% url 'verification:registry_parcels' %}"
-                   class="nav-item {% if request.resolver_match.url_name == 'registry_parcels' %}active{% endif %}">
-                    <i class="fas fa-barcode"></i>
-                    <span>Registry Parcels</span>
-                </a>
-                <a href="{% url 'verification:system_construction_journal' %}"
-                   class="nav-item {% if request.resolver_match.url_name == 'system_construction_journal' %}active{% endif %}">
-                    <i class="fas fa-clipboard-list"></i>
-                    <span>System Journal</span>
-                </a>
-                <a href="{% url 'verification:audit_logs' %}"
-                   class="nav-item {% if request.resolver_match.url_name == 'audit_logs' %}active{% endif %}">
-                    <i class="fas fa-shield-alt"></i>
-                    <span>Audit Logs</span>
-                </a>               
-            </div>
+            <a href="{% url 'verification:registry_parcels' %}" class="nav-item{% if request.resolver_match.url_name == 'registry_parcels' %} active{% endif %}">
+                <i class="fas fa-map" aria-hidden="true"></i>
+                <span>Registry Reference</span>
+            </a>
             {% endif %}
-
-            <!-- User Menu -->
-            <div class="nav-section">
-                <div class="nav-section-title">Account</div>
-                <a href="{% url 'listings:profile_management' %}" class="nav-item">
-                    <i class="fas fa-user-circle"></i>
-                    <span>My Profile</span>
-                </a>
-                <a href="{% url 'listings:logout' %}" class="nav-item">
-                    <i class="fas fa-sign-out-alt"></i>
-                    <span>Logout</span>
-                </a>
-            </div>
+            <a href="{% url 'listings:dashboard_router' %}?section=audit" class="nav-item{% if request.GET.section == 'audit' %} active{% endif %}">
+                <i class="fas fa-shield-halved" aria-hidden="true"></i>
+                <span>Audit Trail</span>
+            </a>
         </nav>
+
+        <div class="sidebar-footer">
+            <div class="user-info">
+                <div class="user-avatar">{{ request.user.get_full_name|default:request.user.username|first|upper }}</div>
+                <div class="user-details">
+                    <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="user-role">Verification Workspace</p>
+                </div>
+            </div>
+        </div>
     </aside>
 
-    <!-- Main Content -->
-    <main class="admin-main">
-        <!-- Top Bar -->
-        <div class="admin-topbar">
+    <main class="dashboard-main">
+        <div class="dashboard-topbar">
             <div class="topbar-left">
-                <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
-                    <i class="fas fa-bars"></i>
+                <button class="workspace-sidebar-toggle" id="verificationSidebarToggle" type="button" aria-label="Toggle verification navigation" aria-expanded="false">
+                    <i class="fas fa-bars" aria-hidden="true"></i>
                 </button>
-                <h5 class="page-title">{{ page_title|default:"Dashboard" }}</h5>
+                <div class="verification-shell-copy">
+                    <h1 class="page-title">{{ page_title|default:"Verification Workspace" }}</h1>
+                    <p class="page-subtitle">Verification, fieldwork, and legal review now run inside the shared workspace instead of a separate admin dashboard.</p>
+                </div>
             </div>
             <div class="topbar-right">
-                <div class="topbar-notifications">
-                    <button class="notifications-btn" aria-label="Notifications">
-                        <i class="fas fa-bell"></i>
-                        {% if notification_count %}
-                            {% if notification_count > 0 %}
-                            <span class="notifications-badge">{{ notification_count }}</span>
-                            {% endif %}
-                        {% endif %}
-                    </button>
-                </div>
-                {% comment %} <div class="topbar-profile" onclick="location.href='{% url 'listings:profile_management' %}'" role="button" tabindex="0">
-                    <div class="profile-avatar">
-                        {{ request.user.get_full_name|default:request.user.username|first|upper }}
+                <a href="{% url 'listings:notifications_inbox' %}" class="workspace-role-chip">
+                    <i class="fas fa-inbox" aria-hidden="true"></i>
+                    <span>Inbox</span>
+                </a>
+                <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="workspace-badge">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                    <span>Back to Task Inbox</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="dashboard-content verification-dashboard-content">
+            <div class="content-left verification-admin-body">
+                {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">
+                        {{ message }}
                     </div>
-                    <span class="profile-name">{{ request.user.get_full_name|default:request.user.username|truncatechars:15 }}</span>
-                    <i class="fas fa-chevron-down"></i>
-                </div> {% endcomment %}
-            </div>
-        </div>
+                    {% endfor %}
+                {% endif %}
 
-        <!-- Messages Display -->
-        {% if messages %}
-        <div class="admin-content" style="padding-bottom: 0;" role="status" aria-live="polite" aria-atomic="true">
-            {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% elif message.tags == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-                    <span>{{ message }}</span>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close">×</button>
+                {% block admin_content %}{% endblock %}
             </div>
-            {% endfor %}
-        </div>
-        {% endif %}
-
-        <!-- Content Area -->
-        <div class="admin-content">
-            {% block admin_content %}{% endblock %}
         </div>
     </main>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Sidebar Toggle
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const adminSidebar = document.getElementById('adminSidebar');
-    
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            adminSidebar.classList.toggle('show');
-            
-            // Update aria-expanded for accessibility
-            const expanded = adminSidebar.classList.contains('show');
-            sidebarToggle.setAttribute('aria-expanded', expanded);
-        });
-    }
-
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', function(event) {
-        if (window.innerWidth <= 992) {
-            const isClickInside = adminSidebar.contains(event.target) || 
-                                 (sidebarToggle && sidebarToggle.contains(event.target));
-            if (!isClickInside && adminSidebar.classList.contains('show')) {
-                adminSidebar.classList.remove('show');
-                if (sidebarToggle) {
-                    sidebarToggle.setAttribute('aria-expanded', 'false');
-                }
-            }
-        }
-    });
-
-    // Handle escape key to close sidebar
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape' && adminSidebar.classList.contains('show')) {
-            adminSidebar.classList.remove('show');
-            if (sidebarToggle) {
-                sidebarToggle.setAttribute('aria-expanded', 'false');
-                sidebarToggle.focus();
-            }
-        }
-    });
-
-    // Active nav item highlighting based on current URL
-    const currentPath = window.location.pathname;
-    document.querySelectorAll('.nav-item').forEach(item => {
-        const href = item.getAttribute('href');
-        if (href && currentPath.startsWith(href) && href !== '/') {
-            item.classList.add('active');
-        }
-    });
-
-    // Auto-dismiss alerts after 5 seconds
-    const alerts = document.querySelectorAll('.alert');
-    alerts.forEach(alert => {
-        setTimeout(() => {
-            if (alert) {
-                alert.style.transition = 'opacity 0.5s ease';
-                alert.style.opacity = '0';
-                setTimeout(() => {
-                    if (alert && alert.parentNode) {
-                        alert.remove();
-                    }
-                }, 500);
-            }
-        }, 5000);
-    });
-
-    // Handle responsive tables
-    const tables = document.querySelectorAll('.admin-table');
-    tables.forEach(table => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'table-responsive';
-        table.parentNode.insertBefore(wrapper, table);
-        wrapper.appendChild(table);
-    });
-});
-</script>
 {% endblock %}

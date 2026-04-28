@@ -16,6 +16,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
 from django.db.models import Q, Count
 from django.utils.dateparse import parse_date
+from django.urls import reverse
 from listings.models import *  # noqa: F403
 from security.models import AuditLog
 from verification.verification_service import VerificationService
@@ -24,6 +25,10 @@ from registry_mock.models import RegistryMismatchAttempt
 
 # Add this logger definition
 logger = logging.getLogger(__name__)
+
+
+def _workspace_redirect(section):
+    return redirect(f"{reverse('listings:dashboard_router')}?section={section}")
 
 # Add this to views_admin.py - somewhere after your other imports
 
@@ -104,7 +109,7 @@ def extension_officer_required(view_func):
 
 @staff_member_required
 def verification_dashboard(request):
-    """Main verification dashboard showing stats and queues"""
+    return _workspace_redirect("verification")
     
     # Get content type for Plot
     plot_content_type = ContentType.objects.get_for_model(Plot)
@@ -1310,7 +1315,7 @@ def complete_task_view(request, task_id):
         else:
             messages.warning(request, f"Task completed with notes.")
         
-        return redirect('verification:my_tasks')
+        return redirect(f"{reverse('listings:dashboard_router')}?section=tasks")
     
     context = {
         'task': task,
@@ -1455,55 +1460,7 @@ User = get_user_model()
 
 @staff_member_required
 def admin_dashboard(request):
-    """Custom admin dashboard view with detailed verification stats"""
-    
-    # Basic counts
-    total_plots = Plot.objects.count()
-    total_users = User.objects.count()
-    
-    # Detailed verification stats
-    verification_stats = {
-        'completed': VerificationStatus.objects.filter(is_complete=True).count(),
-        'in_progress': VerificationStatus.objects.filter(is_complete=False, current_stage__isnull=False).count(),
-        'not_started': Plot.objects.filter(verification__isnull=True).count(),
-    }
-    
-    # Stage breakdown
-    stage_breakdown = VerificationStatus.objects.filter(
-        is_complete=False
-    ).values('current_stage').annotate(count=Count('id'))
-    
-    # Transaction stats
-    total_transactions = PaymentRequest.objects.count()
-    completed_transactions = PaymentRequest.objects.filter(status='released').count()
-    
-    # Plot market status
-    market_status_counts = Plot.objects.values('market_status').annotate(count=Count('id'))
-    
-    # Calculate percentages
-    verification_progress = int((verification_stats['completed'] / total_plots * 100)) if total_plots > 0 else 0
-    completion_rate = int((completed_transactions / total_transactions * 100)) if total_transactions > 0 else 0
-    
-    context = {
-        'page_title': 'Admin Dashboard',
-        'active_tab': 'dashboard',
-        'total_plots': total_plots,
-        'verified_plots': verification_stats['completed'],
-        'pending_verification': verification_stats['in_progress'] + verification_stats['not_started'],
-        'verification_in_progress': verification_stats['in_progress'],
-        'verification_not_started': verification_stats['not_started'],
-        'stage_breakdown': stage_breakdown,
-        'total_users': total_users,
-        'total_transactions': total_transactions,
-        'completed_transactions': completed_transactions,
-        'pending_transactions': total_transactions - completed_transactions,
-        'market_status_counts': market_status_counts,
-        'verification_progress': verification_progress,
-        'completion_rate': completion_rate,
-        'recent_activities': [],
-    }
-    
-    return render(request, 'listings/admin/dashboard.html', context)
+    return _workspace_redirect("overview")
 
 def export_audit_logs_pdf(request):
     """Export audit logs as PDF using WeasyPrint"""
@@ -1594,4 +1551,3 @@ def export_audit_logs_pdf(request):
     response['Content-Length'] = pdf_file.tell()
     
     return response
-

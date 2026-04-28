@@ -1,31 +1,91 @@
-{% extends "base.html" %}
+{% extends "verification/admin/base_admin.html" %}
 
-{% block title %}Extension Report - {{ plot.title }}{% endblock %}
+{% block title %}{% if report.surveyor %}Surveyor Report{% else %}Extension Report{% endif %} - {{ plot.title }}{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h2 class="mb-0">Extension Report</h2>
-        <a href="{% url 'verification:extension_dashboard' %}" class="btn btn-outline-secondary">Back</a>
+{% block admin_content %}
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="page-header-title">
+            <h1>{% if report.surveyor %}Surveyor Report{% else %}Extension Report{% endif %}</h1>
+            <p class="page-header-subtitle">{{ plot.title }}</p>
+        </div>
+        <div class="page-header-actions">
+            <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn">
+                <i class="fas fa-arrow-left me-2"></i>Back to Task Inbox
+            </a>
+        </div>
     </div>
+</div>
 
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <h5 class="card-title mb-3">{{ plot.title }}</h5>
+<div class="row g-4">
+    <div class="col-12 col-xl-4">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title"><i class="fas fa-file-lines"></i>Report Summary</h5>
+            </div>
+            <div class="admin-card-body">
+                <table class="details-table">
+                    <tr>
+                        <th>Plot</th>
+                        <td>{{ plot.title }}</td>
+                    </tr>
             {% if report.officer %}
-            <p class="mb-1"><strong>Officer:</strong> {{ report.officer.user.get_full_name|default:report.officer.user.username }}</p>
+                    <tr>
+                        <th>Officer</th>
+                        <td>{{ report.officer.user.get_full_name|default:report.officer.user.username }}</td>
+                    </tr>
             {% endif %}
             {% if report.surveyor %}
-            <p class="mb-1"><strong>Surveyor:</strong> {{ report.surveyor.user.get_full_name|default:report.surveyor.user.username }}</p>
+                    <tr>
+                        <th>Surveyor</th>
+                        <td>{{ report.surveyor.user.get_full_name|default:report.surveyor.user.username }}</td>
+                    </tr>
             {% endif %}
-            <p class="mb-1"><strong>Visit Date:</strong> {{ report.visit_date|date:"Y-m-d H:i" }}</p>
-            <p class="mb-0"><strong>Recommendation:</strong> {{ report.get_recommendation_display }}</p>
+                    <tr>
+                        <th>Visit Date</th>
+                        <td>{{ report.visit_date|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Recommendation</th>
+                        <td>{{ report.get_recommendation_display }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title"><i class="fas fa-location-dot"></i>Plot Context</h5>
+            </div>
+            <div class="admin-card-body">
+                <table class="details-table">
+                    <tr>
+                        <th>Location</th>
+                        <td>{% if plot.county %}{{ plot.county }}{% if plot.subcounty %} - {{ plot.subcounty }}{% endif %}{% else %}{{ plot.location }}{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <th>Parcel No.</th>
+                        <td>{{ plot.parcel_number|default:"Not provided" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Area</th>
+                        <td>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Listing Type</th>
+                        <td>{{ plot.get_listing_type_display }}</td>
+                    </tr>
+                </table>
+            </div>
         </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body">
-            <h6 class="mb-3">Summary</h6>
+    <div class="col-12 col-xl-8">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title"><i class="fas fa-clipboard-check"></i>Findings</h5>
+            </div>
+            <div class="admin-card-body">
             {% if report.overall_suitability %}
             <p class="mb-2"><strong>Overall Suitability:</strong> {{ report.get_overall_suitability_display }}</p>
             {% endif %}

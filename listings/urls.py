@@ -51,6 +51,11 @@ urlpatterns = [
     path("analytics/track/", views.track_ux_event, name="track_ux_event"),
     path("get-subcounties/", views.get_subcounties, name="get_subcounties"),
 
+    # Settings
+    path('two-factor/setup/', views.two_factor_setup, name='two_factor_setup'),
+    path('two-factor/verify/', views.two_factor_verify, name='two_factor_verify'),
+    path('sessions/sign-out-all/', views.sign_out_all_sessions, name='sign_out_all_sessions'),
+
     # Backward compatibility redirects
     path("register/Seller/", RedirectView.as_view(pattern_name="listings:register_landowner", permanent=True), name="register_Seller"),
     path("register/broker/", RedirectView.as_view(pattern_name="listings:register_agent", permanent=True), name="register_broker"),

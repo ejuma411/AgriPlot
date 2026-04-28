@@ -10,6 +10,9 @@
 
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Shared Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -396,6 +399,26 @@
     <script>
         // Page type detection for screenshot protection
         (function() {
+            const runWhenBodyReady = function(callback) {
+                if (document.body) {
+                    callback(document.body);
+                    return;
+                }
+                document.addEventListener('DOMContentLoaded', function onReady() {
+                    document.removeEventListener('DOMContentLoaded', onReady);
+                    if (document.body) {
+                        callback(document.body);
+                    }
+                });
+            };
+
+            const withBody = function(callback) {
+                const body = document.body;
+                if (body) {
+                    callback(body);
+                }
+            };
+
             // Detect page type from URL
             const currentPath = window.location.pathname;
             let pageType = 'normal';
@@ -424,14 +447,16 @@
             
             // Add class to body for CSS protection
             if (isSensitive) {
-                document.body.classList.add('sensitive-page');
-                document.body.classList.add(`${pageType}-page`);
-                document.body.setAttribute('data-page-type', pageType);
-                
-                // Add user-specific watermark
-                const watermarkText = `{{ user.username|default:"Guest" }} | ${new Date().toISOString().slice(0,19)} | ${window.location.hostname}`;
-                document.body.setAttribute('data-watermark-enabled', 'true');
-                document.body.setAttribute('data-watermark-text', watermarkText);
+                runWhenBodyReady(function(body) {
+                    body.classList.add('sensitive-page');
+                    body.classList.add(`${pageType}-page`);
+                    body.setAttribute('data-page-type', pageType);
+
+                    // Add user-specific watermark
+                    const watermarkText = `{{ user.username|default:"Guest" }} | ${new Date().toISOString().slice(0,19)} | ${window.location.hostname}`;
+                    body.setAttribute('data-watermark-enabled', 'true');
+                    body.setAttribute('data-watermark-text', watermarkText);
+                });
             }
             
             // Detect screenshot key combinations
@@ -442,9 +467,13 @@
                 if (e.key === 'PrintScreen') {
                     e.preventDefault();
                     screenshotAttempts++;
-                    document.body.classList.add('screenshot-attempt');
+                    withBody(function(body) {
+                        body.classList.add('screenshot-attempt');
+                    });
                     setTimeout(() => {
-                        document.body.classList.remove('screenshot-attempt');
+                        withBody(function(body) {
+                            body.classList.remove('screenshot-attempt');
+                        });
                     }, 500);
                     
                     // Log screenshot attempt
@@ -458,9 +487,13 @@
                 if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 's' || e.key === 'S')) {
                     e.preventDefault();
                     screenshotAttempts++;
-                    document.body.classList.add('screenshot-attempt');
+                    withBody(function(body) {
+                        body.classList.add('screenshot-attempt');
+                    });
                     setTimeout(() => {
-                        document.body.classList.remove('screenshot-attempt');
+                        withBody(function(body) {
+                            body.classList.remove('screenshot-attempt');
+                        });
                     }, 500);
                     return false;
                 }
@@ -486,7 +519,9 @@
             Object.defineProperty(element, 'id', {
                 get: function() {
                     devtoolsOpen = true;
-                    document.body.classList.add('devtools-open');
+                    withBody(function(body) {
+                        body.classList.add('devtools-open');
+                    });
                 }
             });
             
@@ -495,9 +530,13 @@
                 console.log(element);
                 console.clear();
                 if (devtoolsOpen) {
-                    document.body.classList.add('devtools-open');
+                    withBody(function(body) {
+                        body.classList.add('devtools-open');
+                    });
                 } else {
-                    document.body.classList.remove('devtools-open');
+                    withBody(function(body) {
+                        body.classList.remove('devtools-open');
+                    });
                 }
             }, 1000);
             
@@ -560,107 +599,28 @@
 
                 <!-- Authenticated User Menu -->
                 {% if user.is_authenticated %}
-                    <!-- Dashboard Link - Routes to appropriate dashboard -->
-                    {% if not user.profile.role == 'buyer' %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'listings:dashboard_router' %}" data-analytics="nav_dashboard">
                             <i class="fas fa-chart-line me-1"></i> Dashboard
-                            {% if user.is_superuser and stats.pending_review %}
-                                <span class="badge bg-danger ms-1">{{ stats.pending_review }}</span>
-                            {% elif user.extension_officer and extension_tasks_count %}
-                                <span class="badge bg-success ms-1">{{ extension_tasks_count }}</span>
-                            {% endif %}
                         </a>
                     </li>
-                    {% endif %}
-
-                    {% if user.is_superuser or user.is_staff or show_payment_admin_nav %}
-                    <li class="nav-item">
-                        <a class="nav-link nav-activity-link" href="{% url 'payments:dashboard' %}" data-analytics="nav_payment_admin_tasks">
-                            <i class="fas fa-money-check-dollar me-1"></i> Payment Admin Tasks
-                            {% if payment_admin_task_count %}
-                                <span class="nav-activity-badge">{{ payment_admin_task_count }}</span>
-                            {% endif %}
-                        </a>
-                    </li>
-                    {% endif %}
-
-                    <!-- Role-specific quick links -->
-                    {% if user.is_superuser or user.is_staff or show_payment_admin_nav %}
-                        <!-- Staff/Admin Quick Links -->
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" id="staffDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-shield-alt me-1"></i> Admin
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'verification:verification_queue' %}" data-analytics="admin_verification_queue">
-                                    <i class="fas fa-list me-2"></i>Verification Queue
-                                    {% if stats.pending_review %}<span class="badge bg-danger">{{ stats.pending_review }}</span>{% endif %}
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'verification:task_assignment' %}">
-                                    <i class="fas fa-tasks me-2"></i>Task Assignment
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'verification:my_tasks' %}">
-                                    <i class="fas fa-user-check me-2"></i>My Tasks
-                                    {% if my_tasks_count %}<span class="badge bg-success">{{ my_tasks_count }}</span>{% endif %}
-                                </a></li>
-                                <li><a class="dropdown-item" href="{% url 'payments:dashboard' %}" data-analytics="admin_payment_tasks">
-                                    <i class="fas fa-money-check-dollar me-2"></i>Payment Admin Tasks
-                                    {% if payment_admin_task_count %}<span class="badge bg-danger">{{ payment_admin_task_count }}</span>{% endif %}
-                                </a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="{% url 'verification:analytics_dashboard' %}">
-                                    <i class="fas fa-chart-line me-2"></i>Analytics
-                                </a></li>
-                            </ul>
-                        </li>
-                    {% endif %}
-
-                    {% if user.is_superuser or user.extension_officer %}
-                        <!-- Extension Officer Quick Links -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'verification:extension_dashboard' %}">
-                                <i class="fas fa-leaf me-1"></i> Extension
-                                {% if extension_tasks_count %}
-                                    <span class="badge bg-success">{{ extension_tasks_count }}</span>
-                                {% endif %}
-                            </a>
-                        </li>
-                    {% endif %}
-
-                    {% if user.is_superuser or user.land_surveyor %}
-                        <!-- Land Surveyor Quick Links -->
-                        <li class="nav-item">
-                            <a class="nav-link" href="{% url 'verification:surveyor_dashboard' %}">
-                                <i class="fas fa-map-marked-alt me-1"></i> Surveyor
-                            </a>
-                        </li>
-                    {% endif %}
 
                     {% if user.agent or user.landownerprofile %}
-                        <li class="nav-item">
-                            <a class="nav-link nav-activity-link" href="{% url 'listings:buyer_interests' %}">
-                                <i class="fas fa-envelope me-1"></i> Messages
-                                {% if nav_unread_buyer_messages_count %}
-                                    <span class="nav-activity-badge">{{ nav_unread_buyer_messages_count }}</span>
-                                {% endif %}
-                            </a>
-                        </li>
                         <!-- Agent/Landowner Quick Links -->
                         <li class="nav-item dropdown">
                             <a class="nav-link dropdown-toggle" href="#" id="SellerDropdown" role="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-store me-1"></i> My Listings
+                                <i class="fas fa-store me-1"></i> Listings
                             </a>
                             <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="{% url 'listings:my_plots' %}">
+                                <li><a class="dropdown-item" href="{% url 'listings:dashboard_router' %}?section=portfolio">
                                     <i class="fas fa-list me-2"></i>My Plots
                                 </a></li>
                                 <li><a class="dropdown-item" href="{% url 'listings:add_plot' %}" data-analytics="cta_add_plot">
                                     <i class="fas fa-plus-circle me-2"></i>Add New Plot
                                 </a></li>
-                                <li><a class="dropdown-item" href="{% url 'listings:buyer_interests' %}">
-                                    <i class="fas fa-envelope me-2"></i>Messages
-                                    {% if recent_interests_count %}<span class="badge bg-warning">{{ recent_interests_count }}</span>{% endif %}
+                                <li><a class="dropdown-item" href="{% url 'listings:notifications_inbox' %}?filter=messages">
+                                    <i class="fas fa-inbox me-2"></i>Inbox
+                                    {% if nav_unread_buyer_messages_count %}<span class="badge bg-warning">{{ nav_unread_buyer_messages_count }}</span>{% endif %}
                                 </a></li>
                             </ul>
                         </li>
@@ -677,39 +637,41 @@
 
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle nav-activity-link" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-bell me-1"></i> Notifications
-                            {% if nav_unread_notifications_count %}
-                                <span class="nav-activity-badge">{{ nav_unread_notifications_count }}</span>
+                            <i class="fas fa-inbox me-1"></i> Inbox
+                            {% if nav_unread_inbox_count %}
+                                <span class="nav-activity-badge">{{ nav_unread_inbox_count }}</span>
                             {% endif %}
                         </a>
                         <div class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationDropdown">
                             <div class="notification-dropdown-header">
-                                <strong>Notifications</strong>
+                                <strong>Inbox</strong>
                                 <div class="text-muted small">
-                                    {% if nav_unread_notifications_count %}
-                                        You have {{ nav_unread_notifications_count }} unread update{{ nav_unread_notifications_count|pluralize }}.
+                                    {% if nav_unread_inbox_count %}
+                                        You have {{ nav_unread_inbox_count }} unread item{{ nav_unread_inbox_count|pluralize }}.
                                     {% else %}
                                         You are all caught up.
                                     {% endif %}
                                 </div>
                             </div>
                             <div class="notification-preview-list">
-                                {% for n in nav_recent_notifications %}
-                                    <a class="notification-preview-item {% if not n.is_read %}unread{% endif %}" href="{% url 'listings:notifications_inbox' %}">
-                                        <strong>{{ n.title }}</strong>
-                                        <div class="small text-muted">{{ n.message|truncatechars:100 }}</div>
-                                        <small>{{ n.created_at|timesince }} ago</small>
+                                {% for item in nav_recent_inbox_items %}
+                                    <a class="notification-preview-item {% if not item.is_read %}unread{% endif %}" href="{% url 'listings:notifications_inbox' %}">
+                                        <strong>{{ item.title }}</strong>
+                                        <div class="small text-muted">{{ item.message|truncatechars:100 }}</div>
+                                        <small>
+                                            {% if item.kind == "message" %}Message{% else %}Update{% endif %} · {{ item.created_at|timesince }} ago
+                                        </small>
                                     </a>
                                 {% empty %}
                                     <div class="notification-preview-item">
-                                        <strong>No notifications yet</strong>
+                                        <strong>No inbox items yet</strong>
                                         <div class="small text-muted">Buyer activity, verification updates, and payment events will show up here.</div>
                                     </div>
                                 {% endfor %}
                             </div>
                             <div class="notification-dropdown-footer">
                                 <a class="btn btn-sm btn-success w-100" href="{% url 'listings:notifications_inbox' %}">
-                                    Open Notification Center
+                                    Open Inbox
                                 </a>
                             </div>
                         </div>
@@ -723,6 +685,22 @@
                             <span class="d-md-none">Account</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
+                            {% if user.is_superuser or user.is_staff or show_payment_admin_nav %}
+                            <li><a class="dropdown-item" href="{% url 'listings:dashboard_router' %}?section=verification">
+                                <i class="fas fa-check-circle me-2"></i>Verification Queue
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'listings:dashboard_router' %}?section=tasks">
+                                <i class="fas fa-tasks me-2"></i>Task Inbox
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'listings:dashboard_router' %}?section=finance">
+                                <i class="fas fa-money-check-dollar me-2"></i>Finance Control
+                                {% if payment_admin_task_count %}<span class="badge bg-danger">{{ payment_admin_task_count }}</span>{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'listings:dashboard_router' %}?section=audit">
+                                <i class="fas fa-shield-alt me-2"></i>Audit Trail
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            {% endif %}
                             <li><a class="dropdown-item" href="{% url 'listings:profile_management' %}">
                                 <i class="fas fa-user me-2"></i>Profile
                             </a></li>

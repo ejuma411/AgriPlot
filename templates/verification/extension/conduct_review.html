@@ -1,16 +1,83 @@
-{% extends "base.html" %}
+{% extends "verification/admin/base_admin.html" %}
 
 {% block title %}{% if task.verification_type == 'surveyor_inspection' %}Surveyor Inspection{% else %}Extension Review{% endif %} - {{ plot.title }}{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-    <h2 class="mb-3">{% if task.verification_type == 'surveyor_inspection' %}Surveyor Inspection{% else %}Extension Review{% endif %}</h2>
-    <p class="text-muted mb-4">
-        Task: {{ task.get_verification_type_display }} | Plot: {{ plot.title }}
-    </p>
+{% block admin_content %}
+<div class="page-header">
+    <div class="page-header-content">
+        <div class="page-header-title">
+            <h1>
+                <i class="fas {% if task.verification_type == 'surveyor_inspection' %}fa-map-location-dot{% else %}fa-leaf{% endif %} me-2"></i>
+                {% if task.verification_type == 'surveyor_inspection' %}Surveyor Inspection{% else %}Extension Review{% endif %}
+            </h1>
+            <p class="page-header-subtitle">{{ task.get_verification_type_display }} for {{ plot.title }}</p>
+        </div>
+        <div class="page-header-actions">
+            <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn">
+                <i class="fas fa-arrow-left me-2"></i>Back to Task Inbox
+            </a>
+        </div>
+    </div>
+</div>
 
-    <form method="POST" enctype="multipart/form-data" class="card shadow-sm">
-        <div class="card-body">
+<div class="row g-4">
+    <div class="col-12 col-xl-4">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title"><i class="fas fa-clipboard-list"></i>Assignment Snapshot</h5>
+            </div>
+            <div class="admin-card-body">
+                <table class="details-table">
+                    <tr>
+                        <th>Task Type</th>
+                        <td>{{ task.get_verification_type_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>Plot</th>
+                        <td>{{ plot.title }}</td>
+                    </tr>
+                    <tr>
+                        <th>Location</th>
+                        <td>{% if plot.county %}{{ plot.county }}{% if plot.subcounty %} - {{ plot.subcounty }}{% endif %}{% else %}{{ plot.location }}{% endif %}</td>
+                    </tr>
+                    <tr>
+                        <th>Assigned</th>
+                        <td>{{ task.assigned_at|date:"M d, Y H:i" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Status</th>
+                        <td>{{ task.get_status_display }}</td>
+                    </tr>
+                    <tr>
+                        <th>Parcel No.</th>
+                        <td>{{ plot.parcel_number|default:"Not provided" }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title"><i class="fas fa-circle-info"></i>Submission Guide</h5>
+            </div>
+            <div class="admin-card-body">
+                <ul class="document-checklist">
+                    <li>Capture field findings clearly and completely.</li>
+                    <li>Attach files and photos where the form expects evidence.</li>
+                    <li>Use the recommendation field to drive the next workflow step.</li>
+                    <li>Keep notes specific enough for legal, finance, and audit follow-up.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-8">
+        <div class="admin-card">
+            <div class="admin-card-header">
+                <h5 class="admin-card-title"><i class="fas fa-file-pen"></i>Review Form</h5>
+            </div>
+            <div class="admin-card-body">
+                <form method="POST" enctype="multipart/form-data">
             {% csrf_token %}
             {% if form.non_field_errors %}
             <div class="alert alert-danger">
@@ -391,13 +458,15 @@
                 </div>
             </div>
             {% endif %}
-        </div>
-        <div class="card-footer bg-white">
-            <button type="submit" class="btn btn-success">
+            </div>
+            <div class="admin-card-footer d-flex flex-column flex-md-row gap-2 justify-content-between">
+                <button type="submit" class="btn btn-success">
                 {% if task.verification_type == 'surveyor_inspection' %}Submit Inspection{% else %}Submit Review{% endif %}
-            </button>
-            <a href="{% if task.verification_type == 'surveyor_inspection' %}{% url 'verification:surveyor_dashboard' %}{% else %}{% url 'verification:extension_dashboard' %}{% endif %}" class="btn btn-outline-secondary">Cancel</a>
+                </button>
+                <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+                </form>
         </div>
-    </form>
+    </div>
 </div>
 {% endblock %}

@@ -1,48 +1,124 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Notifications - AgriPlot Connect{% endblock %}
+{% block title %}Inbox - AgriPlot Connect{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/account.css' %}">
+{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<section class="notifications-shell">
+    <div class="notifications-header">
         <div>
-            <h3 class="mb-1">Notifications</h3>
-            <p class="text-muted mb-0">You have {{ unread_count }} unread notification(s).</p>
+            <h1 class="notifications-title">Inbox</h1>
+            <p class="notifications-subtitle">Messages and system updates share one inbox, filtered by what this account is allowed to see.</p>
         </div>
-        <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="mark_all">
-            <button type="submit" class="btn btn-outline-secondary">
-                <i class="fas fa-check-double me-2"></i>Mark all as read
-            </button>
-        </form>
+        <div class="notifications-header-actions">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="mark_all">
+                <button type="submit" class="btn btn-outline-secondary" {% if not unread_count %}disabled{% endif %}>
+                    <i class="fas fa-check-double me-2"></i>Mark all as read
+                </button>
+            </form>
+        </div>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            {% if notifications %}
-                <ul class="list-group list-group-flush">
-                    {% for n in notifications %}
-                    <li class="list-group-item d-flex justify-content-between align-items-start {% if not n.is_read %}bg-light{% endif %}">
-                        <div class="ms-2 me-auto">
-                            <div class="fw-semibold">{{ n.title }}</div>
-                            <div class="text-muted small">{{ n.message }}</div>
-                            <div class="text-muted small">{{ n.created_at|date:"M d, Y H:i" }}</div>
-                        </div>
-                        {% if not n.is_read %}
-                            <span class="badge bg-success">New</span>
-                        {% endif %}
-                    </li>
-                    {% endfor %}
-                </ul>
+    <div class="notifications-stats">
+        <article class="notifications-stat-card">
+            <span>Total</span>
+            <strong>{{ total_count }}</strong>
+        </article>
+        <article class="notifications-stat-card">
+            <span>Unread</span>
+            <strong>{{ unread_count }}</strong>
+        </article>
+        <article class="notifications-stat-card">
+            <span>Read</span>
+            <strong>{{ read_count }}</strong>
+        </article>
+        <article class="notifications-stat-card">
+            <span>Messages</span>
+            <strong>{{ message_count }}</strong>
+        </article>
+        <article class="notifications-stat-card">
+            <span>Updates</span>
+            <strong>{{ notification_count }}</strong>
+        </article>
+    </div>
+
+    <div class="notifications-toolbar">
+        <div class="notifications-filter-pills">
+            <a href="{% url 'listings:notifications_inbox' %}" class="notifications-filter-pill{% if active_filter == 'all' %} is-active{% endif %}">All</a>
+            <a href="{% url 'listings:notifications_inbox' %}?filter=unread" class="notifications-filter-pill{% if active_filter == 'unread' %} is-active{% endif %}">Unread</a>
+            <a href="{% url 'listings:notifications_inbox' %}?filter=messages" class="notifications-filter-pill{% if active_filter == 'messages' %} is-active{% endif %}">Messages</a>
+            <a href="{% url 'listings:notifications_inbox' %}?filter=updates" class="notifications-filter-pill{% if active_filter == 'updates' %} is-active{% endif %}">Updates</a>
+        </div>
+        <div class="notifications-toolbar-copy">
+            {% if unread_count %}
+            {{ unread_count }} update{{ unread_count|pluralize }} still need attention.
             {% else %}
-                <div class="text-center p-5">
-                    <i class="fas fa-bell-slash fa-3x text-muted mb-3"></i>
-                    <p class="text-muted mb-0">No notifications yet.</p>
-                </div>
+            Everything is up to date.
             {% endif %}
         </div>
     </div>
-</div>
+
+    <div class="notifications-card">
+        {% if inbox_entries %}
+        <div class="notifications-list">
+            {% for item in inbox_entries %}
+            <article class="notification-row{% if item.is_unread %} is-unread{% endif %}">
+                <div class="notification-row-accent">
+                    <span class="notification-type-icon">
+                        <i class="{{ item.icon }}" aria-hidden="true"></i>
+                    </span>
+                </div>
+                <div class="notification-row-main">
+                    <div class="notification-row-top">
+                        <div>
+                            <h2 class="notification-row-title">{{ item.title }}</h2>
+                            <div class="notification-row-meta">
+                                <span>{% if item.kind == "message" %}Message{% else %}System Update{% endif %}</span>
+                                <span>{{ item.meta }}</span>
+                                <span>{{ item.timestamp|date:"M d, Y H:i" }}</span>
+                                {% if item.plot_id %}<span>Plot #{{ item.plot_id }}</span>{% endif %}
+                                {% if item.task_id %}<span>Task #{{ item.task_id }}</span>{% endif %}
+                                {% if item.buyer_name %}<span>{{ item.buyer_name }}</span>{% endif %}
+                            </div>
+                        </div>
+                        {% if item.is_unread %}
+                        <span class="notification-state-chip is-new">{{ item.badge }}</span>
+                        {% else %}
+                        <span class="notification-state-chip">{{ item.badge }}</span>
+                        {% endif %}
+                    </div>
+                    <p class="notification-row-message">{{ item.message }}</p>
+                </div>
+                <div class="notification-row-actions">
+                    {% if item.can_mark_read %}
+                    <form method="post" class="w-100">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="mark_one">
+                        <input type="hidden" name="notification_id" value="{{ item.raw_id }}">
+                        <button type="submit" class="btn btn-sm btn-outline-success w-100">Mark read</button>
+                    </form>
+                    {% elif item.kind == "message" and item.plot_id %}
+                    <a href="{% url 'listings:plot_verification_detail' item.plot_id %}" class="btn btn-sm btn-outline-secondary w-100">Open plot</a>
+                    {% else %}
+                    <span class="notification-action-muted">Already acknowledged</span>
+                    {% endif %}
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="notifications-empty">
+            <i class="fas fa-bell-slash" aria-hidden="true"></i>
+            <h2>No notifications here yet</h2>
+            <p>Buyer activity, task assignments, verification events, and payout updates will appear in this inbox.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
 {% endblock %}

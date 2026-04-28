@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils import timezone
+from django.urls import reverse
 from listings.models import (
     ExtensionOfficer,
     LandSurveyor,
@@ -20,57 +21,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def _workspace_redirect(section="tasks"):
+    return redirect(f"{reverse('listings:dashboard_router')}?section={section}")
+
 @login_required
 def extension_dashboard(request):
-    """Dashboard for extension officers"""
-    try:
-        officer = request.user.extension_officer
-        if not officer.verified or not officer.is_active:
-            messages.error(request, "Your extension officer role is not active yet.")
-            return redirect('listings:profile_management')
-    except ExtensionOfficer.DoesNotExist:
-        if request.user.is_superuser:
-            officer = None
-        else:
-            messages.error(request, "You don't have an extension officer profile.")
-            return redirect('listings:home')
-    
-    # Get assigned tasks
-    assigned_tasks = VerificationTask.objects.filter(
-        status='in_progress',
-        verification_type='extension_review',
-        assigned_to=request.user
-    ).select_related('plot')
-    
-    # Get completed tasks
-    completed_tasks = VerificationTask.objects.filter(
-        status='completed',
-        verification_type='extension_review',
-        assigned_to=request.user
-    ).select_related('plot').order_by('-completed_at')[:10]
-    
-    # Get pending tasks in officer's counties
-    pending_in_area = 0
-    if officer:
-        assigned_counties = officer.assigned_counties or []
-        if assigned_counties:
-            pending_in_area = VerificationTask.objects.filter(
-                status='pending',
-                verification_type='extension_review',
-                plot__county__in=assigned_counties
-            ).count()
-    
-    context = {
-        'officer': officer,
-        'assigned_tasks': assigned_tasks,
-        'my_tasks': assigned_tasks,
-        'completed_tasks': completed_tasks,
-        'pending_in_area': pending_in_area,
-        'workload': officer.current_workload if officer else 0,
-        'page_title': 'Extension Officer Dashboard'
-    }
-    
-    return render(request, 'verification/admin/my_tasks.html', context)
+    return _workspace_redirect("tasks")
 
 
 @login_required
@@ -174,64 +131,20 @@ def confirm_task(request, task_id):
     task = get_object_or_404(VerificationTask, id=task_id, assigned_to=request.user)
     if task.confirmation_status == 'confirmed':
         messages.info(request, "Task already confirmed.")
-        return redirect('verification:my_tasks')
+        return _workspace_redirect("tasks")
     if task.confirm_by and timezone.now() > task.confirm_by:
         messages.error(request, "Confirmation window expired. Please contact admin.")
-        return redirect('verification:my_tasks')
+        return _workspace_redirect("tasks")
     task.confirmation_status = 'confirmed'
     task.confirmed_at = timezone.now()
     task.save(update_fields=['confirmation_status', 'confirmed_at'])
     messages.success(request, "Task confirmed. Please complete it before the deadline.")
-    return redirect('verification:my_tasks')
+    return _workspace_redirect("tasks")
 
 
 @login_required
 def surveyor_dashboard(request):
-    """Dashboard for land surveyors"""
-    try:
-        surveyor = request.user.land_surveyor
-        if not surveyor.verified or not surveyor.is_active:
-            messages.error(request, "Your land surveyor role is not active yet.")
-            return redirect('listings:profile_management')
-    except LandSurveyor.DoesNotExist:
-        if request.user.is_superuser:
-            surveyor = None
-        else:
-            messages.error(request, "You don't have a land surveyor profile.")
-            return redirect('listings:home')
-
-    assigned_tasks = VerificationTask.objects.filter(
-        status='in_progress',
-        verification_type='surveyor_inspection',
-        assigned_to=request.user
-    ).select_related('plot')
-
-    completed_tasks = VerificationTask.objects.filter(
-        status='completed',
-        verification_type='surveyor_inspection',
-        assigned_to=request.user
-    ).select_related('plot').order_by('-completed_at')[:10]
-
-    pending_in_area = 0
-    if surveyor:
-        assigned_counties = surveyor.assigned_counties or []
-        if assigned_counties:
-            pending_in_area = VerificationTask.objects.filter(
-                status='pending',
-                verification_type='surveyor_inspection',
-                plot__county__in=assigned_counties
-            ).count()
-
-    context = {
-        'surveyor': surveyor,
-        'assigned_tasks': assigned_tasks,
-        'my_tasks': assigned_tasks,
-        'completed_tasks': completed_tasks,
-        'pending_in_area': pending_in_area,
-        'workload': surveyor.current_workload if surveyor else 0,
-        'page_title': 'Land Surveyor Dashboard'
-    }
-    return render(request, 'verification/admin/my_tasks.html', context)
+    return _workspace_redirect("tasks")
 
 
 @login_required
@@ -241,17 +154,17 @@ def find_plot_by_parcel(request, role):
     role: 'surveyor' or 'extension'
     """
     if request.method != 'POST':
-        return redirect('verification:my_tasks')
+        return _workspace_redirect("tasks")
 
     parcel_number = (request.POST.get('parcel_number') or '').strip()
     if not parcel_number:
         messages.error(request, "Parcel number is required.")
-        return redirect('verification:my_tasks')
+        return _workspace_redirect("tasks")
 
     plot = Plot.objects.filter(parcel_number__iexact=parcel_number).first()
     if not plot:
         messages.error(request, "No plot found for that parcel number.")
-        return redirect('verification:my_tasks')
+        return _workspace_redirect("tasks")
 
     # Ensure verification status exists
     try:
@@ -284,7 +197,7 @@ def find_plot_by_parcel(request, role):
     if not created:
         if task.assigned_to and task.assigned_to != request.user and not request.user.is_superuser:
             messages.error(request, "This task is already assigned to another officer.")
-            return redirect('verification:my_tasks')
+            return _workspace_redirect("tasks")
         if task.status in ('pending', 'in_progress'):
             task.assigned_to = request.user
             task.status = 'in_progress'

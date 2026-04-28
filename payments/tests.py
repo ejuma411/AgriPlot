@@ -1559,12 +1559,11 @@ class PaymentAuthorizationTests(TestCase):
         step.save(update_fields=["status", "updated_at"])
         self.client.login(username="finance_auth", password="secret123")
 
-        response = self.client.get(reverse("listings:staff_dashboard"))
+        response = self.client.get(reverse("listings:dashboard_router") + "?section=finance")
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Payment Stage Admin Tasks")
-        self.assertContains(response, "Payment Admin Tasks")
-        self.assertContains(response, reverse("payments:dashboard"))
+        self.assertContains(response, "Escrow &amp; Payout Control")
+        self.assertContains(response, "Escrow &amp; Payouts")
         self.assertContains(
             response,
             reverse("payments:closing_step_workspace", kwargs={"pk": payment.pk, "step_id": step.pk}),

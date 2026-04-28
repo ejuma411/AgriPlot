@@ -1,5 +1,6 @@
 from django.urls import path
 from django.views.generic import TemplateView
+from django.views.generic.base import RedirectView
 
 from .views_dashboard import (
     buyer_interests,
@@ -40,7 +41,11 @@ urlpatterns = [
 
     # Dashboard
     path("dashboard/", dashboard_router, name="dashboard_router"),
-    path("staff-dashboard/", staff_dashboard, name="staff_dashboard"),
+    path(
+        "staff-dashboard/",
+        RedirectView.as_view(pattern_name="listings:dashboard_router", permanent=True),
+        name="staff_dashboard",
+    ),
     path("dashboard/plots/", my_plots, name="my_plots"),
     path("dashboard/saved-plots/", saved_plots, name="saved_plots"),
     path(

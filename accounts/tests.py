@@ -1,4 +1,4 @@
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from django.test import TestCase
 from django.urls import reverse
 import socket
@@ -153,3 +153,67 @@ class AccountUpgradeFlowTests(TestCase):
         self.assertContains(response, "Correct the account details below and try again.")
         self.assertContains(response, "This email domain does not appear to accept mail.")
         self.assertContains(response, "Enter a valid Kenyan phone number")
+
+
+class DashboardAccessControlTests(TestCase):
+    def test_dashboard_router_sends_buyer_to_saved_workspace(self):
+        user = User.objects.create_user(
+            username="buyer_workspace",
+            password="safe-pass-123",
+        )
+        Profile.objects.get_or_create(user=user, defaults={"role": "buyer"})
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("listings:dashboard_router"))
+
+        self.assertRedirects(response, reverse("listings:saved_plots"))
+
+    def test_dashboard_router_renders_finance_workspace_section(self):
+        user = User.objects.create_user(
+            username="finance_workspace",
+            password="safe-pass-123",
+        )
+        Profile.objects.get_or_create(user=user, defaults={"role": "buyer"})
+        finance_group, _ = Group.objects.get_or_create(name="Finance Admin")
+        user.groups.add(finance_group)
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("listings:dashboard_router"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Escrow &amp; Payout Control")
+
+    def test_staff_dashboard_legacy_url_redirects_to_single_entry_point(self):
+        user = User.objects.create_user(
+            username="ops_workspace",
+            password="safe-pass-123",
+            first_name="Olive",
+        )
+        Profile.objects.get_or_create(user=user, defaults={"role": "buyer"})
+        user.is_staff = True
+        user.save(update_fields=["is_staff"])
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("listings:staff_dashboard"))
+
+        self.assertRedirects(response, reverse("listings:dashboard_router"))
+
+    def test_dashboard_router_shows_permission_filtered_modules(self):
+        user = User.objects.create_user(
+            username="ops_workspace_2",
+            password="safe-pass-123",
+            first_name="Olive",
+        )
+        Profile.objects.get_or_create(user=user, defaults={"role": "buyer"})
+        user.is_staff = True
+        user.save(update_fields=["is_staff"])
+
+        self.client.force_login(user)
+        response = self.client.get(reverse("listings:dashboard_router"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Operations Workspace")
+        self.assertContains(response, "Verification Queue")
+        self.assertContains(response, "Task Assignment")
+        self.assertContains(response, "Audit Trail")
+        self.assertNotContains(response, "Escrow &amp; Payouts")

@@ -1,1430 +1,864 @@
 {% extends "base.html" %}
-{% load static %}
+{% load static humanize %}
 
-{% block title %}Agent/Owner Dashboard - AgriPlot Connect{% endblock %}
+{% block title %}AgriPlot Workspace{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/account.css' %}">
+{% endblock %}
 
 {% block content %}
-<div class="dashboard-wrapper">
-    <!-- Sidebar Navigation -->
+{% regroup dashboard_modules by section as module_sections %}
+<div class="dashboard-wrapper workspace-dashboard">
     <aside class="dashboard-sidebar">
         <div class="sidebar-brand">
-            <i class="fas fa-leaf"></i>
+            <i class="fas fa-leaf" aria-hidden="true"></i>
             <span>AgriPlot</span>
         </div>
-        
+
         <nav class="sidebar-nav">
-            <a href="#" class="nav-item active" data-page="dashboard">
-                <i class="fas fa-home"></i>
-                <span>Dashboard</span>
+            {% for module in dashboard_modules %}
+            <a href="{{ module.url }}" class="nav-item{% if active_section == module.section_key %} active{% endif %}">
+                <i class="{{ module.icon }}" aria-hidden="true"></i>
+                <span>{{ module.title }}</span>
+                {% if module.badge %}
+                <span class="nav-badge">{{ module.badge }}</span>
+                {% endif %}
             </a>
+            {% endfor %}
+
             {% if is_agent or is_landowner %}
-            <a href="{% url 'listings:my_plots' %}" class="nav-item">
-                <i class="fas fa-list"></i>
-                <span>My Plots</span>
-            </a>
             <a href="{% url 'listings:add_plot' %}" class="nav-item">
-                <i class="fas fa-plus-circle"></i>
+                <i class="fas fa-plus-circle" aria-hidden="true"></i>
                 <span>Add New Plot</span>
             </a>
-            <a href="{% url 'listings:buyer_interests' %}" class="nav-item">
-                <i class="fas fa-envelope"></i>
-                <span>Messages ({{ recent_interests|length }})</span>
-            </a>
             {% endif %}
+
             <a href="{% url 'listings:profile_management' %}" class="nav-item">
-                <i class="fas fa-user-circle"></i>
+                <i class="fas fa-user-circle" aria-hidden="true"></i>
                 <span>Profile</span>
             </a>
-            
-            <!-- ============ STAFF/ADMIN SECTION ============ -->
-            {% if is_staff_dashboard_admin %}
-            <div class="nav-section-divider">
-                <hr class="my-2">
-                <p class="nav-section-title">Verification Management</p>
-            </div>
-            
-            <a href="{% url 'verification:verification_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'verification_dashboard' %}active{% endif %}">
-                <i class="fas fa-check-circle"></i>
-                <span>Verification Dashboard</span>
-                {% with pending_count=stats.pending_review|default:0 %}
-                    {% if pending_count > 0 %}
-                    <span class="nav-badge">{{ pending_count }}</span>
-                    {% endif %}
-                {% endwith %}
-            </a>
-            
-            <a href="{% url 'verification:verification_queue' %}" class="nav-item {% if request.resolver_match.url_name == 'verification_queue' %}active{% endif %}">
-                <i class="fas fa-list"></i>
-                <span>Verification Queue</span>
-                {% if stats and stats.pending_review %}
-                    {% if stats.pending_review > 0 %}
-                    <span class="nav-badge">{{ stats.pending_review }}</span>
-                    {% endif %}
-                {% endif %}
-            </a>
-            
-            {% if is_staff_dashboard_admin %}
-            <a href="{% url 'verification:task_assignment' %}" class="nav-item {% if request.resolver_match.url_name == 'task_assignment' %}active{% endif %}">
-                <i class="fas fa-tasks"></i>
-                <span>Task Assignment</span>
-                {% if task_stats and task_stats.pending %}
-                    {% if task_stats.pending > 0 %}
-                    <span class="nav-badge">{{ task_stats.pending }}</span>
-                    {% endif %}
-                {% endif %}
-            </a>
-            {% endif %}
-            
-            <a href="{% url 'verification:my_tasks' %}" class="nav-item {% if request.resolver_match.url_name == 'my_tasks' %}active{% endif %}">
-                <i class="fas fa-user-check"></i>
-                <span>My Tasks</span>
-                {% if my_tasks_count %}
-                    {% if my_tasks_count > 0 %}
-                    <span class="nav-badge">{{ my_tasks_count }}</span>
-                    {% endif %}
-                {% endif %}
-            </a>
-
-            <a href="{% url 'payments:dashboard' %}" class="nav-item {% if request.resolver_match.namespace == 'payments' %}active{% endif %}">
-                <i class="fas fa-money-check-dollar"></i>
-                <span>Payment Admin Tasks</span>
-                {% if payment_admin_task_count %}
-                    {% if payment_admin_task_count > 0 %}
-                    <span class="nav-badge">{{ payment_admin_task_count }}</span>
-                    {% endif %}
-                {% endif %}
-            </a>
-            
-            <a href="{% url 'verification:analytics_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'analytics_dashboard' %}active{% endif %}">
-                <i class="fas fa-chart-line"></i>
-                <span>Analytics</span>
-            </a>
-            {% endif %}
-            
-            <!-- Extension Officer Section -->
-            {% if request.user.is_superuser or request.user.extension_officer %}
-            <div class="nav-section-divider">
-                <hr class="my-2">
-                <p class="nav-section-title">Extension Officer</p>
-            </div>
-            
-            <a href="{% url 'verification:extension_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'extension_dashboard' %}active{% endif %}">
-                <i class="fas fa-leaf"></i>
-                <span>Extension Dashboard</span>
-                {% if extension_tasks_count %}
-                    {% if extension_tasks_count > 0 %}
-                    <span class="nav-badge">{{ extension_tasks_count }}</span>
-                    {% endif %}
-                {% endif %}
-            </a>
-            {% endif %}
-
-            {% if request.user.is_superuser or request.user.land_surveyor %}
-            <div class="nav-section-divider">
-                <hr class="my-2">
-                <p class="nav-section-title">Land Surveyor</p>
-            </div>
-
-            <a href="{% url 'verification:surveyor_dashboard' %}" class="nav-item {% if request.resolver_match.url_name == 'surveyor_dashboard' %}active{% endif %}">
-                <i class="fas fa-map-marked-alt"></i>
-                <span>Surveyor Dashboard</span>
-            </a>
-            {% endif %}
         </nav>
-        
+
         <div class="sidebar-footer">
             <div class="user-info">
-                <div class="user-avatar">{{ request.user.get_full_name|first|upper }}</div>
+                <div class="user-avatar">{{ request.user.get_full_name|default:request.user.username|first|upper }}</div>
                 <div class="user-details">
                     <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
-                    <p class="user-role">{{ profile_type }}</p>
+                    <p class="user-role">{{ primary_role_label }}</p>
                 </div>
             </div>
         </div>
     </aside>
 
-    <!-- Main Content Area -->
     <main class="dashboard-main">
-        <!-- Top Header Bar -->
         <div class="dashboard-topbar">
             <div class="topbar-left">
-                <h1 class="page-title">Dashboard</h1>
-                <p class="page-subtitle">Welcome back! Here's your property overview</p>
+                <h1 class="page-title">{{ workspace_label }}</h1>
+                <p class="page-subtitle">
+                    One entry point for operations, fieldwork, legal review, and finance controls.
+                </p>
+                <div class="workspace-role-chips">
+                    {% for role in role_labels %}
+                    <span class="workspace-role-chip">{{ role }}</span>
+                    {% endfor %}
+                </div>
             </div>
             <div class="topbar-right">
-                <div class="verification-status {% if profile.verified %}verified{% else %}pending{% endif %}">
-                    <i class="fas {% if profile.verified %}fa-check-circle{% else %}fa-hourglass-half{% endif %}"></i>
-                    <span>{{ profile.verified|yesno:"Verified,Pending Verification" }}</span>
+                <div class="verification-status workspace-badge {% if access_profile.is_staff_workspace %}verified{% else %}pending{% endif %}">
+                    <i class="fas {% if access_profile.is_staff_workspace %}fa-shield-alt{% else %}fa-user-check{% endif %}"></i>
+                    <span>{{ primary_role_label }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Main Content Grid -->
         <div class="dashboard-content">
-            <!-- Left Column - Metrics & Recent Plots -->
             <div class="content-left">
-                <!-- Key Metrics Cards -->
+                {% if active_section == "overview" %}
                 <div class="metrics-grid">
                     <div class="metric-card">
-                        <div class="metric-icon bg-primary">
-                            <i class="fas fa-layer-group"></i>
-                        </div>
+                        <div class="metric-icon bg-primary"><i class="fas fa-layer-group"></i></div>
                         <div class="metric-content">
                             <p class="metric-label">Total Plots</p>
                             <h2 class="metric-value">{{ total_plots }}</h2>
                         </div>
                     </div>
-
                     <div class="metric-card">
-                        <div class="metric-icon bg-success">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
+                        <div class="metric-icon bg-success"><i class="fas fa-check-circle"></i></div>
                         <div class="metric-content">
                             <p class="metric-label">Verified</p>
                             <h2 class="metric-value">{{ verified_plots }}</h2>
                             <p class="metric-percent">{{ verified_percentage|floatformat:0 }}%</p>
                         </div>
                     </div>
-
                     <div class="metric-card">
-                        <div class="metric-icon bg-info">
-                            <i class="fas fa-sync-alt"></i>
-                        </div>
+                        <div class="metric-icon bg-info"><i class="fas fa-sync-alt"></i></div>
                         <div class="metric-content">
                             <p class="metric-label">In Review</p>
                             <h2 class="metric-value">{{ in_review_plots }}</h2>
                             <p class="metric-percent">{{ in_review_percentage|floatformat:0 }}%</p>
                         </div>
                     </div>
-
                     <div class="metric-card">
-                        <div class="metric-icon bg-warning">
-                            <i class="fas fa-hourglass-half"></i>
-                        </div>
+                        <div class="metric-icon bg-warning"><i class="fas fa-hourglass-half"></i></div>
                         <div class="metric-content">
                             <p class="metric-label">Pending</p>
                             <h2 class="metric-value">{{ pending_plots }}</h2>
                             <p class="metric-percent">{{ pending_percentage|floatformat:0 }}%</p>
                         </div>
                     </div>
-
                     <div class="metric-card">
-                        <div class="metric-icon bg-danger">
-                            <i class="fas fa-times-circle"></i>
-                        </div>
+                        <div class="metric-icon bg-danger"><i class="fas fa-times-circle"></i></div>
                         <div class="metric-content">
                             <p class="metric-label">Rejected</p>
                             <h2 class="metric-value">{{ rejected_plots }}</h2>
                             <p class="metric-percent">{{ rejected_percentage|floatformat:0 }}%</p>
                         </div>
                     </div>
-
                     <div class="metric-card">
-                        <div class="metric-icon bg-secondary">
-                            <i class="fas fa-envelope"></i>
-                        </div>
+                        <div class="metric-icon bg-secondary"><i class="fas fa-briefcase"></i></div>
                         <div class="metric-content">
-                            <p class="metric-label">Inquiries</p>
-                            <h2 class="metric-value">{{ recent_interests|length }}</h2>
+                            <p class="metric-label">Active Roles</p>
+                            <h2 class="metric-value">{{ role_labels|length }}</h2>
+                            <p class="metric-percent">{{ role_labels|join:", " }}</p>
                         </div>
                     </div>
                 </div>
 
-                {% if show_payment_admin_tasks %}
                 <div class="card status-card">
                     <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-money-check-dollar me-2"></i>Payment Stage Admin Tasks
-                        </h3>
+                        <h3 class="card-title"><i class="fas fa-compass me-2"></i>{{ primary_queue_title }}</h3>
+                        <p class="text-muted mb-0">{{ primary_queue_description }}</p>
+                    </div>
+                    <div class="card-body">
+                        {% if primary_queue %}
+                        <div class="workspace-queue">
+                            {% for item in primary_queue %}
+                            <div class="workspace-queue-item">
+                                <div class="workspace-queue-copy">
+                                    <div class="workspace-queue-title">{{ item.title }}</div>
+                                    <div class="workspace-queue-subtitle">{{ item.subtitle }}</div>
+                                    <div class="workspace-queue-meta">{{ item.meta }}</div>
+                                </div>
+                                <div class="workspace-queue-actions">
+                                    <span class="workspace-status-pill">{{ item.status }}</span>
+                                    {% if item.url %}
+                                    <a href="{{ item.url }}" class="btn btn-sm btn-outline-success">Open</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workspace-empty">No items are waiting in your current queue.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if active_section == "portfolio" %}
+                <div class="card status-card">
+                    <div class="card-header workspace-header-row">
+                        <div>
+                            <h3 class="card-title"><i class="fas fa-seedling me-2"></i>Listings Portfolio</h3>
+                            <p class="text-muted mb-0">All listing activity now lives inside the same workspace instead of a separate dashboard.</p>
+                        </div>
+                        <a href="{% url 'listings:add_plot' %}" class="btn btn-primary">Add Plot</a>
+                    </div>
+                    <div class="card-body">
+                        {% if portfolio_plots %}
+                        <div class="workspace-table">
+                            <div class="workspace-table-head">
+                                <span>Plot</span>
+                                <span>Status</span>
+                                <span>Price</span>
+                                <span>Action</span>
+                            </div>
+                            {% for plot in portfolio_plots %}
+                            <div class="workspace-table-row">
+                                <span>
+                                    <strong>{{ plot.title }}</strong>
+                                    <small>{{ plot.county|default:plot.location }}</small>
+                                </span>
+                                <span>{{ plot.verification_status.get_current_stage_display|default:"Not Started" }}</span>
+                                <span>KES {{ plot.price|floatformat:0|intcomma }}</span>
+                                <span><a href="{% url 'listings:plot_verification_detail' plot.id %}" class="btn btn-sm btn-outline-secondary">Open</a></span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workspace-empty">No plots are attached to this workspace yet.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if active_section == "wallet" %}
+                <div class="metrics-grid workspace-mini-metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon bg-primary"><i class="fas fa-wallet"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Available Balance</p>
+                            <h2 class="metric-value">KES {{ wallet_cards.available_balance|floatformat:2|intcomma }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-success"><i class="fas fa-arrow-down"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Deposits Received</p>
+                            <h2 class="metric-value">KES {{ wallet_cards.deposit_total|floatformat:2|intcomma }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-warning"><i class="fas fa-arrow-up"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Money Out</p>
+                            <h2 class="metric-value">KES {{ wallet_cards.debit_total|floatformat:2|intcomma }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-secondary"><i class="fas fa-key"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Wallet PIN</p>
+                            <h2 class="metric-value">{% if wallet_cards.has_pin %}Configured{% else %}Not Set{% endif %}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card status-card">
+                    <div class="card-header workspace-header-row">
+                        <div>
+                            <h3 class="card-title"><i class="fas fa-money-bill-transfer me-2"></i>Wallet Actions</h3>
+                            <p class="text-muted mb-0">Fund the wallet, request withdrawal, and use the same balance for purchase and lease payments.</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="wallet-action-grid">
+                            <button type="button" class="wallet-action-card" data-wallet-action="deposit">
+                                <span class="wallet-action-icon"><i class="fas fa-arrow-down"></i></span>
+                                <strong>Deposit</strong>
+                                <small>Top up wallet from M-Pesa for real purchase and lease transactions.</small>
+                            </button>
+                            <button type="button" class="wallet-action-card" data-wallet-action="withdraw">
+                                <span class="wallet-action-icon"><i class="fas fa-arrow-up"></i></span>
+                                <strong>Withdraw</strong>
+                                <small>Move cleared wallet funds back to your M-Pesa number.</small>
+                            </button>
+                            <button type="button" class="wallet-action-card" data-wallet-action="pin">
+                                <span class="wallet-action-icon"><i class="fas fa-lock"></i></span>
+                                <strong>{% if wallet_cards.has_pin %}Change PIN{% else %}Set PIN{% endif %}</strong>
+                                <small>Secure wallet payments for plot purchase and lease checkout.</small>
+                            </button>
+                            <a href="{% url 'payments:create_request' %}" class="wallet-action-card wallet-action-link">
+                                <span class="wallet-action-icon"><i class="fas fa-cart-shopping"></i></span>
+                                <strong>Use in Checkout</strong>
+                                <small>Purchase and lease payments can draw directly from wallet balance.</small>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card status-card mt-4">
+                    <div class="card-header workspace-header-row">
+                        <div>
+                            <h3 class="card-title"><i class="fas fa-receipt me-2"></i>Recent Wallet Activity</h3>
+                            <p class="text-muted mb-0">Deposits, withdrawals, and plot payments all reconcile in one ledger.</p>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        {% if wallet_transactions %}
+                        <div class="workspace-queue">
+                            {% for transaction in wallet_transactions %}
+                            <div class="workspace-queue-item">
+                                <div class="workspace-queue-copy">
+                                    <div class="workspace-queue-title">{{ transaction.description|default:"Wallet transaction" }}</div>
+                                    <div class="workspace-queue-subtitle">{{ transaction.reference }}{% if transaction.related_payment %} · {{ transaction.related_payment.get_transaction_type_display }}{% endif %}</div>
+                                    <div class="workspace-queue-meta">{{ transaction.created_at|date:"M d, Y H:i" }}</div>
+                                </div>
+                                <div class="workspace-queue-actions">
+                                    <span class="workspace-status-pill">{{ transaction.get_status_display }}</span>
+                                    <strong class="wallet-amount {% if transaction.transaction_type == 'credit' %}wallet-credit{% else %}wallet-debit{% endif %}">
+                                        {% if transaction.transaction_type == 'credit' %}+{% else %}-{% endif %}KES {{ transaction.amount|floatformat:2|intcomma }}
+                                    </strong>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workspace-empty">Your wallet has not recorded any deposits, withdrawals, or plot payments yet.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if active_section == "inbox" %}
+                <div class="card status-card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-envelope-open-text me-2"></i>Buyer & Client Inbox</h3>
+                        <p class="text-muted mb-0">Inquiries, saved interest, and checkout intent are now reviewed from the same workspace.</p>
+                    </div>
+                    <div class="card-body">
+                        {% if workspace_inbox %}
+                        <div class="workspace-queue">
+                            {% for interest in workspace_inbox %}
+                            <div class="workspace-queue-item">
+                                <div class="workspace-queue-copy">
+                                    <div class="workspace-queue-title">{{ interest.plot.title }}</div>
+                                    <div class="workspace-queue-subtitle">{{ interest.buyer_name }} · {{ interest.activity_label }}</div>
+                                    <div class="workspace-queue-meta">{{ interest.buyer_email }}{% if interest.buyer_phone %} · {{ interest.buyer_phone }}{% endif %}</div>
+                                </div>
+                                <div class="workspace-queue-actions">
+                                    <span class="workspace-status-pill">{{ interest.get_status_display }}</span>
+                                    <a href="{% url 'listings:plot_verification_detail' interest.plot.id %}" class="btn btn-sm btn-outline-secondary">View plot</a>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workspace-empty">There are no buyer messages waiting right now.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if active_section == "tasks" %}
+                <div class="card status-card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-list-check me-2"></i>Task Inbox</h3>
+                        <p class="text-muted mb-0">Professionals work from assignments here instead of separate role dashboards.</p>
+                    </div>
+                    <div class="card-body">
+                        {% if workspace_tasks %}
+                        <div class="workspace-queue">
+                            {% for task in workspace_tasks %}
+                            <div class="workspace-queue-item">
+                                <div class="workspace-queue-copy">
+                                    <div class="workspace-queue-title">{{ task.plot.title|default:task.get_verification_type_display }}</div>
+                                    <div class="workspace-queue-subtitle">{{ task.get_verification_type_display }}</div>
+                                    <div class="workspace-queue-meta">
+                                        {{ task.get_status_display }}
+                                        {% if task.plot and task.plot.county %} · {{ task.plot.county }}{% endif %}
+                                    </div>
+                                </div>
+                                <div class="workspace-queue-actions">
+                                    <span class="workspace-status-pill">{{ task.get_status_display }}</span>
+                                    {% if task.verification_type == 'extension_review' %}
+                                    <a href="{% url 'verification:conduct_extension_review' task.id %}" class="btn btn-sm btn-outline-success">Open task</a>
+                                    {% elif task.verification_type == 'surveyor_inspection' %}
+                                    <a href="{% url 'verification:conduct_surveyor_inspection' task.id %}" class="btn btn-sm btn-outline-success">Open task</a>
+                                    {% else %}
+                                    <a href="{% url 'verification:complete_task' task.id %}" class="btn btn-sm btn-outline-success">Open task</a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workspace-empty">No assigned tasks are active for this account.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                {% endif %}
+
+                {% if active_section == "verification" %}
+                <div class="metrics-grid workspace-mini-metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon bg-warning"><i class="fas fa-clock"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Pending Review</p>
+                            <h2 class="metric-value">{{ stats.pending_review|default:0 }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-primary"><i class="fas fa-search"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Registry Search</p>
+                            <h2 class="metric-value">{{ stats.pending_registry_search|default:0 }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-info"><i class="fas fa-sync-alt"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">In Progress</p>
+                            <h2 class="metric-value">{{ stats.in_progress|default:0 }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-success"><i class="fas fa-check"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Approved Today</p>
+                            <h2 class="metric-value">{{ stats.approved_today|default:0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card status-card">
+                    <div class="card-header workspace-header-row">
+                        <div>
+                            <h3 class="card-title"><i class="fas fa-check-double me-2"></i>Verification Queue</h3>
+                            <p class="text-muted mb-0">Document review, registry checks, field validation, and admin decisions all route through this section.</p>
+                        </div>
+                        <a href="{% url 'verification:verification_queue' %}" class="btn btn-outline-secondary">Open full queue</a>
+                    </div>
+                    <div class="card-body">
+                        {% if verification_pending_plots %}
+                        <div class="workspace-table">
+                            <div class="workspace-table-head">
+                                <span>Plot</span>
+                                <span>Owner</span>
+                                <span>County</span>
+                                <span>Action</span>
+                            </div>
+                            {% for plot in verification_pending_plots %}
+                            <div class="workspace-table-row">
+                                <span><strong>{{ plot.title }}</strong><small>#{{ plot.id }}</small></span>
+                                <span>
+                                    {% if plot.agent and plot.agent.user %}{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}{% elif plot.landowner and plot.landowner.user %}{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}{% else %}Unknown{% endif %}
+                                </span>
+                                <span>{{ plot.county|default:plot.location }}</span>
+                                <span><a href="{% url 'verification:review_plot' plot.id %}" class="btn btn-sm btn-outline-success">Review</a></span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workspace-empty">Nothing is waiting in the verification queue right now.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if active_section == "finance" %}
+                <div class="card status-card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-money-check-dollar me-2"></i>Escrow & Payout Control</h3>
+                        <p class="text-muted mb-0">Finance stays inside the workspace and only activates after earlier approvals are complete.</p>
                     </div>
                     <div class="card-body">
                         {% if payment_admin_tasks %}
-                        <div class="list-group list-group-flush">
-                            {% for task in payment_admin_tasks|slice:":6" %}
-                            <div class="d-flex justify-content-between align-items-start py-3 border-bottom">
-                                <div class="me-3">
-                                    <div class="fw-semibold">{{ task.step.display_title }}</div>
-                                    <div class="text-muted small">
-                                        {{ task.payment.internal_reference }}
-                                        {% if task.payment.plot %} · {{ task.payment.plot.title }}{% endif %}
-                                    </div>
-                                    <div class="text-muted small">
-                                        Responsible: {{ task.owner_label }} · {{ task.step.get_status_display }}
-                                    </div>
+                        <div class="workspace-queue">
+                            {% for task in payment_admin_tasks %}
+                            <div class="workspace-queue-item">
+                                <div class="workspace-queue-copy">
+                                    <div class="workspace-queue-title">{{ task.step.display_title }}</div>
+                                    <div class="workspace-queue-subtitle">{{ task.payment.internal_reference }}{% if task.payment.plot %} · {{ task.payment.plot.title }}{% endif %}</div>
+                                    <div class="workspace-queue-meta">Responsible: {{ task.owner_label }}</div>
                                 </div>
-                                <div class="text-end">
+                                <div class="workspace-queue-actions">
                                     {% if task.is_current %}
-                                    <span class="badge bg-warning text-dark mb-2">Current</span><br>
+                                    <span class="workspace-status-pill workspace-status-current">Current</span>
                                     {% endif %}
                                     <a href="{% url 'payments:closing_step_workspace' task.payment.pk task.step.pk %}" class="btn btn-sm btn-outline-success">Open task</a>
                                 </div>
                             </div>
                             {% endfor %}
                         </div>
-                        <div class="mt-3">
-                            <a href="{% url 'payments:dashboard' %}" class="btn btn-sm btn-success">Open full payments workspace</a>
-                        </div>
                         {% else %}
-                        <div class="text-muted">No payment-stage admin tasks are waiting right now.</div>
+                        <div class="workspace-empty">No admin-held finance steps are waiting right now.</div>
                         {% endif %}
                     </div>
                 </div>
-                {% endif %}
 
-                <!-- ============ NEW: Verification Progress Section ============ -->
-                {% if verification %}
-                <div class="card status-card">
+                <div class="card status-card mt-4">
                     <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-shield-alt me-2"></i>Account Verification Progress
-                        </h3>
+                        <h3 class="card-title"><i class="fas fa-receipt me-2"></i>Recent Transactions</h3>
                     </div>
                     <div class="card-body">
-                        <!-- Timeline Progress -->
-                        <div class="verification-timeline">
-                            <!-- Stage 1: Documents Uploaded -->
-                            <div class="timeline-item {% if verification.current_stage != 'document_uploaded' %}completed{% endif %}">
-                                <div class="timeline-marker">
-                                    <i class="fas {% if verification.current_stage != 'document_uploaded' %}fa-check{% else %}fa-cloud-upload-alt{% endif %}"></i>
-                                </div>
-                                <div class="timeline-content">
-                                    <h4>Documents Uploaded</h4>
-                                    <p>{{ verification.document_uploaded_at|date:"M d, Y H:i" }}</p>
-                                </div>
+                        {% if finance_payments %}
+                        <div class="workspace-table">
+                            <div class="workspace-table-head">
+                                <span>Reference</span>
+                                <span>Type</span>
+                                <span>Amount</span>
+                                <span>Status</span>
                             </div>
-                            
-                            <!-- Stage 2: API Verification -->
-                            <div class="timeline-item {% if verification.current_stage in 'title_search_completed,owner_verified,encumbrance_check,admin_review,approved' %}completed{% endif %}">
-                                <div class="timeline-marker">
-                                    <i class="fas {% if verification.current_stage in 'title_search_completed,owner_verified,encumbrance_check,admin_review,approved' %}fa-check{% else %}fa-search{% endif %}"></i>
-                                </div>
-                                <div class="timeline-content">
-                                    <h4>API Verification</h4>
-                                    {% if verification.current_stage == 'api_verification_started' %}
-                                        <p>Verifying with Ardhisasa...</p>
-                                    {% elif verification.current_stage == 'title_search_completed' %}
-                                        <p>Title Search Complete</p>
-                                        {% if verification.search_reference %}
-                                            <small class="text-muted">Ref: {{ verification.search_reference }}</small>
-                                        {% endif %}
-                                    {% elif verification.current_stage == 'owner_verified' %}
-                                        <p>Owner Identity Verified</p>
-                                    {% elif verification.current_stage == 'encumbrance_check' %}
-                                        <p>Encumbrance Check Complete</p>
-                                    {% elif verification.current_stage in 'admin_review,approved' %}
-                                        <p>API Verification Complete</p>
-                                    {% else %}
-                                        <p>Pending</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <!-- Stage 3: Admin Review -->
-                            <div class="timeline-item {% if verification.current_stage in 'admin_review,approved' %}active{% endif %} {% if verification.current_stage == 'approved' %}completed{% endif %}">
-                                <div class="timeline-marker">
-                                    <i class="fas {% if verification.current_stage == 'approved' %}fa-check{% elif verification.current_stage == 'admin_review' %}fa-user-check{% else %}fa-hourglass-half{% endif %}"></i>
-                                </div>
-                                <div class="timeline-content">
-                                    <h4>Admin Review</h4>
-                                    {% if verification.current_stage == 'admin_review' %}
-                                        <p>Under review (usually within 24 hours)</p>
-                                    {% elif verification.current_stage == 'approved' %}
-                                        <p>Approved by Admin</p>
-                                        <small class="text-muted">{{ verification.admin_review_at|date:"M d, Y H:i" }}</small>
-                                    {% else %}
-                                        <p>Pending</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            
-                            <!-- Stage 4: Approved -->
-                            <div class="timeline-item {% if verification.current_stage == 'approved' %}completed{% endif %}">
-                                <div class="timeline-marker">
-                                    <i class="fas {% if verification.current_stage == 'approved' %}fa-check{% else %}fa-check-circle{% endif %}"></i>
-                                </div>
-                                <div class="timeline-content">
-                                    <h4>Verification Complete</h4>
-                                    {% if verification.current_stage == 'approved' %}
-                                        <p>Account Verified! You can now list properties.</p>
-                                        <small class="text-muted">{{ verification.approved_at|date:"M d, Y H:i" }}</small>
-                                    {% else %}
-                                        <p>Awaiting verification</p>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Progress Bar -->
-                        <div class="mt-4">
-                            <div class="progress-header">
-                                <span class="progress-label">Overall Progress</span>
-                                <span class="progress-value">{{ verification.progress }}%</span>
-                            </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill bg-success" style="width: {{ verification.progress }}%;"></div>
-                            </div>
-                        </div>
-                        
-                        <!-- Estimated Time -->
-                        <div class="alert alert-info mt-3 mb-0">
-                            <i class="fas fa-clock me-2"></i>
-                            {{ verification.estimated_completion }}
-                        </div>
-                    </div>
-                </div>
-                {% endif %}
-                <!-- ============ END NEW SECTION ============ -->
-
-                <!-- Verification Progress -->
-                <div class="card status-card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-chart-pie me-2"></i>Plot Verification Progress
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="status-progress-item">
-                            <div class="progress-header">
-                                <span class="progress-label">
-                                    <span class="status-dot bg-success"></span> Verified
-                                </span>
-                                <span class="progress-value">{{ verified_plots }}/{{ total_plots }}</span>
-                            </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill bg-success" style="width: {{ verified_percentage }}%;"></div>
-                            </div>
-                        </div>
-
-                        <div class="status-progress-item">
-                            <div class="progress-header">
-                                <span class="progress-label">
-                                    <span class="status-dot bg-info"></span> In Review
-                                </span>
-                                <span class="progress-value">{{ in_review_plots }}/{{ total_plots }}</span>
-                            </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill bg-info" style="width: {{ in_review_percentage }}%;"></div>
-                            </div>
-                        </div>
-
-                        <div class="status-progress-item">
-                            <div class="progress-header">
-                                <span class="progress-label">
-                                    <span class="status-dot bg-warning"></span> Pending
-                                </span>
-                                <span class="progress-value">{{ pending_plots }}/{{ total_plots }}</span>
-                            </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill bg-warning" style="width: {{ pending_percentage }}%;"></div>
-                            </div>
-                        </div>
-
-                        <div class="status-progress-item">
-                            <div class="progress-header">
-                                <span class="progress-label">
-                                    <span class="status-dot bg-danger"></span> Rejected
-                                </span>
-                                <span class="progress-value">{{ rejected_plots }}/{{ total_plots }}</span>
-                            </div>
-                            <div class="progress-bar-container">
-                                <div class="progress-bar-fill bg-danger" style="width: {{ rejected_percentage }}%;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Recent Plots -->
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h3 class="card-title">
-                            <i class="fas fa-map-marked-alt me-2"></i>Recent Plots
-                        </h3>
-                        <a href="{% url 'listings:my_plots' %}" class="btn btn-sm btn-outline-primary">View All</a>
-                    </div>
-                    <div class="card-body">
-                        {% if plots %}
-                            <div class="plots-grid">
-                                {% for plot in plots %}
-                                <div class="plot-card">
-                                    <div class="plot-header">
-                                        {% with status=plot.verification_status.current_stage|default:'none' %}
-                                        <span class="plot-status-badge status-{{ status }}">
-                                            {% if status == 'approved' %}
-                                                <i class="fas fa-check"></i> Verified
-                                            {% elif status == 'admin_review' %}
-                                                <i class="fas fa-sync-alt"></i> In Review
-                                            {% elif status == 'pending' %}
-                                                <i class="fas fa-hourglass-half"></i> Pending
-                                            {% elif status == 'rejected' %}
-                                                <i class="fas fa-times"></i> Rejected
-                                            {% else %}
-                                                No Status
-                                            {% endif %}
-                                        </span>
-                                        {% endwith %}
-                                    </div>
-                                    <div class="plot-body">
-                                        <h4 class="plot-title">
-                                            <a href="{% url 'listings:plot_detail' plot.id %}">{{ plot.title|truncatechars:35 }}</a>
-                                        </h4>
-                                        <p class="plot-location">
-                                            <i class="fas fa-map-pin"></i> {{ plot.location|truncatechars:40 }}
-                                        </p>
-                                        <div class="plot-meta">
-                                            <span class="meta-item">
-                                                <i class="fas fa-money-bill"></i> {{ plot.price|floatformat:0 }} KES
-                                            </span>
-                                            <span class="meta-item">
-                                                <i class="fas fa-expand"></i> {{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div class="plot-footer">
-                                        <a href="{% url 'listings:plot_verification_detail' plot.id %}" class="btn btn-sm btn-outline-primary w-100">
-                                            <i class="fas fa-eye"></i> View Details
-                                        </a>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <div class="empty-state">
-                                <i class="fas fa-inbox"></i>
-                                <p>No plots yet. <a href="{% url 'listings:add_plot' %}">Create your first plot</a></p>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column - Quick Actions & Activity -->
-            <aside class="content-right">
-                <!-- Quick Actions -->
-                <div class="card quick-actions-card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-bolt me-2"></i>Quick Actions
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <a href="{% url 'listings:add_plot' %}" class="action-btn">
-                            <span class="action-icon">
-                                <i class="fas fa-plus"></i>
-                            </span>
-                            <span class="action-text">Add New Plot</span>
-                        </a>
-                        <a href="{% url 'listings:my_plots' %}" class="action-btn">
-                            <span class="action-icon">
-                                <i class="fas fa-list"></i>
-                            </span>
-                            <span class="action-text">View All Plots</span>
-                        </a>
-                        <a href="{% url 'listings:buyer_interests' %}" class="action-btn">
-                            <span class="action-icon">
-                                <i class="fas fa-envelope"></i>
-                            </span>
-                            <span class="action-text">View Messages</span>
-                        </a>
-                        <a href="{% url 'listings:profile_management' %}" class="action-btn">
-                            <span class="action-icon">
-                                <i class="fas fa-user-edit"></i>
-                            </span>
-                            <span class="action-text">Edit Profile</span>
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Recent Activity -->
-                {% if recent_interests %}
-                <div class="card activity-card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-history me-2"></i>Recent Inquiries
-                        </h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="activity-list">
-                            {% for interest in recent_interests %}
-                            <div class="activity-item">
-                                <div class="activity-dot"></div>
-                                <div class="activity-content">
-                                    <p class="activity-title">
-                                        <strong>{{ interest.user.get_full_name|default:interest.user.username }}</strong>
-                                        interested in <strong>{{ interest.plot.title|truncatechars:20 }}</strong>
-                                    </p>
-                                    <p class="activity-time">{{ interest.created_at|timesince }} ago</p>
-                                </div>
+                            {% for payment in finance_payments %}
+                            <div class="workspace-table-row">
+                                <span><strong>{{ payment.internal_reference }}</strong><small>{{ payment.plot.title|default:payment.title }}</small></span>
+                                <span>{{ payment.get_transaction_type_display }}</span>
+                                <span>KES {{ payment.amount|floatformat:2|intcomma }}</span>
+                                <span>{{ payment.get_status_display }}</span>
                             </div>
                             {% endfor %}
                         </div>
+                        {% else %}
+                        <div class="workspace-empty">No finance records are available.</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if finance_wallet_cards %}
+                <div class="metrics-grid workspace-mini-metrics mt-4">
+                    <div class="metric-card">
+                        <div class="metric-icon bg-primary"><i class="fas fa-wallet"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Wallets</p>
+                            <h2 class="metric-value">{{ finance_wallet_cards.wallets|default:0 }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-success"><i class="fas fa-scale-balanced"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Held Balance</p>
+                            <h2 class="metric-value">KES {{ finance_wallet_cards.balances|floatformat:2|intcomma }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-warning"><i class="fas fa-hourglass-half"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Pending Deposits</p>
+                            <h2 class="metric-value">{{ finance_wallet_cards.pending_deposits|default:0 }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-danger"><i class="fas fa-arrow-trend-down"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Pending Withdrawals</p>
+                            <h2 class="metric-value">{{ finance_wallet_cards.pending_withdrawals|default:0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card status-card mt-4">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-piggy-bank me-2"></i>Wallet & Escrow Oversight</h3>
+                        <p class="text-muted mb-0">Finance monitors wallet funding and withdrawal pressure in the same space as escrow and payout controls.</p>
+                    </div>
+                    <div class="card-body">
+                        <div class="workspace-table">
+                            <div class="workspace-table-head wallet-finance-head">
+                                <span>Request</span>
+                                <span>User</span>
+                                <span>Amount</span>
+                                <span>Status</span>
+                            </div>
+                            {% for deposit in finance_wallet_requests.deposits %}
+                            <div class="workspace-table-row wallet-finance-row">
+                                <span><strong>Deposit</strong><small>{{ deposit.phone_number }}</small></span>
+                                <span>{{ deposit.user.get_full_name|default:deposit.user.username }}</span>
+                                <span>KES {{ deposit.amount|floatformat:2|intcomma }}</span>
+                                <span>{{ deposit.get_status_display }}</span>
+                            </div>
+                            {% endfor %}
+                            {% for withdrawal in finance_wallet_requests.withdrawals %}
+                            <div class="workspace-table-row wallet-finance-row">
+                                <span><strong>Withdrawal</strong><small>{{ withdrawal.phone_number }}</small></span>
+                                <span>{{ withdrawal.user.get_full_name|default:withdrawal.user.username }}</span>
+                                <span>KES {{ withdrawal.amount|floatformat:2|intcomma }}</span>
+                                <span>{{ withdrawal.get_status_display }}</span>
+                            </div>
+                            {% endfor %}
+                            {% if not finance_wallet_requests.deposits and not finance_wallet_requests.withdrawals %}
+                            <div class="workspace-empty">No pending wallet funding or withdrawal items are waiting right now.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endif %}
+
+                {% if active_section == "audit" %}
+                <div class="card status-card">
+                    <div class="card-header workspace-header-row">
+                        <div>
+                            <h3 class="card-title"><i class="fas fa-shield-halved me-2"></i>Audit Trail</h3>
+                            <p class="text-muted mb-0">Every approval, document action, and finance step is captured here for compliance.</p>
+                        </div>
+                        <a href="{% url 'verification:audit_logs' %}" class="btn btn-outline-secondary">Open full audit log</a>
+                    </div>
+                    <div class="card-body">
+                        {% if recent_audit_logs %}
+                        {% for log in recent_audit_logs %}
+                        <div class="workspace-audit-item">
+                            <div class="workspace-audit-title">{{ log.get_action_display }}</div>
+                            <div class="workspace-audit-meta">{{ log.user.get_full_name|default:log.user.username|default:"System" }}{% if log.object_repr %} · {{ log.object_repr }}{% endif %}</div>
+                            <div class="workspace-audit-time">{{ log.created_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% endfor %}
+                        {% else %}
+                        <div class="workspace-empty">No recent audit entries are available.</div>
+                        {% endif %}
                     </div>
                 </div>
                 {% endif %}
 
-                <!-- Broker Info Card -->
-                <div class="card broker-card">
-                    <div class="card-header">
-                        <h3 class="card-title">
-                            <i class="fas fa-info-circle me-2"></i>Your Info
-                        </h3>
+                {% if active_section == "analytics" %}
+                <div class="metrics-grid workspace-mini-metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon bg-secondary"><i class="fas fa-comments"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Total Interest</p>
+                            <h2 class="metric-value">{{ analytics_cards.total_interests }}</h2>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="broker-info-item">
-                            <span class="info-label">Member Since</span>
-                            <span class="info-value">{{ request.user.date_joined|date:"M d, Y" }}</span>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-primary"><i class="fas fa-coins"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Average Price</p>
+                            <h2 class="metric-value">KES {{ analytics_cards.avg_price|floatformat:0|intcomma }}</h2>
                         </div>
-                        <div class="broker-info-item">
-                            <span class="info-label">Account Status</span>
-                            <span class="info-value">
-                                {% if profile.verified %}
-                                    <span class="badge bg-success">Verified</span>
-                                {% else %}
-                                    <span class="badge bg-warning">Pending</span>
-                                {% endif %}
-                            </span>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-success"><i class="fas fa-tag"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">For Sale</p>
+                            <h2 class="metric-value">{{ analytics_cards.for_sale }}</h2>
                         </div>
-                        <div class="broker-info-item">
-                            <span class="info-label">Total Listings</span>
-                            <span class="info-value">{{ total_plots }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-info"><i class="fas fa-key"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">For Lease</p>
+                            <h2 class="metric-value">{{ analytics_cards.for_lease }}</h2>
                         </div>
                     </div>
                 </div>
-            </aside>
+
+                <div class="card status-card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-chart-column me-2"></i>Monthly Activity</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if analytics_cards.monthly_stats %}
+                        <div class="workspace-table">
+                            <div class="workspace-table-head">
+                                <span>Month</span>
+                                <span>Plots Added</span>
+                            </div>
+                            {% for item in analytics_cards.monthly_stats %}
+                            <div class="workspace-table-row workspace-table-row-compact">
+                                <span>{{ item.month|date:"M Y" }}</span>
+                                <span>{{ item.count }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="workspace-empty">Not enough listing activity yet to display analytics.</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if active_section == "governance" %}
+                <div class="metrics-grid workspace-mini-metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon bg-primary"><i class="fas fa-users"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Total Users</p>
+                            <h2 class="metric-value">{{ governance_cards.total_users|default:0 }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-info"><i class="fas fa-file-signature"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Transactions</p>
+                            <h2 class="metric-value">{{ governance_cards.total_transactions|default:0 }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-success"><i class="fas fa-check"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Completed</p>
+                            <h2 class="metric-value">{{ governance_cards.completed_transactions|default:0 }}</h2>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon bg-warning"><i class="fas fa-hourglass"></i></div>
+                        <div class="metric-content">
+                            <p class="metric-label">Pending</p>
+                            <h2 class="metric-value">{{ governance_cards.pending_transactions|default:0 }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card status-card">
+                    <div class="card-header workspace-header-row">
+                        <div>
+                            <h3 class="card-title"><i class="fas fa-users-cog me-2"></i>Governance & Access</h3>
+                            <p class="text-muted mb-0">Role assignment and high-level control stays discoverable from the same workspace.</p>
+                        </div>
+                        <a href="/admin/auth/user/" class="btn btn-outline-secondary">Manage users</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="workspace-empty workspace-empty-inline">Use this section to monitor access footprint, then jump into user management only when an edit is needed.</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="content-right">
+                {% if active_section != "audit" and recent_audit_logs %}
+                <div class="card status-card mt-4">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-history me-2"></i>Recent Audit Activity</h3>
+                    </div>
+                    <div class="card-body">
+                        {% for log in recent_audit_logs %}
+                        <div class="workspace-audit-item">
+                            <div class="workspace-audit-title">{{ log.get_action_display }}</div>
+                            <div class="workspace-audit-meta">{{ log.user.get_full_name|default:log.user.username|default:"System" }}</div>
+                            <div class="workspace-audit-time">{{ log.created_at|date:"M d, Y H:i" }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
         </div>
     </main>
-
-    <style>
-    /* Root Variables - EXACTLY AS ORIGINAL */
-    :root {
-        --primary: #1f8b4c;
-        --primary-light: #e3ebf7;
-        --success: #1cc88a;
-        --success-light: #d4edda;
-        --warning: #f6c23e;
-        --warning-light: #fff3cd;
-        --danger: #e74a3b;
-        --danger-light: #f8d7da;
-        --info: #36b9cc;
-        --info-light: #d1ecf1;
-        --gray-100: #f8f9fa;
-        --gray-200: #e9ecef;
-        --gray-300: #dee2e6;
-        --gray-600: #6c757d;
-        --gray-700: #5a5c69;
-        --gray-800: #1f2937;
-        --shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
-        --shadow-lg: 0 0.35rem 1.75rem 0 rgba(58, 59, 69, 0.15);
-        --radius: 0.75rem;
-        --transition: all 0.2s ease;
-    }
-
-    /* Dashboard Layout - EXACTLY AS ORIGINAL */
-    .dashboard-wrapper {
-        display: flex;
-        height: 100vh;
-        background: var(--gray-100);
-    }
-
-    footer {
-        margin-left: 260px;
-        width: auto;
-    }
-
-    /* Sidebar - EXACTLY AS ORIGINAL */
-    .dashboard-sidebar {
-        width: 260px;
-        background: white;
-        border-right: 1px solid var(--gray-300);
-        display: flex;
-        flex-direction: column;
-        overflow-y: auto;
-        position: fixed;
-        height: 100vh;
-        left: 0;
-        top: 0;
-        z-index: 1000;
-    }
-
-    .sidebar-brand {
-        padding: 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        font-weight: 700;
-        font-size: 1.3rem;
-        color: var(--primary);
-        border-bottom: 2px solid var(--gray-200);
-    }
-
-    .sidebar-brand i {
-        font-size: 1.5rem;
-    }
-
-    .sidebar-nav {
-        flex: 1;
-        padding: 1rem 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .nav-item {
-        padding: 0.875rem 1.5rem;
-        color: var(--gray-700);
-        text-decoration: none;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        transition: var(--transition);
-        border-left: 3px solid transparent;
-    }
-
-    .nav-item:hover {
-        background: var(--gray-100);
-        color: var(--primary);
-    }
-
-    .nav-item.active {
-        background: var(--primary-light);
-        color: var(--primary);
-        border-left-color: var(--primary);
-        font-weight: 600;
-    }
-
-    .nav-item i {
-        width: 20px;
-        text-align: center;
-    }
-
-    .sidebar-footer {
-        padding: 1.5rem;
-        border-top: 1px solid var(--gray-300);
-    }
-
-    .user-info {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
-
-    .user-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: var(--primary);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 1.1rem;
-    }
-
-    .user-details p {
-        margin: 0;
-        font-size: 0.85rem;
-    }
-
-    .user-name {
-        font-weight: 600;
-        color: var(--gray-800);
-    }
-
-    .user-role {
-        color: var(--gray-600);
-    }
-
-    /* Main Content - EXACTLY AS ORIGINAL */
-    .dashboard-main {
-        flex: 1;
-        margin-left: 260px;
-        overflow-y: auto;
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-    }
-
-    .dashboard-topbar {
-        background: white;
-        padding: 1.5rem 2rem;
-        border-bottom: 1px solid var(--gray-300);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .page-title {
-        margin: 0;
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--gray-800);
-    }
-
-    .page-subtitle {
-        margin: 0.25rem 0 0 0;
-        color: var(--gray-600);
-        font-size: 0.95rem;
-    }
-
-    .verification-status {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-weight: 600;
-        font-size: 0.9rem;
-    }
-
-    .verification-status.verified {
-        background: var(--success-light);
-        color: var(--success);
-    }
-
-    .verification-status.pending {
-        background: var(--warning-light);
-        color: #856404;
-    }
-
-    /* Dashboard Content - EXACTLY AS ORIGINAL */
-    .dashboard-content {
-        padding: 2rem;
-        display: grid;
-        grid-template-columns: 1fr 320px;
-        gap: 2rem;
-        flex: 1;
-        max-width: 1600px;
-        margin: 0 auto;
-        width: 100%;
-    }
-
-    .content-left {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-    }
-
-    .content-right {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-    }
-
-    /* Metrics Grid - EXACTLY AS ORIGINAL */
-    .metrics-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .metric-card {
-        background: white;
-        border-radius: var(--radius);
-        padding: 1.5rem;
-        display: flex;
-        align-items: flex-start;
-        gap: 1.25rem;
-        box-shadow: var(--shadow);
-        transition: var(--transition);
-    }
-
-    .metric-card:hover {
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-2px);
-    }
-
-    .metric-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        font-size: 1.75rem;
-        flex-shrink: 0;
-    }
-
-    .bg-primary { background: linear-gradient(135deg, var(--primary) 0%, #0b9810 100%); }
-    .bg-success { background: linear-gradient(135deg, var(--success) 0%, #16a54b 100%); }
-    .bg-warning { background: linear-gradient(135deg, var(--warning) 0%, #e8b81d 100%); }
-    .bg-danger { background: linear-gradient(135deg, var(--danger) 0%, #d63c2a 100%); }
-    .bg-info { background: linear-gradient(135deg, var(--info) 0%, #2fa8ae 100%); }
-    .bg-secondary { background: linear-gradient(135deg, var(--gray-600) 0%, var(--gray-700) 100%); }
-
-    .metric-content {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .metric-label {
-        margin: 0;
-        font-size: 0.85rem;
-        color: var(--gray-600);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
-    }
-
-    .metric-value {
-        margin: 0.5rem 0 0 0;
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--gray-800);
-    }
-
-    .metric-percent {
-        margin: 0.25rem 0 0 0;
-        font-size: 0.85rem;
-        color: var(--gray-600);
-    }
-
-    /* Cards - EXACTLY AS ORIGINAL */
-    .card {
-        background: white;
-        border-radius: var(--radius);
-        box-shadow: var(--shadow);
-        overflow: hidden;
-    }
-
-    .card-header {
-        padding: 1.5rem;
-        border-bottom: 2px solid var(--gray-200);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .card-title {
-        margin: 0;
-        font-size: 1.15rem;
-        font-weight: 600;
-        color: var(--gray-800);
-    }
-
-    .card-body {
-        padding: 1.5rem;
-    }
-
-    /* Status Card - EXACTLY AS ORIGINAL */
-    .status-card .card-body {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-
-    .status-progress-item {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-
-    .progress-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.9rem;
-    }
-
-    .progress-label {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--gray-700);
-        font-weight: 500;
-    }
-
-    .status-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        display: inline-block;
-    }
-
-    .progress-value {
-        color: var(--gray-600);
-        font-weight: 600;
-    }
-
-    .progress-bar-container {
-        height: 8px;
-        background: var(--gray-200);
-        border-radius: 4px;
-        overflow: hidden;
-    }
-
-    .progress-bar-fill {
-        height: 100%;
-        transition: var(--transition);
-    }
-
-    /* ===== NEW: Verification Timeline Styles ===== */
-    .verification-timeline {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-        position: relative;
-        padding-left: 1rem;
-    }
-
-    .verification-timeline::before {
-        content: '';
-        position: absolute;
-        left: 23px;
-        top: 10px;
-        bottom: 10px;
-        width: 2px;
-        background: var(--gray-300);
-        z-index: 0;
-    }
-
-    .timeline-item {
-        display: flex;
-        gap: 1rem;
-        position: relative;
-        z-index: 1;
-    }
-
-    .timeline-marker {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: white;
-        border: 2px solid var(--gray-300);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--gray-600);
-        font-size: 1.25rem;
-        flex-shrink: 0;
-        transition: var(--transition);
-    }
-
-    .timeline-item.completed .timeline-marker {
-        background: var(--success);
-        border-color: var(--success);
-        color: white;
-    }
-
-    .timeline-item.active .timeline-marker {
-        background: var(--primary);
-        border-color: var(--primary);
-        color: white;
-        animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-        0% {
-            box-shadow: 0 0 0 0 rgba(6, 145, 50, 0.7);
-        }
-        70% {
-            box-shadow: 0 0 0 10px rgba(6, 145, 50, 0);
-        }
-        100% {
-            box-shadow: 0 0 0 0 rgba(6, 145, 50, 0);
-        }
-    }
-
-    .timeline-content {
-        flex: 1;
-        padding: 0.5rem 0;
-    }
-
-    .timeline-content h4 {
-        margin: 0 0 0.25rem 0;
-        font-size: 1rem;
-        font-weight: 600;
-        color: var(--gray-800);
-    }
-
-    .timeline-content p {
-        margin: 0;
-        font-size: 0.85rem;
-        color: var(--gray-600);
-    }
-
-    .timeline-content small {
-        font-size: 0.75rem;
-    }
-
-    .alert {
-        padding: 1rem;
-        border-radius: var(--radius);
-        display: flex;
-        align-items: center;
-    }
-
-    .alert-info {
-        background: var(--info-light);
-        color: var(--info);
-        border: 1px solid var(--info);
-    }
-    /* ===== END NEW STYLES ===== */
-
-    /* Plots Grid - EXACTLY AS ORIGINAL */
-    .plots-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .plot-card {
-        border: 1px solid var(--gray-200);
-        border-radius: var(--radius);
-        overflow: hidden;
-        transition: var(--transition);
-        display: flex;
-        flex-direction: column;
-    }
-
-    .plot-card:hover {
-        box-shadow: var(--shadow-lg);
-        transform: translateY(-4px);
-        border-color: var(--primary);
-    }
-
-    .plot-header {
-        padding: 1rem;
-        background: var(--gray-100);
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .plot-status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.35rem 0.75rem;
-        border-radius: 20px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        color: white;
-    }
-
-    .status-verified { background: var(--success); }
-    .status-in_review { background: var(--info); }
-    .status-pending { background: var(--warning); color: var(--gray-800); }
-    .status-rejected { background: var(--danger); }
-    .status-none { background: var(--gray-600); }
-
-    .plot-body {
-        padding: 1.25rem;
-        flex: 1;
-    }
-
-    .plot-title {
-        margin: 0 0 0.5rem 0;
-        font-size: 1.05rem;
-        font-weight: 600;
-    }
-
-    .plot-title a {
-        color: var(--gray-800);
-        text-decoration: none;
-        transition: var(--transition);
-    }
-
-    .plot-title a:hover {
-        color: var(--primary);
-    }
-
-    .plot-location {
-        margin: 0.5rem 0;
-        font-size: 0.9rem;
-        color: var(--gray-600);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .plot-meta {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-top: 1rem;
-        padding-top: 1rem;
-        border-top: 1px solid var(--gray-200);
-    }
-
-    .meta-item {
-        font-size: 0.85rem;
-        color: var(--gray-700);
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-
-    .meta-item i {
-        color: var(--primary);
-    }
-
-    .plot-footer {
-        padding: 0 1.25rem 1.25rem;
-    }
-
-    /* Quick Actions - EXACTLY AS ORIGINAL */
-    .action-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        padding: 0.875rem 1rem;
-        color: var(--gray-700);
-        text-decoration: none;
-        border-radius: 8px;
-        transition: var(--transition);
-        margin-bottom: 0.75rem;
-        background: var(--gray-100);
-    }
-
-    .action-btn:last-child {
-        margin-bottom: 0;
-    }
-
-    .action-btn:hover {
-        background: var(--primary-light);
-        color: var(--primary);
-    }
-
-    .action-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        background: rgba(6, 145, 50, 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--primary);
-        flex-shrink: 0;
-    }
-
-    .action-text {
-        font-weight: 500;
-        font-size: 0.95rem;
-    }
-
-    /* Activity - EXACTLY AS ORIGINAL */
-    .activity-list {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-    }
-
-    .activity-item {
-        display: flex;
-        gap: 0.75rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .activity-item:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .activity-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: var(--primary);
-        margin-top: 0.35rem;
-        flex-shrink: 0;
-    }
-
-    .activity-content {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .activity-title {
-        margin: 0;
-        font-size: 0.9rem;
-        color: var(--gray-800);
-        line-height: 1.4;
-    }
-
-    .activity-time {
-        margin: 0.25rem 0 0 0;
-        font-size: 0.8rem;
-        color: var(--gray-600);
-    }
-
-    /* Broker Info - EXACTLY AS ORIGINAL */
-    .broker-info-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--gray-200);
-    }
-
-    .broker-info-item:last-child {
-        border-bottom: none;
-        padding-bottom: 0;
-    }
-
-    .info-label {
-        font-weight: 500;
-        color: var(--gray-600);
-        font-size: 0.9rem;
-    }
-
-    .info-value {
-        font-weight: 600;
-        color: var(--gray-800);
-    }
-
-    /* Empty State - EXACTLY AS ORIGINAL */
-    .empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: var(--gray-600);
-    }
-
-    .empty-state i {
-        font-size: 3rem;
-        opacity: 0.3;
-        display: block;
-        margin-bottom: 1rem;
-    }
-
-    .empty-state p {
-        margin: 0;
-    }
-
-    .empty-state a {
-        color: var(--primary);
-        text-decoration: none;
-        font-weight: 600;
-    }
-
-    /* Responsive - EXACTLY AS ORIGINAL */
-    @media (max-width: 1200px) {
-        .dashboard-content {
-            grid-template-columns: 1fr;
-        }
-
-        .content-right {
-            grid-column: 1;
-            grid-row: auto;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 2rem;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .dashboard-wrapper {
-            flex-direction: column;
-        }
-
-        .dashboard-sidebar {
-            width: 100%;
-            height: auto;
-            position: static;
-        }
-
-        .dashboard-main {
-            margin-left: 0;
-        }
-
-        footer {
-            margin-left: 0;
-        }
-
-        .sidebar-nav {
-            flex-direction: row;
-            overflow-x: auto;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-        }
-
-        .nav-item {
-            white-space: nowrap;
-            flex-shrink: 0;
-            border-left: none;
-            border-bottom: 2px solid transparent;
-        }
-
-        .nav-item.active {
-            border-left: none;
-            border-bottom-color: var(--primary);
-        }
-
-        .sidebar-footer {
-            display: none;
-        }
-
-        .dashboard-topbar {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 1rem;
-        }
-
-        .metrics-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-
-        .plots-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .content-right {
-            grid-template-columns: 1fr !important;
-        }
-    }
-
-    @media (max-width: 480px) {
-        .dashboard-topbar {
-            padding: 1rem 1.25rem;
-        }
-        .metrics-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .dashboard-topbar {
-            padding: 1rem;
-        }
-
-        .page-title {
-            font-size: 1.5rem;
-        }
-
-        .dashboard-content {
-            padding: 1rem;
-        }
-    }
-
-    /* Nav Section Divider */
-.nav-section-divider {
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-}
-
-.nav-section-divider hr {
-    margin: 0.5rem 1.5rem;
-    border-color: var(--gray-300);
-    opacity: 0.5;
-}
-
-.nav-section-title {
-    padding: 0 1.5rem;
-    margin-bottom: 0.5rem;
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--gray-600);
-    font-weight: 600;
-}
-
-/* Nav Badge for staff section */
-.nav-badge {
-    margin-left: auto;
-    background: var(--danger);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 30px;
-    font-size: 0.7rem;
-    font-weight: 600;
-}
-</style>
 </div>
 
+{% if active_section == "wallet" %}
+<div class="wallet-modal-shell">
+    <div id="walletDepositModal" class="wallet-modal">
+        <div class="wallet-modal-content">
+            <div class="wallet-modal-header">Deposit to Wallet</div>
+            <div class="wallet-form-group">
+                <label for="walletDepositAmount">Amount (KES)</label>
+                <input type="number" id="walletDepositAmount" min="10" step="1" placeholder="Enter amount">
+            </div>
+            <div class="wallet-form-group">
+                <label for="walletDepositPhone">M-Pesa Number</label>
+                <input type="tel" id="walletDepositPhone" placeholder="0712345678">
+            </div>
+            <div class="wallet-modal-buttons">
+                <button type="button" class="btn btn-outline-secondary" data-wallet-close="walletDepositModal">Cancel</button>
+                <button type="button" class="btn btn-success" data-wallet-submit="deposit">Deposit</button>
+            </div>
+        </div>
+    </div>
+    <div id="walletWithdrawModal" class="wallet-modal">
+        <div class="wallet-modal-content">
+            <div class="wallet-modal-header">Withdraw from Wallet</div>
+            <div class="wallet-form-group">
+                <label for="walletWithdrawAmount">Amount (KES)</label>
+                <input type="number" id="walletWithdrawAmount" min="50" step="1" placeholder="Enter amount">
+            </div>
+            <div class="wallet-form-group">
+                <label for="walletWithdrawPhone">M-Pesa Number</label>
+                <input type="tel" id="walletWithdrawPhone" placeholder="0712345678">
+            </div>
+            <div class="wallet-form-group">
+                <label for="walletWithdrawPin">Wallet PIN</label>
+                <input type="password" id="walletWithdrawPin" maxlength="4" placeholder="Enter 4-digit PIN">
+            </div>
+            <div class="wallet-modal-buttons">
+                <button type="button" class="btn btn-outline-secondary" data-wallet-close="walletWithdrawModal">Cancel</button>
+                <button type="button" class="btn btn-success" data-wallet-submit="withdraw">Withdraw</button>
+            </div>
+        </div>
+    </div>
+    <div id="walletPinModal" class="wallet-modal">
+        <div class="wallet-modal-content">
+            <div class="wallet-modal-header">{% if wallet_cards.has_pin %}Change Wallet PIN{% else %}Set Wallet PIN{% endif %}</div>
+            <div class="wallet-form-group">
+                <label for="walletPinOne">New PIN</label>
+                <input type="password" id="walletPinOne" maxlength="4" placeholder="Enter 4-digit PIN">
+            </div>
+            <div class="wallet-form-group">
+                <label for="walletPinTwo">Confirm PIN</label>
+                <input type="password" id="walletPinTwo" maxlength="4" placeholder="Confirm 4-digit PIN">
+            </div>
+            <div class="wallet-modal-buttons">
+                <button type="button" class="btn btn-outline-secondary" data-wallet-close="walletPinModal">Cancel</button>
+                <button type="button" class="btn btn-success" data-wallet-submit="pin">Save PIN</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const openers = document.querySelectorAll('[data-wallet-action]');
+    const closers = document.querySelectorAll('[data-wallet-close]');
+    const submitters = document.querySelectorAll('[data-wallet-submit]');
+
+    const openWalletModal = function (modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.add('active');
+    };
+
+    const closeWalletModal = function (modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) modal.classList.remove('active');
+    };
+
+    const walletHeaders = {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': (window.AgriPlotUI && window.AgriPlotUI.getCookie) ? window.AgriPlotUI.getCookie('csrftoken') : ''
+    };
+
+    openers.forEach(function (button) {
+        button.addEventListener('click', function () {
+            const action = button.getAttribute('data-wallet-action');
+            if (action === 'deposit') openWalletModal('walletDepositModal');
+            if (action === 'withdraw') openWalletModal('walletWithdrawModal');
+            if (action === 'pin') openWalletModal('walletPinModal');
+        });
+    });
+
+    closers.forEach(function (button) {
+        button.addEventListener('click', function () {
+            closeWalletModal(button.getAttribute('data-wallet-close'));
+        });
+    });
+
+    submitters.forEach(function (button) {
+        button.addEventListener('click', async function () {
+            const action = button.getAttribute('data-wallet-submit');
+            let url = '';
+            let payload = {};
+            let modalId = '';
+
+            if (action === 'deposit') {
+                url = "{% url 'payments:wallet_deposit' %}";
+                modalId = 'walletDepositModal';
+                payload = {
+                    amount: document.getElementById('walletDepositAmount').value,
+                    phone_number: document.getElementById('walletDepositPhone').value
+                };
+            }
+
+            if (action === 'withdraw') {
+                url = "{% url 'payments:wallet_withdraw' %}";
+                modalId = 'walletWithdrawModal';
+                payload = {
+                    amount: document.getElementById('walletWithdrawAmount').value,
+                    phone_number: document.getElementById('walletWithdrawPhone').value,
+                    pin: document.getElementById('walletWithdrawPin').value
+                };
+            }
+
+            if (action === 'pin') {
+                url = "{% url 'payments:wallet_set_pin' %}";
+                modalId = 'walletPinModal';
+                payload = {
+                    pin: document.getElementById('walletPinOne').value,
+                    confirm_pin: document.getElementById('walletPinTwo').value
+                };
+            }
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: walletHeaders,
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+
+            if (window.AgriPlotUI && window.AgriPlotUI.showToast) {
+                window.AgriPlotUI.showToast({
+                    message: data.message || (data.success ? 'Wallet updated.' : 'Wallet action failed.'),
+                    type: data.success ? 'success' : 'error'
+                });
+            }
+
+            if (data.success) {
+                closeWalletModal(modalId);
+                window.location.reload();
+            }
+        });
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

@@ -12,8 +12,8 @@
             <p class="page-header-subtitle">{{ task.get_verification_type_display }} for {{ plot.title }}</p>
         </div>
         <div class="page-header-actions">
-            <a href="{% url 'verification:my_tasks' %}" class="btn">
-                <i class="fas fa-arrow-left me-2"></i>Back to My Tasks
+            <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn">
+                <i class="fas fa-arrow-left me-2"></i>Back to Task Inbox
             </a>
         </div>
     </div>
@@ -506,7 +506,7 @@
                             <span id="submitText">Submit Task Completion</span>
                             <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
                         </button>
-                        <a href="{% url 'verification:my_tasks' %}" class="btn btn-outline-secondary">Cancel</a>
+                        <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>
@@ -569,16 +569,72 @@
         padding-right: 0.5rem;
     }
 
-    .form-check {
+    .checklist-group .form-check,
+    .verification-section > .form-check {
+        display: grid;
+        grid-template-columns: 1.15rem minmax(0, 1fr);
+        align-items: flex-start;
+        column-gap: 0.85rem;
         padding: 0.75rem;
+        padding-left: 1rem;
+        margin-bottom: 0.75rem;
         background: white;
         border-radius: 8px;
         border: 1px solid #e9ecef;
     }
 
+    .checklist-group .form-check:last-child,
+    .verification-section > .form-check:last-child {
+        margin-bottom: 0;
+    }
+
+    .checklist-group .form-check-input,
+    .verification-section > .form-check .form-check-input {
+        grid-column: 1;
+        margin: 0;
+        float: none;
+        position: static;
+        width: 1.05rem;
+        height: 1.05rem;
+        flex-shrink: 0;
+        border: 1px solid rgba(14, 45, 35, 0.28);
+        box-shadow: none;
+    }
+
+    .checklist-group .form-check-label,
+    .verification-section > .form-check .form-check-label {
+        grid-column: 2;
+        min-width: 0;
+        margin: 0;
+        line-height: 1.45;
+        color: #22372b;
+    }
+
+    .checklist-group .form-check-label strong,
+    .verification-section > .form-check .form-check-label strong {
+        display: block;
+        margin-bottom: 0.2rem;
+    }
+
+    .checklist-group .form-check-label small,
+    .verification-section > .form-check .form-check-label small {
+        display: block;
+        line-height: 1.45;
+        word-break: break-word;
+    }
+
     .form-check-input:checked {
         background-color: var(--success);
         border-color: var(--success);
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M4.5 10.5l3.2 3.2 7.8-8.2'/%3e%3c/svg%3e");
+        background-size: 0.82rem;
+        background-position: center;
+        background-repeat: no-repeat;
+    }
+
+    .form-check-input:focus {
+        border-color: rgba(31, 139, 76, 0.48);
+        box-shadow: 0 0 0 0.2rem rgba(31, 139, 76, 0.14);
     }
 
     .btn-group {
@@ -593,6 +649,33 @@
     .input-group-text {
         background: var(--light);
         border: 1px solid #e9ecef;
+    }
+
+    @media (max-width: 768px) {
+        .verification-section {
+            padding: 1rem;
+        }
+
+        .checklist-group {
+            max-height: none;
+            overflow: visible;
+            padding-right: 0;
+        }
+
+        .checklist-group .form-check,
+        .verification-section > .form-check {
+            padding: 0.85rem;
+            padding-left: 0.9rem;
+            column-gap: 0.75rem;
+        }
+
+        .btn-group {
+            flex-direction: column;
+        }
+
+        .btn-group .btn {
+            width: 100%;
+        }
     }
 </style>
 
