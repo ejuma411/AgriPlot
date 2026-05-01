@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_otp
 
 app_name = 'security'
 
@@ -24,8 +25,13 @@ urlpatterns = [
     path('two-factor/verify/', views.two_factor_verify, name='two_factor_verify'),
     
     # Verification codes
+    path('send-otp/', views_otp.send_otp_verification, name='send_otp'),
     path('send-code/', views.send_verification_code, name='send_code'),
     path('verify-code/', views.verify_code, name='verify_code'),
+    path('verify-otp/', views_otp.verify_otp, name='verify_otp'),
+    path('resend-otp/', views_otp.resend_otp, name='resend_otp'),
+    path('verify-email/<str:token>/', views_otp.verify_email, name='verify_email'),
+    path('resend-email-verification/', views_otp.resend_email_verification, name='resend_email_verification'),
     
     # Security health and reports
     path('health-check/', views.security_health_check, name='health_check'),

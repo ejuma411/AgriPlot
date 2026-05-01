@@ -414,6 +414,27 @@ WALLET_MPESA_CALLBACK_URL = os.environ.get("WALLET_MPESA_CALLBACK_URL", "")
 WALLET_TEST_MODE = _env_bool("WALLET_TEST_MODE", default=True)
 
 # =============================================================================
+# CELERY CONFIGURATION
+# =============================================================================
+
+REDIS_URL = os.environ.get("REDIS_URL", "redis://127.0.0.1:6379/0")
+
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND") or None
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_TASK_TRACK_STARTED = _env_bool("CELERY_TASK_TRACK_STARTED", default=False)
+CELERY_TASK_IGNORE_RESULT = _env_bool("CELERY_TASK_IGNORE_RESULT", default=True)
+CELERY_TASK_TIME_LIMIT = 300  # 5 minutes hard limit per task
+CELERY_TASK_SOFT_TIME_LIMIT = 240
+# Retry failed tasks with exponential backoff
+CELERY_TASK_ACKS_LATE = True
+CELERY_WORKER_PREFETCH_MULTIPLIER = 1
+
+
+# =============================================================================
 # FEATURE FLAGS & SECURITY CONTROLS
 # =============================================================================
 
@@ -431,6 +452,10 @@ PLOT_CREATE_RATE_LIMIT = int(os.environ.get("PLOT_CREATE_RATE_LIMIT", "0"))
 OTP_PROVIDER = os.environ.get("OTP_PROVIDER", "email")  # email | sms | both
 USE_SMS_MOCK = _env_bool("USE_SMS_MOCK", default=True)
 ENABLE_SMS_NOTIFICATIONS = _env_bool("ENABLE_SMS_NOTIFICATIONS", default=False)
+NOTIFICATION_DELAY_SECONDS = int(os.environ.get("NOTIFICATION_DELAY_SECONDS", "60"))
+SMS_HTTP_RETRIES = int(os.environ.get("SMS_HTTP_RETRIES", "1"))
+SMS_REQUEST_TIMEOUT = float(os.environ.get("SMS_REQUEST_TIMEOUT", "5"))
+SMS_READ_TIMEOUT = float(os.environ.get("SMS_READ_TIMEOUT", "8"))
 
 
 # =============================================================================

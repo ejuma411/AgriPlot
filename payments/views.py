@@ -1,27 +1,31 @@
-import logging
 import hashlib
 import hmac
 import json
+import logging
 from datetime import timedelta
 from decimal import Decimal
+
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required  # ← Fixed this line
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Q, Sum
-from django.http import Http404, HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
-from django.views.generic import CreateView, DetailView, ListView, TemplateView
 from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-from django.contrib.auth.decorators import login_required
-from accounts.access_control import resolve_access_profile
+from django.views.generic import CreateView, DetailView, ListView, TemplateView
+
+try:
+    from accounts.access_control import resolve_access_profile
+except ImportError:
+    resolve_access_profile = None
 from accounts.validators import validate_kenyan_phone
 from listings.models import Plot, UserInterest
 from notifications.notification_service import NotificationService
@@ -704,9 +708,9 @@ class PaymentDashboardView(ListView):
     paginate_by = 12
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated:
+        if request.user.is_authenticated and resolve_access_profile is not None:
             access_profile = resolve_access_profile(request.user)
-            if access_profile.is_staff_workspace:
+            if getattr(access_profile, 'is_staff_workspace', False):
                 return redirect(f"{reverse('listings:dashboard_router')}?section=finance")
         return super().dispatch(request, *args, **kwargs)
 
@@ -2011,11 +2015,12 @@ class PaymentDisputeCreateView(LoginRequiredMixin, View):
 @login_required
 def wallet_dashboard(request):
     """Wallet dashboard view"""
-    access_profile = resolve_access_profile(request.user)
-    if access_profile.can("wallet.view_own"):
-        return redirect(f"{reverse('listings:dashboard_router')}?section=wallet")
-    if access_profile.can("wallet.manage") or access_profile.can("finance.view_escrow"):
-        return redirect(f"{reverse('listings:dashboard_router')}?section=finance")
+    if resolve_access_profile is not None:
+        access_profile = resolve_access_profile(request.user)
+        if getattr(access_profile, 'can', lambda x: False)('wallet.view_own'):
+            return redirect(f"{reverse('listings:dashboard_router')}?section=wallet")
+        if getattr(access_profile, 'can', lambda x: False)('wallet.manage') or getattr(access_profile, 'can', lambda x: False)('finance.view_escrow'):
+            return redirect(f"{reverse('listings:dashboard_router')}?section=finance")
     wallet = WalletService.get_or_create_wallet(request.user)
     transactions = WalletService.get_transaction_history(request.user, limit=20)
     context = {
@@ -2034,7 +2039,7 @@ def wallet_set_pin(request):
             data = json.loads(request.body) if request.body else request.POST
             pin = data.get('pin')
             confirm_pin = data.get('confirm_pin')
-        except:
+        except (json.JSONDecodeError, AttributeError):
             pin = request.POST.get('pin')
             confirm_pin = request.POST.get('confirm_pin')
         
@@ -2064,7 +2069,7 @@ def wallet_deposit(request):
             data = json.loads(request.body) if request.body else request.POST
             amount = Decimal(str(data.get('amount', '0')))
             phone_number = data.get('phone_number', '')
-        except:
+        except (json.JSONDecodeError, AttributeError, Exception):
             amount = Decimal(request.POST.get('amount', '0'))
             phone_number = request.POST.get('phone_number', '')
         
@@ -2092,7 +2097,7 @@ def wallet_withdraw(request):
             amount = Decimal(str(data.get('amount', '0')))
             phone_number = data.get('phone_number', '')
             pin = data.get('pin', '')
-        except:
+        except (json.JSONDecodeError, AttributeError, Exception):
             amount = Decimal(request.POST.get('amount', '0'))
             phone_number = request.POST.get('phone_number', '')
             pin = request.POST.get('pin', '')
@@ -2117,7 +2122,7 @@ def wallet_pay(request):
             amount = Decimal(str(data.get('amount', '0')))
             pin = data.get('pin', '')
             payment_request_id = data.get('payment_request_id')
-        except:
+        except (json.JSONDecodeError, AttributeError, Exception):
             amount = Decimal(request.POST.get('amount', '0'))
             pin = request.POST.get('pin', '')
             payment_request_id = request.POST.get('payment_request_id')
@@ -2149,7 +2154,7 @@ def wallet_transactions(request):
     limit = request.GET.get('limit', 50)
     try:
         limit = int(limit)
-    except:
+    except (ValueError, TypeError):
         limit = 50
     
     transactions = WalletService.get_transaction_history(request.user, limit=limit)

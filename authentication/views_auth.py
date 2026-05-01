@@ -344,7 +344,7 @@ class CustomPasswordResetView(PasswordResetView):
     email_template_name = 'notifications/emails/password_reset_email.html'
     html_email_template_name = 'notifications/emails/password_reset_email.html'
     subject_template_name = 'authentication/password_reset_subject.txt'
-    success_url = reverse_lazy('listings:password_reset_done')
+    success_url = reverse_lazy('authentication:password_reset_done')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -362,7 +362,7 @@ class CustomPasswordResetView(PasswordResetView):
             messages.info(self.request, "If this email exists in our system, you'll receive reset instructions.")
             return redirect(self.success_url)
         
-        return redirect('listings:password_reset_confirm_request')
+        return redirect('authentication:password_reset_confirm_request')
 
 
 class CustomPasswordResetDoneView(PasswordResetDoneView):
@@ -371,7 +371,7 @@ class CustomPasswordResetDoneView(PasswordResetDoneView):
 
 class CustomPasswordResetConfirmView(PasswordResetConfirmView):
     template_name = 'authentication/password_reset_confirm.html'
-    success_url = reverse_lazy('listings:password_reset_complete')
+    success_url = reverse_lazy('authentication:password_reset_complete')
 
 
 class CustomPasswordResetCompleteView(PasswordResetCompleteView):
@@ -383,7 +383,7 @@ def password_reset_confirm_request(request):
     
     if not email:
         messages.error(request, "Session expired. Please start over.")
-        return redirect('listings:password_reset')
+        return redirect('authentication:password_reset')
     
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -435,7 +435,7 @@ def password_reset_confirm_request(request):
                     del request.session['reset_email']
                     logger.info(f"Password reset email sent to: {email}")
                     messages.success(request, "Password reset instructions have been sent to your email.")
-                    return redirect('listings:password_reset_done')
+                    return redirect('authentication:password_reset_done')
                     
             except Exception as e:
                 logger.error(f"Error sending password reset email: {str(e)}")

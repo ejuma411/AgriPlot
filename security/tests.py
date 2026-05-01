@@ -28,9 +28,9 @@ class PhoneVerificationTests(TestCase):
         }
         session.save()
 
-        response = self.client.get(reverse("listings:send_otp"))
+        response = self.client.get(reverse("security:send_otp"))
 
-        self.assertRedirects(response, reverse("listings:verify_otp"))
+        self.assertRedirects(response, reverse("security:verify_otp"))
         self.assertTrue(
             PhoneOTP.objects.filter(phone="0718810503", purpose="registration").exists()
         )

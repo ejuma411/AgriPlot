@@ -741,7 +741,7 @@
             <div class="small">Your phone is already verified. We sent a verification link to your email.</div>
         </div>
         <div class="d-flex gap-2">
-            <form method="post" action="{% url 'listings:resend_email_verification' %}" class="m-0">
+            <form method="post" action="{% url 'security:resend_email_verification' %}" class="m-0">
                 {% csrf_token %}
                 <button type="submit" class="btn btn-sm btn-outline-dark">Resend email link</button>
             </form>

@@ -1,60 +1,137 @@
-# listings/notification_service.py
+"""
+NotificationService — AgriPlot
 
-from django.core.mail import send_mail
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
+Design contract
+---------------
+1. create_notification()  → always synchronous DB write, returns the Notification row.
+2. notify_user()          → DB write first, then queues email + SMS via Celery (30 s delay).
+3. send_email()           → queues email only via Celery (30 s delay).
+4. send_sms()             → queues SMS only via Celery (30 s delay).
+
+This means every HTTP response returns to the browser before any outbound
+channel fires, giving a fast, clean UI/UX experience.
+"""
+
+import logging
+
 from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.db import models, transaction
 from django.urls import reverse
 from django.utils import timezone
 
-from django.contrib.auth.models import User
-from notifications.services.sms_service import TextSMSService
-from listings.models import Plot
-from notifications.models import Notification, EmailLog
-from verification.models import VerificationTask
-import logging
-from django.db import models
+from notifications.models import EmailLog, Notification
+from verification.models import VerificationTask  # noqa: F401 — kept for callers
 
 logger = logging.getLogger(__name__)
+User = get_user_model()
+
 
 class NotificationService:
-    """Service for handling notifications and emails"""
+    """Central notification service for AgriPlot."""
+
+    # ------------------------------------------------------------------
+    # Low-level helpers
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def sms_notifications_enabled():
+    def sms_notifications_enabled() -> bool:
         return bool(getattr(settings, "ENABLE_SMS_NOTIFICATIONS", False))
 
     @staticmethod
-    def resolve_user_phone(user):
+    def resolve_user_phone(user) -> str:
         if user is None:
             return ""
         profile = getattr(user, "profile", None)
         if profile and getattr(profile, "phone", ""):
             return profile.phone
-        contact_verification = getattr(user, "contact_verification", None)
-        if contact_verification and getattr(contact_verification, "phone_number", ""):
-            return contact_verification.phone_number
+        contact = getattr(user, "contact_verification", None)
+        if contact and getattr(contact, "phone_number", ""):
+            return contact.phone_number
         agent = getattr(user, "agent", None)
         if agent and getattr(agent, "phone", ""):
             return agent.phone
         return ""
 
     @staticmethod
-    def send_sms(phone_number, message):
-        if not phone_number or not NotificationService.sms_notifications_enabled():
-            return {"success": False, "skipped": True}
-        try:
-            sms = TextSMSService()
-            return sms.send_sms(phone_number, message)
-        except Exception as exc:
-            logger.error("Failed to send SMS to %s: %s", phone_number, exc, exc_info=True)
-            return {"success": False, "error": str(exc)}
+    def _json_safe(value):
+        """Recursively convert objects to JSON-serialisable values."""
+        if isinstance(value, (str, int, float, bool)) or value is None:
+            return value
+        if isinstance(value, (list, tuple)):
+            return [NotificationService._json_safe(v) for v in value]
+        if isinstance(value, dict):
+            return {str(k): NotificationService._json_safe(v) for k, v in value.items()}
+        if isinstance(value, models.Model):
+            return {"_model": value._meta.label, "id": value.pk, "str": str(value)}
+        return str(value)
+
+    # ------------------------------------------------------------------
+    # Core: synchronous DB write
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def notify_user(user, notification_type, title, message, *, plot=None, task=None, email_subject=None):
+    def create_notification(user, notification_type, title, message, plot=None, task=None):
+        """
+        Write an in-app Notification row to the database.
+        This is always synchronous — the row exists before the HTTP response
+        returns so the UI can display it immediately.
+        """
+        if user is None:
+            logger.warning("Skipping notification '%s' — user is None", notification_type)
+            return None
+        try:
+            notification = Notification.objects.create(
+                user=user,
+                notification_type=notification_type,
+                title=title,
+                message=message,
+                plot=plot,
+                task=task,
+            )
+            logger.info("Notification saved for user %s: %s", user.id, notification_type)
+            return notification
+        except Exception as exc:
+            logger.error("create_notification failed: %s", exc, exc_info=True)
+            return None
+
+    @staticmethod
+    def notification_delay_seconds() -> int:
+        return int(getattr(settings, "NOTIFICATION_DELAY_SECONDS", 60))
+
+    @staticmethod
+    def _run_after_commit(callback, *, label: str):
+        def _safe_callback():
+            try:
+                callback()
+            except Exception as exc:
+                logger.error("Deferred notification callback failed for %s: %s", label, exc)
+
+        transaction.on_commit(_safe_callback)
+
+    # ------------------------------------------------------------------
+    # Core: deferred outbound dispatch
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def notify_user(
+        user,
+        notification_type,
+        title,
+        message,
+        *,
+        plot=None,
+        task=None,
+        email_subject=None,
+    ):
+        """
+        1. Write the in-app Notification row synchronously.
+        2. Queue email + SMS via Celery with a 30-second countdown.
+        """
         if user is None:
             return None
 
+        # Step 1 — synchronous DB write
         notification = NotificationService.create_notification(
             user=user,
             notification_type=notification_type,
@@ -64,565 +141,512 @@ class NotificationService:
             task=task,
         )
 
-        if getattr(user, "email", ""):
-            try:
-                _subject = email_subject or f"AgriPlot: {title}"
-                send_mail(
-                    subject=_subject,
-                    message=message,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[user.email],
-                    fail_silently=False,
-                )
-            except Exception:
-                logger.exception("Failed to send notification email to %s", user.email)
+        # Step 2 — deferred outbound channels
+        try:
+            from notifications.tasks import queue_notification
 
-        phone_number = NotificationService.resolve_user_phone(user)
-        if phone_number:
-            NotificationService.send_sms(phone_number, message)
+            def _queue_outbound():
+                queue_notification(
+                    user_id=user.pk,
+                    subject=title,
+                    message=message,
+                    email_subject=email_subject,
+                    delay=NotificationService.notification_delay_seconds(),
+                )
+
+            NotificationService._run_after_commit(
+                _queue_outbound,
+                label=f"notify_user:{notification_type}:{user.pk}",
+            )
+        except Exception as exc:
+            # Never let task queuing break the calling action
+            logger.error("Failed to queue notification for user %s: %s", user.pk, exc)
 
         return notification
 
     @staticmethod
-    def _json_safe(value):
-        """Convert common objects to JSON-serializable values for EmailLog.context."""
-        if isinstance(value, (str, int, float, bool)) or value is None:
-            return value
-        if isinstance(value, (list, tuple)):
-            return [NotificationService._json_safe(v) for v in value]
-        if isinstance(value, dict):
-            return {str(k): NotificationService._json_safe(v) for k, v in value.items()}
-        if isinstance(value, models.Model):
-            return {
-                "_model": value._meta.label,
-                "id": value.pk,
-                "str": str(value),
-            }
-        return str(value)
-    
-    @staticmethod
-    def create_notification(user, notification_type, title, message, plot=None, task=None):
-        """Create an in-app notification"""
-        try:
-            if user is None:
-                logger.warning(
-                    f"Skipping notification '{notification_type}' because user is None"
-                )
-                return None
-            notification = Notification.objects.create(
-                user=user,
-                notification_type=notification_type,
-                title=title,
-                message=message,
-                plot=plot,
-                task=task
-            )
-            logger.info(f"Notification created for user {user.id}: {notification_type}")
-            return notification
-        except Exception as e:
-            logger.error(f"Error creating notification: {str(e)}", exc_info=True)
+    def send_email(recipient, subject, template, context, *, immediate=False):
+        """
+        Queue a templated email with a 30-second countdown.
+        Also creates a pending EmailLog row synchronously so the record
+        exists before the task fires.
+        """
+        if not recipient:
+            logger.warning("send_email skipped — no recipient for subject: %s", subject)
             return None
-    
-    @staticmethod
-    def send_email(recipient, subject, template, context):
-        """Send an email and log it"""
+
+        safe_context = NotificationService._json_safe(context)
+        template_name = template or "plain"
+        message_body = context.get("message", subject) if isinstance(context, dict) else subject
+
+        # Synchronous log row so we have a record even if the task never runs
+        log = None
+        queue_state = {"queued": False}
         try:
-            if not recipient:
-                logger.warning(f"Email not sent (missing recipient): {subject}")
-                return None
-            # Render email content
-            html_message = render_to_string(f'notifications/emails/{template}.html', context)
-            plain_message = strip_tags(html_message)
-            safe_context = NotificationService._json_safe(context)
-            
-            # Create email log
-            email_log = EmailLog.objects.create(
+            log = EmailLog.objects.create(
                 recipient=recipient,
                 subject=subject,
-                template=template,
+                template=template_name,
                 context=safe_context,
-                status='pending'
+                status="pending",
             )
-            
-            # Send email
-            send_mail(
-                subject=subject,
-                message=plain_message,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient],
-                html_message=html_message,
-                fail_silently=False
+        except Exception as exc:
+            logger.error("EmailLog creation failed: %s", exc)
+
+        if immediate:
+            try:
+                from notifications.tasks import _send_email_now
+
+                sent = _send_email_now(
+                    recipient=recipient,
+                    subject=subject,
+                    message=message_body,
+                    template=template_name,
+                    context=safe_context,
+                    email_log_id=log.pk if log else None,
+                )
+                return log if sent else None
+            except Exception as exc:
+                if log:
+                    log.status = "failed"
+                    log.error_message = f"Immediate send failed: {exc}"
+                    log.save(update_fields=["status", "error_message"])
+                logger.error("Failed to send email immediately to %s: %s", recipient, exc)
+                return None
+
+        try:
+            from notifications.tasks import queue_email
+
+            def _queue_email():
+                try:
+                    queue_email(
+                        recipient_email=recipient,
+                        subject=subject,
+                        message=message_body,
+                        template=template_name,
+                        context=safe_context,
+                        delay=NotificationService.notification_delay_seconds(),
+                        email_log_id=log.pk if log else None,
+                    )
+                    queue_state["queued"] = True
+                except Exception as exc:
+                    if log:
+                        log.status = "failed"
+                        log.error_message = f"Queueing failed: {exc}"
+                        log.save(update_fields=["status", "error_message"])
+                    raise
+
+            NotificationService._run_after_commit(
+                _queue_email,
+                label=f"send_email:{recipient}",
             )
-            
-            # Update log
-            email_log.status = 'sent'
-            email_log.sent_at = timezone.now()
-            email_log.save()
-            
-            logger.info(f"Email sent to {recipient}: {subject}")
-            return email_log
-            
-        except Exception as e:
-            logger.error(f"Error sending email: {str(e)}", exc_info=True)
-            
-            # Update log with error
-            if 'email_log' in locals():
-                email_log.status = 'failed'
-                email_log.error_message = str(e)
-                email_log.save()
-            
-            return None
-    
+        except Exception as exc:
+            if log:
+                log.status = "failed"
+                log.error_message = f"Queue setup failed: {exc}"
+                log.save(update_fields=["status", "error_message"])
+            logger.error("Failed to queue email to %s: %s", recipient, exc)
+
+        if queue_state["queued"]:
+            return log
+        return None
+
+    @staticmethod
+    def send_sms(phone_number, message):
+        """Queue an SMS with a 30-second countdown."""
+        if not phone_number or not NotificationService.sms_notifications_enabled():
+            return {"success": False, "skipped": True}
+        try:
+            from notifications.tasks import queue_sms
+
+            NotificationService._run_after_commit(
+                lambda: queue_sms(
+                    phone=phone_number,
+                    message=message,
+                    delay=NotificationService.notification_delay_seconds(),
+                ),
+                label=f"send_sms:{phone_number}",
+            )
+            return {"success": True, "queued": True}
+        except Exception as exc:
+            logger.error("Failed to queue SMS to %s: %s", phone_number, exc)
+            return {"success": False, "error": str(exc)}
+
+    # ------------------------------------------------------------------
+    # Domain-specific notification methods
+    # ------------------------------------------------------------------
+
     @staticmethod
     def notify_task_assigned(task, assigned_by):
-        """Send notifications when a task is assigned"""
-        
-        # Guard clause - check if task and assigned_to exist
         if not task or not task.assigned_to:
-            logger.error(f"Cannot send task assignment notification: task or assignee missing")
+            logger.error("notify_task_assigned: task or assignee missing")
             return
-        
-        # Notification for assignee
-        task_type_display = task.get_verification_type_display()
-        title = f"New Task: {task_type_display}"
-        message = f"You have been assigned to {task_type_display} for plot '{task.plot.title}'"
-        
-        # Create in-app notification
-        NotificationService.create_notification(
+
+        task_type = task.get_verification_type_display()
+        title = f"New Task: {task_type}"
+        message = f"You have been assigned to {task_type} for plot '{task.plot.title}'"
+
+        # In-app + deferred outbound for assignee
+        NotificationService.notify_user(
             user=task.assigned_to,
-            notification_type='task_assigned',
+            notification_type="task_assigned",
             title=title,
             message=message,
             plot=task.plot,
-            task=task
+            task=task,
         )
-        
-        # Send email to assignee (if email exists)
-        if task.assigned_to.email:
-            try:
-                context = {
-                    'user': task.assigned_to,
-                    'task': task,
-                    'plot': task.plot,
-                    'assigned_by': assigned_by,
-                    'login_url': settings.SITE_URL + reverse('verification:my_tasks'),
-                    'site_name': 'AgriPlot Connect',
-                    'task_type': task_type_display,
-                    'assigned_at': timezone.now().strftime("%Y-%m-%d %H:%M"),
-                    'confirm_by': task.confirm_by,
-                    'deadline_at': task.deadline_at
-                }
-                
-                NotificationService.send_email(
-                    recipient=task.assigned_to.email,
-                    subject=title,
-                    template='task_assigned',
-                    context=context
-                )
-            except Exception as e:
-                logger.error(f"Failed to send task assignment email: {str(e)}")
 
-        # Send SMS if phone number available (optional)
-        if hasattr(task.assigned_to, 'profile') and task.assigned_to.profile.phone:
-            try:
-                sms = TextSMSService()
-                sms.send_task_assigned(
-                    task.assigned_to.profile.phone,
-                    task.assigned_to.get_full_name() or task.assigned_to.username,
-                    task.plot.title
-                )
-            except Exception as e:
-                logger.error(f"Failed to send task assignment SMS: {str(e)}")
-        
-        # Notification for assigner (optional)
+        # Deferred email with full template context
+        if task.assigned_to.email:
+            NotificationService.send_email(
+                recipient=task.assigned_to.email,
+                subject=title,
+                template="task_assigned",
+                context={
+                    "user": task.assigned_to,
+                    "task": task,
+                    "plot": task.plot,
+                    "assigned_by": assigned_by,
+                    "login_url": settings.SITE_URL + reverse("verification:my_tasks"),
+                    "site_name": "AgriPlot Connect",
+                    "task_type": task_type,
+                    "assigned_at": timezone.now().strftime("%Y-%m-%d %H:%M"),
+                    "confirm_by": task.confirm_by,
+                    "deadline_at": task.deadline_at,
+                },
+            )
+
+        # Notify assigner
         if assigned_by and assigned_by != task.assigned_to:
             assignee_name = task.assigned_to.get_full_name() or task.assigned_to.username
-            NotificationService.create_notification(
+            NotificationService.notify_user(
                 user=assigned_by,
-                notification_type='task_assigned',
-                title=f"Task Assigned: {task_type_display}",
+                notification_type="task_assigned",
+                title=f"Task Assigned: {task_type}",
                 message=f"Task assigned to {assignee_name} for plot '{task.plot.title}'",
                 plot=task.plot,
-                task=task
+                task=task,
             )
-            
-            # Also email the assigner if they want confirmation
-            if assigned_by.email:
-                try:
-                    context = {
-                        'user': assigned_by,
-                        'task': task,
-                        'plot': task.plot,
-                        'assignee': task.assigned_to,
-                        'task_type': task_type_display,
-                        'assigned_at': timezone.now().strftime("%Y-%m-%d %H:%M"),
-                        'login_url': settings.SITE_URL + reverse('verification:task_assignment')
-                    }
-                    
-                    NotificationService.send_email(
-                        recipient=assigned_by.email,
-                        subject=f"Task Assigned: {task_type_display}",
-                        template='task_assigned_confirmation',
-                        context=context
-                    )
-                except Exception as e:
-                    logger.error(f"Failed to send assignment confirmation email: {str(e)}")
-        
-        logger.info(f"Task assignment notifications sent for task {task.id} to {task.assigned_to.username}")
+
+        logger.info("Task assignment notifications queued for task %s", task.id)
+
     @staticmethod
     def notify_task_completed(task, completed_by):
-        """Send notifications when a task is completed"""
-        
-        # Get the plot owner (landowner or agent)
         plot_owner = task.plot.agent.user if task.plot.agent else task.plot.landowner.user
-        
-        # Notification for task creator/admin
-        title = f"Task Completed: {task.get_verification_type_display()}"
+        task_type = task.get_verification_type_display()
+        title = f"Task Completed: {task_type}"
         completed_by_name = completed_by.get_full_name() or completed_by.username
         message = f"Task completed by {completed_by_name} for plot '{task.plot.title}'"
-        
-        # Notify all admins
-        admins = User.objects.filter(is_staff=True)
-        for admin in admins:
+
+        for admin in User.objects.filter(is_staff=True):
             NotificationService.create_notification(
                 user=admin,
-                notification_type='task_completed',
+                notification_type="task_completed",
                 title=title,
                 message=message,
                 plot=task.plot,
-                task=task
+                task=task,
             )
-        
-        # Notify plot owner about the verification step outcome
+
         if task.approved is not None:
             step_status = "approved" if task.approved else "rejected"
-            step_title = f"{task.get_verification_type_display()} {step_status.title()}"
+            step_title = f"{task_type} {step_status.title()}"
             step_message = (
-                f"Your plot '{task.plot.title}' has completed {task.get_verification_type_display().lower()} "
-                f"and was {step_status}."
+                f"Your plot '{task.plot.title}' completed {task_type.lower()} and was {step_status}."
             )
-            NotificationService.create_notification(
+            NotificationService.notify_user(
                 user=plot_owner,
-                notification_type='verification_step_update',
+                notification_type="verification_step_update",
                 title=step_title,
                 message=step_message,
                 plot=task.plot,
-                task=task
+                task=task,
             )
-
-            context = {
-                'user': plot_owner,
-                'plot': task.plot,
-                'task': task,
-                'status': step_status,
-                'completed_by': completed_by,
-                'plot_url': settings.SITE_URL + reverse('listings:plot_detail', args=[task.plot.id])
-            }
-
             NotificationService.send_email(
                 recipient=plot_owner.email,
                 subject=step_title,
-                template='verification_step_update',
-                context=context
+                template="verification_step_update",
+                context={
+                    "user": plot_owner,
+                    "plot": task.plot,
+                    "task": task,
+                    "status": step_status,
+                    "completed_by": completed_by,
+                    "plot_url": settings.SITE_URL + reverse("listings:plot_detail", args=[task.plot.id]),
+                },
             )
-    
+
     @staticmethod
     def notify_plot_submitted(plot):
-        """Notify admins when a new plot is submitted"""
-        
+        submitted_by = plot.agent.user if plot.agent else plot.landowner.user
         title = f"New Plot Submitted: {plot.title}"
-        message = f"A new plot has been submitted for verification by {plot.agent.user.get_full_name() if plot.agent else plot.landowner.user.get_full_name()}"
-        
-        # Notify all admins
-        admins = User.objects.filter(is_staff=True)
-        for admin in admins:
+        message = f"A new plot has been submitted for verification by {submitted_by.get_full_name() or submitted_by.username}"
+
+        for admin in User.objects.filter(is_staff=True):
             NotificationService.create_notification(
                 user=admin,
-                notification_type='verification_started',
+                notification_type="verification_started",
                 title=title,
                 message=message,
-                plot=plot
+                plot=plot,
             )
-            
-            # Send email to admins
-            context = {
-                'user': admin,
-                'plot': plot,
-                'submitted_by': plot.agent.user if plot.agent else plot.landowner.user,
-                'review_url': settings.SITE_URL + reverse('verification:review_plot', args=[plot.id])
-            }
-            
             NotificationService.send_email(
                 recipient=admin.email,
                 subject=title,
-                template='new_plot_submitted',
-                context=context
+                template="new_plot_submitted",
+                context={
+                    "user": admin,
+                    "plot": plot,
+                    "submitted_by": submitted_by,
+                    "review_url": settings.SITE_URL + reverse("verification:review_plot", args=[plot.id]),
+                },
             )
 
-        # Notify plot owner
-        plot_owner = plot.agent.user if plot.agent else plot.landowner.user
-        owner_title = f"Plot Submitted: {plot.title}"
-        owner_message = "Your plot has been submitted and is under verification."
-        NotificationService.create_notification(
-            user=plot_owner,
-            notification_type='plot_submitted',
-            title=owner_title,
-            message=owner_message,
-            plot=plot
+        NotificationService.notify_user(
+            user=submitted_by,
+            notification_type="plot_submitted",
+            title=f"Plot Submitted: {plot.title}",
+            message="Your plot has been submitted and is under verification.",
+            plot=plot,
         )
-        owner_context = {
-            'user': plot_owner,
-            'plot': plot,
-            'stage': 'document_uploaded',
-            'status_title': 'Submission Received',
-            'plot_url': settings.SITE_URL + reverse('listings:plot_detail', args=[plot.id])
-        }
         NotificationService.send_email(
-            recipient=plot_owner.email,
-            subject=owner_title,
-            template='plot_status_update',
-            context=owner_context
+            recipient=submitted_by.email,
+            subject=f"Plot Submitted: {plot.title}",
+            template="plot_status_update",
+            context={
+                "user": submitted_by,
+                "plot": plot,
+                "stage": "document_uploaded",
+                "status_title": "Submission Received",
+                "plot_url": settings.SITE_URL + reverse("listings:plot_detail", args=[plot.id]),
+            },
         )
-    
+
     @staticmethod
     def notify_changes_requested(plot, requested_by, notes):
-        """Notify plot owner when changes are requested"""
-        
         plot_owner = plot.agent.user if plot.agent else plot.landowner.user
-        
         title = f"Changes Requested: {plot.title}"
         message = f"The verification team has requested changes for your plot. Notes: {notes}"
-        
-        NotificationService.create_notification(
+
+        NotificationService.notify_user(
             user=plot_owner,
-            notification_type='changes_requested',
+            notification_type="changes_requested",
             title=title,
             message=message,
-            plot=plot
+            plot=plot,
         )
-        
-        # Send email
-        context = {
-            'user': plot_owner,
-            'plot': plot,
-            'requested_by': requested_by,
-            'notes': notes,
-            'edit_url': settings.SITE_URL + reverse('listings:edit_plot', args=[plot.id])
-        }
-        
         NotificationService.send_email(
             recipient=plot_owner.email,
             subject=title,
-            template='changes_requested',
-            context=context
+            template="changes_requested",
+            context={
+                "user": plot_owner,
+                "plot": plot,
+                "requested_by": requested_by,
+                "notes": notes,
+                "edit_url": settings.SITE_URL + reverse("listings:edit_plot", args=[plot.id]),
+            },
         )
 
     @staticmethod
     def notify_plot_stage(plot, stage, details=None):
-        """Notify plot owner about a verification stage update."""
         try:
             plot_owner = plot.agent.user if plot.agent else plot.landowner.user
             stage_titles = {
-                'api_verification_started': 'API Verification Started',
-                'title_search_completed': 'Title Search Completed',
-                'admin_review': 'Admin Review',
-                'physical_location_verified': 'Physical Location Verified',
+                "api_verification_started": "API Verification Started",
+                "title_search_completed": "Title Search Completed",
+                "admin_review": "Admin Review",
+                "physical_location_verified": "Physical Location Verified",
             }
-            status_title = stage_titles.get(stage, stage.replace('_', ' ').title())
+            status_title = stage_titles.get(stage, stage.replace("_", " ").title())
             title = f"Verification Update: {plot.title}"
             message = f"Your plot verification moved to: {status_title}."
-            NotificationService.create_notification(
+
+            NotificationService.notify_user(
                 user=plot_owner,
-                notification_type='plot_stage_update',
+                notification_type="plot_stage_update",
                 title=title,
                 message=message,
-                plot=plot
+                plot=plot,
             )
-            context = {
-                'user': plot_owner,
-                'plot': plot,
-                'stage': stage,
-                'status_title': status_title,
-                'details': details or {},
-                'plot_url': settings.SITE_URL + reverse('listings:plot_detail', args=[plot.id])
-            }
             NotificationService.send_email(
                 recipient=plot_owner.email,
                 subject=title,
-                template='plot_status_update',
-                context=context
+                template="plot_status_update",
+                context={
+                    "user": plot_owner,
+                    "plot": plot,
+                    "stage": stage,
+                    "status_title": status_title,
+                    "details": details or {},
+                    "plot_url": settings.SITE_URL + reverse("listings:plot_detail", args=[plot.id]),
+                },
             )
-        except Exception as e:
-            logger.error(f"Plot stage notification failed: {e}")
+        except Exception as exc:
+            logger.error("notify_plot_stage failed: %s", exc)
 
     @staticmethod
     def notify_plot_final_status(plot, status, completed_by, notes=""):
-        """Notify plot owner when the plot is finally approved or rejected."""
         plot_owner = plot.agent.user if plot.agent else plot.landowner.user
         title = f"Plot {status.title()}: {plot.title}"
-        NotificationService.create_notification(
+        NotificationService.notify_user(
             user=plot_owner,
-            notification_type=f'plot_{status}',
+            notification_type=f"plot_{status}",
             title=title,
             message=f"Your plot has been {status}.",
-            plot=plot
+            plot=plot,
         )
         context = {
-            'user': plot_owner,
-            'plot': plot,
-            'task': None,
-            'status': status,
-            'completed_by': completed_by,
-            'plot_url': settings.SITE_URL + reverse('listings:plot_detail', args=[plot.id])
+            "user": plot_owner,
+            "plot": plot,
+            "task": None,
+            "status": status,
+            "completed_by": completed_by,
+            "plot_url": settings.SITE_URL + reverse("listings:plot_detail", args=[plot.id]),
         }
         if notes:
-            context['notes'] = notes
+            context["notes"] = notes
         NotificationService.send_email(
             recipient=plot_owner.email,
             subject=title,
-            template='plot_verification_status',
-            context=context
+            template="plot_verification_status",
+            context=context,
         )
 
     @staticmethod
     def notify_admin_no_officer(plot, role_label, county):
-        admins = User.objects.filter(is_superuser=True)
-        for admin in admins:
+        for admin in User.objects.filter(is_superuser=True):
             NotificationService.create_notification(
                 user=admin,
-                notification_type='no_officer_available',
+                notification_type="no_officer_available",
                 title=f"No {role_label} Available",
-                message=f"No verified {role_label.lower()} available for {county}. Plot '{plot.title}' needs manual assignment.",
-                plot=plot
+                message=(
+                    f"No verified {role_label.lower()} available for {county}. "
+                    f"Plot '{plot.title}' needs manual assignment."
+                ),
+                plot=plot,
             )
             if admin.email:
                 NotificationService.send_email(
                     recipient=admin.email,
                     subject=f"No {role_label} Available for {county}",
-                    template='no_officer_available',
+                    template="no_officer_available",
                     context={
-                        'admin': admin,
-                        'plot': plot,
-                        'role_label': role_label,
-                        'county': county,
-                        'review_url': settings.SITE_URL + reverse('verification:task_assignment')
-                    }
+                        "admin": admin,
+                        "plot": plot,
+                        "role_label": role_label,
+                        "county": county,
+                        "review_url": settings.SITE_URL + reverse("verification:task_assignment"),
+                    },
                 )
 
     @staticmethod
     def notify_admin_task_unconfirmed(task):
-        """Notify superusers when an assigned task was not confirmed in time."""
-        admins = User.objects.filter(is_superuser=True)
-        for admin in admins:
+        for admin in User.objects.filter(is_superuser=True):
             NotificationService.create_notification(
                 user=admin,
-                notification_type='task_unconfirmed',
+                notification_type="task_unconfirmed",
                 title="Task Confirmation Expired",
                 message=(
                     f"{task.get_verification_type_display()} for plot '{task.plot.title}' "
                     "was not confirmed within 12 hours and has been unassigned."
                 ),
                 plot=task.plot,
-                task=task
+                task=task,
             )
             if admin.email:
                 NotificationService.send_email(
                     recipient=admin.email,
                     subject="Task Confirmation Expired",
-                    template='task_unconfirmed_escalation',
+                    template="task_unconfirmed_escalation",
                     context={
-                        'admin': admin,
-                        'task': task,
-                        'plot': task.plot,
-                        'review_url': settings.SITE_URL + reverse('verification:task_assignment')
-                    }
+                        "admin": admin,
+                        "task": task,
+                        "plot": task.plot,
+                        "review_url": settings.SITE_URL + reverse("verification:task_assignment"),
+                    },
                 )
 
     @staticmethod
     def notify_role_request(user, role, details=None):
-        """Notify user and admins when a role request is submitted."""
         details = details or {}
         user_title = f"Role Request Received: {role}"
+        NotificationService.create_notification(
+            user=user,
+            notification_type="role_request",
+            title=user_title,
+            message=f"Your {role} request has been submitted and is under review.",
+        )
         NotificationService.send_email(
             recipient=user.email,
             subject=user_title,
-            template='role_request_received',
+            template="role_request_received",
             context={
-                'user': user,
-                'role': role,
-                'details': details,
-                'profile_url': settings.SITE_URL + reverse('listings:profile_management'),
-            }
+                "user": user,
+                "role": role,
+                "details": details,
+                "profile_url": settings.SITE_URL + reverse("listings:profile_management"),
+            },
         )
-        NotificationService.create_notification(
-            user=user,
-            notification_type='role_request',
-            title=user_title,
-            message=f"Your {role} request has been submitted and is under review."
-        )
-
-        admins = User.objects.filter(is_staff=True)
-        for admin in admins:
+        for admin in User.objects.filter(is_staff=True):
             NotificationService.create_notification(
                 user=admin,
-                notification_type='role_request',
+                notification_type="role_request",
                 title=f"New Role Request: {role}",
-                message=f"{user.get_full_name() or user.username} submitted a {role} request."
+                message=f"{user.get_full_name() or user.username} submitted a {role} request.",
             )
             if admin.email:
                 NotificationService.send_email(
                     recipient=admin.email,
                     subject=f"New Role Request: {role}",
-                    template='role_request_admin',
+                    template="role_request_admin",
                     context={
-                        'admin': admin,
-                        'user': user,
-                        'role': role,
-                        'details': details,
-                        'review_url': settings.SITE_URL + reverse('listings:profile_management')
-                    }
+                        "admin": admin,
+                        "user": user,
+                        "role": role,
+                        "details": details,
+                        "review_url": settings.SITE_URL + reverse("listings:profile_management"),
+                    },
                 )
-    
-    @staticmethod
-    def get_user_notifications(user, limit=50, unread_only=False):
-        """Get notifications for a user"""
-        queryset = Notification.objects.filter(user=user)
-        
-        if unread_only:
-            queryset = queryset.filter(is_read=False)
-        
-        return queryset[:limit]
-    
-    @staticmethod
-    def mark_all_as_read(user):
-        """Mark all notifications as read for a user"""
-        return Notification.objects.filter(user=user, is_read=False).update(
-            is_read=True,
-            read_at=timezone.now()
-        )
 
     @staticmethod
     def notify_account_verified(user, verified_by):
-        """Send notification when account is verified"""
         title = "Account Verified! 🎉"
-        message = f"Your account has been verified by {verified_by.get_full_name()}. You can now list plots."
-
-        NotificationService.create_notification(
-            user=user,
-            notification_type='account_verified',
-            title=title,
-            message=message
+        message = (
+            f"Your account has been verified by {verified_by.get_full_name() or verified_by.username}. "
+            "You can now list plots."
         )
-
-        context = {
-            'user': user,
-            'verified_by': verified_by,
-            'login_url': settings.SITE_URL + reverse('listings:staff_dashboard')
-        }
-
+        NotificationService.notify_user(
+            user=user,
+            notification_type="account_verified",
+            title=title,
+            message=message,
+        )
         NotificationService.send_email(
             recipient=user.email,
             subject=title,
-            template='account_verified',
-            context=context
+            template="account_verified",
+            context={
+                "user": user,
+                "verified_by": verified_by,
+                "login_url": settings.SITE_URL + reverse("listings:staff_dashboard"),
+            },
+        )
+
+    # ------------------------------------------------------------------
+    # Read helpers (unchanged)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def get_user_notifications(user, limit=50, unread_only=False):
+        queryset = Notification.objects.filter(user=user)
+        if unread_only:
+            queryset = queryset.filter(is_read=False)
+        return queryset[:limit]
+
+    @staticmethod
+    def mark_all_as_read(user):
+        return Notification.objects.filter(user=user, is_read=False).update(
+            is_read=True,
+            read_at=timezone.now(),
         )

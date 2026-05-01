@@ -170,8 +170,11 @@ def contact_support(request):
                         subject=f"New Support Ticket: {ticket.subject}",
                         template="support_ticket_admin",
                         context={
-                            "admin": admin,
-                            "ticket": ticket,
+                            "admin": str(admin),
+                            "ticket_subject": ticket.subject,
+                            "ticket_message": ticket.message,
+                            "ticket_name": ticket.name,
+                            "ticket_email": ticket.email,
                             "site_url": settings.SITE_URL,
                         },
                     )
@@ -183,7 +186,14 @@ def contact_support(request):
                     recipient=ticket.email,
                     subject="Support Ticket Received",
                     template="support_ticket_received",
-                    context={"ticket": ticket},
+                    context={
+                        "ticket_subject": ticket.subject,
+                        "ticket_name": ticket.name,
+                        "message": (
+                            f"We received your support request: {ticket.subject}. "
+                            "We will get back to you shortly."
+                        ),
+                    },
                 )
             except Exception as exc:
                 logger.error("Support ticket user email failed: %s", exc)

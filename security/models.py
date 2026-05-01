@@ -165,7 +165,7 @@ class AuditLog(models.Model):
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES, default=SEVERITY_INFO, db_index=True)
     
     # Object information
-    object_type = models.CharField(max_length=50, blank=True, db_index=True)
+    object_type = models.CharField(max_length=50, null=True, blank=True, db_index=True)
     object_id = models.PositiveIntegerField(null=True, blank=True)
     object_repr = models.CharField(max_length=200, blank=True, default="")
     

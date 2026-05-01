@@ -1,11 +1,11 @@
 # listings/services/sms_service.py
 
 import logging
-import time
 
 import requests
 from django.conf import settings
 from requests.adapters import HTTPAdapter
+from requests.exceptions import RequestException, Timeout
 from urllib3.util.retry import Retry
 
 logger = logging.getLogger(__name__)
@@ -14,9 +14,17 @@ logger = logging.getLogger(__name__)
 class TextSMSService:
     """Provider-aware SMS service used across the project."""
 
-    def __init__(self, retries=3):
-        self.retries = retries
+    def __init__(self, retries=None):
+        self.retries = (
+            int(getattr(settings, "SMS_HTTP_RETRIES", 1))
+            if retries is None
+            else retries
+        )
         self.provider = getattr(settings, "SMS_PROVIDER", "textsms").lower()
+        self.request_timeout = (
+            float(getattr(settings, "SMS_REQUEST_TIMEOUT", 8)),
+            float(getattr(settings, "SMS_READ_TIMEOUT", 8)),
+        )
 
         self.textsms_url = settings.TEXTSMS_API_URL
         self.textsms_partner_id = settings.TEXTSMS_PARTNER_ID
@@ -29,15 +37,20 @@ class TextSMSService:
 
         self.session = requests.Session()
         retry_strategy = Retry(
-            total=retries,
-            backoff_factor=1,
+            total=self.retries,
+            backoff_factor=0.3,
             status_forcelist=[429, 500, 502, 503, 504],
             allowed_methods=["POST"],
         )
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("https://", adapter)
 
-        logger.info("SMS service initialized with provider=%s retries=%s", self.provider, retries)
+        logger.info(
+            "SMS service initialized with provider=%s retries=%s timeout=%s",
+            self.provider,
+            self.retries,
+            self.request_timeout,
+        )
 
     @staticmethod
     def _format_number(number):
@@ -92,7 +105,7 @@ class TextSMSService:
             self.textsms_url,
             headers=headers,
             json=payload,
-            timeout=10,
+            timeout=self.request_timeout,
         )
         result = self._safe_json(response)
         if response.status_code in (200, 201):
@@ -159,7 +172,7 @@ class TextSMSService:
             self._resolve_opensms_url(),
             headers=headers,
             json=payload,
-            timeout=10,
+            timeout=self.request_timeout,
         )
         result = self._safe_json(response)
         if response.status_code in (200, 201) and not (
@@ -213,7 +226,7 @@ class TextSMSService:
         }
 
     def send_sms(self, phone_numbers, message, attempt=1):
-        """Send SMS with provider switching and retry on failures."""
+        """Send SMS with provider-specific HTTP retry handling."""
         if isinstance(phone_numbers, str):
             phone_numbers = [phone_numbers]
 
@@ -244,14 +257,24 @@ class TextSMSService:
 
             return self._send_via_textsms(recipient_blob, message)
 
-        except Exception as exc:
-            logger.error("SMS attempt %s failed: %s", attempt, exc)
-            if attempt < self.retries:
-                wait_time = attempt * 2
-                logger.info("Retrying SMS in %s seconds", wait_time)
-                time.sleep(wait_time)
-                return self.send_sms(phone_numbers, message, attempt + 1)
-
+        except Timeout as exc:
+            logger.error("SMS request timed out via %s for %s: %s", self.provider, recipient_blob, exc)
+            failure_body = {"error": str(exc), "timeout": True}
+            self._log_sms(
+                provider=self.provider,
+                phone=recipient_blob,
+                message=message,
+                status_code=None,
+                success=False,
+                response_body=failure_body,
+            )
+            return {
+                "success": False,
+                "error": f"SMS provider timed out: {exc}",
+                "data": failure_body,
+            }
+        except RequestException as exc:
+            logger.error("SMS request failed via %s for %s: %s", self.provider, recipient_blob, exc)
             failure_body = {"error": str(exc)}
             self._log_sms(
                 provider=self.provider,
@@ -263,7 +286,23 @@ class TextSMSService:
             )
             return {
                 "success": False,
-                "error": f"Failed after {self.retries} attempts: {exc}",
+                "error": f"SMS provider request failed: {exc}",
+                "data": failure_body,
+            }
+        except Exception as exc:
+            logger.error("Unexpected SMS failure via %s for %s: %s", self.provider, recipient_blob, exc)
+            failure_body = {"error": str(exc)}
+            self._log_sms(
+                provider=self.provider,
+                phone=recipient_blob,
+                message=message,
+                status_code=None,
+                success=False,
+                response_body=failure_body,
+            )
+            return {
+                "success": False,
+                "error": f"Unexpected SMS failure: {exc}",
                 "data": failure_body,
             }
 

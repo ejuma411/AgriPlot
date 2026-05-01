@@ -14,7 +14,7 @@
     {% endif %}
 </p>
 
-<form method="post" action="{% url 'listings:verify_otp' %}" class="auth-form">
+<form method="post" action="{% url 'security:verify_otp' %}" class="auth-form">
     {% csrf_token %}
     <label for="{{ form.otp.id_for_label }}">Verification Code</label>
     {{ form.otp }}
@@ -26,11 +26,10 @@
 </form>
 
 <div class="portal-links">
-    <form method="post" action="{% url 'listings:resend_otp' %}">
+    <form method="post" action="{% url 'security:resend_otp' %}">
         {% csrf_token %}
         <input type="hidden" name="phone" value="{{ phone }}">
         <button type="submit" class="auth-btn auth-btn--muted">Resend Code</button>
     </form>
-    <a href="{% url 'login' %}">Back to Login</a>
 </div>
 {% endblock %}

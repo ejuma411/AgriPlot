@@ -9,7 +9,6 @@ from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.files.storage import FileSystemStorage, default_storage
-from django.core.mail import send_mail
 from django.core.paginator import Paginator
 from django.db.models import Q, Count, Avg
 from django.db.models.functions import TruncMonth
@@ -1621,7 +1620,15 @@ def contact_agent(request, plot_id):
             return redirect('listings:plot_detail', id=plot_id)
         
         try:
-            # Send email to recipient
+            # Persist the contact request before any outbound notification is queued.
+            contact_request = ContactRequest.objects.create(
+                user=request.user,
+                plot=plot,
+                agent=plot.agent,
+                request_type='message',
+                message=message
+            )
+
             subject = f"New Inquiry about your plot: {plot.title}"
             body = f"""
             Hi {recipient.get_full_name() or recipient.username},
@@ -1640,32 +1647,32 @@ def contact_agent(request, plot_id):
             Best regards,
             AgriPlot Connect Team
             """
-            
-            send_mail(
-                subject=subject,
+
+            NotificationService.create_notification(
+                user=recipient,
+                notification_type="plot_stage_update",
+                title=subject,
                 message=body,
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[recipient.email],
-                fail_silently=False,
-            )
-            
-            # Send confirmation to the buyer
-            send_mail(
-                subject=f"Message sent to agent regarding: {plot.title}",
-                message=f"Your message has been sent to {recipient.get_full_name() or recipient.username}. They will contact you soon.",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[request.user.email],
-                fail_silently=False,
-            )
-            
-            # Log the contact request
-            ContactRequest.objects.create(
-                user=request.user,
                 plot=plot,
-                agent=plot.agent,
-                request_type='message',
-                message=message
             )
+
+            NotificationService.send_email(
+                recipient=recipient.email,
+                subject=subject,
+                template="plain",
+                context={"message": body, "contact_request_id": contact_request.pk},
+            )
+
+            if request.user.email:
+                NotificationService.send_email(
+                    recipient=request.user.email,
+                    subject=f"Message sent to agent regarding: {plot.title}",
+                    template="plain",
+                    context={
+                        "message": f"Your message has been sent to {recipient.get_full_name() or recipient.username}. They will contact you soon.",
+                        "contact_request_id": contact_request.pk,
+                    },
+                )
             
             messages.success(request, "Message sent successfully! The contact will respond soon.")
             
@@ -1700,8 +1707,8 @@ def request_contact_details(request, plot_id):
         return JsonResponse({'error': 'No contact available for this plot'}, status=404)
     
     try:
-        # Log the request
-        ContactRequest.objects.create(
+        # Persist the request before any outbound notification is queued.
+        contact_request = ContactRequest.objects.create(
             user=request.user,
             plot=plot,
             agent=plot.agent,  # Will be None if landowner-only
@@ -1725,12 +1732,18 @@ def request_contact_details(request, plot_id):
         AgriPlot Connect Team
         """
         
-        send_mail(
-            subject=subject,
+        NotificationService.create_notification(
+            user=recipient.user,
+            notification_type="plot_stage_update",
+            title=subject,
             message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[recipient.user.email],
-            fail_silently=False,
+            plot=plot,
+        )
+        NotificationService.send_email(
+            recipient=recipient.user.email,
+            subject=subject,
+            template="plain",
+            context={"message": message, "contact_request_id": contact_request.pk},
         )
         
         return JsonResponse({

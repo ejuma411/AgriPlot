@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 EMAIL_VERIFICATION_SALT = "security.email_verification"
+OTP_CHANNEL_SESSION_KEY = "reg_otp_channels"
 
 def generate_otp():
     """Generate 6-digit OTP"""
@@ -42,7 +43,7 @@ def build_email_verification_token(user):
 
 def _email_verification_url(request, user):
     token = build_email_verification_token(user)
-    path = reverse("listings:verify_email", args=[token])
+    path = reverse("security:verify_email", args=[token])
     return f"{settings.SITE_URL}{path}"
 
 
@@ -61,6 +62,7 @@ def send_email_verification_link(request, user):
             "verification_url": _email_verification_url(request, user),
             "support_url": settings.SITE_URL + "/contact-support/",
         },
+        immediate=True,
     )
     return bool(result)
 
@@ -80,6 +82,80 @@ def _mark_email_verified(user):
     contact.email_verified = True
     contact.email_verified_at = timezone.now()
     contact.save(update_fields=["email", "email_verified", "email_verified_at", "updated_at"])
+
+
+def _resolve_otp_provider():
+    otp_provider = getattr(settings, "OTP_PROVIDER", "email")
+    if otp_provider not in ("email", "sms", "both"):
+        otp_provider = "email"
+    return otp_provider
+
+
+def _deliver_otp(request, *, phone, email, otp, reg_data):
+    otp_provider = _resolve_otp_provider()
+    sent_channels = []
+    sms_error_message = None
+    email_error_message = None
+
+    if otp_provider in ("sms", "both"):
+        try:
+            sms = TextSMSService()
+            result = sms.send_otp(phone, otp)
+            if bool(result.get("success")):
+                sent_channels.append("sms")
+            else:
+                sms_error_message = result.get("error", "Unknown SMS error")
+                logger.error("Failed to send SMS OTP: %s", sms_error_message)
+        except Exception as exc:
+            sms_error_message = str(exc)
+            logger.error("Exception sending SMS OTP: %s", exc, exc_info=True)
+
+    should_send_email = otp_provider in ("email", "both") or (
+        otp_provider == "sms" and email and "sms" not in sent_channels
+    )
+    if should_send_email and email:
+        try:
+            email_log = NotificationService.send_email(
+                recipient=email,
+                subject="AgriPlot verification code",
+                template="otp_verification",
+                context={
+                    "user": None,
+                    "display_name": f"{reg_data.get('first_name', '')} {reg_data.get('last_name', '')}".strip() or reg_data.get('username', 'there'),
+                    "otp": otp,
+                    "expiry_minutes": 10,
+                    "support_url": settings.SITE_URL + "/contact-support/",
+                },
+                immediate=True,
+            )
+            if email_log:
+                sent_channels.append("email")
+            else:
+                email_error_message = "Email delivery queue is unavailable."
+                logger.error("Failed to queue email OTP for %s", email)
+        except Exception as exc:
+            email_error_message = str(exc)
+            logger.error("Failed to send email OTP: %s", exc, exc_info=True)
+
+    request.session[OTP_CHANNEL_SESSION_KEY] = sent_channels
+    request.session.modified = True
+    return {
+        "provider": otp_provider,
+        "sent_channels": sent_channels,
+        "sms_error": sms_error_message,
+        "email_error": email_error_message,
+    }
+
+
+def _otp_channel_for_template(request, otp_provider):
+    sent_channels = request.session.get(OTP_CHANNEL_SESSION_KEY, [])
+    if sent_channels == ["sms"]:
+        return "sms"
+    if sent_channels == ["email"]:
+        return "email"
+    if len(sent_channels) > 1:
+        return "both"
+    return otp_provider
 
 def send_otp_verification(request):
     """Step 1: Send OTP to phone/email based on settings"""
@@ -122,52 +198,63 @@ def send_otp_verification(request):
             expires_at=expires_at
         )
 
-    sms_ok = True
-    if otp_provider in ("sms", "both"):
-        sms = TextSMSService()
-        result = sms.send_otp(phone, otp)
-        sms_ok = bool(result.get('success'))
-        if not sms_ok:
-            logger.error(f"Failed to send SMS OTP: {result.get('error')}")
+    delivery = _deliver_otp(
+        request,
+        phone=phone,
+        email=email,
+        otp=otp,
+        reg_data=reg_data,
+    )
 
-    email_ok = True
-    if otp_provider in ("email", "both"):
+    # FIX: Use the correct URL namespace for verify_otp
+    # The verify_otp view is in the 'security' app
+    from django.urls import reverse
+    from django.urls import NoReverseMatch
+    
+    # Determine the correct redirect URL based on what's available
+    verify_otp_url = None
+    
+    # Try different possible namespace combinations
+    possible_names = [
+        'security:verify_otp',
+        'verify_otp',
+        'listings:verify_otp',
+        'accounts:verify_otp',
+    ]
+    
+    for name in possible_names:
         try:
-            from notifications.notification_service import NotificationService
-            subject = "AgriPlot verification code"
-            NotificationService.send_email(
-                recipient=email,
-                subject=subject,
-                template="otp_verification",
-                context={
-                    "user": None,
-                    "display_name": f"{reg_data.get('first_name', '')} {reg_data.get('last_name', '')}".strip() or reg_data.get('username', 'there'),
-                    "otp": otp,
-                    "expiry_minutes": 10,
-                    "support_url": settings.SITE_URL + "/contact-support/"
-                }
-            )
-        except Exception as e:
-            email_ok = False
-            logger.error(f"Failed to send email OTP: {str(e)}", exc_info=True)
+            verify_otp_url = reverse(name)
+            break
+        except NoReverseMatch:
+            continue
+    
+    # If none found, check the URL patterns directly
+    if not verify_otp_url:
+        # Fallback: construct URL manually or show error
+        logger.error("Could not find verify_otp URL pattern")
+        messages.error(request, "System configuration error. Please contact support.")
+        return redirect('listings:register_choice')
+    
+    if delivery["sent_channels"]:
+        if delivery["sent_channels"] == ["sms"]:
+            messages.success(request, "Verification code sent to your phone.")
+        elif delivery["sent_channels"] == ["email"]:
+            if otp_provider == "sms":
+                messages.warning(request, "SMS delivery is unavailable right now, so we sent the verification code to your email instead.")
+            else:
+                messages.success(request, "Verification code sent to your email.")
+        else:
+            messages.success(request, f"Verification code sent via {', '.join(delivery['sent_channels'])}. Check your messages.")
+        return redirect(verify_otp_url)
 
-    if otp_provider == "sms" and sms_ok:
-        messages.success(request, "Verification code sent to your phone!")
-        return redirect('listings:verify_otp')
-    if otp_provider == "email" and email_ok:
-        messages.success(request, "Verification code sent to your email!")
-        return redirect('listings:verify_otp')
-    if otp_provider == "both" and (sms_ok or email_ok):
-        messages.success(request, "Verification code sent. Check SMS and/or email.")
-        return redirect('listings:verify_otp')
-
-    if otp_provider == "sms":
-        sms_error = (result or {}).get("error", "SMS provider rejected the request.")
-        messages.error(request, f"Failed to send verification code by SMS. {sms_error}")
-    else:
-        messages.error(request, "Failed to send verification code. Please try again.")
+    errors = []
+    if delivery["sms_error"]:
+        errors.append(f"SMS: {delivery['sms_error']}")
+    if delivery["email_error"]:
+        errors.append(f"Email: {delivery['email_error']}")
+    messages.error(request, f"Failed to send verification code. {'; '.join(errors)}")
     return redirect('listings:register_choice')
-
 
 def verify_otp(request):
     """Step 2: Verify OTP and complete registration"""
@@ -184,15 +271,14 @@ def verify_otp(request):
             messages.error(request, "Session expired. Please register again.")
             return redirect('listings:register_choice')
 
-        otp_provider = getattr(settings, "OTP_PROVIDER", "email")
-        if otp_provider not in ("email", "sms", "both"):
-            otp_provider = "email"
+        otp_provider = _resolve_otp_provider()
+        delivered_channels = request.session.get(OTP_CHANNEL_SESSION_KEY, [])
         email = reg_data.get('email')
 
         # Check OTP
         try:
             verified = False
-            if otp_provider in ("sms", "both"):
+            if ("sms" in delivered_channels) or (not delivered_channels and otp_provider in ("sms", "both")):
                 otp_record = PhoneOTP.objects.filter(
                     phone=phone,
                     otp=otp_entered,
@@ -204,7 +290,7 @@ def verify_otp(request):
                 otp_record.save()
                 verified = True
 
-            if otp_provider in ("email", "both") and not verified:
+            if (("email" in delivered_channels) or (not delivered_channels and otp_provider in ("email", "both"))) and not verified:
                 email_record = EmailOTP.objects.filter(
                     email=email,
                     otp=otp_entered,
@@ -232,7 +318,7 @@ def verify_otp(request):
             profile, _ = Profile.objects.get_or_create(user=user)
             profile.role = reg_data['role']
             profile.phone = phone
-            profile.phone_verified = (otp_provider in ("sms", "both"))
+            profile.phone_verified = "sms" in delivered_channels or (not delivered_channels and otp_provider in ("sms", "both"))
             profile.email_verified = False
             if reg_data.get('address'):
                 profile.address = reg_data.get('address')
@@ -243,9 +329,9 @@ def verify_otp(request):
                 defaults={
                     'phone_number': phone,
                     'email': reg_data.get('email', ''),
-                    'phone_verified': (otp_provider in ("sms", "both")),
+                    'phone_verified': profile.phone_verified,
                     'email_verified': False,
-                    'phone_verified_at': timezone.now() if otp_provider in ("sms", "both") else None,
+                    'phone_verified_at': timezone.now() if profile.phone_verified else None,
                     'email_verified_at': None,
                 }
             )
@@ -300,6 +386,8 @@ def verify_otp(request):
             for key in session_keys:
                 if key in request.session:
                     del request.session[key]
+            if OTP_CHANNEL_SESSION_KEY in request.session:
+                del request.session[OTP_CHANNEL_SESSION_KEY]
             # Clear wizard session data if any
             wizard_keys = [k for k in request.session.keys() if k.startswith('landownerwizard')]
             for key in wizard_keys:
@@ -334,7 +422,15 @@ def verify_otp(request):
         except (PhoneOTP.DoesNotExist, EmailOTP.DoesNotExist):
             messages.error(request, "Invalid or expired OTP. Please try again.")
             form = OTPVerificationForm()
-            return render(request, 'security/verify_otp.html', {'phone': phone, 'channel': otp_provider, 'form': form})
+            return render(
+                request,
+                'security/verify_otp.html',
+                {
+                    'phone': phone,
+                    'channel': _otp_channel_for_template(request, otp_provider),
+                    'form': form,
+                }
+            )
         except Exception as e:
             logger.error(f"Error completing registration: {str(e)}", exc_info=True)
             messages.error(request, "An error occurred. Please try again.")
@@ -348,9 +444,17 @@ def verify_otp(request):
             return redirect('listings:dashboard_router')
         return redirect('listings:register_choice')
     
-    otp_provider = getattr(settings, "OTP_PROVIDER", "email")
+    otp_provider = _resolve_otp_provider()
     form = OTPVerificationForm()
-    return render(request, 'security/verify_otp.html', {'phone': phone, 'channel': otp_provider, 'form': form})
+    return render(
+        request,
+        'security/verify_otp.html',
+        {
+            'phone': phone,
+            'channel': _otp_channel_for_template(request, otp_provider),
+            'form': form,
+        }
+    )
 
 
 def resend_otp(request):
@@ -364,9 +468,7 @@ def resend_otp(request):
             messages.error(request, "Session expired. Please register again.")
             return redirect('listings:register_choice')
         
-        otp_provider = getattr(settings, "OTP_PROVIDER", "email")
-        if otp_provider not in ("email", "sms", "both"):
-            otp_provider = "email"
+        otp_provider = _resolve_otp_provider()
 
         # Generate new OTP
         otp = generate_otp()
@@ -387,47 +489,28 @@ def resend_otp(request):
                 expires_at=expires_at
             )
 
-        sms_ok = True
-        if otp_provider in ("sms", "both"):
-            sms = TextSMSService()
-            result = sms.send_otp(phone, otp)
-            sms_ok = bool(result.get('success'))
+        delivery = _deliver_otp(
+            request,
+            phone=phone,
+            email=email,
+            otp=otp,
+            reg_data=reg_data,
+        )
 
-        email_ok = True
-        if otp_provider in ("email", "both") and email:
-            try:
-                from notifications.notification_service import NotificationService
-                subject = "AgriPlot verification code"
-                NotificationService.send_email(
-                    recipient=email,
-                    subject=subject,
-                    template="otp_verification",
-                    context={
-                        "user": None,
-                        "display_name": reg_data.get('username', 'there'),
-                        "otp": otp,
-                        "expiry_minutes": 10,
-                        "support_url": settings.SITE_URL + "/contact-support/"
-                    }
-                )
-            except Exception as e:
-                email_ok = False
-                logger.error(f"Failed to resend email OTP: {str(e)}", exc_info=True)
-
-        if otp_provider == "sms" and sms_ok:
-            messages.success(request, "New verification code sent!")
-        elif otp_provider == "email" and email_ok:
-            messages.success(request, "New verification code sent!")
-        elif otp_provider == "both" and (sms_ok or email_ok):
-            messages.success(request, "New verification code sent!")
-        else:
-            if otp_provider == "sms":
-                sms_error = (result or {}).get("error", "SMS provider rejected the request.")
-                messages.error(request, f"Failed to send code by SMS. {sms_error}")
+        if delivery["sent_channels"]:
+            if delivery["sent_channels"] == ["email"] and otp_provider == "sms":
+                messages.warning(request, "SMS delivery is unavailable right now, so we sent the new code to your email instead.")
             else:
-                messages.error(request, "Failed to send code. Please try again.")
+                messages.success(request, "New verification code sent.")
+        else:
+            errors = []
+            if delivery["sms_error"]:
+                errors.append(f"SMS: {delivery['sms_error']}")
+            if delivery["email_error"]:
+                errors.append(f"Email: {delivery['email_error']}")
+            messages.error(request, f"Failed to send code. {'; '.join(errors)}")
         
-        return redirect('listings:verify_otp')
+        return redirect('security:verify_otp')
     
     return redirect('listings:register_choice')
 

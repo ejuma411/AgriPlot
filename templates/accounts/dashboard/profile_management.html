@@ -59,7 +59,7 @@
                             Your phone number is verified and your account is active. To unlock the rest of the platform,
                             verify your email address using the link we sent to <strong>{{ request.user.email }}</strong>.
                         </p>
-                        <form method="post" action="{% url 'listings:resend_email_verification' %}">
+                        <form method="post" action="{% url 'security:resend_email_verification' %}">
                             {% csrf_token %}
                             <button type="submit" class="btn btn-warning">Resend verification email</button>
                         </form>
