@@ -1293,11 +1293,13 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
             step.update_restriction_reason = decision.reason
             step.requires_admin_action = step_requires_admin_action(step)
         context["closing_steps"] = closing_steps
-        context["transaction_stage_matrix"] = workspace_payment.transaction_stage_matrix
+        from .presenters import PaymentPresenter
+        presenter = PaymentPresenter(workspace_payment)
+        context["transaction_stage_matrix"] = presenter.transaction_stage_matrix
         context["transaction_certificates"] = workspace_payment.certificates.all()
         context["disbursement_plan"] = workspace_payment.disbursements.all()
-        context["officer_payment_rules"] = workspace_payment.officer_payment_rules
-        context["platform_revenue_streams"] = workspace_payment.platform_revenue_streams
+        context["officer_payment_rules"] = presenter.officer_payment_rules
+        context["platform_revenue_streams"] = presenter.platform_revenue_streams
         action_labels = [
             ("submit", "Send request"),
             ("mark_paid", "Mark paid"),

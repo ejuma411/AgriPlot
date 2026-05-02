@@ -158,6 +158,16 @@ def request_land_surveyor(request):
 
 
 # ============ PUBLIC PAGES ============
+def seo_filtered_home(request, listing_type=None, county=None):
+    """SEO friendly URL mapper that forwards to the main home view"""
+    query_dict = request.GET.copy()
+    if listing_type:
+        query_dict['listing_type'] = listing_type.lower()
+    if county:
+        query_dict['county'] = county.title().replace("-", " ")
+    request.GET = query_dict
+    return home(request)
+
 def home(request):
     """Homepage with plot listings"""
     search_form = PlotSearchForm(request.GET or None)
@@ -184,6 +194,71 @@ def home(request):
             UserInterest.objects.filter(user=request.user).values_list("plot_id", flat=True)
         )
 
+    # SEO Metadata
+    listing_type = search_form.cleaned_data.get('listing_type') if search_form.is_valid() else None
+    county = search_form.cleaned_data.get('county') if search_form.is_valid() else None
+    
+    seo_title = "AgriPlot Marketplace - Verified Agricultural Land in Kenya"
+    seo_description = "Discover and invest in verified agricultural and commercial land across Kenya with secure escrow and complete due diligence."
+    
+    if county and listing_type:
+        seo_title = f"Agricultural Land for {listing_type.title()} in {county} - Verified AgriPlot Listings"
+        seo_description = f"Browse {verified_count} verified plots and agricultural land for {listing_type.lower()} in {county}. Complete due diligence and secure escrow on AgriPlot."
+    elif county:
+        seo_title = f"Agricultural Land in {county} - Verified AgriPlot Listings"
+        seo_description = f"Browse {verified_count} verified plots and agricultural land in {county}."
+    elif listing_type:
+        seo_title = f"Agricultural Land for {listing_type.title()} in Kenya - Verified AgriPlot Listings"
+
+    canonical_url = request.build_absolute_uri(request.path)
+
+    import json
+    json_ld = {
+        "@context": "https://schema.org",
+        "@type": "SearchResultsPage",
+        "mainEntity": {
+            "@type": "ItemList",
+            "itemListElement": []
+        }
+    }
+    for idx, plot in enumerate(featured_plots):
+        json_ld["mainEntity"]["itemListElement"].append({
+            "@type": "ListItem",
+            "position": idx + 1,
+            "item": {
+                "@type": "RealEstateListing",
+                "name": plot.title,
+                "url": request.build_absolute_uri(f"/plot/{plot.id}/"),
+                "offers": {
+                    "@type": "Offer",
+                    "price": str(plot.price),
+                    "priceCurrency": "KES"
+                }
+            }
+        })
+    json_ld_str = json.dumps(json_ld)
+
+    if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+        from django.template.loader import render_to_string
+        from django.http import JsonResponse
+        grid_html = render_to_string('listings/_market_grid.html', {
+            'featured_plots': featured_plots,
+            'saved_plot_ids': saved_plot_ids,
+            'request': request,
+        })
+        active_filters_html = render_to_string('listings/_active_filters.html', {
+            'active_filters': active_filters,
+            'has_active_filters': bool(active_filters),
+            'request': request,
+        })
+        return JsonResponse({
+            'grid_html': grid_html,
+            'active_filters_html': active_filters_html,
+            'plots_count': paginator.count,
+            'seo_title': seo_title,
+            'json_ld': json_ld
+        })
+
     return render(request, 'listings/home.html', {
         'featured_plots': featured_plots,
         'total_plots': total_plots,
@@ -198,6 +273,10 @@ def home(request):
         'active_filters_count': len(active_filters),
         'plots_count': paginator.count,
         'selected_size_presets': request.GET.getlist("size_presets"),
+        'seo_title': seo_title,
+        'seo_description': seo_description,
+        'canonical_url': canonical_url,
+        'json_ld_str': json_ld_str,
     })
 
 def build_remove_url(request, params_to_remove):
@@ -663,93 +742,11 @@ def add_plot(request):
                 logger.info(f"Listing Type: {plot.listing_type}")
                 logger.info(f"Processing time: {processing_time:.2f} seconds")
                 
-                # Log document uploads
-                uploaded_docs = []
-                if plot.title_deed:
-                    uploaded_docs.append('title_deed')
-                if plot.survey_map:
-                    uploaded_docs.append('survey_map')
-                if plot.spousal_consent_doc:
-                    uploaded_docs.append('spousal_consent_doc')
-                if plot.official_search:
-                    uploaded_docs.append('official_search')
-                if plot.rates_clearance:
-                    uploaded_docs.append('rates_clearance')
-                if plot.rent_clearance:
-                    uploaded_docs.append('rent_clearance')
-                if plot.landowner_id_doc:
-                    uploaded_docs.append('landowner_id_doc')
-                if plot.kra_pin:
-                    uploaded_docs.append('kra_pin')
-                if plot.soil_report:
-                    uploaded_docs.append('soil_report')
-                
-                logger.info(f"Uploaded documents: {uploaded_docs}")
-                
-                # Audit log
-                audit_logger.info(f"User {request.user.username} created plot ID {plot.id}")
-                log_audit(request, 'create_plot', object_type='Plot', object_id=plot.id)
+                from .services import PlotCreationService
+                success, error_msg = PlotCreationService.execute_post_creation_workflow(plot, plot_form, request.user, request)
+                if not success:
+                    messages.warning(request, f"Plot saved but post-creation tasks failed: {error_msg}")
 
-                # Create verification status using VerificationStatus model
-                try:
-                    content_type = ContentType.objects.get_for_model(Plot)
-                    verification, created = VerificationStatus.objects.get_or_create(
-                        content_type=content_type,
-                        object_id=plot.id,
-                        defaults={
-                            'current_stage': 'document_uploaded',
-                            'document_uploaded_at': timezone.now(),
-                            'stage_details': {
-                                'created_by': request.user.username,
-                                'created_by_id': request.user.id,
-                                'created_at': timezone.now().isoformat(),
-                                'plot_title': plot.title,
-                                'plot_id': plot.id,
-                                'county': plot.county,
-                                'subcounty': plot.subcounty,
-                                'documents_uploaded': uploaded_docs,
-                                'registry_check': getattr(plot_form, "registry_result", None) or {}
-                            }
-                        }
-                    )
-                    
-                    if created:
-                        logger.info(f"✅ Verification status created for plot {plot.id}")
-                        logger.info(f"Verification ID: {verification.id}")
-                        logger.info(f"Current stage: {verification.current_stage}")
-                        # Q5: Create verification tasks (document review, extension, surveyor) at submission
-                        try:
-                            from verification.verification_service import VerificationService
-                            tasks_created = VerificationService.create_verification_tasks(
-                                plot, initiated_by=request.user
-                            )
-                            logger.info(f"Created verification tasks for plot {plot.id}: {tasks_created}")
-                            from notifications.notification_service import NotificationService
-                            NotificationService.notify_plot_submitted(plot)
-                            # Trigger mock Ardhisasa verification for title search
-                            try:
-                                VerificationService.initiate_ardhisasa_verification(plot.id)
-                            except Exception as api_err:
-                                logger.warning(f"Ardhisasa verification failed for plot {plot.id}: {api_err}")
-                        except Exception as task_err:
-                            logger.warning(f"Verification task creation failed for plot {plot.id}: {task_err}")
-                    else:
-                        logger.info(f"ℹ️ Verification status already exists for plot {plot.id}")
-                        logger.info(f"Existing verification stage: {verification.current_stage}")
-
-                    # Q6: Generate a pricing suggestion for sale listings
-                    if plot.listing_type in ['sale', 'both']:
-                        try:
-                            from .utils import suggest_price
-                            suggest_price(plot)
-                        except Exception as price_err:
-                            logger.warning(f"Pricing suggestion failed for plot {plot.id}: {price_err}")
-
-                except Exception as e:
-                    logger.error(f"Error creating verification status: {str(e)}", exc_info=True)
-                    # Don't fail the whole request, just log the error
-                    messages.warning(request, "Plot saved but verification status creation failed. Please contact support.")
-                
                 messages.success(request, 
                     "✅ Plot submitted successfully! Your listing is now under verification review."
                 )

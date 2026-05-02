@@ -8,6 +8,8 @@ app_name = "listings"
 
 urlpatterns = [
     # Public pages
+    path("plots-for-<str:listing_type>/in-<str:county>/", views.seo_filtered_home, name="seo_filtered"),
+    path("plots-in-<str:county>/", views.seo_filtered_home, name="seo_filtered_county"),
     path("", views.home, name="home"),
     path("plot/<int:id>/", views.plot_detail, name="plot_detail"),
     path("plot/<int:plot_id>/lease-waitlist/", views.join_lease_waitlist, name="join_lease_waitlist"),

@@ -275,7 +275,9 @@
 
 
 <!-- FEATURED LISTINGS -->
-{% include 'listings/_market_grid.html' %}
+<div id="marketGridContainer">
+    {% include 'listings/_market_grid.html' %}
+</div>
 
 
 
@@ -309,7 +311,14 @@
     </div>
 
 </section>
+
+{% if json_ld_str %}
+<script type="application/ld+json">
+    {{ json_ld_str|safe }}
+</script>
+{% endif %}
 {% endblock %}
 {% block extra_js %}
 <script src="{% static 'js/marketplace.js' %}" defer></script>
+<script src="{% static 'js/modern_search.js' %}" defer></script>
 {% endblock %}
