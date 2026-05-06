@@ -13,7 +13,7 @@
         <h2>Welcome to AgriPlot</h2>
     </div>
     <div class="content">
-        <p>Hello {{ user.get_full_name|default:user.username }},</p>
+        <p>Hello {{ user|display_name }},</p>
         <p>Your registration was successful.</p>
         <p>If you want to Request To Change Your Role (Landowner, Agent, Extension Officer, or Land Surveyor), you can apply directly from your profile page. An admin will review your documents and approve your request.</p>
         <div style="text-align: center; margin: 24px 0;">

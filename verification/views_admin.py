@@ -22,6 +22,7 @@ from security.models import AuditLog
 from verification.verification_service import VerificationService
 from listings.utils import log_audit
 from registry_mock.models import RegistryMismatchAttempt
+from accounts.access_control import resolve_access_profile
 
 # Add this logger definition
 logger = logging.getLogger(__name__)
@@ -1004,10 +1005,17 @@ def ajax_assign_task(request):
 @staff_member_required
 def my_tasks(request):
     """View for staff to see their assigned tasks"""
-    
+    access_profile = resolve_access_profile(request.user)
+    can_manage_task_queue = (
+        request.user.is_superuser
+        or access_profile.can("tasks.view_all")
+        or access_profile.can("tasks.assign")
+        or access_profile.can("verification.review")
+    )
+
     my_tasks = VerificationTask.objects.filter(
         assigned_to=request.user,
-        status='in_progress'
+        status__in=['pending', 'in_progress']
     ).select_related('plot').order_by('assigned_at')
     
     completed_tasks = VerificationTask.objects.filter(
@@ -1017,10 +1025,11 @@ def my_tasks(request):
     
     pending_admin_tasks = VerificationTask.objects.none()
     admin_review_plots = Plot.objects.none()
-    if request.user.is_superuser:
+    if can_manage_task_queue:
         pending_admin_tasks = VerificationTask.objects.filter(
             verification_type='document_review',
-            status='pending'
+            status='pending',
+            assigned_to__isnull=True,
         ).select_related('plot').order_by('assigned_at')
         
         plot_content_type = ContentType.objects.get_for_model(Plot)
@@ -1036,7 +1045,8 @@ def my_tasks(request):
         'pending_in_area': None,
         'page_title': 'My Tasks',
         'pending_admin_tasks': pending_admin_tasks,
-        'admin_review_plots': admin_review_plots
+        'admin_review_plots': admin_review_plots,
+        'can_manage_task_queue': can_manage_task_queue,
     }
     
     return render(request, 'verification/admin/my_tasks.html', context)

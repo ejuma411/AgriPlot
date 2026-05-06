@@ -877,12 +877,98 @@ class PaymentRequest(models.Model):
         }
         return progress.get(self.status, 0)
 
+
+    # Transaction Type Transitions
+    PURCHASE_LEGAL_STEPS = [
+        (
+            "due_diligence",
+            "Due Diligence & Searches",
+            "Official search, survey, and diligence pack",
+            "Review the official search, survey, and supporting diligence records before moving the sale forward.",
+        ),
+        (
+            "agreement",
+            "Sale Agreement",
+            "Executed sale agreement",
+            "Upload the signed sale agreement once both sides and their advocates finish execution.",
+        ),
+        (
+            "lcb_consent",
+            "Land Control Board & Consents",
+            "Consent letters and clearance pack",
+            "Capture Land Control Board approval or the equivalent seller clearances and supporting consents required for transfer.",
+        ),
+        (
+            "stamp_duty",
+            "Valuation & Stamp Duty",
+            "Government valuation and stamp duty receipt",
+            "Record the valuation outcome, assessed duty, and proof of payment before completion.",
+        ),
+        (
+            "completion_docs",
+            "Completion Documents",
+            "Completion document checklist",
+            "Confirm the title, signed transfer forms, and seller identification documents are all in place before release.",
+        ),
+        (
+            "registration",
+            "Title Registration",
+            "Fresh registry proof / new search",
+            "Upload the final registry evidence showing the transfer has been lodged or completed.",
+        ),
+    ]
+
+    LEASE_LEGAL_STEPS = [
+        (
+            "offer",
+            "Lease Offer & Terms",
+            "Lease offer / intent record",
+            "Confirm the proposed lease term, use, and key expectations before drafting the agreement.",
+        ),
+        (
+            "lcb_consent",
+            "Land Control Board & Family Consents",
+            "LCB consent and family approval pack",
+            "Capture any agricultural lease approvals and family consents before the tenant takes possession.",
+        ),
+        (
+            "agreement",
+            "Lease Agreement",
+            "Signed lease agreement",
+            "Upload the final lease agreement and make sure both parties digitally confirm it in AgriPlot.",
+        ),
+        (
+            "payment_security",
+            "Security Deposit",
+            "Escrow payment confirmation",
+            "Record the agreed security deposit payment in escrow before handover or occupation.",
+        ),
+        (
+            "lease_registration",
+            "Lease Registration",
+            "Lease registry filing proof",
+            "For long leases, upload registry protection or filing evidence once the advocate completes it.",
+        ),
+        (
+            "soil_health_baseline",
+            "Soil & Land Baseline",
+            "Soil baseline / entry inspection report",
+            "Capture the starting land condition and soil baseline before possession to support exit checks later.",
+        ),
+        (
+            "handover",
+            "Possession Handover",
+            "Signed handover note",
+            "Document boundaries, access, and possession details before the lease is treated as active.",
+        ),
+    ]
+
     @classmethod
     def closing_step_templates(cls, transaction_type):
         if transaction_type == cls.TransactionType.PURCHASE:
-            return cls.PURCHASE_CLOSING_STEPS
+            return cls.PURCHASE_LEGAL_STEPS
         if transaction_type == cls.TransactionType.LEASE:
-            return cls.LEASE_CLOSING_STEPS
+            return cls.LEASE_LEGAL_STEPS
         return []
 
     def add_event(self, event_type, message, actor=None):
@@ -1315,6 +1401,49 @@ class PaymentRequest(models.Model):
                 }
             )
         return documents
+
+    @property
+    def search_result_summary(self):
+        plot = self.plot
+        search_result = getattr(plot, "search_result", None) if plot else None
+        documents = self.due_diligence_documents
+
+        if search_result:
+            platform = search_result.search_platform or "official registry search"
+            owner = search_result.official_owner or getattr(plot, "owner_full_name", "") or "registered owner"
+            parcel = search_result.parcel_number or getattr(plot, "parcel_number", "") or "this parcel"
+            search_date = (
+                f" dated {search_result.search_date:%b %d, %Y}"
+                if search_result.search_date
+                else ""
+            )
+            status_label = "verified" if search_result.verified else "uploaded for review"
+            encumbrance_note = (
+                f" Encumbrances noted: {search_result.encumbrances}."
+                if search_result.encumbrances
+                else " No encumbrances have been noted in the current search record."
+            )
+            lease_note = (
+                f" Lease status: {search_result.lease_status}."
+                if search_result.lease_status
+                else ""
+            )
+            return (
+                f"The {platform} result for {parcel}{search_date} identifies {owner} as the recorded owner and is "
+                f"currently {status_label}.{encumbrance_note}{lease_note}"
+            )
+
+        if documents:
+            document_titles = ", ".join(document["title"] for document in documents[:3])
+            return (
+                "AgriPlot has assembled the due-diligence pack for this plot, including "
+                f"{document_titles}. Review the uploaded documents before moving to the agreement stage."
+            )
+
+        return (
+            "The due-diligence certificate will summarise the official search, survey, and supporting verification "
+            "documents once they are uploaded to this transaction."
+        )
 
     @property
     def advocate_details(self):
@@ -2427,6 +2556,8 @@ class PaymentClosingStep(models.Model):
         return f"This step needs more evidence before it can be completed: {requirement_text}."
 
     def set_status(self, status, actor=None, notes="", bypass_evidence=False):
+        from notifications.notification_service import NotificationService
+
         if status == self.Status.COMPLETED and not bypass_evidence:
             blocking_reason = self.evidence_blocking_reason()
             if blocking_reason:
@@ -2445,6 +2576,13 @@ class PaymentClosingStep(models.Model):
         self.save(update_fields=["status", "notes", "completed_at", "completed_by", "updated_at"])
         self.payment.sync_plot_market_state()
         self.payment.ensure_transaction_artifacts()
+        if previous_status != status:
+            NotificationService.notify_payment_step_updated(
+                self.payment,
+                self,
+                previous_status,
+                actor=actor,
+            )
         if previous_status != self.Status.COMPLETED and status == self.Status.COMPLETED:
             self._auto_assign_next_step(actor=actor)
 
@@ -2471,30 +2609,8 @@ class PaymentClosingStep(models.Model):
         )
         self.payment.add_event("closing_step_assigned", assignment_message, actor=actor)
 
-        from django.contrib.auth.models import User
         from notifications.notification_service import NotificationService
-
-        recipients = []
-        label = next_step.responsible_party_label.lower()
-        if "buyer" in label and self.payment.buyer:
-            recipients.append(self.payment.buyer)
-        if any(token in label for token in ["seller", "agent", "landowner"]) and self.payment.seller:
-            recipients.append(self.payment.seller)
-        if any(token in label for token in ["admin", "valuer", "government", "operations", "lawyer", "registrar"]):
-            recipients.extend(
-                User.objects.filter(
-                    models.Q(is_superuser=True) | models.Q(groups__name="Finance Admin")
-                ).distinct()
-            )
-
-        for recipient in {user.pk: user for user in recipients if user}.values():
-            NotificationService.create_notification(
-                user=recipient,
-                notification_type="plot_stage_update",
-                title=f"Next step assigned: {next_step.display_title}",
-                message=assignment_message,
-                plot=self.payment.plot,
-            )
+        NotificationService.notify_payment_step_assigned(self.payment, next_step)
 
 
 class LeaseWaitlistEntry(models.Model):

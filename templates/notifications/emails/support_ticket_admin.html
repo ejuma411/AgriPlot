@@ -13,7 +13,7 @@
         <h2>New Support Ticket</h2>
     </div>
     <div class="content">
-        <p>Hello {{ admin.get_full_name|default:admin.username }},</p>
+        <p>Hello {{ admin|display_name }},</p>
         <p>A new support ticket has been submitted.</p>
         <div class="meta">
             <p><strong>Subject:</strong> {{ ticket.subject }}</p>

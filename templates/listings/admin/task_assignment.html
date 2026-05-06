@@ -62,10 +62,10 @@
                         <div class="officer-card">
                             <div class="d-flex align-items-center mb-2">
                                 <div class="officer-avatar me-2">
-                                    {{ officer.user.get_full_name|default:officer.user.username|first|upper }}
+                                    {{ officer.user|display_initial }}
                                 </div>
                                 <div>
-                                    <strong>{{ officer.user.get_full_name|default:officer.user.username }}</strong>
+                                    <strong>{{ officer.user|display_name }}</strong>
                                     <br>
                                     <small class="text-muted">{{ officer.designation }}</small>
                                 </div>
@@ -107,10 +107,10 @@
                         <div class="officer-card">
                             <div class="d-flex align-items-center mb-2">
                                 <div class="officer-avatar me-2">
-                                    {{ surveyor.user.get_full_name|default:surveyor.user.username|first|upper }}
+                                    {{ surveyor.user|display_initial }}
                                 </div>
                                 <div>
-                                    <strong>{{ surveyor.user.get_full_name|default:surveyor.user.username }}</strong>
+                                    <strong>{{ surveyor.user|display_name }}</strong>
                                     <br>
                                     <small class="text-muted">{{ surveyor.designation }}</small>
                                 </div>
@@ -260,7 +260,7 @@
                         </td>
                         <td>
                             <i class="fas fa-user me-1"></i>
-                            {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}
+                            {{ task.assigned_to|display_name }}
                         </td>
                         <td>{{ task.assigned_at|timesince }} ago</td>
                         <td>
@@ -315,7 +315,7 @@
                                         data-role="extension"
                                         data-counties="{{ officer.assigned_counties|join:',' }}"
                                         data-station="{{ officer.station }}">
-                                    {{ officer.user.get_full_name|default:officer.user.username }}
+                                    {{ officer.user|display_name }}
                                     {% if officer.station %} - {{ officer.station }}{% endif %}
                                     ({{ officer.assigned_counties|length }} counties)
                                 </option>
@@ -325,7 +325,7 @@
                                         data-role="surveyor"
                                         data-counties="{{ surveyor.assigned_counties|join:',' }}"
                                         data-station="{{ surveyor.station }}">
-                                    {{ surveyor.user.get_full_name|default:surveyor.user.username }}
+                                    {{ surveyor.user|display_name }}
                                     {% if surveyor.station %} - {{ surveyor.station }}{% endif %}
                                     ({{ surveyor.assigned_counties|length }} counties)
                                 </option>
@@ -335,7 +335,7 @@
                                         data-role="staff"
                                         data-counties=""
                                         data-station="">
-                                    {{ staff.get_full_name|default:staff.username }} (Staff)
+                                    {{ staff|display_name }} (Staff)
                                 </option>
                             {% endfor %}
                         </select>

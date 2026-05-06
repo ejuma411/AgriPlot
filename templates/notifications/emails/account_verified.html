@@ -13,7 +13,7 @@
         <h1>Email Verified! ✅</h1>
     </div>
     <div class="content">
-        <h2>Hello {{ user.get_full_name|default:user.username }},</h2>
+        <h2>Hello {{ user|display_name }},</h2>
         <p>Great news. Your email address on AgriPlot has been verified successfully.</p>
         <p>You can now:</p>
         <ul>

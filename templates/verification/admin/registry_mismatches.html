@@ -41,7 +41,7 @@
                                 <td>{{ attempt.provided_owner_id|default:"-" }}</td>
                                 <td>
                                     {% if attempt.user %}
-                                        {{ attempt.user.get_full_name|default:attempt.user.username }}
+                                        {{ attempt.user|display_name }}
                                     {% else %}
                                         -
                                     {% endif %}

@@ -160,9 +160,9 @@
                         <td>{{ plot.county|default:plot.location|truncatechars:20 }}</td>
                         <td>
                             {% if plot.agent and plot.agent.user %}
-                                {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
+                                {{ plot.agent.user|display_name }}
                             {% elif plot.landowner and plot.landowner.user %}
-                                {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}
+                                {{ plot.landowner.user|display_name }}
                             {% else %}
                                 <span class="text-muted">Unknown</span>
                             {% endif %}

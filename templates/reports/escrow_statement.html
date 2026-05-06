@@ -103,7 +103,7 @@
 
 <!-- Account Holder Info -->
 <div class="info-card">
-    <strong>Account Holder:</strong> {{ user.get_full_name|default:user.username }}<br>
+    <strong>Account Holder:</strong> {{ user|display_name }}<br>
     <strong>Email:</strong> {{ user.email }}<br>
     <strong>Member Since:</strong> {{ user.date_joined|date:"F d, Y" }}
 </div>

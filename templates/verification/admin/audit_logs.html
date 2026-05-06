@@ -619,9 +619,9 @@
                     </td>
                     <td>
                         {% if log.user %}
-                            <div class="user-name">{{ log.user.get_full_name|default:log.user.username }}</div>
-                            {% if log.user.email %}
-                                <div class="user-email">{{ log.user.email|truncatechars:25 }}</div>
+                            <div class="user-name">{{ log.user|display_name:"System" }}</div>
+                            {% if log.user|contact_email %}
+                                <div class="user-email">{{ log.user|contact_email|truncatechars:25 }}</div>
                             {% endif %}
                         {% else %}
                             <span class="text-muted">System</span>

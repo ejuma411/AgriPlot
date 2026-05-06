@@ -16,7 +16,7 @@
         <h2>Plot Verification Update</h2>
     </div>
     <div class="content">
-        <p>Hello {{ user.get_full_name|default:user.username }},</p>
+        <p>Hello {{ user|display_name }},</p>
         <p>Your plot <strong>{{ plot.title }}</strong> has moved to the next step:</p>
         <div class="status">
             <strong>{{ status_title }}</strong>

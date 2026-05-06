@@ -16,7 +16,7 @@
         <h2>AgriPlot Verification Code</h2>
     </div>
     <div class="content">
-        <p>Hello {% if user %}{{ user.get_full_name|default:user.username }}{% else %}{{ display_name }}{% endif %},</p>
+        <p>Hello {% if user %}{{ user|display_name }}{% else %}{{ display_name }}{% endif %},</p>
         <p>Use the verification code below to complete your sign‑up:</p>
         <p><span class="code">{{ otp }}</span></p>
         <p>This code expires in {{ expiry_minutes }} minutes.</p>

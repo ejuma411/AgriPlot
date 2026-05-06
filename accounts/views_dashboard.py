@@ -322,10 +322,18 @@ def staff_dashboard(request):
         ).count()
         badge_counts["surveyor_tasks_count"] = context["surveyor_tasks_count"]
 
+    can_manage_task_queue = (
+        request.user.is_superuser
+        or access_profile.can("tasks.view_all")
+        or access_profile.can("tasks.assign")
+        or access_profile.can("verification.review")
+    )
+
     badge_counts["pending_review_count"] = context.get("stats", {}).get("pending_review", 0)
     badge_counts["unassigned_tasks_count"] = context.get("task_stats", {}).get("pending", 0)
     badge_counts["my_tasks_count"] = context.get("my_tasks_count", 0)
     context["dashboard_modules"] = build_dashboard_modules(access_profile, badge_counts)
+    context["can_manage_task_queue"] = can_manage_task_queue
 
     if access_profile.can("finance.view_escrow") and context.get("payment_admin_tasks"):
         queue_title = "Finance Control Queue"
@@ -346,9 +354,17 @@ def staff_dashboard(request):
     elif access_profile.can("tasks.view_assigned"):
         queue_title = "Task Inbox"
         queue_description = "Assigned work items move through this queue instead of exposing unrelated records."
+        task_filter = Q(assigned_to=request.user, status__in=["pending", "in_progress"])
+        if can_manage_task_queue:
+            task_filter |= Q(
+                assigned_to__isnull=True,
+                verification_type="document_review",
+                status="pending",
+            )
         task_queryset = (
-            VerificationTask.objects.filter(assigned_to=request.user)
-            .select_related("plot")
+            VerificationTask.objects.filter(task_filter)
+            .select_related("plot", "assigned_to")
+            .distinct()
             .order_by("status", "deadline_at", "-assigned_at")[:6]
         )
         primary_queue = [
@@ -380,9 +396,17 @@ def staff_dashboard(request):
     context["primary_queue_title"] = queue_title
     context["primary_queue_description"] = queue_description
 
+    task_filter = Q(assigned_to=request.user, status__in=["pending", "in_progress"])
+    if can_manage_task_queue:
+        task_filter |= Q(
+            assigned_to__isnull=True,
+            verification_type="document_review",
+            status="pending",
+        )
     task_queryset = (
-        VerificationTask.objects.filter(assigned_to=request.user)
-        .select_related("plot")
+        VerificationTask.objects.filter(task_filter)
+        .select_related("plot", "assigned_to")
+        .distinct()
         .order_by("status", "deadline_at", "-assigned_at")[:10]
     )
     context["workspace_tasks"] = task_queryset

@@ -3,7 +3,7 @@
 {% block content %}
 <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #222;">
     <h2 style="color: #0f5132;">Task Confirmation Expired</h2>
-    <p>Hello {{ admin.get_full_name|default:admin.username }},</p>
+    <p>Hello {{ admin|display_name }},</p>
     <p>
         The assigned verification task below was not confirmed within 12 hours and has been
         automatically unassigned.

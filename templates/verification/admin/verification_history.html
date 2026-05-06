@@ -47,9 +47,9 @@
                         <th>Seller:</th>
                         <td>
                             {% if plot.agent and plot.agent.user %}
-                                {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
+                                {{ plot.agent.user|display_name }}
                             {% elif plot.landowner and plot.landowner.user %}
-                                {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}
+                                {{ plot.landowner.user|display_name }}
                             {% else %}
                                 <span class="text-muted">Unknown</span>
                             {% endif %}
@@ -159,7 +159,7 @@
                                         <small class="text-muted">
                                             <i class="fas fa-user me-1"></i>
                                             {% if log.verified_by %}
-                                                {{ log.verified_by.get_full_name|default:log.verified_by.username }}
+                                                {{ log.verified_by|display_name }}
                                             {% else %}
                                                 <em>System</em>
                                             {% endif %}

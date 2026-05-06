@@ -42,9 +42,9 @@
 
         <div class="sidebar-footer">
             <div class="user-info">
-                <div class="user-avatar">{{ request.user.get_full_name|default:request.user.username|first|upper }}</div>
+                <div class="user-avatar">{{ request.user|display_initial }}</div>
                 <div class="user-details">
-                    <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="user-name">{{ request.user|display_name }}</p>
                     <p class="user-role">{{ primary_role_label }}</p>
                 </div>
             </div>
@@ -414,7 +414,7 @@
                             <div class="workspace-table-row">
                                 <span><strong>{{ plot.title }}</strong><small>#{{ plot.id }}</small></span>
                                 <span>
-                                    {% if plot.agent and plot.agent.user %}{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}{% elif plot.landowner and plot.landowner.user %}{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}{% else %}Unknown{% endif %}
+                                    {% if plot.agent and plot.agent.user %}{{ plot.agent.user|display_name }}{% elif plot.landowner and plot.landowner.user %}{{ plot.landowner.user|display_name }}{% else %}Unknown{% endif %}
                                 </span>
                                 <span>{{ plot.county|default:plot.location }}</span>
                                 <span><a href="{% url 'verification:review_plot' plot.id %}" class="btn btn-sm btn-outline-success">Review</a></span>
@@ -535,7 +535,7 @@
                             {% for deposit in finance_wallet_requests.deposits %}
                             <div class="workspace-table-row wallet-finance-row">
                                 <span><strong>Deposit</strong><small>{{ deposit.phone_number }}</small></span>
-                                <span>{{ deposit.user.get_full_name|default:deposit.user.username }}</span>
+                                <span>{{ deposit.user|display_name }}</span>
                                 <span>KES {{ deposit.amount|floatformat:2|intcomma }}</span>
                                 <span>{{ deposit.get_status_display }}</span>
                             </div>
@@ -543,7 +543,7 @@
                             {% for withdrawal in finance_wallet_requests.withdrawals %}
                             <div class="workspace-table-row wallet-finance-row">
                                 <span><strong>Withdrawal</strong><small>{{ withdrawal.phone_number }}</small></span>
-                                <span>{{ withdrawal.user.get_full_name|default:withdrawal.user.username }}</span>
+                                <span>{{ withdrawal.user|display_name }}</span>
                                 <span>KES {{ withdrawal.amount|floatformat:2|intcomma }}</span>
                                 <span>{{ withdrawal.get_status_display }}</span>
                             </div>
@@ -571,7 +571,7 @@
                         {% for log in recent_audit_logs %}
                         <div class="workspace-audit-item">
                             <div class="workspace-audit-title">{{ log.get_action_display }}</div>
-                            <div class="workspace-audit-meta">{{ log.user.get_full_name|default:log.user.username|default:"System" }}{% if log.object_repr %} · {{ log.object_repr }}{% endif %}</div>
+                            <div class="workspace-audit-meta">{{ log.user|display_name:"System" }}{% if log.object_repr %} · {{ log.object_repr }}{% endif %}</div>
                             <div class="workspace-audit-time">{{ log.created_at|date:"M d, Y H:i" }}</div>
                         </div>
                         {% endfor %}
@@ -696,7 +696,7 @@
                         {% for log in recent_audit_logs %}
                         <div class="workspace-audit-item">
                             <div class="workspace-audit-title">{{ log.get_action_display }}</div>
-                            <div class="workspace-audit-meta">{{ log.user.get_full_name|default:log.user.username|default:"System" }}</div>
+                            <div class="workspace-audit-meta">{{ log.user|display_name:"System" }}</div>
                             <div class="workspace-audit-time">{{ log.created_at|date:"M d, Y H:i" }}</div>
                         </div>
                         {% endfor %}

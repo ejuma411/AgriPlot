@@ -114,11 +114,11 @@
                     <table class="details-table">
                         <tr>
                             <th>Name:</th>
-                            <td>{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}</td>
+                            <td>{{ plot.agent.user|display_name }}</td>
                         </tr>
                         <tr>
                             <th>Email:</th>
-                            <td>{{ plot.agent.user.email }}</td>
+                            <td>{{ plot.agent.user|contact_email|default:"Not provided" }}</td>
                         </tr>
                         <tr>
                             <th>Phone:</th>
@@ -141,11 +141,11 @@
                     <table class="details-table">
                         <tr>
                             <th>Name:</th>
-                            <td>{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}</td>
+                            <td>{{ plot.landowner.user|display_name }}</td>
                         </tr>
                         <tr>
                             <th>Email:</th>
-                            <td>{{ plot.landowner.user.email }}</td>
+                            <td>{{ plot.landowner.user|contact_email|default:"Not provided" }}</td>
                         </tr>
                         <tr>
                             <th>Phone:</th>
@@ -177,7 +177,7 @@
                             <div>{{ log.comment|default:"No comments provided." }}</div>
                             <div class="small text-muted mt-1">
                                 {% if log.verified_by %}
-                                    {{ log.verified_by.get_full_name|default:log.verified_by.username }}
+                                    {{ log.verified_by|display_name }}
                                 {% else %}
                                     System
                                 {% endif %}
@@ -811,7 +811,7 @@
                                 <strong>{{ log.get_verification_type_display }}</strong>
                                 <p class="mb-0">{{ log.comment|truncatechars:50 }}</p>
                                 <small class="text-muted">
-                                    by {% if log.verified_by %}{{ log.verified_by.get_full_name|default:log.verified_by.username }}{% else %}System{% endif %} 
+                                    by {% if log.verified_by %}{{ log.verified_by|display_name }}{% else %}System{% endif %} 
                                     {{ log.created_at|timesince }} ago
                                 </small>
                             </div>

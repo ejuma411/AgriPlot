@@ -38,9 +38,9 @@
         
         <div class="sidebar-footer">
             <div class="user-info">
-                <div class="user-avatar">{{ request.user.get_full_name|first|upper }}</div>
+                <div class="user-avatar">{{ request.user|display_initial }}</div>
                 <div class="user-details">
-                    <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="user-name">{{ request.user|display_name }}</p>
                     <p class="user-role">{{ profile_type }}</p>
                 </div>
             </div>
@@ -329,7 +329,7 @@
                                     <div>
                                         <strong>{{ log.verification_type|title }}</strong>
                                         {% if log.verified_by %}
-                                            <span class="text-muted">by {{ log.verified_by.get_full_name|default:log.verified_by.username }}</span>
+                                            <span class="text-muted">by {{ log.verified_by|display_name }}</span>
                                         {% endif %}
                                     </div>
                                     <small class="text-muted">{{ log.created_at|date:"M d, Y H:i" }}</small>
@@ -369,7 +369,7 @@
                                 {% for doc in verification_docs %}
                                 <tr>
                                     <td>{{ doc.get_doc_type_display }}</td>
-                                    <td>{{ doc.uploaded_by.username }}</td>
+                                    <td>{{ doc.uploaded_by|display_name:"System" }}</td>
                                     <td>{{ doc.uploaded_at|date:"M d, Y H:i" }}</td>
                                     <td>
                                         <a href="{{ doc.file.url }}" target="_blank" class="btn btn-sm btn-primary">

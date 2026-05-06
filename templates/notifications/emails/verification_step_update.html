@@ -18,7 +18,7 @@
         <h2>Verification Step Update</h2>
     </div>
     <div class="content">
-        <p>Hello {{ user.get_full_name|default:user.username }},</p>
+        <p>Hello {{ user|display_name }},</p>
         <p>Your plot <strong>{{ plot.title }}</strong> has completed a verification step:</p>
         <div class="status {% if status == 'approved' %}status-approved{% else %}status-rejected{% endif %}">
             <strong>{{ task.get_verification_type_display }}</strong> — {{ status|title }}

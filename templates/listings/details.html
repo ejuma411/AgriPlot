@@ -577,12 +577,12 @@
                                             class="avatar-img">
                                         {% else %}
                                         <div class="avatar-placeholder">
-                                            {{ plot.agent.user.get_full_name|default:plot.agent.user.username|first|upper }}
+                                            {{ plot.agent.user|display_initial }}
                                         </div>
                                         {% endif %}
                                     </div>
                                     <div class="agent-name">
-                                        <h5>{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}</h5>
+                                        <h5>{{ plot.agent.user|display_name }}</h5>
                                         <span class="agent-badge {% if plot.agent.verified %}verified{% else %}pending{% endif %}">
                                             {% if plot.agent.verified %}
                                             <i class="fas fa-check-circle me-1"></i>Verified Agent
@@ -639,10 +639,10 @@
                                     {% if user.is_authenticated %}
                                     <div class="contact-methods">
                                         <!-- Email -->
-                                        <a href="mailto:{{ plot.agent.user.email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.agent.user.get_full_name|default:plot.agent.user.username }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user.get_full_name|default:user.username }}"
+                                        <a href="mailto:{{ plot.agent.user|contact_email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.agent.user|display_name }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user|display_name }}"
                                             class="btn btn-outline-primary w-100 mb-2">
                                             <i class="fas fa-envelope me-2"></i>Send Email
-                                            <small class="d-block text-muted mt-1">{{ plot.agent.user.email }}</small>
+                                            <small class="d-block text-muted mt-1">{{ plot.agent.user|contact_email|default:"Not provided" }}</small>
                                         </a>
                                         
                                         <!-- Phone (if available) -->
@@ -658,7 +658,7 @@
                                                     class="btn btn-sm btn-outline-primary">
                                                         <i class="fas fa-phone me-1"></i>Call
                                                     </a>
-                                                    <a href="https://wa.me/{{ plot.agent.phone|cut:'+' }}?text=Hello {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                                    <a href="https://wa.me/{{ plot.agent.phone|cut:'+' }}?text=Hello {{ plot.agent.user|display_name }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
                                                     class="btn btn-sm btn-outline-success" 
                                                     target="_blank">
                                                         <i class="fab fa-whatsapp me-1"></i>WhatsApp
@@ -691,11 +691,11 @@
                                 <div class="agent-header">
                                     <div class="agent-avatar">
                                         <div class="avatar-placeholder">
-                                            {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username|first|upper }}
+                                            {{ plot.landowner.user|display_initial }}
                                         </div>
                                     </div>
                                     <div class="agent-name">
-                                        <h5>{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}</h5>
+                                        <h5>{{ plot.landowner.user|display_name }}</h5>
                                         <span class="agent-badge {% if plot.landowner.verified %}verified{% else %}pending{% endif %}">
                                             {% if plot.landowner.verified %}
                                             <i class="fas fa-check-circle me-1"></i>Verified Landowner
@@ -709,10 +709,10 @@
                                     <h6>Contact Landowner</h6>
                                     {% if user.is_authenticated %}
                                     <div class="contact-methods">
-                                        <a href="mailto:{{ plot.landowner.user.email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user.get_full_name|default:user.username }}"
+                                        <a href="mailto:{{ plot.landowner.user|contact_email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.landowner.user|display_name }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user|display_name }}"
                                         class="btn btn-outline-primary w-100 mb-2">
                                             <i class="fas fa-envelope me-2"></i>Send Email
-                                            <small class="d-block text-muted mt-1">{{ plot.landowner.user.email }}</small>
+                                            <small class="d-block text-muted mt-1">{{ plot.landowner.user|contact_email|default:"Not provided" }}</small>
                                         </a>
 
                                         {% if plot.landowner.phone %}
@@ -727,7 +727,7 @@
                                                     class="btn btn-sm btn-outline-primary">
                                                         <i class="fas fa-phone me-1"></i>Call
                                                     </a>
-                                                    <a href="https://wa.me/{{ plot.landowner.phone|cut:'+' }}?text=Hello {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
+                                                    <a href="https://wa.me/{{ plot.landowner.phone|cut:'+' }}?text=Hello {{ plot.landowner.user|display_name }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
                                                     class="btn btn-sm btn-outline-success" 
                                                     target="_blank">
                                                         <i class="fab fa-whatsapp me-1"></i>WhatsApp

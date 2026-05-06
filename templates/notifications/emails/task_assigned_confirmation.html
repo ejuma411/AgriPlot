@@ -51,14 +51,14 @@
     </div>
 
     <div class="content">
-        <h2>Hello {{ user.get_full_name|default:user.username }},</h2>
+        <h2>Hello {{ user|display_name }},</h2>
 
         <p>Your task assignment has been sent successfully.</p>
 
         <div class="details">
             <h3>{{ task.get_verification_type_display }}</h3>
             <p><strong>Plot:</strong> {{ plot.title }}</p>
-            <p><strong>Assignee:</strong> {{ assignee.get_full_name|default:assignee.username }}</p>
+            <p><strong>Assignee:</strong> {{ assignee|display_name }}</p>
             <p><strong>Assigned at:</strong> {{ task.assigned_at|date:"F j, Y H:i" }}</p>
         </div>
 

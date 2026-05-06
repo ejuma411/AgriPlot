@@ -52,7 +52,7 @@
     </div>
     
     <div class="content">
-        <h2>Hello {{ user.get_full_name|default:user.username }},</h2>
+        <h2>Hello {{ user_name|display_name }},</h2>
         
         <p>A new plot has been submitted for verification:</p>
         
@@ -63,9 +63,9 @@
             <p><strong>Price:</strong> KES {{ plot.price|floatformat:0|intcomma }}</p>
             <p><strong>Submitted by:</strong> 
                 {% if plot.agent %}
-                    {{ plot.agent.user.get_full_name|default:plot.agent.user.username }} (Agent)
+                    {{ plot.agent.user|display_name }} (Agent)
                 {% else %}
-                    {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }} (Landowner)
+                    {{ plot.landowner.user|display_name }} (Landowner)
                 {% endif %}
             </p>
             <p><strong>Submitted at:</strong> {{ plot.created_at|date:"F j, Y H:i" }}</p>

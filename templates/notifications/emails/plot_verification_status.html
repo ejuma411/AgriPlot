@@ -69,7 +69,7 @@
     </div>
     
     <div class="content">
-        <h2>Hello {{ user.get_full_name|default:user.username }},</h2>
+        <h2>Hello {{ user|display_name }},</h2>
         
         {% if status == 'approved' %}
         <div class="status-approved">
@@ -89,7 +89,7 @@
             <h3>Verification Details:</h3>
             <p><strong>Plot:</strong> {{ plot.title }}</p>
             <p><strong>Location:</strong> {{ plot.county|default:plot.location }}</p>
-            <p><strong>Reviewed by:</strong> {{ completed_by.get_full_name|default:completed_by.username }}</p>
+            <p><strong>Reviewed by:</strong> {{ completed_by|display_name }}</p>
             {% if task and task.notes %}
             <p><strong>Review Notes:</strong> {{ task.notes }}</p>
             {% endif %}

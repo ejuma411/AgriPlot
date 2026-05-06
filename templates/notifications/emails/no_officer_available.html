@@ -15,7 +15,7 @@
         <h2>Officer Unavailable</h2>
     </div>
     <div class="content">
-        <p>Hello {{ admin.get_full_name|default:admin.username }},</p>
+        {{ admin_name|default:"Administrator" }}
         <p>No verified <strong>{{ role_label }}</strong> is available for <strong>{{ county }}</strong>.</p>
         <p>Plot: <strong>{{ plot.title }}</strong></p>
         <div style="text-align:center; margin-top: 16px;">

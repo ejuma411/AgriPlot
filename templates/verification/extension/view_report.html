@@ -32,13 +32,13 @@
             {% if report.officer %}
                     <tr>
                         <th>Officer</th>
-                        <td>{{ report.officer.user.get_full_name|default:report.officer.user.username }}</td>
+                        <td>{{ report.officer.user|display_name }}</td>
                     </tr>
             {% endif %}
             {% if report.surveyor %}
                     <tr>
                         <th>Surveyor</th>
-                        <td>{{ report.surveyor.user.get_full_name|default:report.surveyor.user.username }}</td>
+                        <td>{{ report.surveyor.user|display_name }}</td>
                     </tr>
             {% endif %}
                     <tr>

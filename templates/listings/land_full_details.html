@@ -517,12 +517,12 @@
             {% if plot.landowner %}
             <div class="owner-profile">
                 <div class="owner-avatar-large">
-                    {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username|first|upper }}
+                    {{ plot.landowner.user|display_initial }}
                 </div>
                 <div class="owner-info">
-                    <h4>{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}</h4>
+                    <h4>{{ plot.landowner.user|display_name }}</h4>
                     <p class="text-muted mb-1">
-                        <i class="fas fa-envelope"></i> {{ plot.landowner.user.email }}
+                        <i class="fas fa-envelope"></i> {{ plot.landowner.user|contact_email|default:"Not provided" }}
                     </p>
                     {% if plot.landowner.phone %}
                         <p class="text-muted mb-1">

@@ -15,8 +15,8 @@
         <h2>New Role Request</h2>
     </div>
     <div class="content">
-        <p>Hello {{ admin.get_full_name|default:admin.username }},</p>
-        <p>{{ user.get_full_name|default:user.username }} has submitted a request for <strong>{{ role }}</strong>.</p>
+        <p>Hello {{ admin|display_name }},</p>
+        <p>{{ user|display_name }} has submitted a request for <strong>{{ role }}</strong>.</p>
         {% if details %}
             <p><strong>Submitted details:</strong></p>
             <pre style="white-space: pre-wrap;">{{ details }}</pre>

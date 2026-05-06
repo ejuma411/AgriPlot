@@ -822,7 +822,7 @@
                                 <div class="timeline-message">{{ event.message }}</div>
                                 <div class="timeline-date">
                                     {{ event.created_at|date:"M d, Y H:i" }}
-                                    {% if event.actor %} • {{ event.actor.get_full_name|default:event.actor.username }}{% endif %}
+                                    {% if event.actor %} • {{ event.actor|display_name }}{% endif %}
                                 </div>
                             </div>
                         </div>

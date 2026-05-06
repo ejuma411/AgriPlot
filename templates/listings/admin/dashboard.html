@@ -574,7 +574,7 @@
                     {% for activity in recent_activities %}
                     <tr>
                         <td>{{ activity.created_at|date:"Y-m-d H:i" }}</td>
-                        <td>{{ activity.user.get_full_name|default:activity.user.username }}</td>
+                        <td>{{ activity.user|display_name }}</td>
                         <td>{{ activity.action }}</td>
                         <td>{{ activity.details|truncatechars:50 }}</td>
                         <td>

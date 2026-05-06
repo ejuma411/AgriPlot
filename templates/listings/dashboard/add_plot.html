@@ -40,7 +40,7 @@
             <div class="user-info">
                 <div class="user-avatar">{{ request.user.get_full_name|first|upper }}</div>
                 <div class="user-details">
-                    <p class="user-name">{{ request.user.get_full_name|default:request.user.username }}</p>
+                    <p class="user-name">{{ request.user|display_name }}</p>
                     <p class="user-role">{{ profile_type }}</p>
                 </div>
             </div>
@@ -189,7 +189,7 @@
                                                     <optgroup label="Agents">
                                                         {% for agent in agents %}
                                                         <option value="{{ agent.id }}" {% if request.POST.owner_id == agent.id|stringformat:"s" %}selected{% endif %}>
-                                                            {{ agent.user.get_full_name|default:agent.user.username }} (Agent)
+                                                            {{ agent.user|display_name }} (Agent)
                                                         </option>
                                                         {% endfor %}
                                                     </optgroup>
@@ -198,7 +198,7 @@
                                                     <optgroup label="Landowners">
                                                         {% for landowner in landowners %}
                                                         <option value="{{ landowner.id }}" {% if request.POST.owner_id == landowner.id|stringformat:"s" %}selected{% endif %}>
-                                                            {{ landowner.user.get_full_name|default:landowner.user.username }} (Landowner)
+                                                            {{ landowner.user|display_name }} (Landowner)
                                                         </option>
                                                         {% endfor %}
                                                     </optgroup>

@@ -522,7 +522,7 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user-circle me-1"></i>
-                            <span class="d-none d-md-inline">{{ user.get_full_name|default:user.username }}</span>
+                            <span class="d-none d-md-inline">{{ user|display_name }}</span>
                             <span class="d-md-none">Account</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">

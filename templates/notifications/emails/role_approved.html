@@ -13,7 +13,7 @@
         <h2>Role Approved</h2>
     </div>
     <div class="content">
-        <p>Hello {{ user.get_full_name|default:user.username }},</p>
+        <p>Hello {{ user|display_name }},</p>
         <p>Your request has been approved. You are now verified as:</p>
         <p><strong>{{ role }}</strong></p>
         <div style="text-align: center; margin: 24px 0;">

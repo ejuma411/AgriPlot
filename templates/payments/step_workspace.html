@@ -275,10 +275,10 @@
             <p class="detail-subtitle">
                 {{ payment.internal_reference }}
                 {% if payment.transaction_type == 'lease' %}
-                · Tenant: {{ payment.buyer.get_full_name|default:payment.buyer.username|default:"Pending tenant" }}
+                · Tenant: {{ payment.buyer|display_name:"Pending tenant" }}
                 · Landowner: {{ payment.counterparty_label }}
                 {% else %}
-                · Buyer: {{ payment.buyer.get_full_name|default:payment.buyer.username|default:"Pending buyer" }}
+                · Buyer: {{ payment.buyer|display_name:"Pending buyer" }}
                 · Seller: {{ payment.counterparty_label }}
                 {% endif %}
             </p>
@@ -614,7 +614,9 @@
                         <div class="workspace-nav">
                             <a href="{% url 'payments:detail' payment.pk %}" class="hero-btn-secondary">Open full transaction tracker</a>
                             {% if payment.seller and payment.seller.email %}
-                            <a href="mailto:{{ payment.seller.email }}?subject=AgriPlot%20support%20for%20{{ payment.internal_reference }}" class="hero-btn-secondary">Email seller / landlord</a>
+                            {% if payment.seller|contact_email %}
+                            <a href="mailto:{{ payment.seller|contact_email }}?subject=AgriPlot%20support%20for%20{{ payment.internal_reference }}" class="hero-btn-secondary">Email seller / landlord</a>
+                            {% endif %}
                             {% endif %}
                         </div>
                     </div>

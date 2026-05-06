@@ -52,14 +52,14 @@
     </div>
     
     <div class="content">
-        <h2>Hello {{ user.get_full_name|default:user.username }},</h2>
+        <h2>Hello {{ user|display_name }},</h2>
         
         <p>The verification team has reviewed your plot "{{ plot.title }}" and is requesting some changes before it can be approved.</p>
         
         <div class="feedback">
             <h3>📝 Feedback from Reviewer:</h3>
             <p>{{ notes }}</p>
-            <p><small>- {{ requested_by.get_full_name|default:requested_by.username }}, Verification Team</small></p>
+            <p><small>- {{ requested_by|display_name }}, Verification Team</small></p>
         </div>
         
         <p>Please make the requested changes and resubmit your plot for verification.</p>

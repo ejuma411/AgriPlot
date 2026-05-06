@@ -29,7 +29,7 @@ def transaction_milestone_report(request, payment_id):
     # Check permission
     if request.user not in [payment.buyer, payment.seller]:
         messages.error(request, "You don't have permission to view this report")
-        return redirect('dashboard')
+        return redirect('listings:dashboard_router')
     
     # Get closing steps
     closing_steps = payment.closing_steps.all().order_by('sequence')
@@ -244,7 +244,7 @@ def lease_management_report(request, payment_id):
     # Check permission
     if request.user != payment.buyer:
         messages.error(request, "You don't have permission to view this report")
-        return redirect('dashboard')
+        return redirect('listings:dashboard_router')
     
     # Calculate lease metrics
     today = timezone.now().date()
@@ -371,7 +371,7 @@ def occupancy_waitlist_report(request, plot_id):
     # Check if user is the owner
     if request.user != plot.landowner.user:
         messages.error(request, "You don't have permission to view this report")
-        return redirect('dashboard')
+        return redirect('listings:dashboard_router')
     
     # Get active leases for this plot
     active_leases = PaymentRequest.objects.filter(
@@ -433,7 +433,7 @@ def property_performance_report(request, plot_id):
     # Check permission
     if request.user != plot.landowner.user:
         messages.error(request, "You don't have permission to view this report")
-        return redirect('dashboard')
+        return redirect('listings:dashboard_router')
     
     # Get analytics
     views = 0  # Replace with actual view count

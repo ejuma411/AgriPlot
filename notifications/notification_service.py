@@ -109,6 +109,35 @@ class NotificationService:
 
         transaction.on_commit(_safe_callback)
 
+    @staticmethod
+    def _dispatch_user_channels_immediately(
+        user,
+        *,
+        subject,
+        message,
+        email_subject=None,
+        template=None,
+        context=None,
+    ):
+        """Fallback path when Celery/Redis queueing is unavailable."""
+        try:
+            from notifications.tasks import _resolve_phone, _send_email_now, _send_sms_now
+
+            if getattr(user, "email", ""):
+                _send_email_now(
+                    recipient=user.email,
+                    subject=email_subject or subject,
+                    message=message,
+                    template=template,
+                    context=context,
+                )
+
+            phone = _resolve_phone(user)
+            if phone:
+                _send_sms_now(phone, message)
+        except Exception as exc:
+            logger.error("Immediate notification fallback failed for user %s: %s", getattr(user, "pk", None), exc)
+
     # ------------------------------------------------------------------
     # Core: deferred outbound dispatch
     # ------------------------------------------------------------------
@@ -146,13 +175,22 @@ class NotificationService:
             from notifications.tasks import queue_notification
 
             def _queue_outbound():
-                queue_notification(
-                    user_id=user.pk,
-                    subject=title,
-                    message=message,
-                    email_subject=email_subject,
-                    delay=NotificationService.notification_delay_seconds(),
-                )
+                try:
+                    queue_notification(
+                        user_id=user.pk,
+                        subject=title,
+                        message=message,
+                        email_subject=email_subject,
+                        delay=NotificationService.notification_delay_seconds(),
+                    )
+                except Exception as exc:
+                    logger.error("Queue notification failed for user %s: %s. Falling back to immediate send.", user.pk, exc)
+                    NotificationService._dispatch_user_channels_immediately(
+                        user,
+                        subject=title,
+                        message=message,
+                        email_subject=email_subject,
+                    )
 
             NotificationService._run_after_commit(
                 _queue_outbound,
@@ -230,11 +268,18 @@ class NotificationService:
                     )
                     queue_state["queued"] = True
                 except Exception as exc:
-                    if log:
-                        log.status = "failed"
-                        log.error_message = f"Queueing failed: {exc}"
-                        log.save(update_fields=["status", "error_message"])
-                    raise
+                    logger.error("Email queue failed for %s: %s. Falling back to immediate send.", recipient, exc)
+                    from notifications.tasks import _send_email_now
+
+                    sent = _send_email_now(
+                        recipient=recipient,
+                        subject=subject,
+                        message=message_body,
+                        template=template_name,
+                        context=safe_context,
+                        email_log_id=log.pk if log else None,
+                    )
+                    queue_state["queued"] = sent
 
             NotificationService._run_after_commit(
                 _queue_email,
@@ -259,12 +304,24 @@ class NotificationService:
         try:
             from notifications.tasks import queue_sms
 
+            sms_state = {"queued": False}
+
+            def _queue_sms():
+                try:
+                    queue_sms(
+                        phone=phone_number,
+                        message=message,
+                        delay=NotificationService.notification_delay_seconds(),
+                    )
+                    sms_state["queued"] = True
+                except Exception as exc:
+                    logger.error("SMS queue failed for %s: %s. Falling back to immediate send.", phone_number, exc)
+                    from notifications.tasks import _send_sms_now
+
+                    sms_state["queued"] = _send_sms_now(phone_number, message)
+
             NotificationService._run_after_commit(
-                lambda: queue_sms(
-                    phone=phone_number,
-                    message=message,
-                    delay=NotificationService.notification_delay_seconds(),
-                ),
+                _queue_sms,
                 label=f"send_sms:{phone_number}",
             )
             return {"success": True, "queued": True}
@@ -375,6 +432,73 @@ class NotificationService:
                     "plot_url": settings.SITE_URL + reverse("listings:plot_detail", args=[task.plot.id]),
                 },
             )
+
+    @staticmethod
+    def _payment_step_recipients(payment, step):
+        recipients = []
+        if payment.buyer:
+            recipients.append(payment.buyer)
+        if payment.seller:
+            recipients.append(payment.seller)
+
+        label = (step.responsible_party_label or "").lower()
+        if any(token in label for token in ["admin", "lawyer", "valuer", "government", "operations", "registrar"]):
+            recipients.extend(
+                User.objects.filter(
+                    models.Q(is_superuser=True) | models.Q(groups__name="Finance Admin") | models.Q(is_staff=True)
+                ).distinct()
+            )
+
+        return {user.pk: user for user in recipients if user}.values()
+
+    @staticmethod
+    def notify_payment_step_assigned(payment, step):
+        title = f"Next transaction step: {step.display_title}"
+        message = (
+            f"The next transaction step for '{payment.title}' is now active: "
+            f"{step.display_title}. Responsible party: {step.responsible_party_label}."
+        )
+
+        for recipient in NotificationService._payment_step_recipients(payment, step):
+            NotificationService.notify_user(
+                user=recipient,
+                notification_type="plot_stage_update",
+                title=title,
+                message=message,
+                plot=payment.plot,
+            )
+            if recipient.email:
+                NotificationService.send_email(
+                    recipient=recipient.email,
+                    subject=title,
+                    template="plain",
+                    context={"message": message},
+                )
+
+    @staticmethod
+    def notify_payment_step_updated(payment, step, previous_status, actor=None):
+        actor_name = actor.get_full_name() or actor.username if actor else "AgriPlot"
+        title = f"Transaction step updated: {step.display_title}"
+        message = (
+            f"{step.display_title} for '{payment.title}' moved from "
+            f"{previous_status.replace('_', ' ').title()} to {step.get_status_display()} by {actor_name}."
+        )
+
+        for recipient in NotificationService._payment_step_recipients(payment, step):
+            NotificationService.notify_user(
+                user=recipient,
+                notification_type="verification_step_update",
+                title=title,
+                message=message,
+                plot=payment.plot,
+            )
+            if recipient.email:
+                NotificationService.send_email(
+                    recipient=recipient.email,
+                    subject=title,
+                    template="plain",
+                    context={"message": message},
+                )
 
     @staticmethod
     def notify_plot_submitted(plot):

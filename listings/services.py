@@ -2,8 +2,8 @@ import logging
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from .models import Plot
+from .utils import log_audit
 from verification.models import VerificationStatus
-from security.utils import log_audit
 
 logger = logging.getLogger(__name__)
 audit_logger = logging.getLogger('listings.audit')

@@ -13,10 +13,10 @@
         <div class="card-body">
             <h5 class="card-title mb-3">{{ plot.title }}</h5>
             {% if report.officer %}
-            <p class="mb-1"><strong>Officer:</strong> {{ report.officer.user.get_full_name|default:report.officer.user.username }}</p>
+            <p class="mb-1"><strong>Officer:</strong> {{ report.officer.user|display_name }}</p>
             {% endif %}
             {% if report.surveyor %}
-            <p class="mb-1"><strong>Surveyor:</strong> {{ report.surveyor.user.get_full_name|default:report.surveyor.user.username }}</p>
+            <p class="mb-1"><strong>Surveyor:</strong> {{ report.surveyor.user|display_name }}</p>
             {% endif %}
             <p class="mb-1"><strong>Visit Date:</strong> {{ report.visit_date|date:"Y-m-d H:i" }}</p>
             <p class="mb-0"><strong>Recommendation:</strong> {{ report.get_recommendation_display }}</p>
