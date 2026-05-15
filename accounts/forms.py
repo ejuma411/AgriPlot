@@ -39,6 +39,10 @@ class AccountDetailsForm(_EmailCheckMixin, forms.Form):
         required=False,
         widget=forms.TextInput(attrs={"class": "form-control"}),
     )
+    intent = forms.ChoiceField(
+        choices=Profile._meta.get_field("intent").choices,
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
     address = forms.CharField(
         required=False,
         widget=forms.Textarea(attrs={"class": "form-control", "rows": 3}),
@@ -56,6 +60,7 @@ class AccountDetailsForm(_EmailCheckMixin, forms.Form):
                     "last_name": user.last_name,
                     "email": user.email,
                     "phone": profile.phone or "",
+                    "intent": profile.intent,
                     "address": profile.address or "",
                 }
             )

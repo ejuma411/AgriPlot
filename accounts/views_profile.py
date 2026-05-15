@@ -2,8 +2,9 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import update_session_auth_hash
 from django.shortcuts import redirect, render
+from django.urls import reverse
 
-from listings.models import Plot, UserInterest
+from listings.models import LandTransferAgreement, Plot, UserInterest
 
 from .forms import (
     AccountDetailsForm,
@@ -60,6 +61,7 @@ def _build_profile_context(user):
                 [
                     _doc("License Document", agent.license_doc),
                     _doc("KRA PIN", agent.kra_pin),
+                    _doc("Tax Compliance Certificate", agent.tax_compliance_certificate),
                     _doc("Practicing Certificate", agent.practicing_certificate),
                     _doc("Good Conduct", agent.good_conduct),
                     _doc("Professional Indemnity", agent.professional_indemnity),
@@ -77,6 +79,7 @@ def _build_profile_context(user):
                 [
                     _doc("National ID", landowner.national_id),
                     _doc("KRA PIN", landowner.kra_pin),
+                    _doc("Spouse ID", landowner.spouse_id_doc),
                     _doc("Title Deed", landowner.title_deed),
                     _doc("Land Search", landowner.land_search),
                     _doc("LCB Consent", landowner.lcb_consent),
@@ -115,6 +118,8 @@ def _build_profile_context(user):
     total_plots = 0
     verified_plots = 0
     pending_inquiries = 0
+    transfer_agreements = []
+    pending_agent_approvals = []
     if is_agent:
         total_plots = Plot.objects.filter(agent=agent).count()
         pending_inquiries = UserInterest.objects.filter(
@@ -125,6 +130,21 @@ def _build_profile_context(user):
         pending_inquiries = UserInterest.objects.filter(
             plot__landowner=landowner, status="pending"
         ).count()
+        pending_agent_approvals = list(
+            Plot.objects.filter(
+                landowner=landowner,
+                owner_approval_status="pending",
+            )
+            .select_related("agent__user")
+            .order_by("-created_at")[:6]
+        )
+
+    agreements_qs = LandTransferAgreement.objects.select_related(
+        "plot", "seller__user", "buyer__user", "advocate__user", "lawyer__user"
+    )
+    for agreement in agreements_qs:
+        if agreement.can_user_view(user):
+            transfer_agreements.append(agreement)
 
     return {
         "is_landowner": is_landowner,
@@ -137,22 +157,27 @@ def _build_profile_context(user):
         "extension_officer": extension_officer,
         "land_surveyor": land_surveyor,
         "profile_type": profile_type,
+        "intent_label": profile.get_intent_display(),
         "role_requests": role_requests,
         "two_factor_enabled": two_factor_enabled,
         "total_plots": total_plots,
         "verified_plots": verified_plots,
         "pending_inquiries": pending_inquiries,
+        "transfer_agreements": transfer_agreements[:10],
+        "pending_agent_approvals": pending_agent_approvals,
     }
 
 
 @login_required
 def profile_management(request):
-    context = _build_profile_context(request.user)
-    return render(request, "accounts/dashboard/profile_management.html", context)
+    return redirect(f"{reverse('listings:dashboard_router')}?section=profile")
 
 
 @login_required
 def profile_edit(request):
+    if request.method != "POST":
+        return redirect(f"{reverse('listings:dashboard_router')}?section=profile")
+
     context = _build_profile_context(request.user)
     user = request.user
     profile = context["profile"]
@@ -178,47 +203,43 @@ def profile_edit(request):
                 user.last_name = account_form.cleaned_data["last_name"]
                 user.email = account_form.cleaned_data["email"]
                 profile.phone = account_form.cleaned_data["phone"]
+                profile.intent = account_form.cleaned_data["intent"]
                 profile.address = account_form.cleaned_data["address"]
                 user.save()
                 profile.save()
                 messages.success(request, "Account details updated successfully.")
-                return redirect("listings:profile_edit")
+                return redirect(f"{reverse('listings:dashboard_router')}?section=profile")
             messages.error(request, "Correct the account details below and try again.")
         elif section == "agent" and agent:
             agent_form = AgentDetailsForm(request.POST, instance=agent)
             if agent_form.is_valid():
                 agent_form.save()
                 messages.success(request, "Agent details updated successfully.")
-                return redirect("listings:profile_edit")
+                return redirect(f"{reverse('listings:dashboard_router')}?section=profile")
             messages.error(request, "Correct the agent details below and try again.")
         elif section == "extension_officer" and extension_officer:
             extension_form = ExtensionOfficerEditForm(request.POST, instance=extension_officer)
             if extension_form.is_valid():
                 extension_form.save()
                 messages.success(request, "Extension officer details updated successfully.")
-                return redirect("listings:profile_edit")
+                return redirect(f"{reverse('listings:dashboard_router')}?section=profile")
             messages.error(request, "Correct the extension officer details below and try again.")
         elif section == "land_surveyor" and land_surveyor:
             surveyor_form = LandSurveyorEditForm(request.POST, instance=land_surveyor)
             if surveyor_form.is_valid():
                 surveyor_form.save()
                 messages.success(request, "Surveyor details updated successfully.")
-                return redirect("listings:profile_edit")
+                return redirect(f"{reverse('listings:dashboard_router')}?section=profile")
             messages.error(request, "Correct the surveyor details below and try again.")
 
-    context.update(
-        {
-            "account_form": account_form,
-            "agent_form": agent_form,
-            "extension_form": extension_form,
-            "surveyor_form": surveyor_form,
-        }
-    )
-    return render(request, "accounts/dashboard/profile_edit.html", context)
+    return redirect(f"{reverse('listings:dashboard_router')}?section=profile")
 
 
 @login_required
 def account_settings(request):
+    if request.method != "POST":
+        return redirect(f"{reverse('listings:dashboard_router')}?section=settings")
+
     context = _build_profile_context(request.user)
     user = request.user
 
@@ -239,6 +260,6 @@ def account_settings(request):
                 user.save()
                 update_session_auth_hash(request, user)
                 messages.success(request, "Password updated successfully.")
-        return redirect("listings:account_settings")
+        return redirect(f"{reverse('listings:dashboard_router')}?section=settings")
 
-    return render(request, "accounts/dashboard/settings.html", context)
+    return redirect(f"{reverse('listings:dashboard_router')}?section=settings")

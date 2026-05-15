@@ -102,8 +102,8 @@ def _send_sms_now(phone: str, message: str) -> bool:
     if not phone or not getattr(settings, "ENABLE_SMS_NOTIFICATIONS", False):
         return False
     try:
-        from notifications.services.sms_service import TextSMSService
-        result = TextSMSService().send_sms(phone, message)
+        from notifications.services.sms_service import SMSService
+        result = SMSService().send_sms(phone, message)
         return bool(result.get("success"))
     except Exception as exc:
         logger.error("SMS to %s failed: %s", phone, exc, exc_info=True)

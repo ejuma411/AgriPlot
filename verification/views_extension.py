@@ -5,6 +5,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.utils import timezone
 from django.urls import reverse
+from django.contrib.gis.geos import Point
+from crops.services import suggest_crops
 from listings.models import (
     ExtensionOfficer,
     LandSurveyor,
@@ -20,6 +22,30 @@ from verification.verification_service import VerificationService
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _extension_crop_suggestions(form, plot):
+    def _value(field_name, fallback=None):
+        if form.is_bound:
+            return form.data.get(field_name) or fallback
+        if hasattr(form, "initial") and form.initial.get(field_name) not in (None, ""):
+            return form.initial.get(field_name)
+        return fallback
+
+    soil_classification = _value("soil_classification", getattr(plot, "soil_type", ""))
+    soil_texture = _value("soil_texture", getattr(plot, "soil_type", ""))
+    topography = _value("topography", getattr(plot, "topography", ""))
+    soil_ph = _value("soil_ph", getattr(plot, "ph_level", None))
+    irrigation_viability = _value("irrigation_viability", "")
+
+    return suggest_crops(
+        soil_ph=soil_ph,
+        soil_classification=soil_classification,
+        soil_texture=soil_texture,
+        topography=topography,
+        irrigation_viability=irrigation_viability,
+        limit=5,
+    )
 
 
 def _workspace_redirect(section="tasks"):
@@ -66,6 +92,11 @@ def conduct_extension_review(request, task_id):
             else:
                 report.officer = request.user.extension_officer
             report.plot = plot
+            auto_suggestions = _extension_crop_suggestions(form, plot)
+            if not report.recommended_crops and auto_suggestions:
+                report.recommended_crops = ", ".join(
+                    item["crop"].name for item in auto_suggestions[:3]
+                )
             report.save()
 
             # Persist verified agricultural data back to plot for search/filtering
@@ -80,6 +111,13 @@ def conduct_extension_review(request, task_id):
                 plot_updates["crop_suitability"] = report.recommended_crops
             elif report.existing_crops:
                 plot_updates["crop_suitability"] = report.existing_crops
+            if report.distance_to_tarmac_m is not None:
+                plot_updates["road_distance_km"] = round(report.distance_to_tarmac_m / 1000, 2)
+            if report.water_source_verified or report.water_sources_available:
+                plot_updates["has_water"] = True
+                plot_updates["water_source"] = "irrigation" if "mains" in (report.water_sources_available or "").lower() else plot.water_source
+            if report.power_access and report.power_access not in {"none", "unknown"}:
+                plot_updates["has_electricity"] = True
             if plot_updates:
                 for k, v in plot_updates.items():
                     setattr(plot, k, v)
@@ -98,12 +136,15 @@ def conduct_extension_review(request, task_id):
             return redirect('verification:extension_dashboard')
     else:
         form = ExtensionReportForm()
+
+    system_crop_suggestions = _extension_crop_suggestions(form, plot)
     
     return render(request, 'verification/extension/conduct_review.html', {
         'task': task,
         'plot': plot,
         'form': form,
-        'page_title': f'Extension Review: {plot.title}'
+        'page_title': f'Extension Review: {plot.title}',
+        'system_crop_suggestions': system_crop_suggestions,
     })
 
 
@@ -273,7 +314,25 @@ def conduct_surveyor_inspection(request, task_id):
                 plot.longitude = report.gps_longitude
                 gps_updates.append('longitude')
             if gps_updates:
+                if plot.latitude is not None and plot.longitude is not None:
+                    try:
+                        plot.geom = Point(float(plot.longitude), float(plot.latitude), srid=4326)
+                        gps_updates.append('geom')
+                    except Exception:
+                        pass
                 plot.save(update_fields=gps_updates)
+
+            if report.ground_acreage and plot.area:
+                try:
+                    listed_area = float(plot.area)
+                    if plot.area_unit == "acres":
+                        listed_area = listed_area / 2.47105
+                    measured_area = float(report.ground_acreage)
+                    if measured_area > 0:
+                        report.variance_flagged = abs(listed_area - measured_area) / measured_area > 0.05
+                        report.save(update_fields=["variance_flagged"])
+                except (TypeError, ValueError, ZeroDivisionError):
+                    pass
 
             # If surveyor flags price unrealistic, update plot pricing (sale listings)
             if report.price_realistic is False and plot.listing_type in ['sale', 'both']:

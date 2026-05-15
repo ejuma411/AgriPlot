@@ -6,10 +6,18 @@ Configured for development with structured logging and PostgreSQL database.
 from pathlib import Path
 import os
 import logging
+import importlib.util
 from urllib.parse import urlparse
 from dotenv import load_dotenv
 from django.core.management.utils import get_random_secret_key
-from decouple import config
+try:
+    from decouple import config
+except ModuleNotFoundError:
+    def config(name, default=None, cast=None):
+        value = os.environ.get(name, default)
+        if cast and value is not None:
+            return cast(value)
+        return value
 
 # Load environment variables from .env file
 load_dotenv()
@@ -138,11 +146,7 @@ LOGOUT_REDIRECT_URL = '/'
 # =============================================================================
 
 INSTALLED_APPS = [
-    # Admin interface enhancement (must come before django.contrib.admin)
-    "jazzmin",
-    
     # Django Core Apps
-    'django_extensions',
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -150,10 +154,9 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
+    "django.contrib.gis",
     "django.contrib.postgres",  # PostgreSQL specific features
-
-    # Third Party Apps
-    "formtools",
+    "django.contrib.sitemaps",
 
     # Local Apps
     "accounts",
@@ -162,10 +165,22 @@ INSTALLED_APPS = [
     "verification",
     "notifications",
     "listings",
+    "crops",
     "payments",
     "registry_mock",
     "reports",
+    "transactions",
 ]
+
+OPTIONAL_APPS = [
+    "jazzmin",
+    "django_extensions",
+    "formtools",
+]
+
+for app_label in reversed(OPTIONAL_APPS):
+    if importlib.util.find_spec(app_label):
+        INSTALLED_APPS.insert(0, app_label)
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -198,7 +213,7 @@ WSGI_APPLICATION = "agriplot.wsgi.application"
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
         'NAME': config('DB_NAME', default='agriplot'),
         'USER': config('DB_USER', default='postgres'),
         'PASSWORD': config('DB_PASSWORD', default='postgres'),
@@ -332,15 +347,7 @@ if SITE_URL and SITE_URL not in CSRF_TRUSTED_ORIGINS:
 # SMS CONFIGURATION
 # =============================================================================
 
-SMS_PROVIDER = os.environ.get('SMS_PROVIDER', 'textsms').lower()
-
-TEXTSMS_PARTNER_ID = os.environ.get('TEXTSMS_PARTNER_ID', '')
-TEXTSMS_API_KEY = os.environ.get('TEXTSMS_API_KEY', '')
-TEXTSMS_SENDER_ID = os.environ.get('TEXTSMS_SENDER_ID', 'AgriPlot')
-TEXTSMS_API_URL = os.environ.get(
-    'TEXTSMS_API_URL',
-    'https://sms.textsms.co.ke/api/services/sendsms/'
-)
+SMS_PROVIDER = os.environ.get('SMS_PROVIDER', 'opensms').lower()
 
 OPENSMS_API_URL = os.environ.get(
     'OPENSMS_API_URL',

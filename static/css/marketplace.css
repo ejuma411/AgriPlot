@@ -1,5 +1,6 @@
 .container95 {
-    max-width: 95%;
+    width: min(94vw, 1760px);
+    max-width: none;
     margin: 0 auto;
 }
 
@@ -36,7 +37,7 @@
 }
 
 .market-search {
-    max-width: 1200px;
+    max-width: none;
     margin: 0 auto;
 }
 
@@ -623,15 +624,16 @@
     font-size: 0.95rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .search-main-row {
         flex-direction: column;
         border-radius: 20px;
-        padding: 15px;
+        padding: 20px;
     }
-
+    
     .search-field {
         width: 100%;
+        min-width: 0;
     }
 
     .search-btn,
@@ -640,6 +642,12 @@
         justify-content: center;
     }
 
+    .quick-filters {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
     .quick-filters,
     .filters-grid,
     .how-grid,

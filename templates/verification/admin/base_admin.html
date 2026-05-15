@@ -1,665 +1,216 @@
 {% extends "base.html" %}
-{% load static %}
 
-{% block title %}{{ page_title|default:"Verification Workspace" }} - AgriPlot{% endblock %}
+{% block full_width_content %}
+<div class="admin-shell">
+    <aside class="admin-sidebar" aria-label="Verification workspace navigation">
+        <a class="admin-brand" href="{% url 'listings:dashboard_router' %}">
+            <span><i class="fa-solid fa-shield-halved"></i></span>
+            <strong>Verification Ops</strong>
+        </a>
+        <nav class="admin-nav">
+            <a href="{% url 'verification:verification_dashboard' %}">
+                <i class="fa-solid fa-gauge-high"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{% url 'verification:verification_queue' %}">
+                <i class="fa-solid fa-list-check"></i>
+                <span>Queue</span>
+            </a>
+            <a href="{% url 'verification:my_tasks' %}">
+                <i class="fa-solid fa-clipboard-check"></i>
+                <span>My Tasks</span>
+            </a>
+            <a href="{% url 'verification:task_assignment' %}">
+                <i class="fa-solid fa-user-check"></i>
+                <span>Assignment</span>
+            </a>
+            <a href="{% url 'verification:registry_parcels' %}">
+                <i class="fa-solid fa-map"></i>
+                <span>Registry</span>
+            </a>
+            <a href="{% url 'verification:analytics_dashboard' %}">
+                <i class="fa-solid fa-chart-line"></i>
+                <span>Analytics</span>
+            </a>
+        </nav>
+    </aside>
+
+    <section class="admin-main">
+        <div class="admin-topline">
+            <div>
+                <p class="admin-kicker">Operations workspace</p>
+                <h1>{% block admin_title %}Admin Workspace{% endblock %}</h1>
+            </div>
+            <a class="admin-home-link" href="{% url 'listings:dashboard_router' %}">
+                <i class="fa-solid fa-arrow-left"></i> Staff Workspace
+            </a>
+        </div>
+        <div class="admin-content">
+            {% block admin_content %}
+                {% block content %}{% endblock %}
+            {% endblock %}
+        </div>
+    </section>
+</div>
+{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/account.css' %}">
+{{ block.super }}
 <style>
-    .verification-workspace-shell {
-        --verify-surface: rgba(255, 255, 255, 0.95);
-        --verify-surface-soft: rgba(251, 248, 241, 0.96);
-        --verify-border: rgba(14, 45, 35, 0.12);
-        --verify-border-strong: rgba(14, 45, 35, 0.18);
-        --verify-text-soft: #5f6f63;
-    }
-
-    .verification-workspace-shell .dashboard-sidebar {
-        display: flex;
-        flex-direction: column;
-        min-height: calc(100vh - 2rem);
-    }
-
-    .verification-workspace-shell .dashboard-main {
-        min-height: calc(100vh - 5.5rem);
-    }
-
-    .verification-workspace-shell .dashboard-topbar {
-        align-items: center;
-    }
-
-    .verification-shell-copy {
-        display: flex;
-        flex-direction: column;
-        gap: 0.35rem;
-    }
-
-    .verification-shell-copy .page-title {
-        margin: 0;
-    }
-
-    .verification-shell-copy .page-subtitle {
-        margin: 0;
-        color: var(--verify-text-soft);
-        font-size: 0.95rem;
-        line-height: 1.45;
-    }
-
-    .workspace-sidebar-toggle {
-        display: none !important;
-        width: 2.75rem;
-        height: 2.75rem;
-        border: 1px solid rgba(14, 45, 35, 0.12);
-        border-radius: 0.9rem;
-        background: rgba(255, 255, 255, 0.9);
-        color: var(--acc-forest);
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 12px 24px rgba(14, 45, 35, 0.08);
-    }
-
-    .verification-dashboard-content {
-        display: block;
-    }
-
-    .verification-admin-body {
-        width: 100%;
-        padding-top: 1.25rem;
-    }
-
-    .page-header {
-        display: flex;
-        flex-direction: column;
-        gap: 1.25rem;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-        border: 1px solid var(--verify-border-strong);
-        border-radius: 1.1rem;
-        background:
-            linear-gradient(135deg, rgba(25, 83, 58, 0.98) 0%, rgba(15, 74, 46, 0.98) 100%);
-        color: #fff;
-        box-shadow: 0 22px 38px rgba(14, 45, 35, 0.16);
-    }
-
-    .page-header-content {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .page-header-title {
-        min-width: 0;
-        flex: 1 1 18rem;
-    }
-
-    .page-header-title h1 {
-        margin: 0;
-        font-size: clamp(1.65rem, 2.5vw, 2.15rem);
-        line-height: 1.1;
-        color: #fff;
-    }
-
-    .page-header-subtitle {
-        margin: 0.45rem 0 0;
-        font-size: 1rem;
-        line-height: 1.5;
-        color: rgba(255, 255, 255, 0.86);
-    }
-
-    .page-header-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-    }
-
-    .page-header-actions .btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 2.8rem;
-        padding: 0.7rem 1.1rem;
-        border-radius: 999px;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        background: rgba(255, 255, 255, 0.96);
-        color: var(--acc-olive);
-        font-weight: 700;
-        text-decoration: none;
-        box-shadow: 0 14px 26px rgba(14, 45, 35, 0.14);
-    }
-
-    .page-header-actions .btn:hover,
-    .page-header-actions .btn:focus-visible {
-        transform: translateY(-1px);
-    }
-
-    .admin-card {
-        margin-bottom: 1.5rem;
-        border: 1px solid var(--verify-border);
-        border-radius: 1rem;
-        background: var(--verify-surface);
-        box-shadow: 0 18px 34px rgba(14, 45, 35, 0.08);
-        overflow: hidden;
-    }
-
-    .admin-card-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 0.8rem;
-        padding: 1rem 1.2rem;
-        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
-        background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 243, 234, 0.88));
-    }
-
-    .admin-card-title {
-        margin: 0;
-        font-size: 1.08rem;
-        line-height: 1.35;
-        color: var(--acc-forest);
-        display: inline-flex;
-        align-items: center;
-        gap: 0.6rem;
-    }
-
-    .admin-card-body {
-        padding: 1.2rem;
-        background: var(--verify-surface);
-    }
-
-    .admin-card-footer {
-        padding: 1rem 1.2rem;
-        border-top: 1px solid rgba(14, 45, 35, 0.08);
-        background: var(--verify-surface-soft);
-    }
-
-    .verification-workspace-shell .btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 2.7rem;
-        padding: 0.7rem 1.05rem;
-        border-radius: 0.9rem;
-        font-weight: 700;
-        text-decoration: none;
-        transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
-    }
-
-    .verification-workspace-shell .btn:hover,
-    .verification-workspace-shell .btn:focus-visible {
-        transform: translateY(-1px);
-    }
-
-    .verification-workspace-shell .btn-primary,
-    .verification-workspace-shell .btn-success {
-        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
-        border: 1px solid rgba(14, 45, 35, 0.12);
-        color: #fff;
-        box-shadow: 0 12px 24px rgba(14, 45, 35, 0.14);
-    }
-
-    .verification-workspace-shell .btn-primary:hover,
-    .verification-workspace-shell .btn-success:hover,
-    .verification-workspace-shell .btn-primary:focus-visible,
-    .verification-workspace-shell .btn-success:focus-visible {
-        color: #fff;
-        box-shadow: 0 16px 26px rgba(14, 45, 35, 0.18);
-    }
-
-    .verification-workspace-shell .btn-outline-primary,
-    .verification-workspace-shell .btn-outline-success,
-    .verification-workspace-shell .btn-outline-secondary,
-    .verification-workspace-shell .btn-info {
-        background: rgba(255, 255, 255, 0.94);
-        border: 1px solid rgba(54, 95, 68, 0.18);
-        color: var(--acc-forest);
-        box-shadow: 0 10px 18px rgba(14, 45, 35, 0.08);
-    }
-
-    .verification-workspace-shell .btn-outline-primary:hover,
-    .verification-workspace-shell .btn-outline-success:hover,
-    .verification-workspace-shell .btn-outline-secondary:hover,
-    .verification-workspace-shell .btn-info:hover,
-    .verification-workspace-shell .btn-outline-primary:focus-visible,
-    .verification-workspace-shell .btn-outline-success:focus-visible,
-    .verification-workspace-shell .btn-outline-secondary:focus-visible,
-    .verification-workspace-shell .btn-info:focus-visible {
-        background: rgba(54, 95, 68, 0.12);
-        border-color: rgba(54, 95, 68, 0.28);
-        color: var(--acc-forest);
-    }
-
-    .verification-workspace-shell .btn-warning,
-    .verification-workspace-shell .btn-outline-warning {
-        background: rgba(216, 166, 79, 0.18);
-        border: 1px solid rgba(216, 166, 79, 0.32);
-        color: #6e4c12;
-    }
-
-    .verification-workspace-shell .btn-danger,
-    .verification-workspace-shell .btn-outline-danger {
-        background: rgba(184, 59, 59, 0.12);
-        border: 1px solid rgba(184, 59, 59, 0.24);
-        color: #8d2f2f;
-    }
-
-    .verification-workspace-shell .badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 1.9rem;
-        padding: 0.32rem 0.7rem;
-        border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 700;
-        border: 1px solid transparent;
-    }
-
-    .verification-workspace-shell .bg-primary,
-    .verification-workspace-shell .bg-success,
-    .verification-workspace-shell .bg-info {
-        background: rgba(54, 95, 68, 0.12) !important;
-        color: var(--acc-forest) !important;
-        border-color: rgba(54, 95, 68, 0.2);
-    }
-
-    .verification-workspace-shell .bg-warning {
-        background: rgba(216, 166, 79, 0.16) !important;
-        color: #6e4c12 !important;
-        border-color: rgba(216, 166, 79, 0.28);
-    }
-
-    .verification-workspace-shell .bg-danger {
-        background: rgba(184, 59, 59, 0.14) !important;
-        color: #8d2f2f !important;
-        border-color: rgba(184, 59, 59, 0.24);
-    }
-
-    .verification-workspace-shell .bg-secondary {
-        background: rgba(95, 111, 99, 0.14) !important;
-        color: #425247 !important;
-        border-color: rgba(95, 111, 99, 0.22);
-    }
-
-    .verification-workspace-shell .nav-tabs .nav-link,
-    .verification-workspace-shell .admin-tabs .nav-link {
-        border: 1px solid rgba(54, 95, 68, 0.12);
-        border-radius: 999px;
-        background: rgba(255, 255, 255, 0.92);
-        color: var(--acc-forest);
-        font-weight: 700;
-        box-shadow: 0 10px 18px rgba(14, 45, 35, 0.06);
-    }
-
-    .verification-workspace-shell .nav-tabs .nav-link.active,
-    .verification-workspace-shell .admin-tabs .nav-link.active {
-        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
-        color: #fff;
-        border-color: transparent;
-    }
-
-    .stats-grid,
-    .task-grid {
+    .admin-shell {
+        width: var(--ap-page-width);
+        margin: 0 auto;
         display: grid;
-        grid-template-columns: repeat( auto-fit, minmax(220px, 1fr) );
-        gap: 1rem;
+        grid-template-columns: 280px minmax(0, 1fr);
+        min-height: calc(100vh - var(--ap-header-height));
     }
 
-    .stat-card,
-    .task-card {
-        border: 1px solid var(--verify-border);
-        border-radius: 1rem;
-        background: rgba(255, 255, 255, 0.98);
-        box-shadow: 0 14px 28px rgba(14, 45, 35, 0.08);
+    .admin-sidebar {
+        position: sticky;
+        top: var(--ap-header-height);
+        height: calc(100vh - var(--ap-header-height));
+        padding: 22px;
+        border-right: 1px solid var(--ap-border);
+        background: #fff;
     }
 
-    .stat-card {
-        padding: 1.15rem;
-    }
-
-    .stat-icon {
-        width: 2.8rem;
-        height: 2.8rem;
-        margin-bottom: 0.9rem;
-        border-radius: 0.9rem;
-        display: inline-flex;
+    .admin-brand {
+        display: flex;
         align-items: center;
-        justify-content: center;
+        gap: 10px;
+        padding-bottom: 18px;
+        color: var(--ap-text);
+        border-bottom: 1px solid var(--ap-border);
+    }
+
+    .admin-brand span {
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: var(--ap-green);
         color: #fff;
-        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
-        box-shadow: 0 14px 24px rgba(14, 45, 35, 0.14);
     }
 
-    .stat-value {
-        font-size: clamp(1.5rem, 2vw, 2rem);
-        line-height: 1.05;
-        font-weight: 800;
-        color: var(--acc-forest);
+    .admin-nav {
+        display: grid;
+        gap: 8px;
+        margin-top: 18px;
     }
 
-    .stat-label {
-        margin-top: 0.3rem;
-        font-size: 0.92rem;
+    .admin-nav a {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 44px;
+        padding: 0 12px;
+        border-radius: 8px;
+        color: #2D3748;
+        font-size: 14px;
         font-weight: 700;
-        color: #2c4336;
     }
 
-    .stat-trend {
-        margin-top: 0.4rem;
-        color: var(--verify-text-soft);
-        font-size: 0.86rem;
-        line-height: 1.4;
+    .admin-nav a:hover {
+        background: var(--ap-surface-muted);
+        color: var(--ap-green-dark);
     }
 
-    .task-header,
-    .task-body,
-    .task-footer {
-        padding: 1rem 1.05rem;
+    .admin-nav i {
+        width: 18px;
+        color: var(--ap-green);
+        text-align: center;
     }
 
-    .task-header {
+    .admin-main {
+        min-width: 0;
+        padding: 26px;
+    }
+
+    .admin-topline {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 0.8rem;
-        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
-        background: rgba(247, 243, 234, 0.52);
+        gap: 18px;
+        margin-bottom: 22px;
     }
 
-    .task-title {
-        margin: 0 0 0.7rem;
-        font-size: 1rem;
-        line-height: 1.4;
+    .admin-kicker {
+        margin: 0 0 4px;
+        color: var(--ap-green);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
     }
 
-    .task-title a {
-        color: var(--acc-forest);
-        text-decoration: none;
-    }
-
-    .task-details {
-        display: flex;
-        flex-direction: column;
-        gap: 0.55rem;
-    }
-
-    .task-detail {
-        display: flex;
-        align-items: flex-start;
-        gap: 0.55rem;
-        color: var(--verify-text-soft);
-        font-size: 0.92rem;
-        line-height: 1.45;
-    }
-
-    .task-footer {
-        border-top: 1px solid rgba(14, 45, 35, 0.08);
-    }
-
-    .details-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .details-table th,
-    .details-table td {
-        padding: 0.8rem 0;
-        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
-        text-align: left;
-        vertical-align: top;
-    }
-
-    .details-table tr:last-child th,
-    .details-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .details-table th {
-        width: 38%;
-        color: var(--verify-text-soft);
-        font-weight: 600;
-    }
-
-    .details-table td {
-        color: #22372b;
-    }
-
-    .document-checklist {
-        display: flex;
-        flex-direction: column;
-        gap: 0;
-        padding: 0;
+    .admin-topline h1 {
         margin: 0;
-        list-style: none;
+        font-size: clamp(26px, 3vw, 34px);
     }
 
-    .document-checklist li {
-        padding: 0.8rem 0;
-        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
-        color: #22372b;
-    }
-
-    .document-checklist li:last-child {
-        border-bottom: none;
-    }
-
-    .section-subtitle {
-        margin-bottom: 1rem;
-        color: var(--acc-forest);
-        font-size: 1rem;
+    .admin-home-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 0 13px;
+        border: 1px solid var(--ap-border);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ap-text);
+        font-size: 14px;
         font-weight: 700;
     }
 
-    .verification-section .card,
-    .verification-section .table,
-    .verification-section .form-control,
-    .verification-section .form-select,
-    .verification-section textarea,
-    .verification-section input[type="text"],
-    .verification-section input[type="number"],
-    .verification-section input[type="date"],
-    .verification-section input[type="datetime-local"],
-    .verification-section input[type="file"] {
-        border-radius: 0.9rem;
+    .admin-content {
+        min-width: 0;
     }
 
-    .verification-section .card {
-        border: 1px solid rgba(14, 45, 35, 0.1);
-        box-shadow: none;
+    .page-header,
+    .stat-card,
+    .task-card,
+    .verification-card,
+    .filter-card,
+    .content-card {
+        border-radius: 8px;
     }
 
-    .verification-section .card-header {
-        background: rgba(247, 243, 234, 0.72);
-        border-bottom: 1px solid rgba(14, 45, 35, 0.08);
-    }
-
-    .admin-table {
-        width: 100%;
-    }
-
-    .alert {
-        border-radius: 0.95rem;
-    }
-
-    @media (max-width: 1024px) {
-        .verification-workspace-shell .dashboard-sidebar {
-            min-height: auto;
-            padding-bottom: 0.75rem;
+    @media (max-width: 991.98px) {
+        .admin-shell {
+            grid-template-columns: 1fr;
         }
 
-        .verification-workspace-shell .sidebar-footer {
-            display: none;
+        .admin-sidebar {
+            position: static;
+            height: auto;
+            border-right: 0;
+            border-bottom: 1px solid var(--ap-border);
         }
 
-        .verification-workspace-shell .sidebar-nav {
-            padding-top: 0.75rem;
+        .admin-nav {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
-        .verification-workspace-shell .dashboard-main {
-            margin-left: 0;
-        }
-
-        .verification-workspace-shell .dashboard-content {
-            padding-top: 0.5rem;
+        .admin-main {
+            padding: 20px 16px 36px;
         }
     }
 
-    @media (max-width: 768px) {
-        .verification-workspace-shell .dashboard-sidebar {
-            padding-top: 0.85rem;
+    @media (max-width: 575.98px) {
+        .admin-nav {
+            grid-template-columns: 1fr;
         }
 
-        .verification-workspace-shell .sidebar-brand {
-            padding-bottom: 0.85rem;
+        .admin-topline {
+            align-items: flex-start;
+            flex-direction: column;
         }
 
-        .verification-workspace-shell .sidebar-nav {
-            gap: 0.25rem;
-            padding-top: 0.65rem;
-        }
-
-        .verification-workspace-shell .dashboard-main .dashboard-topbar {
-            padding-top: 0.9rem;
-        }
-
-        .verification-workspace-shell .verification-admin-body {
-            padding-top: 0.75rem;
-        }
-
-        .page-header,
-        .admin-card-body,
-        .admin-card-header,
-        .admin-card-footer,
-        .task-header,
-        .task-body,
-        .task-footer {
-            padding-left: 1rem;
-            padding-right: 1rem;
-        }
-
-        .page-header-actions,
-        .verification-workspace-shell .topbar-right {
-            width: 100%;
-        }
-
-        .page-header-actions .btn,
-        .verification-workspace-shell .topbar-right a {
+        .admin-home-link {
             width: 100%;
             justify-content: center;
         }
-
-        .details-table th,
-        .details-table td {
-            display: block;
-            width: 100%;
-            padding-top: 0.45rem;
-            padding-bottom: 0.45rem;
-        }
-
-        .details-table th {
-            padding-bottom: 0.15rem;
-        }
     }
 </style>
-{% endblock %}
-
-{% block content %}
-<div class="dashboard-wrapper workspace-dashboard verification-workspace-shell">
-    <aside class="dashboard-sidebar" id="verificationSidebar">
-        <div class="sidebar-brand">
-            <i class="fas fa-shield-alt" aria-hidden="true"></i>
-            <span>Verification</span>
-        </div>
-
-        <nav class="sidebar-nav">
-            <a href="{% url 'listings:dashboard_router' %}?section=overview" class="nav-item{% if request.resolver_match.url_name == 'dashboard_router' and request.GET.section != 'tasks' %} active{% endif %}">
-                <i class="fas fa-home" aria-hidden="true"></i>
-                <span>Workspace Home</span>
-            </a>
-            <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="nav-item{% if request.GET.section == 'tasks' %} active{% endif %}">
-                <i class="fas fa-list-check" aria-hidden="true"></i>
-                <span>Task Inbox</span>
-            </a>
-            <a href="{% url 'listings:dashboard_router' %}?section=verification" class="nav-item{% if request.GET.section == 'verification' %} active{% endif %}">
-                <i class="fas fa-check-circle" aria-hidden="true"></i>
-                <span>Verification Queue</span>
-            </a>
-            <a href="{% url 'verification:my_tasks' %}" class="nav-item{% if request.resolver_match.url_name == 'my_tasks' %} active{% endif %}">
-                <i class="fas fa-clipboard-list" aria-hidden="true"></i>
-                <span>Detailed Task View</span>
-            </a>
-            {% if request.user.is_staff or request.user.is_superuser %}
-            <a href="{% url 'verification:task_assignment' %}" class="nav-item{% if request.resolver_match.url_name == 'task_assignment' %} active{% endif %}">
-                <i class="fas fa-user-check" aria-hidden="true"></i>
-                <span>Task Assignment</span>
-            </a>
-            <a href="{% url 'verification:verification_queue' %}" class="nav-item{% if request.resolver_match.url_name == 'verification_queue' %} active{% endif %}">
-                <i class="fas fa-layer-group" aria-hidden="true"></i>
-                <span>Review Board</span>
-            </a>
-            {% endif %}
-            {% if request.user.is_superuser %}
-            <a href="{% url 'verification:registry_parcels' %}" class="nav-item{% if request.resolver_match.url_name == 'registry_parcels' %} active{% endif %}">
-                <i class="fas fa-map" aria-hidden="true"></i>
-                <span>Registry Reference</span>
-            </a>
-            {% endif %}
-            <a href="{% url 'listings:dashboard_router' %}?section=audit" class="nav-item{% if request.GET.section == 'audit' %} active{% endif %}">
-                <i class="fas fa-shield-halved" aria-hidden="true"></i>
-                <span>Audit Trail</span>
-            </a>
-        </nav>
-
-        <div class="sidebar-footer">
-            <div class="user-info">
-                <div class="user-avatar">{{ request.user|display_initial }}</div>
-                <div class="user-details">
-                    <p class="user-name">{{ request.user|display_name }}</p>
-                    <p class="user-role">Verification Workspace</p>
-                </div>
-            </div>
-        </div>
-    </aside>
-
-    <main class="dashboard-main">
-        <div class="dashboard-topbar">
-            <div class="topbar-left">
-                <button class="workspace-sidebar-toggle" id="verificationSidebarToggle" type="button" aria-label="Toggle verification navigation" aria-expanded="false">
-                    <i class="fas fa-bars" aria-hidden="true"></i>
-                </button>
-                <div class="verification-shell-copy">
-                    <h1 class="page-title">{{ page_title|default:"Verification Workspace" }}</h1>
-                    <p class="page-subtitle">Verification, fieldwork, and legal review now run inside the shared workspace instead of a separate admin dashboard.</p>
-                </div>
-            </div>
-            <div class="topbar-right">
-                <a href="{% url 'listings:notifications_inbox' %}" class="workspace-role-chip">
-                    <i class="fas fa-inbox" aria-hidden="true"></i>
-                    <span>Inbox</span>
-                </a>
-                <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="workspace-badge">
-                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
-                    <span>Back to Task Inbox</span>
-                </a>
-            </div>
-        </div>
-
-        <div class="dashboard-content verification-dashboard-content">
-            <div class="content-left verification-admin-body">
-                {% if messages %}
-                    {% for message in messages %}
-                    <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">
-                        {{ message }}
-                    </div>
-                    {% endfor %}
-                {% endif %}
-
-                {% block admin_content %}{% endblock %}
-            </div>
-        </div>
-    </main>
-</div>
-
 {% endblock %}

@@ -13,7 +13,7 @@ from django.conf import settings
 from django.core.files.base import File
 from django.contrib.auth.models import User
 from django.urls import reverse
-from notifications.services.sms_service import TextSMSService
+from notifications.services.sms_service import SMSService
 from notifications.notification_service import NotificationService
 from accounts.models import Profile, LandownerProfile, Agent
 from security.models import PhoneOTP, EmailOTP, PhoneEmailVerification
@@ -99,7 +99,7 @@ def _deliver_otp(request, *, phone, email, otp, reg_data):
 
     if otp_provider in ("sms", "both"):
         try:
-            sms = TextSMSService()
+            sms = SMSService()
             result = sms.send_otp(phone, otp)
             if bool(result.get("success")):
                 sent_channels.append("sms")
@@ -349,13 +349,20 @@ def verify_otp(request):
             if reg_data['role'] == 'landowner':
                 landowner = LandownerProfile(
                     user=user,
-                    verified=False
+                    verified=False,
+                    legal_name=reg_data.get("legal_name", user.get_full_name()),
+                    national_id_number=reg_data.get("national_id_number", ""),
+                    kra_pin_number=reg_data.get("kra_pin_number", ""),
+                    marital_status=reg_data.get("marital_status", "single"),
+                    spouse_full_name=reg_data.get("spouse_full_name", ""),
+                    spouse_id_number=reg_data.get("spouse_id_number", ""),
                 )
                 _attach_file(landowner, 'national_id', reg_files.get('national_id'))
                 _attach_file(landowner, 'kra_pin', reg_files.get('kra_pin'))
                 _attach_file(landowner, 'title_deed', reg_files.get('title_deed'))
                 _attach_file(landowner, 'land_search', reg_files.get('land_search'))
                 _attach_file(landowner, 'lcb_consent', reg_files.get('lcb_consent'))
+                _attach_file(landowner, 'spouse_id_doc', reg_files.get('spouse_id_doc'))
                 landowner.save()
                 logger.info(f"Landowner profile created for {user.username}")
 
@@ -365,10 +372,13 @@ def verify_otp(request):
                     phone=phone,
                     id_number=reg_data.get('id_number', ''),
                     license_number=reg_data.get('license_number', ''),
+                    company_name=reg_data.get("company_name", ""),
+                    earb_registration_number=reg_data.get("earb_registration_number", ""),
                     verified=False
                 )
                 _attach_file(agent, 'license_doc', reg_files.get('license_doc'))
                 _attach_file(agent, 'kra_pin', reg_files.get('kra_pin'))
+                _attach_file(agent, 'tax_compliance_certificate', reg_files.get('tax_compliance_certificate'))
                 _attach_file(agent, 'practicing_certificate', reg_files.get('practicing_certificate'))
                 _attach_file(agent, 'good_conduct', reg_files.get('good_conduct'))
                 _attach_file(agent, 'professional_indemnity', reg_files.get('professional_indemnity'))

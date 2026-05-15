@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.core.management import call_command
+from django.db.utils import OperationalError, ProgrammingError
 from django.utils import timezone
 from django.utils.html import format_html
 
@@ -14,6 +15,14 @@ from listings.models import (
     PricingSuggestion,
     SitePage,
     UserInterest,
+    WaterSource,
+    Road,
+    Market,
+    School,
+    HealthFacility,
+    LandTransferAgreement,
+    FraudReport,
+    UserPlotView,
 )
 from verification.models import TitleSearchResult, VerificationDocument, VerificationStatus
 
@@ -21,6 +30,16 @@ from verification.models import TitleSearchResult, VerificationDocument, Verific
 admin.site.site_header = "AgriPlot Administration"
 admin.site.site_title = "AgriPlot Admin"
 admin.site.index_title = "System Management"
+
+
+class SafeMissingTableAdmin(admin.ModelAdmin):
+    """Gracefully handle admin pages for models whose migrations are not applied yet."""
+
+    def get_queryset(self, request):
+        try:
+            return super().get_queryset(request)
+        except (ProgrammingError, OperationalError):
+            return self.model.objects.none()
 
 
 class VerificationDocumentInline(admin.TabularInline):
@@ -60,6 +79,31 @@ class TitleSearchResultInline(admin.StackedInline):
     )
 
 
+class WaterSourceInline(admin.TabularInline):
+    model = WaterSource
+    extra = 0
+
+
+class RoadInline(admin.TabularInline):
+    model = Road
+    extra = 0
+
+
+class MarketInline(admin.TabularInline):
+    model = Market
+    extra = 0
+
+
+class SchoolInline(admin.TabularInline):
+    model = School
+    extra = 0
+
+
+class HealthFacilityInline(admin.TabularInline):
+    model = HealthFacility
+    extra = 0
+
+
 @admin.register(Plot)
 class PlotAdmin(admin.ModelAdmin):
     list_display = (
@@ -79,6 +123,7 @@ class PlotAdmin(admin.ModelAdmin):
         "verification_display",
         "has_all_documents",
         "is_registry_record",
+        "is_hidden",
         "contact_requests_count",
         "created_at",
     )
@@ -93,6 +138,7 @@ class PlotAdmin(admin.ModelAdmin):
         "market_zone",
         "market_status",
         "land_type",
+        "is_hidden",
         "created_at",
     )
 
@@ -180,6 +226,7 @@ class PlotAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "market_status",
+                    "is_hidden",
                     "lease_start_date",
                     "lease_end_date",
                     "availability_notes",
@@ -216,8 +263,16 @@ class PlotAdmin(admin.ModelAdmin):
         ("Timestamps", {"fields": ("created_at", "updated_at"), "classes": ("collapse",)}),
     )
 
-    inlines = [VerificationDocumentInline, TitleSearchResultInline]
-    actions = ["verify_selected", "reject_selected", "export_as_csv"]
+    inlines = [
+        VerificationDocumentInline,
+        TitleSearchResultInline,
+        WaterSourceInline,
+        RoadInline,
+        MarketInline,
+        SchoolInline,
+        HealthFacilityInline,
+    ]
+    actions = ["verify_selected", "reject_selected", "hide_selected", "show_selected", "export_as_csv"]
     ordering = ("-created_at",)
 
     def owner_info(self, obj):
@@ -509,6 +564,18 @@ class PlotAdmin(admin.ModelAdmin):
 
     reject_selected.short_description = "❌ Reject selected plots"
 
+    def hide_selected(self, request, queryset):
+        count = queryset.update(is_hidden=True)
+        self.message_user(request, f"{count} plot(s) hidden from the public marketplace.")
+
+    hide_selected.short_description = "Hide selected plots"
+
+    def show_selected(self, request, queryset):
+        count = queryset.update(is_hidden=False)
+        self.message_user(request, f"{count} plot(s) restored to the public marketplace.")
+
+    show_selected.short_description = "Show selected plots"
+
     def export_as_csv(self, request, queryset):
         import csv
 
@@ -673,3 +740,93 @@ class PlotImageAdmin(admin.ModelAdmin):
 class SitePageAdmin(admin.ModelAdmin):
     list_display = ("slug", "title", "updated_at")
     search_fields = ("slug", "title")
+
+@admin.register(WaterSource)
+class WaterSourceAdmin(SafeMissingTableAdmin):
+    list_display = ("name", "plot", "description")
+    search_fields = ("name", "plot__title")
+    list_filter = ("plot__county",)
+
+@admin.register(Road)
+class RoadAdmin(SafeMissingTableAdmin):
+    list_display = ("name", "plot", "road_type")
+    search_fields = ("name", "plot__title")
+    list_filter = ("plot__county",)
+
+@admin.register(Market)
+class MarketAdmin(SafeMissingTableAdmin):
+    list_display = ("name", "plot", "description")
+    search_fields = ("name", "plot__title")
+    list_filter = ("plot__county",)
+
+@admin.register(School)
+class SchoolAdmin(SafeMissingTableAdmin):
+    list_display = ("name", "plot", "level")
+    search_fields = ("name", "plot__title")
+    list_filter = ("plot__county",)
+
+@admin.register(HealthFacility)
+class HealthFacilityAdmin(SafeMissingTableAdmin):
+    list_display = ("name", "plot", "facility_type")
+    search_fields = ("name", "plot__title")
+    list_filter = ("plot__county",)
+
+@admin.register(LandTransferAgreement)
+class LandTransferAgreementAdmin(SafeMissingTableAdmin):
+    list_display = ("plot", "seller", "buyer", "agreement_date")
+    list_filter = ("agreement_date",)
+    search_fields = ("plot__title", "seller__user__username", "buyer__user__username")
+
+@admin.register(FraudReport)
+class FraudReportAdmin(SafeMissingTableAdmin):
+    list_display = ("plot", "reporter", "status", "plot_hidden", "created_at")
+    list_filter = ("status", "created_at")
+    search_fields = ("plot__title", "reporter__username", "reason")
+    actions = ("mark_reviewed_and_hide_plot", "dismiss_reports_and_restore_plot")
+
+    def plot_hidden(self, obj):
+        return obj.plot.is_hidden
+
+    plot_hidden.boolean = True
+    plot_hidden.short_description = "Plot Hidden"
+
+    def mark_reviewed_and_hide_plot(self, request, queryset):
+        now = timezone.now()
+        updated = 0
+        hidden = 0
+        for report in queryset.select_related("plot"):
+            report.status = "reviewed"
+            report.reviewed_at = now
+            report.save(update_fields=["status", "reviewed_at"])
+            updated += 1
+            if not report.plot.is_hidden:
+                report.plot.is_hidden = True
+                report.plot.save(update_fields=["is_hidden", "updated_at"])
+                hidden += 1
+        self.message_user(request, f"{updated} report(s) marked reviewed. {hidden} linked plot(s) hidden.")
+
+    mark_reviewed_and_hide_plot.short_description = "Mark reviewed and hide linked plots"
+
+    def dismiss_reports_and_restore_plot(self, request, queryset):
+        now = timezone.now()
+        updated = 0
+        restored = 0
+        for report in queryset.select_related("plot"):
+            report.status = "dismissed"
+            report.reviewed_at = now
+            report.save(update_fields=["status", "reviewed_at"])
+            updated += 1
+            if report.plot.is_hidden and not report.plot.fraud_reports.exclude(pk=report.pk).filter(status__in=["pending", "reviewed"]).exists():
+                report.plot.is_hidden = False
+                report.plot.save(update_fields=["is_hidden", "updated_at"])
+                restored += 1
+        self.message_user(request, f"{updated} report(s) dismissed. {restored} linked plot(s) restored.")
+
+    dismiss_reports_and_restore_plot.short_description = "Dismiss reports and restore plots"
+
+
+@admin.register(UserPlotView)
+class UserPlotViewAdmin(SafeMissingTableAdmin):
+    list_display = ("user", "plot", "view_count", "viewed_at")
+    list_filter = ("viewed_at",)
+    search_fields = ("user__username", "plot__title")

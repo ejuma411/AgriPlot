@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - AgriPlot Connect{% endblock %}
+{% block meta_description %}AgriPlot Connect dashboard for listings, verification tasks, wallet activity, buyer interest, and admin operations.{% endblock %}
+
+{% block full_width_content %}
+<main class="workspace-page">
+    <section class="workspace-hero">
+        <div>
+            <p class="workspace-kicker">{{ workspace_label|default:"Workspace" }}</p>
+            <h1 class="workspace-title">Dashboard</h1>
+            <p class="workspace-subtitle">
+                {{ primary_role_label|default:"User" }} access with role-based tools, queues, and records in one place.
+            </p>
+            {% if role_labels %}
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    {% for role in role_labels %}
+                        <span class="badge text-bg-light border">{{ role }}</span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        <div class="workspace-actions">
+            {% if is_agent or is_landowner or user.is_staff or user.is_superuser %}
+                <a class="ap-btn ap-btn-primary" href="{% url 'listings:add_plot' %}">
+                    <i class="fa-solid fa-plus"></i> Add Plot
+                </a>
+            {% endif %}
+            <a class="ap-btn ap-btn-ghost" href="{% url 'listings:home' %}">
+                <i class="fa-solid fa-magnifying-glass"></i> Marketplace
+            </a>
+        </div>
+    </section>
+
+    <nav class="workspace-tabs" aria-label="Dashboard sections">
+        {% for section in allowed_sections %}
+            <a class="workspace-tab {% if active_section == section %}is-active{% endif %}" href="{% url 'listings:dashboard_router' %}?section={{ section }}">
+                <i class="fa-solid fa-circle-dot"></i> {{ section|title }}
+            </a>
+        {% endfor %}
+    </nav>
+
+    <section class="workspace-grid three mb-3" aria-label="Dashboard summary">
+        <article class="workspace-card workspace-stat">
+            <div class="workspace-stat-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+            <div>
+                <p class="workspace-stat-value">{{ total_plots|default:0 }}</p>
+                <p class="workspace-stat-label">Visible plots</p>
+            </div>
+        </article>
+        <article class="workspace-card workspace-stat">
+            <div class="workspace-stat-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <div>
+                <p class="workspace-stat-value">{{ verified_plots|default:0 }}</p>
+                <p class="workspace-stat-label">Verified plots</p>
+            </div>
+        </article>
+        <article class="workspace-card workspace-stat">
+            <div class="workspace-stat-icon"><i class="fa-solid fa-inbox"></i></div>
+            <div>
+                <p class="workspace-stat-value">{{ recent_interests_count|default:0 }}</p>
+                <p class="workspace-stat-label">Recent inquiries</p>
+            </div>
+        </article>
+    </section>
+
+    <section class="workspace-grid two">
+        <article class="workspace-card">
+            <div class="workspace-card-header">
+                <div>
+                    <h2 class="workspace-card-title">{{ primary_queue_title|default:"Workspace Queue" }}</h2>
+                    <p class="workspace-card-meta">{{ primary_queue_description|default:"Items requiring attention appear here." }}</p>
+                </div>
+            </div>
+            <div class="workspace-card-body">
+                {% if primary_queue %}
+                    <div class="workspace-list">
+                        {% for item in primary_queue %}
+                            {% if item.url %}
+                                <a class="workspace-list-item" href="{{ item.url }}">
+                                    <span>
+                                        <strong>{{ item.title }}</strong>
+                                        <span>{{ item.subtitle }}{% if item.meta %} · {{ item.meta }}{% endif %}</span>
+                                    </span>
+                                    <span class="badge text-bg-light border">{{ item.status }}</span>
+                                </a>
+                            {% else %}
+                                <div class="workspace-list-item">
+                                    <span>
+                                        <strong>{{ item.title }}</strong>
+                                        <span>{{ item.subtitle }}{% if item.meta %} · {{ item.meta }}{% endif %}</span>
+                                    </span>
+                                    <span class="badge text-bg-light border">{{ item.status }}</span>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="workspace-empty mb-0">No urgent work is waiting in this section.</p>
+                {% endif %}
+            </div>
+        </article>
+
+        <article class="workspace-card">
+            <div class="workspace-card-header">
+                <div>
+                    <h2 class="workspace-card-title">Available Modules</h2>
+                    <p class="workspace-card-meta">Only modules permitted for your role are shown.</p>
+                </div>
+            </div>
+            <div class="workspace-card-body">
+                {% if dashboard_modules %}
+                    <div class="workspace-list">
+                        {% for module in dashboard_modules %}
+                            <a class="workspace-list-item" href="{{ module.url }}">
+                                <span>
+                                    <strong><i class="{{ module.icon }} me-2 text-success"></i>{{ module.title }}</strong>
+                                    <span>{{ module.description }}</span>
+                                </span>
+                                {% if module.badge %}
+                                    <span class="badge text-bg-success">{{ module.badge }}</span>
+                                {% endif %}
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="workspace-empty mb-0">No modules are currently enabled for this account.</p>
+                {% endif %}
+            </div>
+        </article>
+    </section>
+
+    {% if active_section == "portfolio" or active_section == "overview" %}
+        <section class="workspace-card mt-3">
+            <div class="workspace-card-header">
+                <div>
+                    <h2 class="workspace-card-title">Recent Plots</h2>
+                    <p class="workspace-card-meta">Latest records visible to your account.</p>
+                </div>
+            </div>
+            <div class="workspace-card-body">
+                {% if portfolio_plots %}
+                    <div class="workspace-list">
+                        {% for plot in portfolio_plots %}
+                            <a class="workspace-list-item" href="{% url 'listings:plot_detail' plot.id %}">
+                                <span>
+                                    <strong>{{ plot.title }}</strong>
+                                    <span>{{ plot.county }}{% if plot.subcounty %} · {{ plot.subcounty }}{% endif %}</span>
+                                </span>
+                                <span class="badge text-bg-light border">{{ plot.get_listing_type_display }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="workspace-empty mb-0">No plots are attached to this workspace yet.</p>
+                {% endif %}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if active_section == "wallet" and wallet %}
+        <section class="workspace-grid three mt-3">
+            <article class="workspace-card workspace-stat">
+                <div class="workspace-stat-icon"><i class="fa-solid fa-wallet"></i></div>
+                <div>
+                    <p class="workspace-stat-value">KES {{ wallet.balance|floatformat:0 }}</p>
+                    <p class="workspace-stat-label">Available balance</p>
+                </div>
+            </article>
+            <article class="workspace-card workspace-stat">
+                <div class="workspace-stat-icon"><i class="fa-solid fa-arrow-down"></i></div>
+                <div>
+                    <p class="workspace-stat-value">KES {{ wallet_cards.deposit_total|floatformat:0 }}</p>
+                    <p class="workspace-stat-label">Completed deposits</p>
+                </div>
+            </article>
+            <article class="workspace-card workspace-stat">
+                <div class="workspace-stat-icon"><i class="fa-solid fa-lock"></i></div>
+                <div>
+                    <p class="workspace-stat-value">{% if wallet_cards.has_pin %}Ready{% else %}Set PIN{% endif %}</p>
+                    <p class="workspace-stat-label">Wallet security</p>
+                </div>
+            </article>
+        </section>
+    {% endif %}
+
+    {% if active_section == "profile" %}
+        <section class="workspace-grid two mt-3">
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">Account Details</h2>
+                        <p class="workspace-card-meta">Manage your personal information and account type.</p>
+                    </div>
+                </div>
+                <div class="workspace-card-body">
+                    <form method="post" action="{% url 'listings:profile_edit' %}" class="ap-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="account">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                {{ account_form.first_name }}
+                                {% if account_form.first_name.errors %}
+                                    <div class="text-danger small">{{ account_form.first_name.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                {{ account_form.last_name }}
+                                {% if account_form.last_name.errors %}
+                                    <div class="text-danger small">{{ account_form.last_name.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Email Address</label>
+                                {{ account_form.email }}
+                                {% if account_form.email.errors %}
+                                    <div class="text-danger small">{{ account_form.email.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Phone Number</label>
+                                {{ account_form.phone }}
+                                {% if account_form.phone.errors %}
+                                    <div class="text-danger small">{{ account_form.phone.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Primary Intent</label>
+                                {{ account_form.intent }}
+                                {% if account_form.intent.errors %}
+                                    <div class="text-danger small">{{ account_form.intent.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Address / Location</label>
+                                {{ account_form.address }}
+                                {% if account_form.address.errors %}
+                                    <div class="text-danger small">{{ account_form.address.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <button type="submit" class="ap-btn ap-btn-primary">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </article>
+
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">Role & Verification</h2>
+                        <p class="workspace-card-meta">Your current standing on the platform.</p>
+                    </div>
+                </div>
+                <div class="workspace-card-body">
+                    <div class="workspace-stat-icon mb-3"><i class="fa-solid fa-user-shield"></i></div>
+                    <h4>{{ profile_type }}</h4>
+                    <p class="text-muted">Status: 
+                        {% if agent.verified or landowner.verified %}
+                            <span class="text-success"><i class="fa-solid fa-check-circle"></i> Verified</span>
+                        {% else %}
+                            <span class="text-warning"><i class="fa-solid fa-clock"></i> Verification Pending</span>
+                        {% endif %}
+                    </p>
+                    <hr>
+                    <h5>Role Documents</h5>
+                    {% if role_requests %}
+                        {% for role in role_requests %}
+                            <div class="mb-3">
+                                <strong>{{ role.role }}</strong>
+                                <ul class="list-unstyled mt-2">
+                                    {% for doc in role.docs %}
+                                        <li><a href="{{ doc.url }}" target="_blank"><i class="fa-solid fa-file-pdf me-2"></i> {{ doc.label }}</a></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-muted">No specific role documents uploaded yet.</p>
+                    {% endif %}
+                </div>
+            </article>
+        </section>
+    {% endif %}
+
+    {% if active_section == "settings" %}
+        <section class="workspace-grid two mt-3">
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">Security Settings</h2>
+                        <p class="workspace-card-meta">Update your password and manage 2FA.</p>
+                    </div>
+                </div>
+                <div class="workspace-card-body">
+                    <form method="post" action="{% url 'listings:account_settings' %}" class="ap-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="section" value="change_password">
+                        <div class="mb-3">
+                            <label class="form-label">Current Password</label>
+                            <input type="password" name="current_password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">New Password</label>
+                            <input type="password" name="new_password" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirm New Password</label>
+                            <input type="password" name="confirm_password" class="form-control" required>
+                        </div>
+                        <div class="mt-4">
+                            <button type="submit" class="ap-btn ap-btn-primary">Update Password</button>
+                        </div>
+                    </form>
+                </div>
+            </article>
+
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">Preferences</h2>
+                        <p class="workspace-card-meta">Notifications and platform settings.</p>
+                    </div>
+                </div>
+                <div class="workspace-card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="notifyEmail" checked>
+                        <label class="form-check-label" for="notifyEmail">Email Notifications</label>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="notifySms" {% if profile.has_2fa_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="notifySms">SMS Alerts</label>
+                    </div>
+                    <hr>
+                    <div class="d-grid">
+                        <button class="ap-btn ap-btn-ghost text-danger">Deactivate Account</button>
+                    </div>
+                </div>
+            </article>
+        </section>
+    {% endif %}
+</main>
+{% endblock %}

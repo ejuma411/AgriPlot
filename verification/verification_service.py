@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.utils import NotSupportedError
 from listings.models import *  # noqa: F403
 from notifications.notification_service import NotificationService
-from notifications.services.sms_service import TextSMSService
+from notifications.services.sms_service import SMSService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -79,7 +79,7 @@ class VerificationService:
         # Send SMS notification
         try:
             if assigned_to_user.profile and assigned_to_user.profile.phone:
-                sms = TextSMSService()
+                sms = SMSService()
                 sms.send_task_assigned(
                     phone_number=assigned_to_user.profile.phone,
                     officer_name=assigned_to_user.get_full_name() or assigned_to_user.username,

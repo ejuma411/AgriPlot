@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Document - AgriPlot Connect{% endblock %}
+
+{% block full_width_content %}
+<main class="workspace-page">
+    <section class="workspace-hero">
+        <div>
+            <p class="workspace-kicker">Document Upload</p>
+            <h1 class="workspace-title">{{ plot.title }}</h1>
+            <p class="workspace-subtitle">Add a supporting verification document to this plot record.</p>
+        </div>
+        <div class="workspace-actions">
+            <a class="ap-btn ap-btn-ghost" href="{% url 'listings:plot_detail' plot.id %}">
+                <i class="fa-solid fa-arrow-left"></i> Back to Plot
+            </a>
+        </div>
+    </section>
+
+    <form method="post" enctype="multipart/form-data" class="workspace-form">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <section class="workspace-form-section">
+            <header>
+                <h2>Verification Document</h2>
+                <p>Upload a clear document related to title, registry, ownership, pricing, or legal review.</p>
+            </header>
+            <div class="workspace-fields">
+                {% for field in form %}
+                    <div class="workspace-field {% if field.field.widget.input_type == 'textarea' %}full{% endif %}">
+                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                        {{ field }}
+                        {% if field.help_text %}<span class="workspace-help">{{ field.help_text }}</span>{% endif %}
+                        {% if field.errors %}<span class="workspace-error">{{ field.errors }}</span>{% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <div class="workspace-submit">
+            <span class="workspace-help">The document will be attached to this plot and visible in its verification record.</span>
+            <button type="submit" class="ap-btn ap-btn-primary">
+                <i class="fa-solid fa-upload"></i> Upload Document
+            </button>
+        </div>
+    </form>
+</main>
+{% endblock %}

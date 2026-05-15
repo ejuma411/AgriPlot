@@ -2,12 +2,45 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.gis.db.models.functions import Distance as DistanceFunction
+from django.contrib.gis.geos import Point
 from django.core.exceptions import ValidationError
+from django.db import ProgrammingError
 from django.db import models
+from django.contrib.gis.db import models as gis_models
+from django.urls import reverse
+from django.utils.text import slugify
 from django.utils import timezone
 
 
 class Plot(models.Model):
+    LEASE_PAYMENT_FREQUENCY_CHOICES = [
+        ("monthly", "Per Month"),
+        ("seasonal", "Per Season"),
+        ("yearly", "Per Year"),
+    ]
+
+    OWNER_APPROVAL_STATUS_CHOICES = [
+        ("not_required", "Not Required"),
+        ("pending", "Pending Landowner Approval"),
+        ("approved", "Approved by Landowner"),
+        ("rejected", "Rejected by Landowner"),
+    ]
+
+    AGENT_COMMISSION_TYPE_CHOICES = [
+        ("percentage", "Percentage"),
+        ("fixed", "Fixed Amount (KES)"),
+    ]
+
+    # ==========================================
+    # TIMESTAMP FIELDS
+    # ==========================================
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # ==========================================
+    # CHOICES CONSTANTS
+    # ==========================================
     MARKET_STATUS_CHOICES = [
         ("available", "Available"),
         ("reserved", "Reserved"),
@@ -75,40 +108,42 @@ class Plot(models.Model):
         ("live", "Live Fence"),
     ]
 
-    county = models.CharField(max_length=100, blank=True, null=True)
-    subcounty = models.CharField(max_length=100, blank=True, null=True)
-    ward = models.CharField(max_length=100, blank=True, default="")
-    nearest_town = models.CharField(max_length=150, blank=True)
-    ownership_type = models.CharField(
-        max_length=20,
-        choices=[
-            ("freehold", "Freehold"),
-            ("leasehold", "Leasehold"),
-            ("government", "Government"),
-            ("community", "Community"),
-        ],
-        default="freehold",
-    )
-    tenure_details = models.CharField(
-        max_length=200, blank=True, help_text="Lease duration/expiry or tenure notes"
-    )
-    encumbrances = models.BooleanField(default=False)
-    encumbrance_details = models.TextField(blank=True)
-
-    landowner = models.ForeignKey(
-        "accounts.LandownerProfile", on_delete=models.CASCADE, null=True, blank=True
-    )
-    agent = models.ForeignKey(
-        "accounts.Agent", on_delete=models.CASCADE, null=True, blank=True
-    )
-
-    title = models.CharField(max_length=200)
-    location = models.CharField(max_length=300)
-
     AREA_UNIT_CHOICES = [
         ("acres", "Acres"),
         ("hectares", "Hectares"),
     ]
+
+    OWNERSHIP_TYPE_CHOICES = [
+        ("freehold", "Freehold"),
+        ("leasehold", "Leasehold"),
+        ("government", "Government"),
+        ("community", "Community"),
+    ]
+
+    PRICE_BASIS_CHOICES = [
+        ("owner_set", "Owner-set price"),
+        ("agent_market", "Agent market analysis"),
+        ("valuation_report", "Professional valuation report"),
+        ("government_set", "Government-set price"),
+        ("negotiated", "Negotiated (market demand)"),
+    ]
+
+    # ==========================================
+    # LOCATION & GEOGRAPHY FIELDS
+    # ==========================================
+    county = models.CharField(max_length=100, blank=True, null=True)
+    subcounty = models.CharField(max_length=100, blank=True, null=True)
+    ward = models.CharField(max_length=100, blank=True, default="")
+    nearest_town = models.CharField(max_length=150, blank=True)
+    location = models.CharField(max_length=300)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    geom = gis_models.PointField(null=True, blank=True, srid=4326)
+
+    # ==========================================
+    # LAND INFORMATION FIELDS
+    # ==========================================
+    title = models.CharField(max_length=200)
     area = models.FloatField(help_text="Land area value")
     area_unit = models.CharField(
         max_length=10,
@@ -116,6 +151,52 @@ class Plot(models.Model):
         default="acres",
         help_text="Unit for the land area",
     )
+    land_type = models.CharField(
+        max_length=20, choices=LAND_TYPE_CHOICES, default="agricultural"
+    )
+    land_use_description = models.TextField(blank=True)
+    soil_type = models.CharField(max_length=100, blank=True, default="")
+    topography = models.CharField(
+        max_length=20,
+        choices=TOPOGRAPHY_CHOICES,
+        blank=True,
+        default="",
+    )
+    ph_level = models.FloatField(null=True, blank=True)
+    crop_suitability = models.CharField(max_length=200, blank=True, default="")
+    climate_zone = models.CharField(max_length=100, blank=True, default="")
+    elevation_meters = models.IntegerField(null=True, blank=True)
+    is_protected_area = models.BooleanField(default=False)
+    is_published = models.BooleanField(default=True)
+
+    # ==========================================
+    # OWNERSHIP & LEGAL FIELDS
+    # ==========================================
+    ownership_type = models.CharField(
+        max_length=20,
+        choices=OWNERSHIP_TYPE_CHOICES,
+        default="freehold",
+    )
+    tenure_details = models.CharField(
+        max_length=200, blank=True, help_text="Lease duration/expiry or tenure notes"
+    )
+    lease_term_remaining_years = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Years remaining on the leasehold title.",
+    )
+    encumbrances = models.BooleanField(default=False)
+    encumbrance_details = models.TextField(blank=True)
+    spousal_consent = models.BooleanField(
+        default=False, help_text="Spousal consent provided (if matrimonial property)"
+    )
+    special_features = models.TextField(
+        blank=True, 
+        help_text="Special features of the land (e.g., water source, road access, fencing)"
+    )
+
+    
+    # Registry/Land Title Information
     parcel_number = models.CharField(
         max_length=100,
         blank=True,
@@ -145,6 +226,8 @@ class Plot(models.Model):
     search_reference_number = models.CharField(
         max_length=100, blank=True, help_text="Official search reference number"
     )
+    
+    # Owner Information from Registry
     owner_full_name = models.CharField(
         max_length=200, blank=True, help_text="Name of registered owner as per title/search"
     )
@@ -154,6 +237,8 @@ class Plot(models.Model):
     owner_kra_pin_number = models.CharField(
         max_length=20, blank=True, help_text="KRA PIN number of the registered owner"
     )
+    
+    # Registry Fetched Data
     registry_owner_name = models.CharField(
         max_length=255, blank=True, help_text="Owner name fetched from registry"
     )
@@ -176,10 +261,28 @@ class Plot(models.Model):
     registry_has_encumbrances = models.BooleanField(
         default=False, help_text="Encumbrance status fetched from registry"
     )
-    spousal_consent = models.BooleanField(
-        default=False, help_text="Spousal consent provided (if matrimonial property)"
+    # ==========================================
+    # REGISTRY FIELD
+    # ==========================================
+    is_registry_record = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Indicates if this plot has been verified against the land registry"
     )
 
+    # ==========================================
+    # ASSOCIATED PARTIES FIELDS
+    # ==========================================
+    landowner = models.ForeignKey(
+        "accounts.LandownerProfile", on_delete=models.CASCADE, null=True, blank=True
+    )
+    agent = models.ForeignKey(
+        "accounts.Agent", on_delete=models.CASCADE, null=True, blank=True
+    )
+
+    # ==========================================
+    # LISTING & MARKETING FIELDS
+    # ==========================================
     listing_type = models.CharField(
         max_length=10, choices=LISTING_TYPE_CHOICES, default="sale"
     )
@@ -189,103 +292,87 @@ class Plot(models.Model):
     market_status = models.CharField(
         max_length=20, choices=MARKET_STATUS_CHOICES, default="available"
     )
+    is_hidden = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Hide this listing from public search results until it is reviewed.",
+    )
+    availability_notes = models.TextField(blank=True)
+    
+    # Lease specific fields
     lease_start_date = models.DateField(null=True, blank=True)
     lease_end_date = models.DateField(null=True, blank=True)
-    availability_notes = models.TextField(blank=True)
-    land_type = models.CharField(
-        max_length=20, choices=LAND_TYPE_CHOICES, default="agricultural"
+    lease_duration = models.CharField(
+        max_length=20, choices=LEASE_DURATION_CHOICES, null=True, blank=True
     )
-    land_use_description = models.TextField(blank=True)
+    lease_payment_frequency = models.CharField(
+        max_length=20,
+        choices=LEASE_PAYMENT_FREQUENCY_CHOICES,
+        blank=True,
+        default="",
+    )
+    lease_terms = models.TextField(blank=True)
+    lease_basis = models.CharField(
+        max_length=30, choices=PRICE_BASIS_CHOICES, default="owner_set"
+    )
+    owner_approval_status = models.CharField(
+        max_length=20,
+        choices=OWNER_APPROVAL_STATUS_CHOICES,
+        default="not_required",
+    )
+    owner_approval_requested_at = models.DateTimeField(null=True, blank=True)
+    owner_approval_at = models.DateTimeField(null=True, blank=True)
+    owner_approval_notes = models.TextField(blank=True)
+    landowner_phone_for_approval = models.CharField(max_length=20, blank=True)
+    agency_agreement = models.FileField(
+        upload_to="documents/agency_agreements/",
+        null=True,
+        blank=True,
+        help_text="Signed authority letter or agency agreement from the owner.",
+    )
+    agent_commission_type = models.CharField(
+        max_length=20,
+        choices=AGENT_COMMISSION_TYPE_CHOICES,
+        blank=True,
+        default="",
+    )
+    agent_commission_value = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
 
+    # ==========================================
+    # PRICING FIELDS
+    # ==========================================
+    price = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     sale_price = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
     price_per_acre = models.DecimalField(
         max_digits=12, decimal_places=2, null=True, blank=True
     )
-    PRICE_BASIS_CHOICES = [
-        ("owner_set", "Owner-set price"),
-        ("agent_market", "Agent market analysis"),
-        ("valuation_report", "Professional valuation report"),
-        ("government_set", "Government-set price"),
-        ("negotiated", "Negotiated (market demand)"),
-    ]
     price_basis = models.CharField(
         max_length=30, choices=PRICE_BASIS_CHOICES, default="owner_set"
-    )
-    valuation_report = models.FileField(
-        upload_to="documents/valuation_reports/",
-        null=True,
-        blank=True,
-        help_text="Optional valuation report (PDF/Image)",
     )
     price_notes = models.TextField(blank=True)
     is_price_negotiable = models.BooleanField(default=True)
     price_review_required = models.BooleanField(default=False)
     pricing_override_reason = models.TextField(blank=True)
-
+    
+    # Lease pricing
     lease_price_monthly = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     lease_price_yearly = models.DecimalField(
         max_digits=10, decimal_places=2, null=True, blank=True
     )
-    lease_duration = models.CharField(
-        max_length=20, choices=LEASE_DURATION_CHOICES, null=True, blank=True
-    )
-    lease_terms = models.TextField(blank=True)
-    lease_basis = models.CharField(
-        max_length=30, choices=PRICE_BASIS_CHOICES, default="owner_set"
-    )
-    government_price_proof = models.FileField(
-        upload_to="documents/government_price_proofs/",
-        null=True,
-        blank=True,
-        help_text="Official notice/gazette for government-set price",
-    )
 
-    price = models.DecimalField(max_digits=12, decimal_places=2)
-
-    soil_type = models.CharField(max_length=100, blank=True, default="")
-    topography = models.CharField(
-        max_length=20,
-        choices=TOPOGRAPHY_CHOICES,
-        blank=True,
-        default="",
-    )
-    ph_level = models.FloatField(null=True, blank=True)
-    crop_suitability = models.CharField(max_length=200, blank=True, default="")
-
-    has_water = models.BooleanField(default=False)
-    water_source = models.CharField(
-        max_length=20, choices=WATER_SOURCE_CHOICES, null=True, blank=True
-    )
-    has_electricity = models.BooleanField(default=False)
-    electricity_meter = models.BooleanField(default=False, help_text="Has meter installed")
-
-    has_road_access = models.BooleanField(default=False)
-    road_type = models.CharField(
-        max_length=20, choices=ROAD_TYPE_CHOICES, null=True, blank=True
-    )
-    road_distance_km = models.DecimalField(
-        max_digits=5, decimal_places=2, null=True, blank=True
-    )
-
-    has_buildings = models.BooleanField(default=False)
-    building_description = models.TextField(blank=True)
-    other_amenities = models.TextField(blank=True)
-
-    fencing = models.CharField(
-        max_length=50, choices=FENCING_CHOICES, null=True, blank=True
-    )
-
-    verification = GenericRelation(
-        "verification.VerificationStatus",
-        content_type_field="content_type",
-        object_id_field="object_id",
-        related_query_name="plot",
-    )
-
+    # ==========================================
+    # DOCUMENT UPLOADS FIELDS
+    # ==========================================
+    # Ownership documents
     title_deed = models.FileField(
         upload_to="documents/title_deeds/",
         null=True,
@@ -304,13 +391,8 @@ class Plot(models.Model):
         blank=True,
         help_text="Spousal consent document (if applicable)",
     )
-    soil_report = models.FileField(
-        upload_to="documents/soil_reports/",
-        null=True,
-        blank=True,
-        help_text="Soil test report (optional)",
-    )
-
+    
+    # Verification documents
     official_search = models.FileField(
         upload_to="documents/official_searches/",
         null=True,
@@ -323,12 +405,14 @@ class Plot(models.Model):
         blank=True,
         help_text="Land rates clearance certificate",
     )
+    rates_paid_up = models.BooleanField(default=False)
     rent_clearance = models.FileField(
         upload_to="documents/rent_clearance/",
         null=True,
         blank=True,
         help_text="Land rent clearance certificate",
     )
+    rent_paid_up = models.BooleanField(default=False)
     lcb_consent_doc = models.FileField(
         upload_to="documents/lcb_consents/",
         null=True,
@@ -347,7 +431,20 @@ class Plot(models.Model):
         blank=True,
         help_text="Consent to transfer for leasehold land",
     )
-
+    valuation_report = models.FileField(
+        upload_to="documents/valuation_reports/",
+        null=True,
+        blank=True,
+        help_text="Optional valuation report (PDF/Image)",
+    )
+    government_price_proof = models.FileField(
+        upload_to="documents/government_price_proofs/",
+        null=True,
+        blank=True,
+        help_text="Official notice/gazette for government-set price",
+    )
+    
+    # Owner identification documents
     landowner_id_doc = models.FileField(
         upload_to="documents/landowner_ids/",
         null=True,
@@ -360,59 +457,81 @@ class Plot(models.Model):
         blank=True,
         help_text="KRA PIN certificate",
     )
-
-    latitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
+    soil_report = models.FileField(
+        upload_to="documents/soil_reports/",
         null=True,
         blank=True,
-        help_text="Latitude (e.g. -1.292066 for Nairobi)",
-    )
-    longitude = models.DecimalField(
-        max_digits=9,
-        decimal_places=6,
-        null=True,
-        blank=True,
-        help_text="Longitude (e.g. 36.821946 for Nairobi)",
+        help_text="Soil test report (optional)",
     )
 
-    elevation_meters = models.IntegerField(null=True, blank=True)
-    climate_zone = models.CharField(max_length=100, blank=True)
-    is_protected_area = models.BooleanField(default=False)
-    special_features = models.TextField(blank=True)
+    # ==========================================
+    # INFRASTRUCTURE FIELDS
+    # ==========================================
+    has_water = models.BooleanField(default=False)
+    water_source = models.CharField(
+        max_length=20, choices=WATER_SOURCE_CHOICES, null=True, blank=True
+    )
+    has_electricity = models.BooleanField(default=False)
+    electricity_meter = models.BooleanField(default=False, help_text="Has meter installed")
+    has_road_access = models.BooleanField(default=False)
+    road_type = models.CharField(
+        max_length=20, choices=ROAD_TYPE_CHOICES, null=True, blank=True
+    )
+    road_distance_km = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True
+    )
+    has_buildings = models.BooleanField(default=False)
+    building_description = models.TextField(blank=True)
+    other_amenities = models.TextField(blank=True)
+    fencing = models.CharField(
+        max_length=50, choices=FENCING_CHOICES, null=True, blank=True
+    )
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    is_published = models.BooleanField(default=False)
-    is_registry_record = models.BooleanField(default=False)
+    # ==========================================
+    # VERIFICATION & RELATIONSHIPS
+    # ==========================================
+    verification = GenericRelation(
+        "verification.VerificationStatus",
+        content_type_field="content_type",
+        object_id_field="object_id",
+        related_query_name="plot",
+    )
 
+    # ==========================================
+    # META CLASS
+    # ==========================================
     class Meta:
+        ordering = ['-created_at']
         indexes = [
-            models.Index(fields=["-created_at"]),
-            models.Index(fields=["listing_type"]),
-            models.Index(fields=["land_type"]),
-            models.Index(fields=["soil_type"]),
-            models.Index(fields=["county", "subcounty", "ward"]),
-            models.Index(fields=["latitude", "longitude"]),
+            models.Index(fields=['-created_at']),
+            models.Index(fields=['market_status', 'listing_type']),
+            models.Index(fields=['county', 'subcounty']),
         ]
 
-    def __str__(self):
-        return self.title
-
-    def primary_image_url(self):
-        first_image = self.images.first()
-        if first_image and first_image.image:
-            return first_image.image.url
-        return ""
-
+    # ==========================================
+    # PROPERTIES
+    # ==========================================
+    
     @property
-    def area_acres(self):
-        if self.area is None:
-            return None
-        if self.area_unit == "hectares":
-            return self.area * 2.47105
-        return self.area
-
+    def has_all_documents(self):
+        """Check if all required documents are uploaded based on plot characteristics"""
+        required_docs = [
+            "title_deed",
+            "official_search",
+            "landowner_id_doc",
+            "kra_pin",
+            "rates_clearance",
+        ]
+        if self.spousal_consent:
+            required_docs.append("spousal_consent_doc")
+        if self.land_type == "agricultural":
+            required_docs.append("lcb_consent_doc")
+        if self.is_subdivision:
+            required_docs.extend(["survey_map", "plupa1_form"])
+        if self.ownership_type == "leasehold":
+            required_docs.extend(["rent_clearance", "consent_to_transfer"])
+        return all(bool(getattr(self, doc, None)) for doc in required_docs)
+    
     @property
     def latest_surveyor_report(self):
         if not self.pk:
@@ -447,62 +566,27 @@ class Plot(models.Model):
             return "Not provided"
         unit = self.get_area_unit_display() if self.area_unit else "Acres"
         return f"{self.area} {unit}"
-
-    def clean(self):
-        if not self.landowner and not self.agent:
-            raise ValidationError("Either landowner or agent must be associated with this plot")
-
-        if self.listing_type in ["sale", "both"] and not self.sale_price:
-            raise ValidationError("Sale price is required for listings marked 'For Sale'")
-
-        if self.listing_type in ["lease", "both"] and not (
-            self.lease_price_monthly or self.lease_price_yearly
-        ):
-            raise ValidationError("Lease price is required for listings marked 'For Lease'")
-
-        if self.encumbrances and not self.encumbrance_details:
-            raise ValidationError(
-                "Provide encumbrance details when encumbrances are marked as present."
-            )
-
-        if self.market_status == "leased":
-            if not self.lease_start_date or not self.lease_end_date:
-                raise ValidationError(
-                    "Lease start and end dates are required when the plot is marked as leased."
-                )
-            if self.lease_end_date <= self.lease_start_date:
-                raise ValidationError("Lease end date must be after the lease start date.")
-
-        if self.market_status == "sold":
-            if self.lease_start_date or self.lease_end_date:
-                raise ValidationError("Sold plots cannot keep lease date windows.")
-
-    def save(self, *args, **kwargs):
-        self.full_clean()
-        super().save(*args, **kwargs)
+    
+    @property
+    def area_acres(self):
+        """Convert area to acres based on unit"""
+        if self.area is None:
+            return None
+        if self.area_unit == "hectares":
+            return self.area * 2.47105
+        return self.area
 
     @property
     def has_coordinates(self):
         return self.latitude is not None and self.longitude is not None
 
     @property
-    def has_all_documents(self):
-        required_docs = [
-            "title_deed",
-            "official_search",
-            "landowner_id_doc",
-            "kra_pin",
-            "rates_clearance",
-        ]
-        if self.spousal_consent:
-            required_docs.append("spousal_consent_doc")
-        if self.land_type == "agricultural":
-            required_docs.append("lcb_consent_doc")
-        if self.is_subdivision:
-            required_docs.extend(["survey_map", "plupa1_form"])
-        if self.ownership_type == "leasehold":
-            required_docs.extend(["rent_clearance", "consent_to_transfer"])
-        return all(bool(getattr(self, doc, None)) for doc in required_docs)
+    def public_county_slug(self):
+        return slugify(self.county or "kenya")
+
+    @property
+    def public_title_slug(self):
+        return slugify(self.title or f"plot-{self.pk or 'draft'}")
 
     @property
     def has_active_lease(self):
@@ -512,6 +596,14 @@ class Plot(models.Model):
             and self.lease_end_date is not None
             and self.lease_start_date <= timezone.localdate() <= self.lease_end_date
         )
+
+    @property
+    def requires_landowner_approval(self):
+        return bool(self.agent_id and self.landowner_phone_for_approval)
+
+    @property
+    def is_pending_landowner_approval(self):
+        return self.owner_approval_status == "pending"
 
     @property
     def is_hybrid_sale_lease(self):
@@ -652,6 +744,116 @@ class Plot(models.Model):
         )
         return {"label": label, "tone": tone}
 
+    # ==========================================
+    # METHODS
+    # ==========================================
+    
+    def __str__(self):
+        return f"{self.title} - {self.location}"
+
+    def get_absolute_url(self):
+        return reverse(
+            "listings:plot_detail_slug",
+            kwargs={
+                "county": self.public_county_slug,
+                "title": self.public_title_slug,
+                "id": self.id,
+            },
+        )
+
+    def geo_point(self):
+        if self.geom:
+            return self.geom
+        if self.has_coordinates:
+            return Point(float(self.longitude), float(self.latitude), srid=4326)
+        return None
+
+    def clean(self):
+        if not self.landowner and not self.agent:
+            raise ValidationError("Either landowner or agent must be associated with this plot")
+
+        if self.listing_type in ["sale", "both"] and not self.sale_price:
+            raise ValidationError("Sale price is required for listings marked 'For Sale'")
+
+        if self.listing_type in ["lease", "both"] and not (
+            self.lease_price_monthly or self.lease_price_yearly
+        ):
+            raise ValidationError("Lease price is required for listings marked 'For Lease'")
+
+        if self.encumbrances and not self.encumbrance_details:
+            raise ValidationError(
+                "Provide encumbrance details when encumbrances are marked as present."
+            )
+
+        if self.market_status == "leased":
+            if not self.lease_start_date or not self.lease_end_date:
+                raise ValidationError(
+                    "Lease start and end dates are required when the plot is marked as leased."
+                )
+            if self.lease_end_date <= self.lease_start_date:
+                raise ValidationError("Lease end date must be after the lease start date.")
+
+        if self.market_status == "sold":
+            if self.lease_start_date or self.lease_end_date:
+                raise ValidationError("Sold plots cannot keep lease date windows.")
+
+    def save(self, *args, **kwargs):
+        # Auto-set is_registry_record based on registry data
+        if not self.pk:  # Only on creation
+            self.is_registry_record = bool(
+                self.registry_owner_name or 
+                self.registry_owner_id_number or 
+                self.registry_owner_kra_pin or
+                self.search_reference_number
+            )
+        
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def distance_to(self, point):
+        origin = self.geo_point()
+        if origin is None or point is None:
+            return None
+        if not isinstance(point, Point):
+            raise TypeError("point must be a django.contrib.gis.geos.Point instance")
+        return origin.distance(point.transform(3857, clone=True)) if origin.srid == 3857 else origin.transform(3857, clone=True).distance(point.transform(3857, clone=True))
+
+    def distance_to_nearest_amenity(self, amenity_qs, field_name="location"):
+        origin = self.geo_point()
+        if origin is None:
+            return None
+        try:
+            amenity = (
+                amenity_qs.filter(**{f"{field_name}__isnull": False})
+                .annotate(distance_m=DistanceFunction(field_name, origin))
+                .order_by("distance_m")
+                .first()
+            )
+        except ProgrammingError:
+            return None
+        if not amenity:
+            return None
+        distance = getattr(amenity, "distance_m", None)
+        if distance is None:
+            return None
+        if hasattr(distance, "m"):
+            return float(distance.m)
+        return float(distance)
+
+    def amenity_distance_summary(self):
+        amenities = [
+            ("water", self.water_sources.all(), "location"),
+            ("road", self.roads.all(), "location"),
+            ("market", self.markets.all(), "location"),
+            ("school", self.schools.all(), "location"),
+            ("health", self.health_facilities.all(), "location"),
+        ]
+        summary = {}
+        for key, queryset, field_name in amenities:
+            distance_meters = self.distance_to_nearest_amenity(queryset, field_name=field_name)
+            summary[key] = None if distance_meters is None else round(distance_meters / 1000, 2)
+        return summary
+
     def area_in_unit(self, unit):
         usable_area = self.effective_usable_area_acres
         if usable_area is None:
@@ -681,6 +883,8 @@ class Plot(models.Model):
         return yearly_value / area_value
 
     def get_market_price_band(self, transaction_type):
+        from listings.models import MarketPriceBand  # Import here to avoid circular imports
+        
         queryset = MarketPriceBand.objects.filter(
             county=self.county,
             land_type=self.land_type,
@@ -709,6 +913,8 @@ class Plot(models.Model):
         }
 
     def comparable_pricing_snapshot(self, transaction_type="sale"):
+        from listings.models import PriceComparable  # Import here to avoid circular imports
+        
         comparables = []
 
         if self.pk:
@@ -794,6 +1000,175 @@ class Plot(models.Model):
             "usable_area_display": self.effective_usable_area_display,
             "explanation": "Blended from " + " and ".join(explanation_bits) + ".",
         }
+
+    def special_features_list(self):
+        """Return special_features as a list of individual features"""
+        if not self.special_features:
+            return []
+        # Split by newline and filter out empty strings
+        return [f.strip() for f in self.special_features.splitlines() if f.strip()]
+
+class WaterSource(models.Model):
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="water_sources", null=True, blank=True)
+    name = models.CharField(max_length=200)
+    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+class Road(models.Model):
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="roads", null=True, blank=True)
+    name = models.CharField(max_length=200)
+    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    road_type = models.CharField(max_length=20, choices=Plot.ROAD_TYPE_CHOICES, blank=True)
+
+    def __str__(self):
+        return self.name
+
+class Market(models.Model):
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="markets", null=True, blank=True)
+    name = models.CharField(max_length=200)
+    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+class School(models.Model):
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="schools", null=True, blank=True)
+    name = models.CharField(max_length=200)
+    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    level = models.CharField(max_length=50, blank=True)
+
+    def __str__(self):
+        return self.name
+
+class HealthFacility(models.Model):
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="health_facilities", null=True, blank=True)
+    name = models.CharField(max_length=200)
+    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    facility_type = models.CharField(max_length=50, blank=True)
+
+    def __str__(self):
+        return self.name
+
+class LandTransferAgreement(models.Model):
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="transfer_agreements")
+    seller = models.ForeignKey(
+        "accounts.LandownerProfile",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="selling_agreements",
+    )
+    buyer = models.ForeignKey(
+        "accounts.Profile",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="buying_agreements",
+    )
+    advocate = models.ForeignKey(
+        "accounts.Agent",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="advocate_agreements",
+    )
+    lawyer = models.ForeignKey(
+        "accounts.Agent",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="lawyer_agreements",
+    )
+    agreement_date = models.DateField(null=True, blank=True)
+    document = models.FileField(upload_to="agreements/", null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        permissions = [
+            ("view_transfer", "Can view assigned client transfer documents"),
+            ("edit_transfer", "Can edit assigned client transfer documents"),
+        ]
+
+    def __str__(self):
+        return f"Agreement for Plot {self.plot_id}"
+
+    def _user_matches_professional(self, user):
+        return (
+            (self.advocate and self.advocate.user_id == user.id)
+            or (self.lawyer and self.lawyer.user_id == user.id)
+        )
+
+    def can_user_view(self, user):
+        if not getattr(user, "is_authenticated", False):
+            return False
+        if user.is_staff or user.is_superuser:
+            return True
+        if self._user_matches_professional(user):
+            return True
+        if self.seller and self.seller.user_id == user.id:
+            return True
+        if self.buyer and self.buyer.user_id == user.id:
+            return True
+        return False
+
+    def can_user_edit(self, user):
+        if not getattr(user, "is_authenticated", False):
+            return False
+        if user.is_staff or user.is_superuser:
+            return True
+        return self._user_matches_professional(user)
+
+class FraudReport(models.Model):
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="fraud_reports")
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+    )
+    reason = models.TextField()
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("reviewed", "Reviewed"),
+        ("dismissed", "Dismissed"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"FraudReport {self.id} on Plot {self.plot_id}"
+
+
+class UserPlotView(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="plot_views",
+    )
+    plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="view_events")
+    view_count = models.PositiveIntegerField(default=1)
+    viewed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-viewed_at"]
+        unique_together = ["user", "plot"]
+
+    def __str__(self):
+        return f"{self.user} viewed {self.plot}"
+
+    @classmethod
+    def record_view(cls, user, plot):
+        obj, created = cls.objects.get_or_create(user=user, plot=plot)
+        if not created:
+            obj.view_count += 1
+            obj.save(update_fields=["view_count", "viewed_at"])
+        return obj
 
 
 class PlotImage(models.Model):
@@ -1014,6 +1389,14 @@ from verification.models import (  # noqa: E402
 __all__ = [
     "Plot",
     "PlotImage",
+    "WaterSource",
+    "Road",
+    "Market",
+    "School",
+    "HealthFacility",
+    "LandTransferAgreement",
+    "FraudReport",
+    "UserPlotView",
     "UserInterest",
     "ContactRequest",
     "SitePage",

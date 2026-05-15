@@ -24,7 +24,7 @@
     <label for="password">Password</label>
     <div class="password-wrap">
         <input type="password" id="password" name="password" required />
-        <button type="button" class="password-toggle" onclick="togglePassword()">Show</button>
+        <button type="button" class="password-toggle" onclick="togglePassword('password', this)">Show</button>
     </div>
     {% if form.password.errors %}
         <div class="auth-alert alert-error" role="alert">{{ form.password.errors }}</div>
@@ -56,17 +56,5 @@
 {% block auth_links %}{% endblock %}
 
 {% block extra_js %}
-<script>
-    function togglePassword() {
-        const input = document.getElementById('password');
-        const btn = document.querySelector('.password-toggle');
-        if (input.type === 'password') {
-            input.type = 'text';
-            btn.textContent = 'Hide';
-        } else {
-            input.type = 'password';
-            btn.textContent = 'Show';
-        }
-    }
-</script>
+    {{ block.super }}
 {% endblock %}

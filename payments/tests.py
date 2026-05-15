@@ -607,7 +607,7 @@ class PaymentAuthorizationTests(TestCase):
 
     @override_settings(PAYSTACK_ENABLED=False)
     @override_settings(ENABLE_SMS_NOTIFICATIONS=True)
-    @patch("notifications.notification_service.TextSMSService.send_sms")
+    @patch("notifications.notification_service.SMSService.send_sms")
     def test_purchase_request_notifies_seller_when_created(self, mock_send_sms):
         owner_user = self.User.objects.create_user(
             username="notify_owner",
@@ -674,7 +674,7 @@ class PaymentAuthorizationTests(TestCase):
         self.assertIn("started a purchase payment flow", mock_send_sms.call_args.args[1])
 
     @override_settings(ENABLE_SMS_NOTIFICATIONS=True)
-    @patch("notifications.notification_service.TextSMSService.send_sms")
+    @patch("notifications.notification_service.SMSService.send_sms")
     def test_mark_paid_notifies_seller_that_payment_is_confirmed(self, mock_send_sms):
         self.seller.email = "seller@example.com"
         self.seller.save(update_fields=["email"])

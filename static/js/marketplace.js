@@ -121,7 +121,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const clearFiltersButton = document.getElementById("clearFilters");
     const countySelect = form.querySelector('select[name="county"]');
     const subcountySelect = form.querySelector('select[name="subcounty"]');
+    const wardSelect = form.querySelector('select[name="ward"]');
     const subcountyUrl = form.dataset.subcountyUrl;
+    const wardsUrl = form.dataset.wardsUrl;
 
     async function refreshSubcounties(selectedValue = "") {
         if (!countySelect || !subcountySelect || !subcountyUrl) {
@@ -129,6 +131,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         const county = countySelect.value;
         subcountySelect.innerHTML = '<option value="">Any sub-county</option>';
+        if (wardSelect) wardSelect.innerHTML = '<option value="">Any ward</option>';
+
         if (!county) {
             return;
         }
@@ -152,14 +156,48 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    async function refreshWards(selectedValue = "") {
+        if (!subcountySelect || !wardSelect || !wardsUrl) {
+            return;
+        }
+        const subcounty = subcountySelect.value;
+        wardSelect.innerHTML = '<option value="">Any ward</option>';
+        if (!subcounty) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${wardsUrl}?subcounty=${encodeURIComponent(subcounty)}`, {
+                headers: { "X-Requested-With": "XMLHttpRequest" },
+            });
+            const data = await response.json();
+            for (const ward of data.wards || []) {
+                const option = document.createElement("option");
+                option.value = ward;
+                option.textContent = ward;
+                if (ward === selectedValue) {
+                    option.selected = true;
+                }
+                wardSelect.appendChild(option);
+            }
+        } catch (error) {
+            console.error("Error fetching wards:", error);
+        }
+    }
+
     if (countySelect) {
         countySelect.addEventListener("change", () => refreshSubcounties());
+    }
+
+    if (subcountySelect) {
+        subcountySelect.addEventListener("change", () => refreshWards());
     }
 
     if (clearFiltersButton) {
         clearFiltersButton.addEventListener("click", async () => {
             form.reset();
             await refreshSubcounties();
+            if (wardSelect) wardSelect.innerHTML = '<option value="">Any ward</option>';
         });
     }
 })();

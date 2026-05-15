@@ -1,489 +1,133 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>{{ report_title|default:"AgriPlot Report" }}</title>
-    <style>
-        @page {
-            size: A4;
-            margin: 2cm;
-            @top-center {
-                content: "";
-            }
-            @bottom-center {
-                content: "Page " counter(page) " of " counter(pages);
-                font-size: 8pt;
-                color: #999;
-            }
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        /* ============================================
-           TYPOGRAPHY - Consistent Font Settings
-           Primary: Inter (modern, clean, readable)
-           Fallback: Helvetica, Arial, sans-serif
-           Base size: 11pt (approx 12px at 96dpi)
-        ============================================ */
-        
-        body {
-            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
-            font-size: 11pt;
-            line-height: 1.5;
-            color: #1a2e1a;
-            position: relative;
-            font-weight: 400;
-        }
-        
-        /* Headers */
-        h1 {
-            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
-            font-size: 22pt;
-            font-weight: 700;
-            color: #1B5E20;
-            margin: 0 0 10px 0;
-            letter-spacing: -0.5px;
-        }
-        
-        h2 {
-            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
-            font-size: 16pt;
-            font-weight: 600;
-            color: #2E7D32;
-            margin: 20px 0 12px 0;
-            border-left: 3px solid #4CAF50;
-            padding-left: 12px;
-        }
-        
-        h3 {
-            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
-            font-size: 13pt;
-            font-weight: 600;
-            color: #333;
-            margin: 15px 0 8px 0;
-        }
-        
-        h4 {
-            font-family: 'Inter', 'Helvetica', 'Arial', sans-serif;
-            font-size: 12pt;
-            font-weight: 600;
-            color: #555;
-            margin: 12px 0 6px 0;
-        }
-        
-        p {
-            font-size: 11pt;
-            line-height: 1.5;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        /* Links */
-        a {
-            color: #2E7D32;
-            text-decoration: none;
-        }
-        
-        a:hover {
-            text-decoration: underline;
-        }
-        
-        /* Lists */
-        ul, ol {
-            margin: 10px 0 10px 20px;
-        }
-        
-        li {
-            font-size: 11pt;
-            line-height: 1.5;
-            margin-bottom: 5px;
-        }
-        
-        /* Tables */
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-            font-size: 10pt;
-        }
-        
-        th {
-            background-color: #2E7D32;
-            color: white;
-            padding: 10px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 10pt;
-        }
-        
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            vertical-align: top;
-            font-size: 10pt;
-        }
-        
-        /* Watermark */
-        body:before {
-            content: "AGRIPLOT OFFICIAL";
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%) rotate(-45deg);
-            font-size: 60pt;
-            color: rgba(46, 125, 50, 0.03);
-            white-space: nowrap;
-            pointer-events: none;
-            z-index: -1;
-            font-weight: bold;
-        }
-        
-        .report-container {
-            max-width: 100%;
-            position: relative;
-        }
-        
-        /* Header */
-        .report-header {
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 3px solid #2E7D32;
-            position: relative;
-        }
-        
-        .logo {
-            text-align: center;
-            margin-bottom: 15px;
-        }
-        
-        .logo h1 {
-            color: #2E7D32;
-            font-size: 28pt;
-            margin: 0;
-            letter-spacing: 2px;
-        }
-        
-        .logo p {
-            color: #666;
-            font-size: 9pt;
-            margin-top: 5px;
-        }
-        
-        .report-meta {
-            text-align: right;
-            font-size: 8pt;
-            color: #666;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #e0e0e0;
-        }
-        
-        /* Digital Seal Styles */
-        .digital-seal {
-            margin: 30px 0;
-            padding: 20px;
-            background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
-            border: 2px solid #2E7D32;
-            border-radius: 10px;
-            position: relative;
-            page-break-inside: avoid;
-        }
-        
-        .digital-seal:before {
-            content: "⚡";
-            position: absolute;
-            top: -15px;
-            left: 20px;
-            background: white;
-            padding: 0 10px;
-            color: #2E7D32;
-            font-weight: bold;
-        }
-        
-        .seal-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-        
-        .seal-left {
-            flex: 1;
-        }
-        
-        .seal-right {
-            text-align: center;
-        }
-        
-        .seal-stamp {
-            text-align: center;
-        }
-        
-        .stamp-outer {
-            width: 100px;
-            height: 100px;
-            border: 3px solid #2E7D32;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background: white;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        
-        .stamp-inner {
-            text-align: center;
-        }
-        
-        .stamp-text {
-            font-size: 11pt;
-            font-weight: bold;
-            color: #2E7D32;
-            border-bottom: 1px solid #2E7D32;
-            padding-bottom: 5px;
-            margin-bottom: 5px;
-        }
-        
-        .stamp-subtext {
-            font-size: 7pt;
-            color: #666;
-        }
-        
-        .stamp-date {
-            font-size: 7pt;
-            color: #999;
-            margin-top: 5px;
-        }
-        
-        .qr-text {
-            font-size: 7pt;
-            color: #666;
-            margin-top: 5px;
-        }
-        
-        .verification-info {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px dashed #ccc;
-            font-size: 8pt;
-            font-family: monospace;
-            text-align: center;
-            color: #666;
-        }
-        
-        /* Footer */
-        .report-footer {
-            margin-top: 50px;
-            padding-top: 10px;
-            border-top: 1px solid #ddd;
-            font-size: 7pt;
-            text-align: center;
-            color: #999;
-        }
-        
-        /* Print Styles */
-        @media print {
-            body {
-                background: white;
-            }
-            
-            .digital-seal {
-                background: #fafafa;
-                border: 2px solid #2E7D32;
-                break-inside: avoid;
-            }
-            
-            .no-print {
-                display: none;
-            }
-        }
-        
-        /* Progress Bar */
-        .progress-container {
-            background-color: #f0f0f0;
-            border-radius: 10px;
-            overflow: hidden;
-            margin: 15px 0;
-        }
-        
-        .progress-bar {
-            background-color: #4CAF50;
-            height: 24px;
-            text-align: center;
-            line-height: 24px;
-            color: white;
-            font-weight: bold;
-            font-size: 10pt;
-            border-radius: 10px;
-        }
-        
-        /* Card Styles */
-        .info-card {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 15px;
-            margin: 15px 0;
-            border-left: 4px solid #2E7D32;
-        }
-        
-        .warning-card {
-            background: #fff3cd;
-            border-radius: 12px;
-            padding: 15px;
-            margin: 15px 0;
-            border-left: 4px solid #ffc107;
-        }
-        
-        /* Utility Classes */
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        .text-left { text-align: left; }
-        .text-success { color: #4CAF50; }
-        .text-warning { color: #FF9800; }
-        .text-danger { color: #f44336; }
-        .text-muted { color: #6c757d; }
-        
-        .mt-1 { margin-top: 5px; }
-        .mt-2 { margin-top: 10px; }
-        .mt-3 { margin-top: 15px; }
-        .mb-1 { margin-bottom: 5px; }
-        .mb-2 { margin-bottom: 10px; }
-        .mb-3 { margin-bottom: 15px; }
-        
-        /* Badges */
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 9pt;
-            font-weight: 500;
-        }
-        
-        .badge-success {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .badge-warning {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .badge-danger {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .badge-info {
-            background: #d1ecf1;
-            color: #0c5460;
-        }
-        
-        .badge-primary {
-            background: #cce5ff;
-            color: #004085;
-        }
-        
-        /* Grid */
-        .row {
-            display: flex;
-            flex-wrap: wrap;
-            margin: -10px;
-        }
-        
-        .col {
-            flex: 1;
-            padding: 10px;
-        }
-        
-        /* Responsive */
-        @media (max-width: 600px) {
-            .seal-container {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .row {
-                flex-direction: column;
-            }
-        }
-    </style>
-    {% block extra_css %}{% endblock %}
-</head>
-<body>
-    <div class="report-container">
-        <!-- Header -->
-        <div class="report-header">
-            <div class="logo">
-                <h1>AGRIPLOT</h1>
-                <p>Official Land Registry & Transaction Platform | Securing Agricultural Land Rights in Kenya</p>
-            </div>
-            <div class="report-meta">
-                <strong>Report ID:</strong> {{ report_id|default:"N/A" }}<br>
-                <strong>Generated:</strong> {{ generated_date|date:"F d, Y H:i:s" }}<br>
-                <strong>Generated By:</strong> {{ generated_by|default:"System" }}
-            </div>
+{% extends "base.html" %}
+
+{% block full_width_content %}
+<main class="report-shell">
+    <div class="report-toolbar">
+        <div>
+            <p class="report-kicker">AgriPlot Reports</p>
+            <h1>{% block report_heading %}Report{% endblock %}</h1>
         </div>
-        
-        <!-- Main Content -->
-        {% block content %}{% endblock %}
-        
-        <!-- Digital Seal Section -->
-        <div class="digital-seal">
-            <div class="seal-container">
-                <div class="seal-left">
-                    <div class="seal-stamp">
-                        <div class="stamp-outer">
-                            <div class="stamp-inner">
-                                <div class="stamp-text">AGRIPLOT</div>
-                                <div class="stamp-subtext">OFFICIAL SEAL</div>
-                                <div class="stamp-date">{{ generated_date|date:"Y-m-d" }}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="seal-right">
-                    <div id="qrcode"></div>
-                    <div class="qr-text">Scan to Verify Authenticity</div>
-                </div>
-            </div>
-            <div class="verification-info">
-                <strong>Verification Code:</strong> {{ verification_code|default:"N/A" }}<br>
-                <strong>Document ID:</strong> {{ report_id|default:"N/A" }}<br>
-                <strong>Digital Signature:</strong> {{ digital_signature|default:"N/A" }}
-            </div>
-        </div>
-        
-        <!-- Footer -->
-        <div class="report-footer">
-            <p>This is an electronically generated document from AgriPlot. It is legally binding and verifiable online at agriplot.com/verify</p>
-            <p>© {% now "Y" %} AgriPlot - Secure Agricultural Land Transactions | All Rights Reserved</p>
+        <div class="report-actions">
+            <button type="button" class="report-action" onclick="window.print()">
+                <i class="fa-solid fa-print"></i> Print
+            </button>
+            <a class="report-action" href="{% url 'listings:dashboard_router' %}">
+                <i class="fa-solid fa-table-columns"></i> Workspace
+            </a>
         </div>
     </div>
-    
-    <!-- QR Code Library -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-    <script>
-        // Generate QR code for verification
-        var verificationCode = "{{ verification_code|default:'' }}";
-        var reportId = "{{ report_id|default:'' }}";
-        var verificationUrl = "https://agriplot.com/verify/" + verificationCode;
-        
-        if (document.getElementById('qrcode') && verificationCode) {
-            new QRCode(document.getElementById("qrcode"), {
-                text: verificationUrl,
-                width: 100,
-                height: 100,
-                colorDark: "#2E7D32",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
+    <section class="report-content">
+        {% block content %}{% endblock %}
+    </section>
+</main>
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .report-shell {
+        width: var(--ap-page-width);
+        margin: 0 auto;
+        padding: 28px 0 56px;
+    }
+
+    .report-toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-bottom: 22px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--ap-border);
+    }
+
+    .report-kicker {
+        margin: 0 0 4px;
+        color: var(--ap-green);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .report-toolbar h1 {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 38px);
+    }
+
+    .report-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .report-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 0 13px;
+        border: 1px solid var(--ap-border);
+        border-radius: 8px;
+        background: #fff;
+        color: var(--ap-text);
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    .report-content {
+        background: #fff;
+        border: 1px solid var(--ap-border);
+        border-radius: 8px;
+        padding: 26px;
+        box-shadow: var(--ap-shadow);
+    }
+
+    @media (max-width: 767.98px) {
+        .report-shell {
+            width: min(100% - 24px, 720px);
+            padding-top: 20px;
         }
-    </script>
-</body>
-</html>
+
+        .report-toolbar {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .report-actions,
+        .report-action {
+            width: 100%;
+        }
+
+        .report-action {
+            justify-content: center;
+        }
+
+        .report-content {
+            padding: 18px;
+        }
+    }
+
+    @media print {
+        .ap-topbar,
+        .ap-footer,
+        .report-actions {
+            display: none !important;
+        }
+
+        body {
+            background: #fff;
+        }
+
+        .report-shell,
+        .report-content {
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border: 0;
+            box-shadow: none;
+        }
+    }
+</style>
+{% endblock %}

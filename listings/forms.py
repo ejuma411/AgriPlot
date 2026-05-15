@@ -11,11 +11,11 @@ from django.urls import reverse
 from django.utils import timezone
 from .models import *
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
-from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES, KENYA_WARDS
 from registry_mock.services import verify_with_registry
 from registry_mock.models import RegistryMismatchAttempt
 from decimal import Decimal, InvalidOperation
-from accounts.models import Agent, Profile
+from accounts.models import Agent, LandownerProfile, Profile
 from security.models import PhoneEmailVerification
 from accounts.validators import (
     normalize_email,
@@ -582,6 +582,40 @@ class BuyerRegistrationForm(BaseUserRegistrationForm):
 class LandownerRegistrationForm(BaseUserRegistrationForm):
     """Landowner registration with document uploads"""
 
+    legal_name = forms.CharField(
+        required=True,
+        help_text="Full legal name exactly as it appears on your national ID and title deed.",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    national_id_number = forms.CharField(
+        required=True,
+        help_text="National ID or passport number.",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    kra_pin_number = forms.CharField(
+        required=True,
+        help_text="KRA PIN number for tax and transfer verification.",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    marital_status = forms.ChoiceField(
+        choices=LandownerProfile.MARITAL_STATUS_CHOICES,
+        required=True,
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+    spouse_full_name = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    spouse_id_number = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    spouse_id_doc = forms.FileField(
+        required=False,
+        help_text="Required when the land is matrimonial property and spousal consent is needed.",
+        widget=forms.FileInput(attrs={"class": "form-control"}),
+    )
+
     national_id = forms.FileField(
         required=True,
         help_text="Upload a copy of your national ID",
@@ -610,11 +644,20 @@ class LandownerRegistrationForm(BaseUserRegistrationForm):
 
     def clean(self):
         cleaned = super().clean()
+        marital_status = cleaned.get("marital_status")
+        if marital_status == "married":
+            if not cleaned.get("spouse_full_name"):
+                self.add_error("spouse_full_name", "Provide the spouse's full legal name.")
+            if not cleaned.get("spouse_id_number"):
+                self.add_error("spouse_id_number", "Provide the spouse's ID number.")
+            if not cleaned.get("spouse_id_doc"):
+                self.add_error("spouse_id_doc", "Upload the spouse's ID document for matrimonial land.")
         _validate_upload("National ID", cleaned.get('national_id'))
         _validate_upload("KRA PIN", cleaned.get('kra_pin'))
         _validate_upload("Title Deed", cleaned.get('title_deed'))
         _validate_upload("Land Search", cleaned.get('land_search'))
         _validate_upload("LCB Consent", cleaned.get('lcb_consent'))
+        _validate_upload("Spouse ID", cleaned.get("spouse_id_doc"))
         return cleaned
 
 
@@ -632,10 +675,27 @@ class AgentRegistrationForm(BaseUserRegistrationForm):
         required=True,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
+    company_name = forms.CharField(
+        max_length=200,
+        required=False,
+        help_text="Registered agency or company name, if applicable.",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
+    earb_registration_number = forms.CharField(
+        max_length=100,
+        required=True,
+        help_text="Estate Agents Registration Board number.",
+        widget=forms.TextInput(attrs={"class": "form-control"}),
+    )
     kra_pin = forms.FileField(
         required=True,
         help_text="Upload your KRA PIN certificate",
         widget=forms.FileInput(attrs={'class': 'form-control'})
+    )
+    tax_compliance_certificate = forms.FileField(
+        required=False,
+        help_text="Upload your corporate tax compliance certificate.",
+        widget=forms.FileInput(attrs={"class": "form-control"}),
     )
     practicing_certificate = forms.FileField(
         required=False,
@@ -665,6 +725,7 @@ class AgentRegistrationForm(BaseUserRegistrationForm):
         if cleaned.get("license_number"):
             cleaned["license_number"] = validate_license_number(cleaned.get("license_number"))
         _validate_upload("KRA PIN", cleaned.get('kra_pin'))
+        _validate_upload("Tax Compliance Certificate", cleaned.get("tax_compliance_certificate"))
         _validate_upload("License Document", cleaned.get('license_doc'))
         _validate_upload("Practicing Certificate", cleaned.get('practicing_certificate'))
         _validate_upload("Good Conduct", cleaned.get('good_conduct'))
@@ -725,8 +786,32 @@ class LandownerUpgradeForm(BaseUpgradeForm):
     
     class Meta:
         model = LandownerProfile
-        fields = ['national_id', 'kra_pin', 'title_deed', 'land_search', 'lcb_consent']
+        fields = [
+            "legal_name",
+            "national_id_number",
+            "kra_pin_number",
+            "marital_status",
+            "spouse_full_name",
+            "spouse_id_number",
+            "spouse_id_doc",
+            "land_rates_paid_up",
+            "land_rent_paid_up",
+            "national_id",
+            "kra_pin",
+            "title_deed",
+            "land_search",
+            "lcb_consent",
+        ]
         widgets = {
+            "legal_name": forms.TextInput(attrs={"class": "form-control"}),
+            "national_id_number": forms.TextInput(attrs={"class": "form-control"}),
+            "kra_pin_number": forms.TextInput(attrs={"class": "form-control"}),
+            "marital_status": forms.Select(attrs={"class": "form-control"}),
+            "spouse_full_name": forms.TextInput(attrs={"class": "form-control"}),
+            "spouse_id_number": forms.TextInput(attrs={"class": "form-control"}),
+            "spouse_id_doc": forms.FileInput(attrs={"class": "form-control"}),
+            "land_rates_paid_up": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "land_rent_paid_up": forms.CheckboxInput(attrs={"class": "form-check-input"}),
             'national_id': forms.FileInput(attrs={'class': 'form-control'}),
             'kra_pin': forms.FileInput(attrs={'class': 'form-control'}),
             'title_deed': forms.FileInput(attrs={'class': 'form-control'}),
@@ -741,12 +826,36 @@ class LandownerUpgradeForm(BaseUpgradeForm):
         self.fields['title_deed'].required = True
         self.fields['land_search'].required = True
         self.fields['lcb_consent'].required = False
+        self.fields["legal_name"].required = True
+        self.fields["national_id_number"].required = True
+        self.fields["kra_pin_number"].required = True
         self.order_fields([
-            'username', 'email', 'account_phone', 'national_id',
-            'kra_pin', 'title_deed', 'land_search', 'lcb_consent'
+            "username",
+            "email",
+            "account_phone",
+            "legal_name",
+            "national_id_number",
+            "kra_pin_number",
+            "marital_status",
+            "spouse_full_name",
+            "spouse_id_number",
+            "spouse_id_doc",
+            "land_rates_paid_up",
+            "land_rent_paid_up",
+            'national_id',
+            'kra_pin',
+            'title_deed',
+            'land_search',
+            'lcb_consent'
         ])
         
         # Add help texts
+        self.fields["legal_name"].help_text = "Must match your ID and title deed exactly."
+        self.fields["national_id_number"].help_text = "National ID or passport number."
+        self.fields["kra_pin_number"].help_text = "KRA PIN number used for tax clearance and CGT checks."
+        self.fields["spouse_id_doc"].help_text = "Upload spouse ID if the land is matrimonial property."
+        self.fields["land_rates_paid_up"].help_text = "Confirm county land rates are fully paid."
+        self.fields["land_rent_paid_up"].help_text = "Confirm land rent is fully paid where applicable."
         self.fields['national_id'].help_text = "Upload your national ID (required)"
         self.fields['kra_pin'].help_text = "Upload your KRA PIN certificate (required)"
         self.fields['title_deed'].help_text = "Land title deed for verification (required)"
@@ -764,11 +873,19 @@ class LandownerUpgradeForm(BaseUpgradeForm):
 
     def clean(self):
         cleaned = super().clean()
+        if cleaned.get("marital_status") == "married":
+            if not cleaned.get("spouse_full_name"):
+                self.add_error("spouse_full_name", "Provide the spouse's full legal name.")
+            if not cleaned.get("spouse_id_number"):
+                self.add_error("spouse_id_number", "Provide the spouse's ID number.")
+            if not cleaned.get("spouse_id_doc"):
+                self.add_error("spouse_id_doc", "Upload the spouse's ID document for matrimonial land.")
         _validate_upload("National ID", cleaned.get('national_id'))
         _validate_upload("KRA PIN", cleaned.get('kra_pin'))
         _validate_upload("Title Deed", cleaned.get('title_deed'))
         _validate_upload("Land Search", cleaned.get('land_search'))
         _validate_upload("LCB Consent", cleaned.get('lcb_consent'))
+        _validate_upload("Spouse ID", cleaned.get("spouse_id_doc"))
         return cleaned
 
 
@@ -805,10 +922,19 @@ class AgentUpgradeForm(BaseUpgradeForm):
     
     class Meta:
         model = Agent
-        fields = ['license_number', 'license_doc']
+        fields = [
+            "company_name",
+            "earb_registration_number",
+            "license_number",
+            "license_doc",
+            "tax_compliance_certificate",
+        ]
         widgets = {
+            "company_name": forms.TextInput(attrs={"class": "form-control"}),
+            "earb_registration_number": forms.TextInput(attrs={"class": "form-control"}),
             'license_number': forms.TextInput(attrs={'class': 'form-control'}),
             'license_doc': forms.FileInput(attrs={'class': 'form-control'}),
+            "tax_compliance_certificate": forms.FileInput(attrs={"class": "form-control"}),
         }
     
     def __init__(self, *args, **kwargs):
@@ -819,7 +945,8 @@ class AgentUpgradeForm(BaseUpgradeForm):
         # Reorder fields
         self.order_fields([
             'username', 'email', 'account_phone', 'id_number',
-            'license_number', 'license_doc', 'kra_pin', 'practicing_certificate',
+            'company_name', 'earb_registration_number', 'license_number', 'license_doc',
+            'kra_pin', 'tax_compliance_certificate', 'practicing_certificate',
             'good_conduct', 'professional_indemnity'
         ])
 
@@ -828,6 +955,7 @@ class AgentUpgradeForm(BaseUpgradeForm):
         # Validate document uploads (Q7: robust server-side validation)
         doc_fields = [
             ('kra_pin', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
+            ('tax_compliance_certificate', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
             ('practicing_certificate', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
             ('good_conduct', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
             ('professional_indemnity', 10, ['.pdf', '.jpg', '.jpeg', '.png']),
@@ -848,12 +976,16 @@ class AgentUpgradeForm(BaseUpgradeForm):
         if user:
             instance.user = user
             instance.id_number = self.cleaned_data.get('id_number', '')
+            instance.company_name = self.cleaned_data.get("company_name", "")
+            instance.earb_registration_number = self.cleaned_data.get("earb_registration_number", "")
             if hasattr(user, "profile") and user.profile.phone:
                 instance.phone = user.profile.phone
         
         # Save file fields
         if self.cleaned_data.get('kra_pin'):
             instance.kra_pin = self.cleaned_data['kra_pin']
+        if self.cleaned_data.get("tax_compliance_certificate"):
+            instance.tax_compliance_certificate = self.cleaned_data["tax_compliance_certificate"]
         if self.cleaned_data.get('practicing_certificate'):
             instance.practicing_certificate = self.cleaned_data['practicing_certificate']
         if self.cleaned_data.get('good_conduct'):
@@ -912,8 +1044,7 @@ class PlotForm(forms.ModelForm):
         ('industrial', 'Industrial Land'),
     ]
     
-    # Kenyan county and subcounty fields - make them not required at form level
-    # since they're now model fields
+    # Kenyan county field
     county = forms.ChoiceField(
         choices=[('', '-- Select County --')] + [(c, c) for c in KENYA_COUNTIES],
         required=True,
@@ -923,6 +1054,7 @@ class PlotForm(forms.ModelForm):
         })
     )
     
+    # Subcounty field - choices will be populated dynamically
     subcounty = forms.ChoiceField(
         choices=[('', '-- Select Sub-county --')],
         required=True,
@@ -932,11 +1064,22 @@ class PlotForm(forms.ModelForm):
         })
     )
     
+    # Ward field - choices will be populated dynamically based on subcounty
+    ward = forms.ChoiceField(
+        choices=[('', '-- Select Ward --')],
+        required=False,
+        widget=forms.Select(attrs={
+            'class': 'form-control ward-select',
+            'id': 'id_ward'
+        }),
+        help_text="Select the ward where your plot is located"
+    )
+    
     # Keep location field but make it optional (will be auto-generated)
     location = forms.CharField(
         required=False,
         widget=forms.HiddenInput(),
-        help_text="Auto-generated from county and subcounty"
+        help_text="Auto-generated from county, subcounty and ward"
     )
     
     # Add new fields for enhanced plot details
@@ -951,12 +1094,7 @@ class PlotForm(forms.ModelForm):
         required=True,
         widget=forms.Select(attrs={'class': 'form-control'})
     )
-    
-    land_use_description = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-        help_text="Describe the current use of this land"
-    )
+
 
     parcel_number = forms.CharField(
         required=True,
@@ -1074,6 +1212,12 @@ class PlotForm(forms.ModelForm):
         required=False,
         widget=forms.Select(attrs={'class': 'form-control'})
     )
+    lease_payment_frequency = forms.ChoiceField(
+        choices=[("", "Select payment frequency")] + list(Plot.LEASE_PAYMENT_FREQUENCY_CHOICES),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="How the lease amount is expected to be paid."
+    )
     
     lease_terms = forms.CharField(
         required=False,
@@ -1096,6 +1240,12 @@ class PlotForm(forms.ModelForm):
         widget=forms.TextInput(attrs={'class': 'form-control'}),
         help_text="Lease duration/expiry or tenure notes"
     )
+    lease_term_remaining_years = forms.IntegerField(
+        required=False,
+        min_value=1,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '1'}),
+        help_text="If the title is leasehold, how many years remain on the lease?"
+    )
     encumbrances = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
@@ -1108,10 +1258,6 @@ class PlotForm(forms.ModelForm):
         required=False,
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
-    ward = forms.CharField(
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'e.g., Mauche, Kiamaina, Bahati'})
-    )
     price_basis = forms.ChoiceField(
         choices=Plot.PRICE_BASIS_CHOICES,
         required=True,
@@ -1121,11 +1267,7 @@ class PlotForm(forms.ModelForm):
         required=False,
         widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'})
     )
-    price_notes = forms.CharField(
-        required=False,
-        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2}),
-        help_text="Optional notes on market trends or negotiation"
-    )
+
     is_price_negotiable = forms.BooleanField(
         required=False,
         widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
@@ -1229,9 +1371,19 @@ class PlotForm(forms.ModelForm):
         required=False,
         widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'})
     )
+    rates_paid_up = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text="Confirm county land rates are fully paid up."
+    )
     rent_clearance = forms.FileField(
         required=False,
         widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'})
+    )
+    rent_paid_up = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        help_text="Confirm land rent is fully paid up where the title is leasehold."
     )
     lcb_consent_doc = forms.FileField(
         required=False,
@@ -1245,6 +1397,28 @@ class PlotForm(forms.ModelForm):
         required=False,
         widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'})
     )
+    landowner_phone_for_approval = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': '07XXXXXXXX'}),
+        help_text="For agent-led listings, enter the landowner phone number for approval workflow."
+    )
+    agency_agreement = forms.FileField(
+        required=False,
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.pdf,.jpg,.jpeg,.png'}),
+        help_text="Signed authority letter or agency agreement from the landowner."
+    )
+    agent_commission_type = forms.ChoiceField(
+        choices=[("", "Select commission type")] + list(Plot.AGENT_COMMISSION_TYPE_CHOICES),
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    agent_commission_value = forms.DecimalField(
+        required=False,
+        max_digits=12,
+        decimal_places=2,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'min': '0', 'step': '0.01'}),
+        help_text="Percentage or fixed amount agreed with the landowner."
+    )
     
     class Meta:
         model = Plot
@@ -1255,18 +1429,15 @@ class PlotForm(forms.ModelForm):
             'owner_full_name', 'owner_id_number', 'owner_kra_pin_number', 'spousal_consent',
             'listing_type', 'land_type',
             'land_use_description', 'nearest_town',
-            'soil_type', 'topography', 'ph_level', 'crop_suitability',
-            'ownership_type', 'tenure_details', 'encumbrances', 'encumbrance_details',
+            'ownership_type', 'tenure_details', 'lease_term_remaining_years', 'encumbrances', 'encumbrance_details',
             'sale_price', 'price_per_acre',
-            'lease_price_monthly', 'lease_price_yearly', 'lease_duration', 'lease_terms',
+            'lease_price_monthly', 'lease_price_yearly', 'lease_duration', 'lease_payment_frequency', 'lease_terms',
             'price_basis', 'valuation_report', 'price_notes', 'is_price_negotiable', 'price_review_required', 'pricing_override_reason', 'lease_basis', 'government_price_proof',
-            'has_water', 'water_source', 'has_electricity', 'electricity_meter',
-            'has_road_access', 'road_type', 'road_distance_km',
-            'has_buildings', 'building_description', 'other_amenities', 'fencing',
             'title_deed', 'survey_map', 'spousal_consent_doc',
-            'official_search', 'rates_clearance', 'rent_clearance',
+            'official_search', 'rates_clearance', 'rates_paid_up', 'rent_clearance', 'rent_paid_up',
             'lcb_consent_doc', 'plupa1_form', 'consent_to_transfer',
-            'landowner_id_doc', 'kra_pin'
+            'landowner_id_doc', 'kra_pin', 'landowner_phone_for_approval', 'agency_agreement',
+            'agent_commission_type', 'agent_commission_value'
         ]
         widgets = {
             'title': forms.TextInput(attrs={
@@ -1336,6 +1507,10 @@ class PlotForm(forms.ModelForm):
                 'class': 'form-control',
                 'accept': '.pdf,.jpg,.jpeg,.png'
             }),
+            'agency_agreement': forms.ClearableFileInput(attrs={
+                'class': 'form-control',
+                'accept': '.pdf,.jpg,.jpeg,.png'
+            }),
         }
     
     def __init__(self, *args, **kwargs):
@@ -1344,38 +1519,96 @@ class PlotForm(forms.ModelForm):
         self.user = kwargs.pop('user', None)
         self.is_edit = kwargs.get('instance', None) is not None
         super().__init__(*args, **kwargs)
-        
-        # If this is a POST request, update subcounty choices based on submitted county
-        if self.data.get('county'):
-            county = self.data.get('county')
-            if county in KENYA_SUB_COUNTIES:
-                self.fields['subcounty'].choices = [('', '-- Select Sub-county --')] + [
-                    (sc, sc) for sc in KENYA_SUB_COUNTIES[county]
-                ]
-        
-        # If editing an existing plot, set county and subcounty values
-        elif self.instance and self.instance.county and self.instance.subcounty:
-            self.fields['county'].initial = self.instance.county
-            # Update subcounty choices for this county
-            if self.instance.county in KENYA_SUB_COUNTIES:
-                self.fields['subcounty'].choices = [('', '-- Select Sub-county --')] + [
-                    (sc, sc) for sc in KENYA_SUB_COUNTIES[self.instance.county]
-                ]
-                self.fields['subcounty'].initial = self.instance.subcounty
-        
-        def _value(field_name, default=None):
-            if field_name in self.data:
-                return self.data.get(field_name) or default
-            if self.instance and getattr(self.instance, field_name, None) is not None:
-                return getattr(self.instance, field_name)
-            return default
 
+        # Remove agronomy, amenities, and infrastructure fields (completed by verification officers)
+        for field_name in [
+            "soil_type",
+            "ph_level",
+            "crop_suitability",
+            "topography",
+            "has_water",
+            "water_source",
+            "has_electricity",
+            "electricity_meter",
+            "has_road_access",
+            "road_type",
+            "road_distance_km",
+            "has_buildings",
+            "building_description",
+            "other_amenities",
+            "fencing",
+        ]:
+            self.fields.pop(field_name, None)
+        
+        # Get the current values for dynamic choices
+        current_county = None
+        current_subcounty = None
+        
+        # Determine current county value
+        if self.data and self.data.get('county'):
+            current_county = self.data.get('county')
+        elif self.instance and self.instance.county:
+            current_county = self.instance.county
+            
+        # Determine current subcounty value
+        if self.data and self.data.get('subcounty'):
+            current_subcounty = self.data.get('subcounty')
+        elif self.instance and self.instance.subcounty:
+            current_subcounty = self.instance.subcounty
+        
+        # Set subcounty choices based on selected county (like KENYA_SUB_COUNTIES)
+        subcounty_choices = [('', '-- Select Sub-county --')]
+        if current_county and current_county in KENYA_SUB_COUNTIES:
+            subcounty_choices.extend([(sc, sc) for sc in KENYA_SUB_COUNTIES[current_county]])
+        self.fields['subcounty'].choices = subcounty_choices
+        
+        # Set ward choices based on selected subcounty (like KENYA_WARDS)
+        ward_choices = [('', '-- Select Ward --')]
+        if current_subcounty and current_subcounty in KENYA_WARDS:
+            ward_choices.extend([(ward, ward) for ward in KENYA_WARDS[current_subcounty]])
+        self.fields['ward'].choices = ward_choices
+        
+        # Set initial values for edit mode
+        if self.instance and self.instance.pk:
+            if self.instance.county:
+                self.fields['county'].initial = self.instance.county
+            if self.instance.subcounty:
+                self.fields['subcounty'].initial = self.instance.subcounty
+            if self.instance.ward:
+                # Only set initial if the value exists in the choices
+                if self.instance.ward in [choice[0] for choice in ward_choices]:
+                    self.fields['ward'].initial = self.instance.ward
+                elif self.instance.ward:
+                    # If ward not in predefined list, add it as an option
+                    ward_choices.append((self.instance.ward, self.instance.ward))
+                    self.fields['ward'].choices = ward_choices
+                    self.fields['ward'].initial = self.instance.ward
+        
         # Set required fields for creation vs edit
         if not self.is_edit:
-            land_type_value = _value('land_type')
-            ownership_type_value = _value('ownership_type')
-            is_subdivision_value = bool(_value('is_subdivision'))
-            spousal_consent_value = bool(_value('spousal_consent'))
+            land_type_value = None
+            if self.data and self.data.get('land_type'):
+                land_type_value = self.data.get('land_type')
+            elif self.instance and self.instance.land_type:
+                land_type_value = self.instance.land_type
+                
+            ownership_type_value = None
+            if self.data and self.data.get('ownership_type'):
+                ownership_type_value = self.data.get('ownership_type')
+            elif self.instance and self.instance.ownership_type:
+                ownership_type_value = self.instance.ownership_type
+                
+            is_subdivision_value = False
+            if self.data and self.data.get('is_subdivision'):
+                is_subdivision_value = self.data.get('is_subdivision') in ['on', 'true', True]
+            elif self.instance and self.instance.is_subdivision:
+                is_subdivision_value = self.instance.is_subdivision
+                
+            spousal_consent_value = False
+            if self.data and self.data.get('spousal_consent'):
+                spousal_consent_value = self.data.get('spousal_consent') in ['on', 'true', True]
+            elif self.instance and self.instance.spousal_consent:
+                spousal_consent_value = self.instance.spousal_consent
 
             required_docs = [
                 'title_deed',
@@ -1426,7 +1659,7 @@ class PlotForm(forms.ModelForm):
         self.fields['title'].help_text = "Give your plot a descriptive title"
         self.fields['county'].help_text = "Select the county where your plot is located"
         self.fields['subcounty'].help_text = "Select the specific sub-county"
-        self.fields['ward'].help_text = "Optional but recommended for hyper-local search trust."
+        self.fields['ward'].help_text = "Select the specific ward (helps with hyper-local search)"
         self.fields['market_zone'].help_text = "Tell AgriPlot whether this land is rural, peri-urban, or urban for pricing guidance."
         self.fields['area'].help_text = "Land area value"
         self.fields['area_unit'].help_text = "Select acres or hectares"
@@ -1437,13 +1670,12 @@ class PlotForm(forms.ModelForm):
         self.fields['owner_kra_pin_number'].help_text = "Registered owner's KRA PIN number"
         self.fields['price_basis'].help_text = "How was the selling price determined?"
         self.fields['lease_basis'].help_text = "How was the lease price determined?"
-        self.fields['topography'].help_text = "Describe the slope of the land for farming and access decisions."
         self.fields['valuation_report'].help_text = "Optional valuation report (PDF/Image)"
         self.fields['price_notes'].help_text = "Optional notes about market demand or negotiations"
         self.fields['price_review_required'].help_text = "Automatically turned on when your asking price goes beyond the regional guide."
         self.fields['pricing_override_reason'].help_text = "Explain boreholes, greenhouses, fencing, or any other value additions if you are above the guide."
-        self.fields['other_amenities'].help_text = "Optional: mention any extra amenities or access features not captured above."
         self.fields['ownership_type'].help_text = "Legal tenure status"
+        self.fields['lease_term_remaining_years'].help_text = "Visible when the title is leasehold."
         self.fields['encumbrance_details'].help_text = "Specify any caveats, loans, or disputes"
         self.fields['title_deed'].help_text = "Upload title deed document (PDF/Image, max 20MB)"
         self.fields['survey_map'].help_text = "Upload survey map or mutation form (PDF/Image, max 20MB)"
@@ -1452,7 +1684,9 @@ class PlotForm(forms.ModelForm):
             self.fields['soil_report'].help_text = "Upload soil test report (PDF/Image, max 20MB, optional)"
         self.fields['official_search'].help_text = "Official land search certificate (PDF/Image, max 20MB)"
         self.fields['rates_clearance'].help_text = "Land rates clearance certificate (PDF/Image, max 20MB)"
+        self.fields['rates_paid_up'].help_text = "Check only if county land rates are fully paid."
         self.fields['rent_clearance'].help_text = "Land rent clearance certificate (PDF/Image, max 20MB)"
+        self.fields['rent_paid_up'].help_text = "Check if leasehold land rent is fully paid."
         if 'lcb_consent_doc' in self.fields:
             self.fields['lcb_consent_doc'].help_text = "Land Control Board consent (PDF/Image, max 20MB)"
         if 'plupa1_form' in self.fields:
@@ -1461,7 +1695,13 @@ class PlotForm(forms.ModelForm):
             self.fields['consent_to_transfer'].help_text = "Consent to transfer (PDF/Image, max 20MB)"
         self.fields['landowner_id_doc'].help_text = "Landowner's national ID (PDF/Image, max 20MB)"
         self.fields['kra_pin'].help_text = "Landowner's KRA PIN certificate (PDF/Image, max 20MB)"
+        self.fields['landowner_phone_for_approval'].help_text = "Required when an agent is listing on behalf of an owner."
+        self.fields['agency_agreement'].help_text = "Upload the signed authority letter or agency agreement."
+        self.fields['agent_commission_type'].help_text = "How the owner and agent agreed to handle commission."
+        self.fields['agent_commission_value'].help_text = "Enter a percentage or a fixed KES amount."
         self.fields['price_review_required'].widget = forms.HiddenInput()
+        
+        # Price band guidance and suggestions
         self.price_band_guidance = {
             'sale': self._build_price_guidance('sale'),
             'lease': self._build_price_guidance('lease'),
@@ -1553,12 +1793,13 @@ class PlotForm(forms.ModelForm):
         validation_errors = []
         
         # =========================================================================
-        # LOCATION VALIDATION (County & Subcounty)
+        # LOCATION VALIDATION (County, Subcounty & Ward)
         # =========================================================================
         county = cleaned_data.get('county')
         subcounty = cleaned_data.get('subcounty')
+        ward = cleaned_data.get('ward')
         
-        logger.debug(f"Validating location - County: {county}, Subcounty: {subcounty}")
+        logger.debug(f"Validating location - County: {county}, Subcounty: {subcounty}, Ward: {ward}")
         
         # County validation
         if not county:
@@ -1588,8 +1829,20 @@ class PlotForm(forms.ModelForm):
                 validation_logger.error(f"Invalid subcounty '{subcounty}' for county '{county}'")
                 validation_logger.debug(f"Valid subcounties for {county}: {valid_subcounties}")
         
-        # Combine county and subcounty into location field for backward compatibility
-        ward = cleaned_data.get('ward')
+        # Ward validation (only if ward is selected)
+        if ward:
+            if subcounty and subcounty in KENYA_WARDS:
+                valid_wards = KENYA_WARDS.get(subcounty, [])
+                if valid_wards and ward not in valid_wards:
+                    error_msg = f'"{ward}" is not a valid ward for {subcounty}. Please select from the list.'
+                    self.add_error('ward', error_msg)
+                    validation_errors.append(f"ward: {error_msg}")
+                    validation_logger.warning(f"Invalid ward '{ward}' for subcounty '{subcounty}'")
+            # If ward doesn't exist in our data, allow it but log a warning
+            elif subcounty and subcounty not in KENYA_WARDS:
+                validation_logger.info(f"No ward data available for subcounty '{subcounty}', allowing manual entry: '{ward}'")
+        
+        # Combine county, subcounty and ward into location field for backward compatibility
         if county and subcounty:
             location_parts = [county, subcounty]
             if ward:
@@ -1613,6 +1866,12 @@ class PlotForm(forms.ModelForm):
         area_unit = cleaned_data.get('area_unit') or 'acres'
         spousal_consent = cleaned_data.get('spousal_consent')
         spousal_consent_doc = cleaned_data.get('spousal_consent_doc')
+        landowner_phone_for_approval = cleaned_data.get('landowner_phone_for_approval')
+        agency_agreement = cleaned_data.get('agency_agreement')
+        agent_commission_type = cleaned_data.get('agent_commission_type')
+        agent_commission_value = cleaned_data.get('agent_commission_value')
+        rates_paid_up = cleaned_data.get('rates_paid_up')
+        rent_paid_up = cleaned_data.get('rent_paid_up')
         
         def _norm(value):
             return (value or "").strip().lower()
@@ -1665,6 +1924,7 @@ class PlotForm(forms.ModelForm):
 
         land_type = cleaned_data.get('land_type')
         ownership_type = cleaned_data.get('ownership_type')
+        lease_term_remaining_years = cleaned_data.get('lease_term_remaining_years')
         if land_type == 'agricultural' and not cleaned_data.get('lcb_consent_doc'):
             self.add_error('lcb_consent_doc', "LCB consent is required for agricultural land.")
             validation_errors.append("lcb_consent_doc: required for agricultural land")
@@ -1682,14 +1942,75 @@ class PlotForm(forms.ModelForm):
             if not cleaned_data.get('consent_to_transfer'):
                 self.add_error('consent_to_transfer', "Consent to transfer is required for leasehold plots.")
                 validation_errors.append("consent_to_transfer: required for leasehold")
+            if not lease_term_remaining_years:
+                self.add_error('lease_term_remaining_years', "Provide the number of years remaining on the lease.")
+                validation_errors.append("lease_term_remaining_years: required for leasehold")
+            if not rent_paid_up:
+                self.add_error('rent_paid_up', "Confirm that land rent is fully paid for leasehold plots.")
+                validation_errors.append("rent_paid_up: required confirmation")
+
+        if not rates_paid_up:
+            self.add_error('rates_paid_up', "Confirm that county land rates are fully paid.")
+            validation_errors.append("rates_paid_up: required confirmation")
+
+        if self.owner and isinstance(self.owner, Agent):
+            if not landowner_phone_for_approval:
+                self.add_error(
+                    'landowner_phone_for_approval',
+                    "Agents must provide the landowner's phone number for owner approval."
+                )
+                validation_errors.append("landowner_phone_for_approval: required for agent")
+            else:
+                try:
+                    cleaned_data['landowner_phone_for_approval'] = validate_kenyan_phone(
+                        landowner_phone_for_approval
+                    )
+                except ValidationError as exc:
+                    self.add_error('landowner_phone_for_approval', exc)
+                    validation_errors.append("landowner_phone_for_approval: invalid phone")
+            if not agency_agreement:
+                self.add_error(
+                    'agency_agreement',
+                    "Upload the signed authority letter or agency agreement before listing."
+                )
+                validation_errors.append("agency_agreement: required for agent")
+            if agent_commission_type and not agent_commission_value:
+                self.add_error(
+                    'agent_commission_value',
+                    "Provide the commission value once you choose a commission type."
+                )
+                validation_errors.append("agent_commission_value: required with type")
+            if agent_commission_value and not agent_commission_type:
+                self.add_error(
+                    'agent_commission_type',
+                    "Choose whether the commission is a percentage or a fixed amount."
+                )
+                validation_errors.append("agent_commission_type: required with value")
+            if agent_commission_type == 'percentage' and agent_commission_value is not None:
+                if agent_commission_value <= 0 or agent_commission_value > 100:
+                    self.add_error(
+                        'agent_commission_value',
+                        "Percentage commission must be greater than 0 and no more than 100."
+                    )
+                    validation_errors.append("agent_commission_value: invalid percentage")
+            if agent_commission_type == 'fixed' and agent_commission_value is not None:
+                if agent_commission_value <= 0:
+                    self.add_error(
+                        'agent_commission_value',
+                        "Fixed commission must be greater than 0."
+                    )
+                    validation_errors.append("agent_commission_value: invalid fixed amount")
 
         if self.owner and not self.is_edit:
             try:
                 if isinstance(self.owner, Agent):
                     self.instance.agent = self.owner
+                    self.instance.owner_approval_status = "pending"
+                    self.instance.owner_approval_requested_at = timezone.now()
                     logger.debug(f"Set agent owner: {self.owner.id}")
                 elif isinstance(self.owner, LandownerProfile):
                     self.instance.landowner = self.owner
+                    self.instance.owner_approval_status = "not_required"
                     logger.debug(f"Set landowner owner: {self.owner.id}")
             except Exception as e:
                 error_msg = f"Error setting owner: {str(e)}"
@@ -1705,146 +2026,6 @@ class PlotForm(forms.ModelForm):
                 self.add_error('parcel_number', error_msg)
                 validation_errors.append(f"parcel_number: {error_msg}")
 
-        # Registry verification (only for new listings)
-        if require_parcel and parcel_number:
-            mismatch_count = RegistryMismatchAttempt.objects.filter(
-                parcel_number__iexact=parcel_number
-            ).count()
-            if mismatch_count >= 3:
-                raise forms.ValidationError(
-                    "This parcel number has been flagged for repeated mismatches. Contact support."
-                )
-
-            registry_result = verify_with_registry(parcel_number)
-            if not registry_result.get("verified"):
-                message = registry_result.get("message") or "Registry verification failed."
-                validation_logger.warning(
-                    "Registry verification failed for parcel=%s reason=%s",
-                    parcel_number,
-                    message
-                )
-                try:
-                    RegistryMismatchAttempt.objects.create(
-                        parcel_number=parcel_number,
-                        provided_owner_name=owner_full_name or "",
-                        provided_owner_id=owner_id_number or "",
-                        user=self.user,
-                        reason=message
-                    )
-                except Exception:
-                    pass
-                raise forms.ValidationError(f"Legal verification failed: {message}")
-
-            # Store a JSON-serializable subset for audit trails
-            record = registry_result.get("record")
-            record_data = {}
-            if record:
-                record_data = {
-                    "parcel_number": record.parcel_number,
-                    "registered_owner_name": record.registered_owner_name,
-                    "owner_id_number": record.owner_id_number,
-                    "owner_kra_pin": record.owner_kra_pin,
-                    "county": record.county,
-                    "subcounty": record.subcounty,
-                    "registration_section": record.registration_section,
-                    "search_reference_number": record.search_reference_number,
-                    "search_certificate_date": record.search_certificate_date.isoformat() if record.search_certificate_date else None,
-                    "acreage_ha": float(record.acreage_ha) if record.acreage_ha is not None else None,
-                    "land_type": record.land_type,
-                    "is_charged": bool(record.is_charged),
-                    "has_caution": bool(record.has_caution),
-                }
-                if owner_full_name and _norm(owner_full_name) != _norm(record.registered_owner_name):
-                    self.add_error('owner_full_name', "Owner name must match registry.")
-                    validation_errors.append("owner_full_name: registry mismatch")
-                if owner_id_number and _norm(owner_id_number) != _norm(record.owner_id_number):
-                    self.add_error('owner_id_number', "Owner ID must match registry.")
-                    validation_errors.append("owner_id_number: registry mismatch")
-                if owner_kra_pin_number and record.owner_kra_pin and _norm(owner_kra_pin_number) != _norm(record.owner_kra_pin):
-                    self.add_error('owner_kra_pin_number', "Owner KRA PIN must match registry.")
-                    validation_errors.append("owner_kra_pin_number: registry mismatch")
-                if record.county and county and _norm(county) != _norm(record.county):
-                    self.add_error('county', "County must match registry.")
-                    validation_errors.append("county: registry mismatch")
-                if record.subcounty and subcounty and _norm(subcounty) != _norm(record.subcounty):
-                    self.add_error('subcounty', "Sub-county must match registry.")
-                    validation_errors.append("subcounty: registry mismatch")
-                if record.registration_section and registration_section and _norm(registration_section) != _norm(record.registration_section):
-                    self.add_error('registration_section', "Registration section must match registry.")
-                    validation_errors.append("registration_section: registry mismatch")
-                if record.search_reference_number and search_reference_number and _norm(search_reference_number) != _norm(record.search_reference_number):
-                    self.add_error('search_reference_number', "Search reference must match registry.")
-                    validation_errors.append("search_reference_number: registry mismatch")
-                if record.search_certificate_date and search_certificate_date and record.search_certificate_date != search_certificate_date:
-                    self.add_error('search_certificate_date', "Search date must match registry.")
-                    validation_errors.append("search_certificate_date: registry mismatch")
-
-                cleaned_data['owner_full_name'] = record.registered_owner_name
-                cleaned_data['owner_id_number'] = record.owner_id_number
-                cleaned_data['owner_kra_pin_number'] = record.owner_kra_pin
-                if record.county:
-                    cleaned_data['county'] = record.county
-                    county = record.county
-                if record.subcounty:
-                    cleaned_data['subcounty'] = record.subcounty
-                    subcounty = record.subcounty
-                if record.registration_section:
-                    cleaned_data['registration_section'] = record.registration_section
-                if record.search_reference_number:
-                    cleaned_data['search_reference_number'] = record.search_reference_number
-                if record.search_certificate_date:
-                    cleaned_data['search_certificate_date'] = record.search_certificate_date
-                if record.county and record.subcounty:
-                    cleaned_data['location'] = f"{record.county} - {record.subcounty}"
-                self.instance.registry_owner_name = record.registered_owner_name
-                self.instance.registry_owner_id_number = record.owner_id_number
-                self.instance.registry_owner_kra_pin = record.owner_kra_pin
-                self.instance.registry_area_ha = record.acreage_ha
-                self.instance.registry_land_type = record.land_type
-                self.instance.registry_has_encumbrances = bool(record.is_charged or record.has_caution)
-                self.instance.is_subdivision = bool(is_subdivision)
-                self.instance.original_parcel_number = original_parcel_number or ""
-            self.registry_result = {
-                "verified": bool(registry_result.get("verified")),
-                "message": registry_result.get("message"),
-                "has_encumbrances": bool(registry_result.get("has_encumbrances")),
-                "record": record_data,
-            }
-            if registry_result.get("has_encumbrances"):
-                cleaned_data["__registry_has_encumbrance"] = True
-
-            # Extra alignment checks: ownership type and acreage (if provided)
-            if record:
-                ownership_type = cleaned_data.get("ownership_type")
-                if ownership_type in ("freehold", "leasehold"):
-                    expected = "FREEHOLD" if ownership_type == "freehold" else "LEASEHOLD"
-                    if record.land_type != expected:
-                        raise forms.ValidationError(
-                            f"Legal verification failed: title type mismatch (registry: {record.land_type})."
-                        )
-                # Compare area to registry within tolerance (5%)
-                if area is not None:
-                    area_ha = None
-                    try:
-                        area_val = float(area)
-                        if area_unit == "hectares":
-                            area_ha = area_val
-                        elif area_unit == "acres":
-                            area_ha = area_val / 2.47105
-                    except (TypeError, ValueError):
-                        area_ha = None
-                    if area_ha and record.acreage_ha:
-                        registry_ha = float(record.acreage_ha)
-                        if registry_ha > 0:
-                            diff_ratio = abs(area_ha - registry_ha) / registry_ha
-                            if diff_ratio > 0.05 and not is_subdivision:
-                                raise forms.ValidationError(
-                                    "Area differs from registry by more than 5%. Use subdivision and upload a mutation map."
-                                )
-                            if is_subdivision and not cleaned_data.get('survey_map'):
-                                self.add_error('survey_map', "Mutation/survey map is required for subdivision listings.")
-                                validation_errors.append("survey_map: required for subdivision")
-
         # =========================================================================
         # LISTING TYPE AND PRICE VALIDATION
         # =========================================================================
@@ -1852,21 +2033,18 @@ class PlotForm(forms.ModelForm):
         sale_price = cleaned_data.get('sale_price')
         lease_price_monthly = cleaned_data.get('lease_price_monthly')
         lease_price_yearly = cleaned_data.get('lease_price_yearly')
+        lease_payment_frequency = cleaned_data.get('lease_payment_frequency')
         price_basis = cleaned_data.get('price_basis')
         lease_basis = cleaned_data.get('lease_basis')
         valuation_report = cleaned_data.get('valuation_report')
         government_price_proof = cleaned_data.get('government_price_proof')
         price_notes = cleaned_data.get('price_notes')
-        county = cleaned_data.get('county')
-        subcounty = cleaned_data.get('subcounty')
         market_zone = cleaned_data.get('market_zone')
-        land_type = cleaned_data.get('land_type')
         pricing_override_reason = cleaned_data.get('pricing_override_reason')
         cleaned_data['price_review_required'] = False
         if pricing_override_reason:
             cleaned_data['pricing_override_reason'] = pricing_override_reason.strip()
-        # area and area_unit already captured above for registry alignment checks
-
+        
         def _to_acres(value, unit):
             if value is None:
                 return None
@@ -1909,6 +2087,10 @@ class PlotForm(forms.ModelForm):
                 self.add_error('lease_price_monthly', error_msg)
                 self.add_error('lease_price_yearly', error_msg)
                 validation_errors.append(f"lease_prices: {error_msg}")
+            if not lease_payment_frequency:
+                error_msg = 'Select how the lease amount is paid'
+                self.add_error('lease_payment_frequency', error_msg)
+                validation_errors.append(f"lease_payment_frequency: {error_msg}")
             
             # Validate lease prices are positive
             if lease_price_monthly and lease_price_monthly < 0:
@@ -1932,17 +2114,6 @@ class PlotForm(forms.ModelForm):
         if listing_type in ['lease', 'both']:
             if lease_basis == 'government_set' and not government_price_proof:
                 self.add_error('government_price_proof', 'Government price proof is required for this lease basis.')
-
-        other_amenities = (cleaned_data.get('other_amenities') or '').strip()
-        if other_amenities:
-            normalized_other_amenities = "\n".join(
-                line.strip() for line in other_amenities.splitlines() if line.strip()
-            )
-            if len(normalized_other_amenities) < 3:
-                self.add_error('other_amenities', 'Please provide a bit more detail for other amenities.')
-            cleaned_data['other_amenities'] = normalized_other_amenities
-        else:
-            cleaned_data['other_amenities'] = ''
 
         # Market band validation (guardrails)
         def _get_band(listing_kind):
@@ -2030,6 +2201,9 @@ class PlotForm(forms.ModelForm):
             'consent_to_transfer',
             'landowner_id_doc',
             'kra_pin',
+            'valuation_report',
+            'government_price_proof',
+            'agency_agreement',
         ]
         
         for field_name in document_fields:
@@ -2119,6 +2293,21 @@ class PlotForm(forms.ModelForm):
             plot.encumbrances = True
             if not plot.encumbrance_details:
                 plot.encumbrance_details = "Registry indicates an active charge/caution."
+        if self.owner and isinstance(self.owner, Agent):
+            landowner_phone = (self.cleaned_data.get("landowner_phone_for_approval") or "").strip()
+            if landowner_phone:
+                normalized_phone = None
+                try:
+                    normalized_phone = validate_kenyan_phone(landowner_phone)
+                except ValidationError:
+                    normalized_phone = None
+                linked_landowner = LandownerProfile.objects.filter(
+                    Q(user__profile__phone=landowner_phone)
+                    | Q(user__profile__phone=normalized_phone)
+                ).first()
+                if linked_landowner:
+                    plot.landowner = linked_landowner
+            plot.is_hidden = True
         # Ensure price is set from derived values if not explicitly provided
         if not plot.price:
             derived_price = self.cleaned_data.get('price')

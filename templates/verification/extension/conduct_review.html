@@ -176,6 +176,14 @@
                     <small class="text-danger">{{ form.water_source_verified.errors }}</small>
                 </div>
                 <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Verified water sources</label>
+                    <div class="border rounded p-3">
+                        {{ form.water_sources_available }}
+                    </div>
+                    {% if form.water_sources_available.help_text %}<small class="text-muted d-block">{{ form.water_sources_available.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.water_sources_available.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Water quality</label>
                     {{ form.water_quality }}
                     <small class="text-danger">{{ form.water_quality.errors }}</small>
@@ -186,9 +194,26 @@
                     <small class="text-danger">{{ form.irrigation_system.errors }}</small>
                 </div>
                 <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Irrigation viability</label>
+                    <div class="border rounded p-3">
+                        {{ form.irrigation_viability }}
+                    </div>
+                    <small class="text-danger">{{ form.irrigation_viability.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Power access</label>
                     {{ form.power_access }}
                     <small class="text-danger">{{ form.power_access.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Distance to nearest tarmac road (m)</label>
+                    {{ form.distance_to_tarmac_m }}
+                    <small class="text-danger">{{ form.distance_to_tarmac_m.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Distance to nearest market/town (m)</label>
+                    {{ form.distance_to_market_m }}
+                    <small class="text-danger">{{ form.distance_to_market_m.errors }}</small>
                 </div>
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Site photos</label>
@@ -237,10 +262,30 @@
             </div>
 
             <h5 class="mt-2">Recommendations</h5>
+            {% if system_crop_suggestions %}
+            <div class="alert alert-light border mb-3">
+                <strong>System crop suggestions</strong>
+                <div class="small text-muted mb-2">Based on the pH, soil, terrain, and irrigation inputs entered so far.</div>
+                <div class="d-flex flex-wrap gap-2">
+                    {% for item in system_crop_suggestions %}
+                    <span class="badge bg-success-subtle text-success border px-3 py-2">
+                        {{ item.crop.name }}
+                        <span class="text-muted">({{ item.score }})</span>
+                    </span>
+                    {% endfor %}
+                </div>
+                <ul class="small text-muted mb-0 mt-2">
+                    {% for item in system_crop_suggestions %}
+                    <li>{{ item.crop.name }}: {{ item.reasons|join:", " }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
             <div class="row">
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Recommended crops</label>
                     {{ form.recommended_crops }}
+                    {% if form.recommended_crops.help_text %}<small class="text-muted d-block">{{ form.recommended_crops.help_text }}</small>{% endif %}
                     <small class="text-danger">{{ form.recommended_crops.errors }}</small>
                 </div>
                 <div class="col-12 col-md-6 mb-3">
@@ -311,6 +356,16 @@
                     {{ form.rim_map_sheet_no }}
                     <small class="text-danger">{{ form.rim_map_sheet_no.errors }}</small>
                 </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Official document reference</label>
+                    {{ form.official_document_reference }}
+                    <small class="text-danger">{{ form.official_document_reference.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Reference number</label>
+                    {{ form.reference_number }}
+                    <small class="text-danger">{{ form.reference_number.errors }}</small>
+                </div>
                 <div class="col-12 mb-3">
                     <label class="form-label">Boundary markers</label>
                     {{ form.boundary_markers }}
@@ -319,7 +374,10 @@
                 </div>
                 <div class="col-12 col-md-6 mb-3">
                     <label class="form-label">Beacon status</label>
-                    {{ form.beacon_status }}
+                    <div class="border rounded p-3">
+                        {{ form.beacon_status }}
+                    </div>
+                    {% if form.beacon_status.help_text %}<small class="text-muted d-block">{{ form.beacon_status.help_text }}</small>{% endif %}
                     <small class="text-danger">{{ form.beacon_status.errors }}</small>
                 </div>
                 <div class="col-12 col-md-6 mb-3">
@@ -341,6 +399,12 @@
                     <label class="form-label">Boundary verification report</label>
                     {{ form.boundary_report }}
                     <small class="text-danger">{{ form.boundary_report.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <label class="form-label">Boundary data upload</label>
+                    {{ form.boundary_data_file }}
+                    {% if form.boundary_data_file.help_text %}<small class="text-muted d-block">{{ form.boundary_data_file.help_text }}</small>{% endif %}
+                    <small class="text-danger">{{ form.boundary_data_file.errors }}</small>
                 </div>
             </div>
 
@@ -455,6 +519,15 @@
                     <label class="form-label">Recommendation</label>
                     {{ form.recommendation }}
                     <small class="text-danger">{{ form.recommendation.errors }}</small>
+                </div>
+                <div class="col-12 col-md-6 mb-3">
+                    <div class="form-check mt-2">
+                        {{ form.surveyor_declaration }}
+                        <label class="form-check-label">
+                            I certify that I physically visited this parcel and verified these boundaries in accordance with the Survey Act.
+                        </label>
+                    </div>
+                    <small class="text-danger">{{ form.surveyor_declaration.errors }}</small>
                 </div>
             </div>
             {% endif %}

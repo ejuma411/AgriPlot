@@ -29,7 +29,7 @@ from accounts.models import Profile
 from security.models import TwoFactorSettings, TwoFactorBackupCode, EmailOTP, PhoneOTP
 from authentication.forms import TwoFactorSetupForm, TwoFactorVerifyForm
 from notifications.notification_service import NotificationService
-from notifications.services.sms_service import TextSMSService
+from notifications.services.sms_service import SMSService
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 import json
@@ -118,7 +118,7 @@ def _issue_login_otp(user, method):
             purpose='login',
             expires_at=expires_at
         )
-        sms = TextSMSService()
+        sms = SMSService()
         sms.send_otp(phone, otp_code)
         return True, "Verification code sent via SMS."
 

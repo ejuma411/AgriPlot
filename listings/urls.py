@@ -3,6 +3,8 @@ from django.views.generic import TemplateView
 from django.views.generic.base import RedirectView
 from django.contrib.auth.views import LogoutView
 from . import views
+from listings.views import get_wards_api
+
 
 app_name = "listings"
 
@@ -11,10 +13,13 @@ urlpatterns = [
     path("plots-for-<str:listing_type>/in-<str:county>/", views.seo_filtered_home, name="seo_filtered"),
     path("plots-in-<str:county>/", views.seo_filtered_home, name="seo_filtered_county"),
     path("", views.home, name="home"),
+    path("plots/<slug:county>/<slug:title>/<int:id>/", views.plot_detail_slug, name="plot_detail_slug"),
     path("plot/<int:id>/", views.plot_detail, name="plot_detail"),
+    path("plot/<int:plot_id>/owner-approval/", views.approve_agent_listing, name="approve_agent_listing"),
     path("plot/<int:plot_id>/lease-waitlist/", views.join_lease_waitlist, name="join_lease_waitlist"),
     path("plot/<int:plot_id>/lease-waitlist/confirm/", views.confirm_lease_waitlist, name="confirm_lease_waitlist"),
     path("plot/<int:plot_id>/save/", views.toggle_saved_plot, name="toggle_saved_plot"),
+    path("plot/<int:plot_id>/report-fraud/", views.submit_fraud_report, name="submit_fraud_report"),
     path("browse-plots/", TemplateView.as_view(template_name="listings/info/browse_plots.html"), name="browse_plots"),
     path("how-it-works/", TemplateView.as_view(template_name="listings/info/how_it_works.html"), name="how_it_works"),
     path("contact-us/", TemplateView.as_view(template_name="listings/info/contact_us.html"), name="contact_us"),
@@ -50,8 +55,11 @@ urlpatterns = [
     path("api/log-phone-view/<int:plot_id>/", views.log_phone_view, name="log_phone_view"),
     path("api/registry-lookup/", views.registry_lookup, name="registry_lookup"),
     path("api/pricing-preview/", views.pricing_preview, name="pricing_preview"),
+    path("api/recommendations/", views.recommendations_api, name="recommendations_api"),
     path("analytics/track/", views.track_ux_event, name="track_ux_event"),
     path("get-subcounties/", views.get_subcounties, name="get_subcounties"),
+    path('api/wards/', get_wards_api, name='get_wards'),
+
 
     # Settings
     path('two-factor/setup/', views.two_factor_setup, name='two_factor_setup'),

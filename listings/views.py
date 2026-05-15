@@ -8,8 +8,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView
 from django.contrib.admin.views.decorators import staff_member_required
+from django.core.mail import send_mail
 from django.core.files.storage import FileSystemStorage, default_storage
 from django.core.paginator import Paginator
+from django.db import ProgrammingError
 from django.db.models import Q, Count, Avg
 from django.db.models.functions import TruncMonth
 from django.http import Http404, JsonResponse, HttpResponse
@@ -26,11 +28,12 @@ from django.views.decorators.http import require_POST
 import json
 import os
 import uuid
-from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES, KENYA_WARDS
 from .utils import log_audit
 from django.contrib.contenttypes.models import ContentType
 from registry_mock.services import verify_with_registry
 from notifications.notification_service import NotificationService
+from .recommendation import RecommendationService
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +175,8 @@ def home(request):
     """Homepage with plot listings"""
     search_form = PlotSearchForm(request.GET or None)
     available_queryset = Plot.objects.filter(
-        verification__current_stage="approved"
+        verification__current_stage="approved",
+        is_hidden=False,
     ).select_related("agent__user")
     filtered_plots = search_form.apply(available_queryset)
 
@@ -189,10 +193,12 @@ def home(request):
     page_number = request.GET.get('page')
     featured_plots = paginator.get_page(page_number)
     saved_plot_ids = []
+    recommended_plots = []
     if request.user.is_authenticated:
         saved_plot_ids = list(
             UserInterest.objects.filter(user=request.user).values_list("plot_id", flat=True)
         )
+        recommended_plots = list(RecommendationService().recommend_for_user(request.user, limit=3))
 
     # SEO Metadata
     listing_type = search_form.cleaned_data.get('listing_type') if search_form.is_valid() else None
@@ -267,6 +273,7 @@ def home(request):
         'search_form': search_form,
         'county_choices': KENYA_COUNTIES,
         'subcounty_choices': KENYA_SUB_COUNTIES.get(search_form["county"].value() or "", []),
+        'ward_choices': KENYA_WARDS.get(search_form["subcounty"].value() or "", []),
         'saved_plot_ids': saved_plot_ids,
         'active_filters': active_filters,
         'has_active_filters': bool(active_filters),
@@ -277,6 +284,7 @@ def home(request):
         'seo_description': seo_description,
         'canonical_url': canonical_url,
         'json_ld_str': json_ld_str,
+        'recommended_plots': recommended_plots,
     })
 
 def build_remove_url(request, params_to_remove):
@@ -373,7 +381,7 @@ def plot_detail(request, id):
 
     # Non-owners can only view approved listings
     if not is_owner and not (request.user.is_staff or request.user.is_superuser):
-        if not verification or verification.current_stage != 'approved':
+        if plot.is_hidden or not verification or verification.current_stage != 'approved':
             raise Http404
     
     # Get similar plots based on location, soil type, and price
@@ -408,7 +416,9 @@ def plot_detail(request, id):
     active_lease_deal = None
     user_waitlist_entry = None
     lease_waitlist = []
+    visible_transfer_agreements = []
     if request.user.is_authenticated and not is_owner:
+        UserPlotView.record_view(request.user, plot)
         from payments.models import PaymentRequest
 
         current_buyer_deal = (
@@ -458,6 +468,23 @@ def plot_detail(request, id):
             (entry for entry in lease_waitlist if entry.user_id == request.user.id),
             None,
         )
+        visible_transfer_agreements = [
+            agreement
+            for agreement in plot.transfer_agreements.select_related(
+                "seller__user", "buyer__user", "advocate__user", "lawyer__user"
+            )
+            if agreement.can_user_view(request.user)
+        ]
+
+    can_approve_agent_listing = (
+        request.user.is_authenticated
+        and hasattr(request.user, "landownerprofile")
+        and plot.landowner_id == request.user.landownerprofile.id
+        and plot.owner_approval_status == "pending"
+    )
+
+    amenity_distances = plot.amenity_distance_summary()
+    has_amenity_distances = any(value is not None for value in amenity_distances.values())
 
     context = {
         'plot': plot,
@@ -489,9 +516,60 @@ def plot_detail(request, id):
         'show_waitlist_confirm_cta': request.user.is_authenticated and not is_owner and user_waitlist_entry and user_waitlist_entry.status == "contacted",
         'show_login_waitlist_cta': not request.user.is_authenticated and plot.next_lease_booking_open,
         'show_waitlist_priority_notice': request.user.is_authenticated and not is_owner and user_waitlist_entry and user_waitlist_entry.status == "confirmed" and plot.lease_checkout_open,
+        'amenity_distances': amenity_distances,
+        'has_amenity_distances': has_amenity_distances,
+        'water_sources': list(plot.water_sources.all()),
+        'roads': list(plot.roads.all()),
+        'markets': list(plot.markets.all()),
+        'schools': list(plot.schools.all()),
+        'health_facilities': list(plot.health_facilities.all()),
+        'visible_transfer_agreements': visible_transfer_agreements,
+        'can_approve_agent_listing': can_approve_agent_listing,
+        'canonical_url': request.build_absolute_uri(plot.get_absolute_url()) if plot.id else request.build_absolute_uri(request.path),
     }
     
     return render(request, 'listings/details.html', context)
+
+
+def plot_detail_slug(request, county, title, id):
+    plot = get_object_or_404(Plot, id=id)
+    if county != plot.public_county_slug or title != plot.public_title_slug:
+        return redirect(plot.get_absolute_url(), permanent=True)
+    return plot_detail(request, id=id)
+
+
+@login_required
+@require_POST
+def approve_agent_listing(request, plot_id):
+    plot = get_object_or_404(Plot, id=plot_id)
+    if not hasattr(request.user, "landownerprofile") or plot.landowner_id != request.user.landownerprofile.id:
+        raise Http404
+    action = request.POST.get("action", "approve")
+    notes = (request.POST.get("notes") or "").strip()
+    if plot.owner_approval_status != "pending":
+        messages.info(request, "This listing has already been reviewed.")
+        return redirect(plot.get_absolute_url())
+
+    plot.owner_approval_notes = notes
+    if action == "reject":
+        plot.owner_approval_status = "rejected"
+        plot.owner_approval_at = timezone.now()
+        plot.is_hidden = True
+        messages.success(request, "You rejected the agent listing request.")
+    else:
+        plot.owner_approval_status = "approved"
+        plot.owner_approval_at = timezone.now()
+        messages.success(request, "You approved the agent listing request. It will continue through verification.")
+    plot.save(
+        update_fields=[
+            "owner_approval_status",
+            "owner_approval_at",
+            "owner_approval_notes",
+            "is_hidden",
+            "updated_at",
+        ]
+    )
+    return redirect(plot.get_absolute_url())
 
 
 @login_required
@@ -528,6 +606,56 @@ def toggle_saved_plot(request, plot_id):
     if next_url:
         return redirect(next_url)
     return redirect("listings:plot_detail", id=plot_id)
+
+
+@login_required
+@require_POST
+def submit_fraud_report(request, plot_id):
+    plot = get_object_or_404(Plot, id=plot_id)
+    reason = (request.POST.get("reason") or "").strip()
+    notes = (request.POST.get("notes") or "").strip()
+
+    if not reason:
+        messages.error(request, "Please include the reason for your fraud report.")
+        return redirect(plot.get_absolute_url())
+
+    report = FraudReport.objects.create(
+        plot=plot,
+        reporter=request.user,
+        reason=reason,
+        notes=notes,
+    )
+    staff_recipients = list(
+        User.objects.filter(is_staff=True).exclude(email="").values_list("email", flat=True)
+    )
+    if staff_recipients:
+        send_mail(
+            subject=f"AgriPlot fraud report for plot #{plot.id}",
+            message=(
+                f"Plot: {plot.title}\n"
+                f"Reporter: {request.user.get_username()}\n"
+                f"Reason: {report.reason}\n"
+                f"Notes: {report.notes or '-'}"
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=staff_recipients,
+            fail_silently=True,
+        )
+    messages.success(request, "Your report has been submitted for admin review.")
+    return redirect(plot.get_absolute_url())
+
+
+@login_required
+def recommendations_api(request):
+    strategy = request.GET.get("strategy") or RecommendationService.RULE_BASED
+    service = RecommendationService(strategy=strategy)
+    plots = service.recommend_for_user(request.user, limit=int(request.GET.get("limit", 6)))
+    return JsonResponse(
+        {
+            "strategy": strategy,
+            "results": RecommendationService.serialize(plots),
+        }
+    )
 # ============ PLOT MANAGEMENT ============
 
 import json
@@ -543,7 +671,8 @@ from django.db import IntegrityError, DatabaseError
 from .forms import PlotForm
 from .models import Plot, VerificationStatus, Agent, LandownerProfile
 from registry_mock.models import RegistryMismatchAttempt
-from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES, KENYA_WARDS, KENYA_WARDS
+
 from .utils import log_audit
 
 # Get loggers
@@ -889,6 +1018,11 @@ def get_subcounties(request):
         })
     return JsonResponse({'subcounties': []})
 
+def get_wards_api(request):
+    """API endpoint to get wards for a given subcounty"""
+    subcounty = request.GET.get('subcounty', '')
+    wards = KENYA_WARDS.get(subcounty, [])
+    return JsonResponse({'wards': wards})
 
 @login_required
 def pricing_preview(request):
@@ -964,7 +1098,7 @@ from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from .forms import PlotForm
 from .models import Plot, Agent, LandownerProfile, VerificationTask, VerificationStatus, VerificationLog
-from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES, KENYA_WARDS
 from .utils import log_audit
 from verification.verification_service import VerificationService
 
@@ -1812,7 +1946,7 @@ def track_ux_event(request):
 @login_required
 def landowner_success(request):
     """Success page after landowner registration wizard"""
-    return render(request, 'listings/landowner_success.html')
+    return render(request, 'accounts/landowner_success.html')
 
 
 # ============ STATIC INFO PAGES ============

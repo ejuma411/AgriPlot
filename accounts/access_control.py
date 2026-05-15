@@ -37,6 +37,7 @@ ROLE_PERMISSIONS = {
         "wallet.manage",
         "audit.view_all",
         "users.manage",
+        "transactions.manage",
     },
     "system_admin": {
         "dashboard.staff",
@@ -104,18 +105,21 @@ ROLE_PERMISSIONS = {
         "plots.view_own",
         "messages.view_own",
         "wallet.view_own",
+        "transactions.view_own",
     },
     "landowner": {
         "dashboard.client",
         "plots.view_own",
         "messages.view_own",
         "wallet.view_own",
+        "transactions.view_own",
     },
     "buyer": {
         "dashboard.client",
         "saved_plots.view_own",
         "payments.view_own",
         "wallet.view_own",
+        "transactions.view_own",
     },
 }
 
@@ -225,6 +229,15 @@ DASHBOARD_MODULES = (
         permission="finance.view_escrow",
         section="Finance",
         badge_key="payment_admin_task_count",
+    ),
+    DashboardModule(
+        key="transactions",
+        title="Land Transfers",
+        description="Legal stages, conveyancing timeline, and registered titles.",
+        icon="fas fa-file-contract",
+        section_key="transactions",
+        permission="transactions.view_own",
+        section="Finance",
     ),
     DashboardModule(
         key="wallet_control",

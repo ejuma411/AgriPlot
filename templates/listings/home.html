@@ -18,7 +18,9 @@
         <p>Discover plots using soil analytics, location insights and Seller verification.</p>
 
         <!-- ENHANCED SEARCH FORM - FULLY RESPONSIVE -->
-        <form method="GET" class="market-search" id="searchForm" data-subcounty-url="{% url 'listings:get_subcounties' %}">
+        <form method="GET" class="market-search" id="searchForm" 
+              data-subcounty-url="{% url 'listings:get_subcounties' %}"
+              data-wards-url="{% url 'listings:get_wards' %}">
             <!-- Main search row -->
             <div class="search-main-row">
                 <div class="search-field location-field">
@@ -71,7 +73,12 @@
 
                 <div class="filter-group">
                     <label><i class="fas fa-map-signs"></i> Ward</label>
-                    <input type="text" name="ward" placeholder="Any ward" value="{{ search_form.ward.value|default:'' }}">
+                    <select name="ward" class="filter-select">
+                        <option value="">Any ward</option>
+                        {% for ward in ward_choices %}
+                        <option value="{{ ward }}" {% if search_form.ward.value == ward %}selected{% endif %}>{{ ward }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
 
                 <div class="filter-group">
@@ -276,6 +283,33 @@
 
 <!-- FEATURED LISTINGS -->
 <div id="marketGridContainer">
+    {% if recommended_plots %}
+    <section class="container95 mb-4">
+        <div class="section-head">
+            <h2>Plots For Me</h2>
+            <p>Rule-based recommendations tuned to your recent interest and profile intent.</p>
+        </div>
+        <div class="row g-3 mb-4">
+            {% for plot in recommended_plots %}
+            <div class="col-md-4">
+                <a href="{{ plot.get_absolute_url }}" class="text-decoration-none">
+                    <div class="card h-100 shadow-sm border-0">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <span class="badge bg-success-subtle text-success">{{ plot.get_listing_type_display }}</span>
+                                <span class="small text-muted">{{ plot.county|default:"Kenya" }}</span>
+                            </div>
+                            <h5 class="card-title text-dark">{{ plot.title }}</h5>
+                            <p class="card-text text-muted mb-2">{{ plot.location }}</p>
+                            <strong class="text-dark">KES {{ plot.price|floatformat:0 }}</strong>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
     {% include 'listings/_market_grid.html' %}
 </div>
 

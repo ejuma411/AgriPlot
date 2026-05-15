@@ -2,14 +2,14 @@
 from django.test import TestCase, override_settings
 from django.conf import settings
 from unittest.mock import patch, MagicMock
-from notifications.services.sms_service import TextSMSService
+from notifications.services.sms_service import SMSService
 
 @override_settings(USE_SMS_MOCK=False)
 class SMSServiceTestCase(TestCase):
     """Test cases for SMS service"""
     
     def setUp(self):
-        self.sms = TextSMSService()
+        self.sms = SMSService()
         self.test_phone = "+254718810503"
     
     @patch('requests.Session.post')
@@ -51,7 +51,7 @@ class SMSServiceTestCase(TestCase):
     @patch('requests.Session.post')
     def test_send_sms_success_opensms(self, mock_post):
         """Test successful SMS sending via OpenSMS."""
-        sms = TextSMSService()
+        sms = SMSService()
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = {'message_id': 'abc123', 'status': 'success'}
@@ -74,7 +74,7 @@ class SMSServiceTestCase(TestCase):
     )
     @patch('requests.Session.post')
     def test_send_sms_retries_without_sender_id_after_403(self, mock_post):
-        sms = TextSMSService()
+        sms = SMSService()
 
         forbidden_response = MagicMock()
         forbidden_response.status_code = 403

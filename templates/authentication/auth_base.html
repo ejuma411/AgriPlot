@@ -1,224 +1,278 @@
+{% extends "base.html" %}
 {% load static %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}AgriPlot Auth{% endblock %}</title>
-    <link rel="icon" href="{% static 'images/agriplot-logo.png' %}">
-    <link rel="stylesheet" href="{% static 'css/auth.css' %}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Newsreader:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    {% block extra_css %}{% endblock %}
-</head>
-<body class="auth-body">
-    <div class="auth-shell">
-        <section class="auth-hero">
-            <div class="auth-hero-brand">
-                <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot" class="hero-logo" />
-                <div>
-                    <p class="auth-hero-kicker">AgriPlot Connect</p>
-                    <h1 class="auth-hero-title">Verified land transactions, built for real decisions.</h1>
-                    <p class="auth-hero-subtitle">
-                        Document checks, officer reviews, and soil intelligence integrated into every listing.
-                    </p>
+
+{% block full_width_content %}
+<section class="auth-page-shell">
+    <div class="auth-layout">
+        <aside class="auth-side-panel" aria-label="AgriPlot secure access">
+            <div class="auth-side-content">
+                <p class="auth-eyebrow">Secure Land Platform</p>
+                <h1>Verified access for serious land work.</h1>
+                <p>Manage listings, payments, verification tasks, and buyer conversations from one trusted workspace.</p>
+                <div class="auth-proof-grid" aria-label="Platform trust signals">
+                    <span><i class="fa-solid fa-shield-halved"></i> KYC-led access</span>
+                    <span><i class="fa-solid fa-map-location-dot"></i> GIS-ready records</span>
+                    <span><i class="fa-solid fa-file-signature"></i> Legal workflow</span>
                 </div>
+                {% block info_panel %}{% endblock %}
             </div>
+        </aside>
 
-            <div class="auth-hero-metrics">
-                <div class="metric-card">
-                    <p class="metric-label">Verification Tracks</p>
-                    <p class="metric-value">3 layers</p>
-                    <p class="metric-note">Docs, extension, surveyor</p>
-                </div>
-                <div class="metric-card">
-                    <p class="metric-label">Security Standard</p>
-                    <p class="metric-value">2FA Ready</p>
-                    <p class="metric-note">Backup codes included</p>
-                </div>
-            </div>
-
-            <div class="hero-badges">
-                <span>Document Checks</span>
-                <span>Extension Reviews</span>
-                <span>Surveyor Inspections</span>
-                <span>Secure Sessions</span>
-            </div>
-
-            <div class="auth-hero-footnote">
-                <span class="auth-pill">Trusted by verified buyers</span>
-                <span class="auth-pill">Evidence-first listings</span>
-            </div>
-        </section>
-
-        <section class="auth-panel">
+        <main class="auth-form-panel">
             <div class="auth-card">
-                <div class="auth-card-header">
-                    <div class="auth-logo">
-                        <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot" />
+                {% block form_panel %}
+                    {% block content %}{% endblock %}
+                {% endblock %}
+                {% block auth_links %}
+                    <div class="auth-links">
+                        <a href="{% url 'login' %}">Login</a>
+                        <a href="{% url 'listings:register_choice' %}">Create account</a>
                     </div>
-                    <div>
-                        <p class="auth-brand">AgriPlot Connect</p>
-                        <p class="auth-caption">Secure access to verified listings</p>
-                    </div>
-                </div>
-
-                {% if messages %}
-                    <div class="auth-messages" role="status" aria-live="polite" aria-atomic="true">
-                        {% for message in messages %}
-                            <div class="auth-alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-
-                {% block content %}{% endblock %}
-
-                <div class="portal-links auth-footer-links">
-                    {% block auth_links %}
-                        <a href="{% url 'login' %}">Back to Login</a>
-                    {% endblock %}
-                </div>
-
-                <div class="portal-footer">© AgriPlot Connect</div>
+                {% endblock %}
             </div>
-        </section>
+        </main>
     </div>
-    <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('input[data-email-check-url]').forEach(function (input) {
-            const status = document.createElement('small');
-            status.className = 'text-muted d-block mt-1';
-            input.insertAdjacentElement('afterend', status);
-            let pendingController = null;
+</section>
+{% endblock %}
 
-            const runCheck = async function () {
-                const value = (input.value || '').trim();
-                if (!value) {
-                    input.setCustomValidity('');
-                    status.textContent = '';
-                    return;
-                }
-                if (pendingController) {
-                    pendingController.abort();
-                }
-                pendingController = new AbortController();
-                status.textContent = 'Checking email...';
-                try {
-                    const response = await fetch(`${input.dataset.emailCheckUrl}?email=${encodeURIComponent(value)}`, {
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                        credentials: 'same-origin',
-                        signal: pendingController.signal,
-                    });
-                    const payload = await response.json();
-                    if (!payload.valid) {
-                        input.setCustomValidity(payload.message || 'Enter a valid email address.');
-                        status.textContent = payload.message || 'Enter a valid email address.';
-                        status.className = 'text-danger d-block mt-1';
-                        return;
-                    }
-                    input.value = payload.normalized || value;
-                    input.setCustomValidity('');
-                    status.textContent = payload.message || 'Email looks valid.';
-                    status.className = 'text-success d-block mt-1';
-                } catch (error) {
-                    if (error.name === 'AbortError') {
-                        return;
-                    }
-                    input.setCustomValidity('');
-                    status.textContent = 'Could not verify the email right now.';
-                    status.className = 'text-warning d-block mt-1';
-                }
-            };
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .auth-page-shell {
+        min-height: calc(100vh - var(--ap-header-height));
+        background: linear-gradient(180deg, #F7FAF8 0%, #FFFFFF 100%);
+    }
 
-            input.addEventListener('blur', runCheck);
-            input.addEventListener('change', runCheck);
-        });
-    });
+    .auth-layout {
+        width: var(--ap-page-width);
+        min-height: calc(100vh - var(--ap-header-height));
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1fr);
+        gap: 36px;
+        align-items: center;
+        padding: 42px 0;
+    }
 
-    import re
+    .auth-side-panel {
+        align-self: stretch;
+        display: flex;
+        align-items: center;
+        border-radius: 8px;
+        background:
+            linear-gradient(135deg, rgba(47, 133, 90, 0.94), rgba(39, 103, 73, 0.94)),
+            url("{% static 'images/farm-hero2.jpeg' %}") center/cover;
+        color: #fff;
+        overflow: hidden;
+        min-height: 520px;
+    }
 
-def validate_kenyan_phone(value):
-    """
-    Validate Kenyan phone numbers with exact digit counts based on format.
-    
-    Format rules:
-    - Starts with 0: expects 10 digits total (e.g., 0712345678)
-    - Starts with +254: expects 12 digits after + (e.g., +254712345678)
-    - Starts with 254: expects 12 digits total (e.g., 254712345678)
-    - Starts with 7 or 1: expects 9 digits total (e.g., 712345678)
-    """
-    raw_value = str(value or "").strip()
-    
-    if not raw_value:
-        raise ValidationError("Phone number is required.")
-    
-    # Remove spaces, dashes, parentheses
-    cleaned = re.sub(r'[\s\-\(\)]', '', raw_value)
-    
-    # Check format and exact digit count
-    if cleaned.startswith('0'):
-        # Format: 07XXXXXXXX or 01XXXXXXXX (10 digits total)
-        if len(cleaned) != 10:
-            raise ValidationError(
-                "Phone number starting with 0 must have exactly 10 digits. "
-                f"Current length: {len(cleaned)} digits (expected: 10)"
-            )
-        if not re.match(r'^(07|01)\d{8}$', cleaned):
-            raise ValidationError(
-                "Phone number starting with 0 must begin with 07 or 01 followed by 8 digits."
-            )
-        normalized = f"+254{cleaned[1:]}"
-        
-    elif cleaned.startswith('+254'):
-        # Format: +254XXXXXXXXX (12 digits after +)
-        digits_after_plus = cleaned[1:]
-        if len(digits_after_plus) != 12:
-            raise ValidationError(
-                "Phone number starting with +254 must have exactly 12 digits after the +. "
-                f"Current length: {len(digits_after_plus)} digits (expected: 12)"
-            )
-        if not re.match(r'^254[7|1]\d{8}$', digits_after_plus):
-            raise ValidationError(
-                "After +254, the number must start with 7 or 1 followed by 8 digits."
-            )
-        normalized = cleaned
-        
-    elif cleaned.startswith('254'):
-        # Format: 254XXXXXXXXX (12 digits total)
-        if len(cleaned) != 12:
-            raise ValidationError(
-                "Phone number starting with 254 must have exactly 12 digits total. "
-                f"Current length: {len(cleaned)} digits (expected: 12)"
-            )
-        if not re.match(r'^254[7|1]\d{8}$', cleaned):
-            raise ValidationError(
-                "After 254, the number must start with 7 or 1 followed by 8 digits."
-            )
-        normalized = f"+{cleaned}"
-        
-    elif cleaned.startswith('7') or cleaned.startswith('1'):
-        # Format: 7XXXXXXXX or 1XXXXXXXX (9 digits total)
-        if len(cleaned) != 9:
-            raise ValidationError(
-                "Phone number starting with 7 or 1 must have exactly 9 digits. "
-                f"Current length: {len(cleaned)} digits (expected: 9)"
-            )
-        if not re.match(r'^[7|1]\d{8}$', cleaned):
-            raise ValidationError(
-                "Phone number must start with 7 or 1 followed by 8 digits."
-            )
-        normalized = f"+254{cleaned}"
-        
-    else:
-        raise ValidationError(
-            "Invalid phone number format. "
-            "Use one of: 0712345678 (10 digits), +254712345678 (12 digits after +), "
-            "254712345678 (12 digits), or 712345678 (9 digits)"
-        )
-    
-    return normalized
-    </script>
-    {% block extra_js %}{% endblock %}
-</body>
-</html>
+    .auth-side-content {
+        padding: 44px;
+    }
+
+    .auth-eyebrow,
+    .auth-kicker {
+        margin: 0 0 10px;
+        color: var(--ap-green);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .auth-side-panel .auth-eyebrow {
+        color: rgba(255, 255, 255, 0.82);
+    }
+
+    .auth-side-panel h1 {
+        color: #fff;
+        margin-bottom: 14px;
+    }
+
+    .auth-side-panel p {
+        color: rgba(255, 255, 255, 0.86);
+        max-width: 420px;
+    }
+
+    .auth-proof-grid {
+        display: grid;
+        gap: 10px;
+        margin-top: 26px;
+    }
+
+    .auth-proof-grid span {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+    }
+
+    .auth-form-panel {
+        width: 100%;
+    }
+
+    .auth-card {
+        width: min(100%, 520px);
+        margin-left: auto;
+        padding: 34px;
+        border: 1px solid var(--ap-border);
+        border-radius: 8px;
+        background: #fff;
+        box-shadow: var(--ap-shadow);
+    }
+
+    .auth-title {
+        margin: 0 0 8px;
+        font-size: 28px;
+        font-weight: 800;
+    }
+
+    .auth-subtitle {
+        margin: 0 0 24px;
+        color: var(--ap-muted);
+    }
+
+    .auth-form {
+        display: grid;
+        gap: 14px;
+    }
+
+    .auth-form label {
+        color: var(--ap-text);
+        font-weight: 700;
+    }
+
+    .auth-form input:not([type="checkbox"]),
+    .auth-form select,
+    .auth-form textarea,
+    .auth-card input:not([type="checkbox"]),
+    .auth-card select,
+    .auth-card textarea {
+        width: 100%;
+        min-height: 44px;
+        border: 1px solid var(--ap-border);
+        border-radius: 8px;
+        padding: 10px 12px;
+        color: var(--ap-text);
+        background: #fff;
+    }
+
+    .auth-form input:not([type="checkbox"]):focus,
+    .auth-card input:not([type="checkbox"]):focus,
+    .auth-card select:focus,
+    .auth-card textarea:focus {
+        outline: 3px solid rgba(47, 133, 90, 0.16);
+        border-color: var(--ap-green);
+    }
+
+    .auth-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--ap-text);
+        font-weight: 500 !important;
+    }
+
+    .auth-check input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        accent-color: var(--ap-green);
+        cursor: pointer;
+    }
+
+    .auth-btn {
+        min-height: 46px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--ap-green);
+        color: #fff;
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    .auth-row,
+    .auth-links,
+    .portal-signup {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 14px;
+        flex-wrap: wrap;
+    }
+
+    .auth-links,
+    .portal-signup {
+        margin-top: 20px;
+        justify-content: center;
+    }
+
+    .auth-link,
+    .auth-links a,
+    .portal-signup a {
+        color: var(--ap-green);
+        font-weight: 700;
+    }
+
+    .auth-alert {
+        padding: 12px;
+        border-radius: 8px;
+        background: #FFF5F5;
+        color: #9B2C2C;
+        border: 1px solid #FED7D7;
+    }
+
+    .password-wrap {
+        position: relative;
+    }
+
+    .password-wrap input {
+        padding-right: 60px !important; /* Ensure space for Show/Hide text */
+    }
+
+    .password-toggle {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 0;
+        background: transparent;
+        color: var(--ap-green);
+        font-weight: 800;
+        font-size: 13px;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: background 0.2s;
+        z-index: 2;
+    }
+
+    .password-toggle:hover {
+        background: rgba(47, 133, 90, 0.08);
+    }
+
+    @media (max-width: 900px) {
+        .auth-layout {
+            grid-template-columns: 1fr;
+            gap: 20px;
+            padding: 24px 0;
+        }
+
+        .auth-side-panel {
+            min-height: auto;
+        }
+
+        .auth-side-content {
+            padding: 28px;
+        }
+
+        .auth-card {
+            margin: 0;
+            width: 100%;
+            padding: 24px;
+        }
+    }
+</style>
+{% endblock %}

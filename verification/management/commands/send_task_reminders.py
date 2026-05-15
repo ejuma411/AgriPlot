@@ -8,7 +8,7 @@ from verification.models import VerificationTask
 from notifications.notification_service import NotificationService
 import logging
 
-from notifications.services.sms_service import TextSMSService
+from notifications.services.sms_service import SMSService
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ class Command(BaseCommand):
                 
                 # Send SMS reminder
                 if task.assigned_to.profile and task.assigned_to.profile.phone:
-                    sms = TextSMSService()
+                    sms = SMSService()
                     sms.send_reminder(
                         task.assigned_to.profile.phone,
                         task.get_verification_type_display(),

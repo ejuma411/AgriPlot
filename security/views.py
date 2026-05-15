@@ -22,6 +22,9 @@ from django.db.models import Q, Count, Sum, Avg
 from django.contrib import messages
 from django.template.loader import render_to_string
 from django.conf import settings
+from django.core.mail import send_mail
+
+from notifications.services.sms_service import SMSService
 
 from .models import (
     AuditLog, 
@@ -386,42 +389,7 @@ def export_audit_pdf(request):
 @staff_member_required
 def security_dashboard(request):
     """Security dashboard showing alerts, statistics, and system health"""
-    
-    # Get recent alerts
-    recent_alerts = ImpersonationDetection.objects.all()[:20]
-    
-    # Get statistics
-    total_alerts = ImpersonationDetection.objects.count()
-    unresolved_alerts = ImpersonationDetection.objects.exclude(status='resolved').count()
-    high_severity_alerts = ImpersonationDetection.objects.filter(severity='high').count()
-    
-    # Get screenshot attempt statistics
-    screenshot_attempts = AuditLog.objects.filter(
-        action='screenshot_attempt',
-        created_at__date=timezone.now().date()
-    ).count()
-    
-    # Get failed login attempts
-    failed_logins = AuditLog.objects.filter(
-        action='failed_login',
-        created_at__gte=timezone.now() - timedelta(days=1)
-    ).count()
-    
-    # Get active sessions (simplified)
-    active_sessions = 0  # You can implement session tracking
-    
-    context = {
-        'recent_alerts': recent_alerts,
-        'total_alerts': total_alerts,
-        'unresolved_alerts': unresolved_alerts,
-        'high_severity_alerts': high_severity_alerts,
-        'screenshot_attempts': screenshot_attempts,
-        'failed_logins': failed_logins,
-        'active_sessions': active_sessions,
-        'export_date': timezone.now(),
-    }
-    
-    return render(request, 'security/dashboard.html', context)
+    return redirect("/dashboard/?section=audit")
 
 
 # ============================================================
@@ -534,7 +502,7 @@ def send_verification_code(request):
         otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
         
         if method == 'sms' and phone:
-            # Send SMS (implement your SMS service)
+            # Send SMS via OpenSMS
             PhoneOTP.objects.create(
                 user=request.user,
                 phone=phone,
@@ -542,8 +510,12 @@ def send_verification_code(request):
                 purpose='verification',
                 expires_at=timezone.now() + timedelta(minutes=10)
             )
-            # TODO: Send actual SMS
-            messages.success(request, f"Verification code sent to {phone}")
+            sms_service = SMSService()
+            sms_result = sms_service.send_otp(phone, otp)
+            if sms_result.get("success"):
+                messages.success(request, f"Verification code sent to {phone}")
+            else:
+                messages.error(request, f"Failed to send SMS: {sms_result.get('error')}")
             
         elif method == 'email' and email:
             EmailOTP.objects.create(
@@ -553,8 +525,18 @@ def send_verification_code(request):
                 purpose='verification',
                 expires_at=timezone.now() + timedelta(minutes=10)
             )
-            # TODO: Send actual email
-            messages.success(request, f"Verification code sent to {email}")
+            
+            subject = "AgriPlot Verification Code"
+            message = f"Your AgriPlot verification code is: {otp}. Valid for 10 minutes."
+            from_email = settings.DEFAULT_FROM_EMAIL
+            recipient_list = [email]
+            
+            try:
+                send_mail(subject, message, from_email, recipient_list)
+                messages.success(request, f"Verification code sent to {email}")
+            except Exception as e:
+                logger.error(f"Failed to send email to {email}: {e}")
+                messages.error(request, "Failed to send verification email.")
         
         return redirect(request.META.get('HTTP_REFERER', '/'))
     

@@ -51,10 +51,10 @@
             <p class="mb-2"><strong>Soil pH:</strong> {{ report.soil_ph }}</p>
             {% endif %}
             {% if report.soil_classification %}
-            <p class="mb-2"><strong>Soil Classification:</strong> {{ report.soil_classification }}</p>
+            <p class="mb-2"><strong>Soil Classification:</strong> {{ report.soil_classification_display }}</p>
             {% endif %}
             {% if report.current_land_use %}
-            <p class="mb-2"><strong>Current Land Use:</strong> {{ report.current_land_use }}</p>
+            <p class="mb-2"><strong>Current Land Use:</strong> {{ report.current_land_use_display }}</p>
             {% endif %}
             {% if report.power_access %}
             <p class="mb-2"><strong>Power Access:</strong> {{ report.get_power_access_display }}</p>
@@ -78,7 +78,7 @@
             <p class="mb-2"><strong>RIM Map Sheet:</strong> {{ report.rim_map_sheet_no }}</p>
             {% endif %}
             {% if report.beacon_status %}
-            <p class="mb-2"><strong>Beacon Status:</strong> {{ report.get_beacon_status_display }}</p>
+            <p class="mb-2"><strong>Beacon Status:</strong> {{ report.beacon_status_display }}</p>
             {% endif %}
             {% if report.lsb_license_number %}
             <p class="mb-2"><strong>LSB License:</strong> {{ report.lsb_license_number }}</p>

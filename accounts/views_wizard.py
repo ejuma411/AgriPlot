@@ -16,7 +16,13 @@ wizard_file_storage = FileSystemStorage(location="/tmp/agriplot_uploads")
 try:
     from formtools.wizard.views import SessionWizardView
 except ImportError:  # pragma: no cover
-    SessionWizardView = None
+    class SessionWizardView:  # type: ignore[override]
+        @classmethod
+        def as_view(cls, *args, **kwargs):
+            def _missing_wizard(*_args, **_kwargs):
+                raise ImportError("django-formtools is required for the landowner wizard.")
+
+            return _missing_wizard
 
 
 FORMS = [
@@ -129,4 +135,3 @@ class LandownerWizard(SessionWizardView):
         except Exception as exc:
             messages.error(self.request, f"Error creating account: {exc}")
             return redirect("listings:register_choice")
-

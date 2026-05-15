@@ -1,7 +1,8 @@
 :root {
+    --auth-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --auth-bg: #f3efe6;
-    --auth-ink: #101613;
-    --auth-muted: #5b6b63;
+    --auth-ink: #1A202C;
+    --auth-muted: #718096;
     --auth-sand: #f7f2e8;
     --auth-olive: #355c43;
     --auth-forest: #0e2d23;
@@ -19,8 +20,9 @@ body.auth-body {
     margin: 0;
     color: var(--auth-ink);
     background: radial-gradient(circle at 15% 10%, #fbf6ea 0%, #f1e8d8 40%, #e9efe4 100%);
-    font-family: "Outfit", sans-serif;
+    font-family: var(--auth-font-sans);
     overflow-x: hidden;
+    line-height: 1.6;
 }
 
 .auth-shell {
@@ -76,17 +78,18 @@ body.auth-body {
 }
 
 .auth-hero-title {
-    font-family: "Newsreader", serif;
     font-size: clamp(2.1rem, 2.9vw, 3.2rem);
     margin: 0 0 12px;
     line-height: 1.12;
     color: var(--auth-forest);
+    font-weight: 700;
 }
 
 .auth-hero-subtitle {
     margin: 0;
     color: var(--auth-muted);
     font-size: 1rem;
+    line-height: 1.6;
     max-width: 480px;
 }
 
@@ -106,7 +109,7 @@ body.auth-body {
 
 .metric-label {
     margin: 0 0 8px;
-    font-size: 0.8rem;
+    font-size: 0.875rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--auth-muted);
@@ -121,7 +124,7 @@ body.auth-body {
 
 .metric-note {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     color: var(--auth-muted);
 }
 
@@ -201,7 +204,7 @@ body.auth-body {
 
 .auth-caption {
     margin: 4px 0 0;
-    font-size: 0.85rem;
+    font-size: 0.875rem;
     color: var(--auth-muted);
 }
 
@@ -565,7 +568,7 @@ body.auth-body {
 }
 
 .auth-code-list {
-    font-family: "Newsreader", serif;
+    font-family: var(--auth-font-sans);
     font-size: 0.95rem;
     letter-spacing: 0.08em;
     background: #f7f1e7;

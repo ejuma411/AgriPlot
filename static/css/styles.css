@@ -11,6 +11,7 @@
    DESIGN TOKENS
    ======================== */
 :root {
+    --ag-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --ag-green-900: #0f4a2e;
     --ag-green-700: #1f8b4c;
     --ag-olive-600: #6b8f1a;
@@ -19,7 +20,10 @@
     --ag-sand-200: #efe7d6;
     --ag-border: #e6dcc9;
     --ag-charcoal: #1f2325;
-    --ag-muted: #6b7280;
+    --ag-muted: #718096;
+    --ag-text-primary: #1A202C;
+    --ag-text-secondary: #718096;
+    --ag-text-success: #2F855A;
     --ag-white: #ffffff;
     --ag-radius-md: 10px;
     --ag-radius-lg: 16px;
@@ -29,23 +33,23 @@
     --ag-container-pad: clamp(14px, 2vw, 28px);
     --ag-section-gap: clamp(1rem, 2vw, 2rem);
     --ag-card-pad: clamp(0.9rem, 1.8vw, 1.4rem);
-    --ag-text-sm: clamp(0.85rem, 0.2vw + 0.82rem, 0.95rem);
-    --ag-text-md: clamp(0.95rem, 0.3vw + 0.9rem, 1.08rem);
+    --ag-text-sm: 0.875rem;
+    --ag-text-md: 1rem;
     --ag-text-lg: clamp(1.08rem, 0.55vw + 0.95rem, 1.35rem);
     --ag-text-xl: clamp(1.4rem, 1vw + 1.1rem, 2.1rem);
 }
 
 html, body {
-    font-family: "Outfit", sans-serif;
+    font-family: var(--ag-font-sans);
     line-height: 1.6;
     background: var(--ag-sand-100);
-    color: #1f2937;
+    color: var(--ag-text-primary);
     width: 100%;
     overflow-x: hidden;
 }
 
 html {
-    font-size: clamp(14px, 0.25vw + 13px, 17px);
+    font-size: 16px;
     -webkit-text-size-adjust: 100%;
 }
 
@@ -97,8 +101,10 @@ h3,
 h4,
 h5,
 h6 {
-    font-family: "Newsreader", serif;
-    line-height: 1.15;
+    font-family: var(--ag-font-sans);
+    line-height: 1.2;
+    font-weight: 700;
+    color: var(--ag-text-primary);
     overflow-wrap: anywhere;
 }
 
@@ -110,6 +116,37 @@ select,
 textarea,
 button {
     overflow-wrap: break-word;
+    font-size: 1rem;
+}
+
+small,
+.text-muted,
+.meta-text,
+label.form-label,
+.form-text {
+    color: var(--ag-text-secondary) !important;
+}
+
+label,
+.form-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+button,
+.btn,
+input[type="submit"],
+input[type="button"] {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.eyebrow,
+.section-kicker,
+.badge-caps,
+.all-caps-label {
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
 }
 
 a {
@@ -247,7 +284,7 @@ header {
 
 .btn-small {
     display: inline-block;
-    background: #4CAF50;
+    background: var(--ag-text-success);
     color: white;
     padding: 8px 12px;
     text-align: center;
@@ -255,7 +292,7 @@ header {
 }
 
 .btn-small:hover {
-    background: #388E3C;
+    background: #276749;
 }
 
 /* ========================

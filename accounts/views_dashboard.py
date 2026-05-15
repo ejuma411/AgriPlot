@@ -31,6 +31,14 @@ from payments.wallet_service import WalletService
 from payments.permissions import step_requires_admin_action, user_is_finance_admin
 from security.models import AuditLog
 from verification.models import VerificationLog, VerificationStatus, VerificationTask
+from transactions.models import Transaction
+from accounts.views_profile import _build_profile_context
+from accounts.forms import (
+    AccountDetailsForm,
+    AgentDetailsForm,
+    ExtensionOfficerEditForm,
+    LandSurveyorEditForm,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +97,7 @@ def staff_dashboard(request):
         messages.error(request, "You don't have access to this dashboard.")
         return redirect("listings:home")
 
-    allowed_sections = {"overview"}
+    allowed_sections = {"overview", "profile", "settings"}
     if is_agent or is_landowner:
         allowed_sections.update({"portfolio", "inbox", "analytics"})
     if access_profile.can("wallet.view_own"):
@@ -100,6 +108,8 @@ def staff_dashboard(request):
         allowed_sections.add("verification")
     if access_profile.can("finance.view_escrow"):
         allowed_sections.add("finance")
+    if access_profile.can("transactions.view_own"):
+        allowed_sections.add("transactions")
     if access_profile.can("audit.view_all"):
         allowed_sections.add("audit")
     if access_profile.can("users.manage"):
@@ -514,6 +524,12 @@ def staff_dashboard(request):
             "transactions": recent_wallet_transactions,
         }
 
+    if active_section == "transactions":
+        user_transactions = Transaction.objects.filter(
+            Q(buyer=request.user) | Q(seller=request.user)
+        ).select_related("plot", "buyer", "seller").prefetch_related("milestones")
+        context["transactions"] = user_transactions
+
     if access_profile.can("users.manage"):
         from django.contrib.auth import get_user_model
 
@@ -528,8 +544,19 @@ def staff_dashboard(request):
             "pending_transactions": total_transactions - completed_transactions,
         }
 
+    if active_section == "profile":
+        profile_context = _build_profile_context(request.user)
+        context.update(profile_context)
+        context.update({
+            "account_form": AccountDetailsForm(user=request.user),
+            "agent_form": AgentDetailsForm(instance=request.user.agent) if is_agent else None,
+        })
+
+    if active_section == "settings":
+        context.update(_build_profile_context(request.user))
+
     logger.info("Dashboard loaded in %.2f seconds", time.time() - start_time)
-    return render(request, "accounts/dashboard/staff_dashboard.html", context)
+    return render(request, "accounts/dashboard/dashboard.html", context)
 
 
 @login_required
@@ -539,125 +566,12 @@ def my_plots(request):
 
 @login_required
 def plot_verification_detail(request, plot_id):
-    plot = get_object_or_404(Plot, id=plot_id)
-
-    is_agent = hasattr(request.user, "agent") and plot.agent == request.user.agent
-    is_landowner = (
-        hasattr(request.user, "landownerprofile")
-        and plot.landowner == request.user.landownerprofile
-    )
-
-    if not (is_agent or is_landowner or request.user.is_staff or request.user.is_superuser):
-        messages.error(request, "You don't have permission to view this plot.")
-        return redirect("listings:home")
-
-    verification, created = VerificationStatus.objects.get_or_create(
-        content_type=ContentType.objects.get_for_model(Plot),
-        object_id=plot.id,
-        defaults={
-            "current_stage": "document_uploaded",
-            "document_uploaded_at": timezone.now(),
-        },
-    )
-    if created:
-        logger.info("Created missing verification status for plot %s", plot.id)
-
-    has_title_deed = bool(plot.title_deed)
-    has_official_search = bool(plot.official_search)
-    has_landowner_id = bool(plot.landowner_id_doc)
-    has_kra_pin = bool(plot.kra_pin)
-    has_soil_report = bool(plot.soil_report)
-
-    verification_docs = plot.verification_docs.all()
-    verification_logs = (
-        VerificationLog.objects.filter(plot=plot)
-        .select_related("verified_by")
-        .order_by("-created_at")[:50]
-    )
-
-    profile_type = "Buyer"
-    if hasattr(request.user, "agent"):
-        profile_type = "Agent"
-    elif hasattr(request.user, "landownerprofile"):
-        profile_type = "Landowner"
-    elif hasattr(request.user, "extension_officer"):
-        profile_type = "Extension Officer"
-    elif hasattr(request.user, "land_surveyor"):
-        profile_type = "Land Surveyor"
-
-    context = {
-        "plot": plot,
-        "verification": verification,
-        "verification_status": verification,
-        "has_title_deed": has_title_deed,
-        "has_official_search": has_official_search,
-        "has_landowner_id": has_landowner_id,
-        "has_kra_pin": has_kra_pin,
-        "has_soil_report": has_soil_report,
-        "verification_docs": verification_docs,
-        "documents_complete": all(
-            [has_title_deed, has_official_search, has_landowner_id, has_kra_pin]
-        ),
-        "verification_logs": verification_logs,
-        "profile_type": profile_type,
-    }
-
-    return render(request, "accounts/dashboard/plot_verification_detail.html", context)
+    return redirect(f"{reverse('listings:dashboard_router')}?section=verification")
 
 
 @login_required
 def saved_plots(request):
-    profile = getattr(request.user, "profile", None)
-    is_buyer = bool(profile and profile.role == "buyer")
-    if not (is_buyer or request.user.is_superuser):
-        messages.error(request, "Only buyers can view saved plots.")
-        return redirect("listings:home")
-
-    interests = (
-        UserInterest.objects.filter(user=request.user)
-        .select_related("plot")
-        .order_by("-created_at")
-    )
-
-    search_query = request.GET.get("search", "")
-    if search_query:
-        interests = interests.filter(
-            Q(plot__title__icontains=search_query)
-            | Q(plot__location__icontains=search_query)
-            | Q(notes__icontains=search_query)
-        )
-
-    paginator = Paginator(interests, 12)
-    page_number = request.GET.get("page")
-    page_obj = paginator.get_page(page_number)
-
-    active_deals = list(
-        PaymentRequest.objects.filter(
-            buyer=request.user,
-            transaction_type__in=[
-                PaymentRequest.TransactionType.PURCHASE,
-                PaymentRequest.TransactionType.LEASE,
-            ],
-        )
-        .select_related("plot", "seller")
-        .prefetch_related("closing_steps")
-        .order_by("-created_at")[:6]
-    )
-    for deal in active_deals:
-        deal.ensure_closing_steps()
-
-    next_action_deal = next((deal for deal in active_deals if deal.next_closing_step), None)
-    if not next_action_deal and active_deals:
-        next_action_deal = active_deals[0]
-
-    context = {
-        "page_obj": page_obj,
-        "search_query": search_query,
-        "saved_count": interests.count(),
-        "active_deals": active_deals,
-        "next_action_deal": next_action_deal,
-    }
-    return render(request, "accounts/dashboard/saved_plots.html", context)
+    return redirect(f"{reverse('listings:dashboard_router')}?section=overview")
 
 
 @login_required

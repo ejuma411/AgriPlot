@@ -702,17 +702,15 @@ class PaymentFlowOverviewView(TemplateView):
 
 
 class PaymentDashboardView(ListView):
-    template_name = "payments/dashboard.html"
+    template_name = "accounts/dashboard/dashboard.html"
     model = PaymentRequest
     context_object_name = "payments"
     paginate_by = 12
 
     def dispatch(self, request, *args, **kwargs):
-        if request.user.is_authenticated and resolve_access_profile is not None:
-            access_profile = resolve_access_profile(request.user)
-            if getattr(access_profile, 'is_staff_workspace', False):
-                return redirect(f"{reverse('listings:dashboard_router')}?section=finance")
-        return super().dispatch(request, *args, **kwargs)
+        if not request.user.is_authenticated:
+            return redirect("login")
+        return redirect(f"{reverse('listings:dashboard_router')}?section=finance")
 
     def get_queryset(self):
         if not self.request.user.is_authenticated:
@@ -2019,18 +2017,9 @@ def wallet_dashboard(request):
     """Wallet dashboard view"""
     if resolve_access_profile is not None:
         access_profile = resolve_access_profile(request.user)
-        if getattr(access_profile, 'can', lambda x: False)('wallet.view_own'):
-            return redirect(f"{reverse('listings:dashboard_router')}?section=wallet")
-        if getattr(access_profile, 'can', lambda x: False)('wallet.manage') or getattr(access_profile, 'can', lambda x: False)('finance.view_escrow'):
+        if getattr(access_profile, 'can', lambda x: False)('finance.view_escrow'):
             return redirect(f"{reverse('listings:dashboard_router')}?section=finance")
-    wallet = WalletService.get_or_create_wallet(request.user)
-    transactions = WalletService.get_transaction_history(request.user, limit=20)
-    context = {
-        'wallet': wallet,
-        'transactions': transactions,
-        'has_pin': bool(wallet.pin_hash),
-    }
-    return render(request, 'payments/wallet_dashboard.html', context)
+    return redirect(f"{reverse('listings:dashboard_router')}?section=wallet")
 
 
 @login_required

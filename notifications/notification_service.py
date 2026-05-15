@@ -21,6 +21,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from notifications.models import EmailLog, Notification
+from notifications.services.sms_service import SMSService
 from verification.models import VerificationTask  # noqa: F401 — kept for callers
 
 logger = logging.getLogger(__name__)

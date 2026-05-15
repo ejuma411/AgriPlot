@@ -111,10 +111,22 @@
             <p class="mb-2"><strong>Soil pH:</strong> {{ report.soil_ph }}</p>
             {% endif %}
             {% if report.soil_classification %}
-            <p class="mb-2"><strong>Soil Classification:</strong> {{ report.soil_classification }}</p>
+            <p class="mb-2"><strong>Soil Classification:</strong> {{ report.soil_classification_display }}</p>
             {% endif %}
             {% if report.current_land_use %}
-            <p class="mb-2"><strong>Current Land Use:</strong> {{ report.current_land_use }}</p>
+            <p class="mb-2"><strong>Current Land Use:</strong> {{ report.current_land_use_display }}</p>
+            {% endif %}
+            {% if report.water_sources_available %}
+            <p class="mb-2"><strong>Verified Water Sources:</strong> {{ report.water_sources_available }}</p>
+            {% endif %}
+            {% if report.distance_to_tarmac_m %}
+            <p class="mb-2"><strong>Distance to Tarmac:</strong> {{ report.distance_to_tarmac_m }} m</p>
+            {% endif %}
+            {% if report.distance_to_market_m %}
+            <p class="mb-2"><strong>Distance to Market/Town:</strong> {{ report.distance_to_market_m }} m</p>
+            {% endif %}
+            {% if report.irrigation_viability %}
+            <p class="mb-2"><strong>Irrigation Viability:</strong> {{ report.get_irrigation_viability_display }}</p>
             {% endif %}
             {% if report.power_access %}
             <p class="mb-2"><strong>Power Access:</strong> {{ report.get_power_access_display }}</p>
@@ -137,14 +149,26 @@
             {% if report.rim_map_sheet_no %}
             <p class="mb-2"><strong>RIM Map Sheet:</strong> {{ report.rim_map_sheet_no }}</p>
             {% endif %}
+            {% if report.official_document_reference %}
+            <p class="mb-2"><strong>Reference Type:</strong> {{ report.get_official_document_reference_display }}</p>
+            {% endif %}
+            {% if report.reference_number %}
+            <p class="mb-2"><strong>Reference Number:</strong> {{ report.reference_number }}</p>
+            {% endif %}
             {% if report.beacon_status %}
-            <p class="mb-2"><strong>Beacon Status:</strong> {{ report.get_beacon_status_display }}</p>
+            <p class="mb-2"><strong>Beacon Status:</strong> {{ report.beacon_status_display }}</p>
             {% endif %}
             {% if report.lsb_license_number %}
             <p class="mb-2"><strong>LSB License:</strong> {{ report.lsb_license_number }}</p>
             {% endif %}
             {% if report.mutation_form %}
             <p class="mb-2"><strong>Mutation Form:</strong> <a href="{{ report.mutation_form.url }}" target="_blank">View</a></p>
+            {% endif %}
+            {% if report.boundary_data_file %}
+            <p class="mb-2"><strong>Boundary Data:</strong> <a href="{{ report.boundary_data_file.url }}" target="_blank">Download</a></p>
+            {% endif %}
+            {% if report.variance_flagged %}
+            <p class="mb-2"><strong>Area Variance:</strong> <span class="text-warning">Flagged for admin review</span></p>
             {% endif %}
             {% if report.encroachment_found %}
             <p class="mb-2"><strong>Encroachment:</strong> Yes</p>

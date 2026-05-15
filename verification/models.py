@@ -544,6 +544,27 @@ class ExtensionOfficer(models.Model):
 
 
 class ExtensionReport(models.Model):
+    SOIL_CLASSIFICATION_CHOICES = [
+        ("Red Volcanic", "Red Volcanic (Best for Coffee/Tea/Veggies)"),
+        ("Black Cotton", "Black Cotton (High water retention, needs special management)"),
+        ("Sandy Soil", "Sandy Soil (Well-drained, good for specific tubers)"),
+        ("Loam", "Loam Soil (Rich, versatile agricultural soil)"),
+        ("Alluvial Soil", "Alluvial Soil (Riverbed silt, highly fertile)"),
+    ]
+
+    CURRENT_LAND_USE_CHOICES = [
+        ("Virgin/Uncultivated", "Virgin/Uncultivated"),
+        ("Active Farming", "Active Farming"),
+        ("Idle/Fallow", "Idle/Fallow"),
+        ("Exhausted", "Exhausted"),
+    ]
+
+    IRRIGATION_VIABILITY_CHOICES = [
+        ("high", "High Viability"),
+        ("moderate", "Moderate Viability"),
+        ("not_viable", "Not Viable"),
+    ]
+
     task = models.OneToOneField(
         "verification.VerificationTask",
         on_delete=models.CASCADE,
@@ -588,7 +609,12 @@ class ExtensionReport(models.Model):
     )
     topography = models.CharField(
         max_length=20,
-        choices=[("flat", "Flat"), ("gentle", "Gentle Slope"), ("steep", "Steep")],
+        choices=[
+            ("flat", "Flat / Level"),
+            ("gentle", "Gentle Slope"),
+            ("steep", "Steep Slope"),
+            ("valley", "Valley / Bottom Land"),
+        ],
         blank=True,
     )
 
@@ -608,6 +634,12 @@ class ExtensionReport(models.Model):
     disease_issues = models.TextField(blank=True)
 
     water_source_verified = models.CharField(max_length=100, blank=True)
+    water_sources_available = models.TextField(
+        blank=True,
+        help_text="Comma-separated verified water sources, e.g. Borehole, River, Rain-fed only.",
+    )
+    distance_to_tarmac_m = models.PositiveIntegerField(null=True, blank=True)
+    distance_to_market_m = models.PositiveIntegerField(null=True, blank=True)
     water_quality = models.CharField(
         max_length=50,
         choices=[
@@ -619,12 +651,18 @@ class ExtensionReport(models.Model):
         blank=True,
     )
     irrigation_system = models.CharField(max_length=100, blank=True)
+    irrigation_viability = models.CharField(
+        max_length=20,
+        choices=IRRIGATION_VIABILITY_CHOICES,
+        blank=True,
+    )
     power_access = models.CharField(
         max_length=50,
         choices=[
-            ("grid", "Grid Power"),
+            ("onsite", "On-site"),
+            ("within_100m", "Within 100m"),
             ("offgrid", "Off-grid / Solar"),
-            ("none", "No Power"),
+            ("none", "Not Available"),
             ("unknown", "Unknown"),
         ],
         default="unknown",
@@ -692,6 +730,16 @@ class ExtensionReport(models.Model):
     def __str__(self):
         return f"Extension Report for {self.plot.title} by {self.officer}"
 
+    @property
+    def soil_classification_display(self):
+        mapping = dict(self.SOIL_CLASSIFICATION_CHOICES)
+        return mapping.get(self.soil_classification, self.soil_classification)
+
+    @property
+    def current_land_use_display(self):
+        mapping = dict(self.CURRENT_LAND_USE_CHOICES)
+        return mapping.get(self.current_land_use, self.current_land_use)
+
 
 class LandSurveyor(models.Model):
     user = models.OneToOneField(
@@ -706,6 +754,7 @@ class LandSurveyor(models.Model):
 
     phone = models.CharField(max_length=20)
     office_address = models.TextField(blank=True)
+    practicing_certificate_expiry = models.DateField(null=True, blank=True)
 
     assigned_counties = ArrayField(
         models.CharField(max_length=100),
@@ -751,6 +800,8 @@ class LandSurveyor(models.Model):
 
     @property
     def can_accept_tasks(self):
+        if self.practicing_certificate_expiry and self.practicing_certificate_expiry < timezone.localdate():
+            return False
         return self.current_workload < self.max_daily_tasks and self.is_active
 
     @property
@@ -764,6 +815,12 @@ class LandSurveyor(models.Model):
 
 
 class SurveyorReport(models.Model):
+    REFERENCE_DOCUMENT_TYPE_CHOICES = [
+        ("rim", "Registry Index Map (RIM)"),
+        ("mutation", "Mutation Form"),
+        ("share_certificate_map", "Share Certificate Map"),
+    ]
+
     task = models.OneToOneField(
         "verification.VerificationTask",
         on_delete=models.CASCADE,
@@ -794,9 +851,16 @@ class SurveyorReport(models.Model):
             ("all_present", "All beacons present and intact"),
             ("missing", "Some beacons missing (re-establishment required)"),
             ("displaced", "Beacons displaced or tampered with"),
+            ("boundary_dispute", "Boundary dispute noted with adjacent plots"),
         ],
         blank=True,
     )
+    official_document_reference = models.CharField(
+        max_length=30,
+        choices=REFERENCE_DOCUMENT_TYPE_CHOICES,
+        blank=True,
+    )
+    reference_number = models.CharField(max_length=100, blank=True)
     beacon_certificate = models.FileField(
         upload_to="documents/beacon_certificates/", null=True, blank=True
     )
@@ -808,6 +872,13 @@ class SurveyorReport(models.Model):
         max_digits=10, decimal_places=4, null=True, blank=True
     )
     deed_area = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    variance_flagged = models.BooleanField(default=False)
+    boundary_data_file = models.FileField(
+        upload_to="documents/boundary_data/",
+        null=True,
+        blank=True,
+        help_text="Upload .geojson, .kml, or .shp field boundary data.",
+    )
     boundary_report = models.FileField(
         upload_to="documents/boundary_reports/", null=True, blank=True
     )
@@ -828,6 +899,7 @@ class SurveyorReport(models.Model):
         max_digits=12, decimal_places=2, null=True, blank=True
     )
     price_review_notes = models.TextField(blank=True)
+    surveyor_declaration = models.BooleanField(default=False)
     notes = models.TextField(blank=True)
 
     recommendation = models.CharField(
@@ -850,3 +922,15 @@ class SurveyorReport(models.Model):
 
     def __str__(self):
         return f"Surveyor Report for {self.plot.title} by {self.surveyor}"
+
+    @property
+    def beacon_status_list(self):
+        if not self.beacon_status:
+            return []
+        mapping = dict(self._meta.get_field("beacon_status").choices)
+        values = [value.strip() for value in self.beacon_status.split(",") if value.strip()]
+        return [mapping.get(value, value) for value in values]
+
+    @property
+    def beacon_status_display(self):
+        return ", ".join(self.beacon_status_list)

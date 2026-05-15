@@ -33,4 +33,28 @@
 
     <button class="auth-btn">Submit for Verification</button>
 </form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const maritalField = document.getElementById('id_marital_status');
+    const spouseFields = ['id_spouse_full_name', 'id_spouse_id_number', 'id_spouse_id_doc']
+        .map((id) => document.getElementById(id))
+        .filter(Boolean)
+        .map((field) => field.closest('.form-group'));
+
+    function toggleSpouseFields() {
+        const show = maritalField && maritalField.value === 'married';
+        spouseFields.forEach((group) => {
+            if (group) {
+                group.style.display = show ? '' : 'none';
+            }
+        });
+    }
+
+    if (maritalField) {
+        maritalField.addEventListener('change', toggleSpouseFields);
+        toggleSpouseFields();
+    }
+});
+</script>
 {% endblock %}

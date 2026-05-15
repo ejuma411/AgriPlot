@@ -14,7 +14,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum
 from django.utils.dateparse import parse_date
 from django.urls import reverse
 from listings.models import *  # noqa: F403
@@ -30,6 +30,35 @@ logger = logging.getLogger(__name__)
 
 def _workspace_redirect(section):
     return redirect(f"{reverse('listings:dashboard_router')}?section={section}")
+
+
+def _marketplace_analytics_snapshot(days):
+    since = timezone.now() - timezone.timedelta(days=days)
+    active_users_daily = User.objects.filter(last_login__date=timezone.localdate()).count()
+    active_users_weekly = User.objects.filter(last_login__gte=timezone.now() - timezone.timedelta(days=7)).count()
+    top_regions = (
+        Plot.objects.filter(is_hidden=False)
+        .exclude(county__isnull=True)
+        .values("county", "land_type")
+        .annotate(total=Count("id"))
+        .order_by("-total")[:8]
+    )
+    fraud_counts = list(
+        FraudReport.objects.values("status").annotate(total=Count("id")).order_by("status")
+    )
+    fraud_recent = FraudReport.objects.filter(created_at__gte=since).count()
+    revenue_simulation = Plot.objects.filter(is_hidden=False).aggregate(
+        sale_total=Sum("sale_price"),
+        lease_total=Sum("lease_price_yearly"),
+    )
+    return {
+        "active_users_daily": active_users_daily,
+        "active_users_weekly": active_users_weekly,
+        "top_regions": list(top_regions),
+        "fraud_counts": fraud_counts,
+        "fraud_recent": fraud_recent,
+        "revenue_simulation": revenue_simulation,
+    }
 
 # Add this to views_admin.py - somewhere after your other imports
 
@@ -1408,19 +1437,40 @@ def analytics_dashboard(request):
         'system_health': system_health,
         'sla_metrics': sla_metrics,
         'days': days,
-        'page_title': 'Analytics Dashboard'
+        'page_title': 'Analytics Dashboard',
+        'marketplace_metrics': _marketplace_analytics_snapshot(days),
     }
     
     return render(request, 'verification/admin/analytics_dashboard.html', context)
 
 @staff_member_required
 def export_report(request):
-    """Export verification report as CSV"""
+    """Export verification report as CSV or PDF."""
     import csv
     from django.http import HttpResponse
+    from django.template.loader import render_to_string
+    from weasyprint import HTML
     
     report_type = request.GET.get('type', 'verification')
     days = int(request.GET.get('days', 30))
+    export_format = (request.GET.get("format") or "csv").lower()
+
+    if export_format == "pdf":
+        context = {
+            "report_type": report_type,
+            "days": days,
+            "generated_at": timezone.now(),
+            "overview": AnalyticsService.get_verification_overview(days),
+            "timeline": AnalyticsService.get_verification_timeline(days),
+            "officer_performance": AnalyticsService.get_officer_performance(days),
+            "county_stats": AnalyticsService.get_county_statistics(),
+            "marketplace_metrics": _marketplace_analytics_snapshot(days),
+        }
+        html = render_to_string("verification/admin/analytics_report_pdf.html", context)
+        pdf = HTML(string=html).write_pdf()
+        response = HttpResponse(pdf, content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="agriplot_{report_type}_report.pdf"'
+        return response
     
     response = HttpResponse(content_type='text/csv')
     response['Content-Disposition'] = f'attachment; filename="agriplot_{report_type}_report.csv"'
@@ -1457,6 +1507,15 @@ def export_report(request):
                 f"{stat['verification_rate']}%",
                 stat['assigned_officers']
             ])
+
+    elif report_type == 'marketplace':
+        writer.writerow(['Metric', 'Value'])
+        snapshot = _marketplace_analytics_snapshot(days)
+        writer.writerow(['Active users today', snapshot['active_users_daily']])
+        writer.writerow(['Active users this week', snapshot['active_users_weekly']])
+        writer.writerow(['Fraud reports in period', snapshot['fraud_recent']])
+        writer.writerow(['Revenue simulation sale total', snapshot['revenue_simulation'].get('sale_total') or 0])
+        writer.writerow(['Revenue simulation annual lease total', snapshot['revenue_simulation'].get('lease_total') or 0])
     
     return response
 

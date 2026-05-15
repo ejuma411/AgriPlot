@@ -5,7 +5,9 @@ from django.test import Client, RequestFactory, TestCase
 from django.urls import reverse
 from unittest.mock import patch
 
-from .models import Agent, ContactRequest, Plot
+from accounts.models import Profile
+from .models import Agent, ContactRequest, FraudReport, Plot, UserInterest, UserPlotView
+from .recommendation import RecommendationService
 from payments.models import LeaseWaitlistEntry
 from verification.models import VerificationStatus
 from verification.verification_service import VerificationService
@@ -27,6 +29,12 @@ class ListingsRegressionTests(TestCase):
             id_number="12345678",
             verified=True,
         )
+        self.buyer = User.objects.create_user(
+            username="buyer_user",
+            email="buyer@example.com",
+            password="safe-pass-456",
+        )
+        Profile.objects.create(user=self.buyer, role="buyer", intent="buyer")
         self.plot = Plot.objects.create(
             agent=self.agent,
             title="Test Plot",
@@ -258,6 +266,59 @@ class ListingsRegressionTests(TestCase):
         plot_ids = [plot.id for plot in response.context["featured_plots"]]
         self.assertIn(leased_plot.id, plot_ids)
         self.assertContains(response, "Reserve Next Lease")
+
+    def test_plot_absolute_url_uses_slug_route(self):
+        url = self.plot.get_absolute_url()
+        self.assertIn(f"/{self.plot.id}/", url)
+        self.assertIn("test-plot", url)
+
+    def test_recommendation_service_prefers_sale_for_buyer_intent(self):
+        sale_plot = Plot.objects.create(
+            agent=self.agent,
+            title="Buyer Match Plot",
+            location="Nakuru - Elementaita",
+            county="Nakuru",
+            area=5.0,
+            listing_type="sale",
+            land_type="agricultural",
+            sale_price="2100000.00",
+            price="2100000.00",
+        )
+        lease_plot = Plot.objects.create(
+            agent=self.agent,
+            title="Lease Match Plot",
+            location="Nakuru - Gilgil",
+            county="Nakuru",
+            area=5.0,
+            listing_type="lease",
+            land_type="agricultural",
+            lease_price_yearly="300000.00",
+            price="300000.00",
+        )
+        UserInterest.objects.create(user=self.buyer, plot=self.plot)
+
+        results = list(RecommendationService().recommend_for_user(self.buyer, limit=5))
+
+        self.assertIn(sale_plot, results)
+        self.assertNotIn(lease_plot, results)
+
+    def test_submit_fraud_report_creates_report(self):
+        self.client.force_login(self.buyer)
+        response = self.client.post(
+            reverse("listings:submit_fraud_report", args=[self.plot.id]),
+            {"reason": "Title details look inconsistent", "notes": "Please verify."},
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(FraudReport.objects.filter(plot=self.plot, reporter=self.buyer).exists())
+
+    def test_plot_detail_records_authenticated_view_event(self):
+        self.client.force_login(self.buyer)
+        response = self.client.get(reverse("listings:plot_detail", args=[self.plot.id]))
+
+        self.assertEqual(response.status_code, 200)
+        view_event = UserPlotView.objects.get(user=self.buyer, plot=self.plot)
+        self.assertEqual(view_event.view_count, 1)
 
     def test_home_keeps_reserved_lease_plots_visible_for_next_lease_booking(self):
         reserved_lease_plot = Plot.objects.create(

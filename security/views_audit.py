@@ -135,7 +135,7 @@ def audit_log_view(request):
         'chain_message': chain_message,
     }
     
-    return render(request, 'verification/admin/audit_log.html', context)
+    return render(request, 'security/audit_log.html', context)
 
 
 def export_audit_csv(logs, filter_summary=None):

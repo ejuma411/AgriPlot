@@ -11,8 +11,8 @@ from urllib3.util.retry import Retry
 logger = logging.getLogger(__name__)
 
 
-class TextSMSService:
-    """Provider-aware SMS service used across the project."""
+class SMSService:
+    """OpenSMS service used across the project."""
 
     def __init__(self, retries=None):
         self.retries = (
@@ -20,16 +20,11 @@ class TextSMSService:
             if retries is None
             else retries
         )
-        self.provider = getattr(settings, "SMS_PROVIDER", "textsms").lower()
+        self.provider = getattr(settings, "SMS_PROVIDER", "opensms").lower()
         self.request_timeout = (
             float(getattr(settings, "SMS_REQUEST_TIMEOUT", 8)),
             float(getattr(settings, "SMS_READ_TIMEOUT", 8)),
         )
-
-        self.textsms_url = settings.TEXTSMS_API_URL
-        self.textsms_partner_id = settings.TEXTSMS_PARTNER_ID
-        self.textsms_api_key = settings.TEXTSMS_API_KEY
-        self.textsms_sender_id = settings.TEXTSMS_SENDER_ID
 
         self.opensms_url = settings.OPENSMS_API_URL
         self.opensms_token = settings.OPENSMS_API_TOKEN
@@ -91,57 +86,6 @@ class TextSMSService:
             )
         except Exception:
             logger.exception("Could not persist SMS log")
-
-    def _send_via_textsms(self, mobile, message):
-        payload = {
-            "apikey": self.textsms_api_key,
-            "partnerID": self.textsms_partner_id,
-            "message": message,
-            "shortcode": self.textsms_sender_id,
-            "mobile": mobile,
-        }
-        headers = {"Content-Type": "application/json"}
-        response = self.session.post(
-            self.textsms_url,
-            headers=headers,
-            json=payload,
-            timeout=self.request_timeout,
-        )
-        result = self._safe_json(response)
-        if response.status_code in (200, 201):
-            message_id = ""
-            if isinstance(result, dict):
-                resp_list = result.get("responses") or []
-                if resp_list and isinstance(resp_list, list):
-                    message_id = str(resp_list[0].get("messageid", ""))
-            self._log_sms(
-                provider="textsms",
-                phone=mobile,
-                message=message,
-                status_code=response.status_code,
-                success=True,
-                response_body=result,
-                message_id=message_id,
-            )
-            return {
-                "success": True,
-                "data": result,
-                "message": "SMS sent successfully",
-            }
-
-        self._log_sms(
-            provider="textsms",
-            phone=mobile,
-            message=message,
-            status_code=response.status_code,
-            success=False,
-            response_body=result,
-        )
-        return {
-            "success": False,
-            "error": f"API returned {response.status_code}",
-            "data": result,
-        }
 
     @staticmethod
     def _extract_provider_error(result, default_status):
@@ -240,22 +184,19 @@ class TextSMSService:
                 self.provider,
                 formatted_numbers,
             )
-            if self.provider == "opensms":
-                # OpenSMS examples/documentation are single-recipient oriented.
-                if len(formatted_numbers) == 1:
-                    return self._send_via_opensms(formatted_numbers[0], message)
+            # OpenSMS examples/documentation are single-recipient oriented.
+            if len(formatted_numbers) == 1:
+                return self._send_via_opensms(formatted_numbers[0], message)
 
-                results = []
-                for number in formatted_numbers:
-                    results.append(self._send_via_opensms(number, message))
-                all_success = all(item.get("success") for item in results)
-                return {
-                    "success": all_success,
-                    "data": results,
-                    "message": f"SMS processed for {len(formatted_numbers)} recipient(s)",
-                }
-
-            return self._send_via_textsms(recipient_blob, message)
+            results = []
+            for number in formatted_numbers:
+                results.append(self._send_via_opensms(number, message))
+            all_success = all(item.get("success") for item in results)
+            return {
+                "success": all_success,
+                "data": results,
+                "message": f"SMS processed for {len(formatted_numbers)} recipient(s)",
+            }
 
         except Timeout as exc:
             logger.error("SMS request timed out via %s for %s: %s", self.provider, recipient_blob, exc)

@@ -157,6 +157,8 @@ def register_agent(request):
                     "phone": form.cleaned_data["phone"],
                     "id_number": form.cleaned_data["id_number"],
                     "license_number": form.cleaned_data["license_number"],
+                    "company_name": form.cleaned_data.get("company_name", ""),
+                    "earb_registration_number": form.cleaned_data["earb_registration_number"],
                 }
                 request.session["reg_phone"] = form.cleaned_data["phone"]
                 request.session["reg_files"] = _store_registration_files(
@@ -164,6 +166,7 @@ def register_agent(request):
                     [
                         "license_doc",
                         "kra_pin",
+                        "tax_compliance_certificate",
                         "practicing_certificate",
                         "good_conduct",
                         "professional_indemnity",

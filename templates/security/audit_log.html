@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Audit Log — AgriPlot Security{% endblock %}
+{% block meta_description %}System-wide blockchain-style audit log for all platform actions.{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+  <div class="d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h1 class="h3 fw-bold mb-0"><i class="fas fa-shield-alt me-2 text-success"></i>Audit Log</h1>
+      <p class="text-muted mb-0">Cryptographically chained record of all platform actions</p>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}export=csv" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-file-csv me-1"></i>Export CSV
+      </a>
+      <a href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}export=json" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-file-code me-1"></i>Export JSON
+      </a>
+      <a href="{% url 'security:audit_log_verify' %}" class="btn btn-outline-success btn-sm">
+        <i class="fas fa-check-double me-1"></i>Verify Chain
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h4 fw-bold text-primary mb-0">{{ total_count }}</div>
+          <small class="text-muted">Total Entries</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h4 fw-bold text-success mb-0">{{ unique_users }}</div>
+          <small class="text-muted">Unique Users</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h4 fw-bold text-warning mb-0">{{ unique_ips }}</div>
+          <small class="text-muted">Unique IPs</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-3">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body text-center">
+          <div class="h4 fw-bold text-info mb-0">{{ unique_actions }}</div>
+          <small class="text-muted">Action Types</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body">
+      <form method="GET" class="row g-2">
+        <div class="col-md-2">
+          <input type="text" name="user" class="form-control form-control-sm" placeholder="Username or email" value="{{ request.GET.user|default:'' }}">
+        </div>
+        <div class="col-md-2">
+          <select name="action" class="form-select form-select-sm">
+            <option value="">All actions</option>
+            {% for code, label in action_choices %}
+            <option value="{{ code }}" {% if request.GET.action == code %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-2">
+          <select name="severity" class="form-select form-select-sm">
+            <option value="">All severities</option>
+            <option value="info" {% if request.GET.severity == 'info' %}selected{% endif %}>Info</option>
+            <option value="warning" {% if request.GET.severity == 'warning' %}selected{% endif %}>Warning</option>
+            <option value="critical" {% if request.GET.severity == 'critical' %}selected{% endif %}>Critical</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <input type="date" name="start_date" class="form-control form-control-sm" value="{{ request.GET.start_date|default:'' }}">
+        </div>
+        <div class="col-md-2">
+          <input type="date" name="end_date" class="form-control form-control-sm" value="{{ request.GET.end_date|default:'' }}">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+        </div>
+      </form>
+      {% if filter_summary %}
+      <div class="mt-2">
+        <small class="text-muted">Active filters: {{ filter_summary|join:", " }}</small>
+        <a href="{% url 'security:audit_log' %}" class="ms-2 small text-danger">Clear</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Log Table -->
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0 small">
+          <thead class="table-dark">
+            <tr>
+              <th>Timestamp</th>
+              <th>User</th>
+              <th>Action</th>
+              <th>Severity</th>
+              <th>Object</th>
+              <th>IP Address</th>
+              <th>Hash</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in logs %}
+            <tr>
+              <td class="text-nowrap">{{ log.created_at|date:"d M Y H:i:s" }}</td>
+              <td>{{ log.user.username|default:"System" }}</td>
+              <td><code class="small">{{ log.action }}</code></td>
+              <td>
+                <span class="badge {% if log.severity == 'critical' %}bg-danger{% elif log.severity == 'warning' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                  {{ log.severity|upper }}
+                </span>
+              </td>
+              <td>{{ log.object_type|default:"—" }} {% if log.object_id %}#{{ log.object_id }}{% endif %}</td>
+              <td>{{ log.ip_address|default:"—" }}</td>
+              <td><code class="text-muted small">{{ log.hash_signature|slice:":12" }}…</code></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No audit log entries found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  {% if num_pages > 1 %}
+  <div class="d-flex justify-content-center mt-3 gap-2">
+    {% if has_previous %}<a href="?{{ request.GET.urlencode }}&page={{ previous_page_number }}" class="btn btn-outline-secondary btn-sm">Previous</a>{% endif %}
+    <span class="btn btn-sm disabled">Page {{ page }} of {{ num_pages }}</span>
+    {% if has_next %}<a href="?{{ request.GET.urlencode }}&page={{ next_page_number }}" class="btn btn-outline-secondary btn-sm">Next</a>{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

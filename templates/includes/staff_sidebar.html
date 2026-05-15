@@ -1,39 +1,110 @@
-<aside class="dashboard-sidebar" aria-label="Dashboard navigation">
+
+{% load static %}
+{% load custom_filters %}
+<!-- {# ─────────────────────────────────────────────────────────────────
+   Canonical Sidebar — driven by dashboard_modules when available,
+   falls back to context-injected `sidebar_items` or a minimal nav.
+   Included by: staff_dashboard.html, add_plot.html, and others.
+   ───────────────────────────────────────────────────────────────── #} -->
+
+<aside class="dashboard-sidebar" id="mainSidebar" aria-label="Workspace navigation">
     <div class="sidebar-brand">
         <i class="fas fa-leaf" aria-hidden="true"></i>
         <span>AgriPlot</span>
     </div>
 
-    <nav class="sidebar-nav">
-        <a href="{% url 'listings:staff_dashboard' %}" class="nav-item" data-analytics="sidebar_dashboard">
-            <i class="fas fa-home" aria-hidden="true"></i>
-            <span>Dashboard</span>
-        </a>
-        <a href="{% url 'listings:my_plots' %}" class="nav-item" data-analytics="sidebar_my_plots">
-            <i class="fas fa-list" aria-hidden="true"></i>
-            <span>My Plots</span>
-        </a>
-        <a href="{% url 'listings:add_plot' %}" class="nav-item active" data-analytics="sidebar_add_plot">
-            <i class="fas fa-plus-circle" aria-hidden="true"></i>
-            <span>Add New Plot</span>
-        </a>
-        <a href="{% url 'listings:notifications_inbox' %}?filter=messages" class="nav-item" data-analytics="sidebar_messages">
-            <i class="fas fa-inbox" aria-hidden="true"></i>
-            <span>Inbox</span>
-        </a>
-        <a href="{% url 'listings:profile_management' %}" class="nav-item" data-analytics="sidebar_profile">
-            <i class="fas fa-user-circle" aria-hidden="true"></i>
-            <span>Profile</span>
-        </a>
+    <nav class="sidebar-nav" aria-label="Main navigation">
+
+        {# ── MODE 1: Full module-driven nav (staff_dashboard context) ── #}
+        {% if dashboard_modules %}
+            {# Group modules by section #}
+            {% regroup dashboard_modules by section as section_groups %}
+            {% for group in section_groups %}
+                {% if section_groups|length > 1 %}
+                <div class="nav-section-label">{{ group.grouper }}</div>
+                {% endif %}
+                {% for mod in group.list %}
+                <a href="{{ mod.url }}"
+                   class="nav-item{% if active_section == mod.section_key %} active{% endif %}"
+                   data-section="{{ mod.section_key }}"
+                   title="{{ mod.description }}">
+                    <i class="{{ mod.icon }}" aria-hidden="true"></i>
+                    <span>{{ mod.title }}</span>
+                    {% if mod.badge %}
+                    <span class="nav-badge" aria-label="{{ mod.badge }} pending">{{ mod.badge }}</span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+            {% endfor %}
+
+            {# Always-present client links for agents and landowners #}
+            {% if is_agent or is_landowner %}
+            <div class="nav-divider" aria-hidden="true"></div>
+            <a href="{% url 'listings:add_plot' %}"
+               class="nav-item{% if request.resolver_match.url_name == 'add_plot' %} active{% endif %}"
+               title="List a new plot">
+                <i class="fas fa-plus-circle" aria-hidden="true"></i>
+                <span>Add New Plot</span>
+            </a>
+            {% endif %}
+
+        {# ── MODE 2: Page-specific sidebar_items (e.g. add_plot) ── #}
+        {% elif sidebar_items %}
+            {% for item in sidebar_items %}
+            <a href="{{ item.url }}"
+               class="nav-item{% if item.active %} active{% endif %}">
+                <i class="{{ item.icon }}" aria-hidden="true"></i>
+                <span>{{ item.label }}</span>
+            </a>
+            {% endfor %}
+
+        {# ── MODE 3: Fallback minimal nav ── #}
+        {% else %}
+            <a href="{% url 'listings:dashboard_router' %}"
+               class="nav-item{% if request.resolver_match.url_name == 'dashboard_router' %} active{% endif %}">
+                <i class="fas fa-home" aria-hidden="true"></i>
+                <span>Dashboard</span>
+            </a>
+            {% if request.user.is_authenticated %}
+            {% if request.user.agent or request.user.landownerprofile %}
+            <a href="{% url 'listings:my_plots' %}"
+               class="nav-item{% if request.resolver_match.url_name == 'my_plots' %} active{% endif %}">
+                <i class="fas fa-list" aria-hidden="true"></i>
+                <span>My Plots</span>
+            </a>
+            <a href="{% url 'listings:add_plot' %}"
+               class="nav-item{% if request.resolver_match.url_name == 'add_plot' %} active{% endif %}">
+                <i class="fas fa-plus-circle" aria-hidden="true"></i>
+                <span>Add New Plot</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'listings:notifications_inbox' %}"
+               class="nav-item{% if request.resolver_match.url_name == 'notifications_inbox' %} active{% endif %}">
+                <i class="fas fa-inbox" aria-hidden="true"></i>
+                <span>Inbox</span>
+            </a>
+            <a href="{% url 'listings:profile_management' %}"
+               class="nav-item{% if request.resolver_match.url_name == 'profile_management' %} active{% endif %}">
+                <i class="fas fa-user-circle" aria-hidden="true"></i>
+                <span>Profile</span>
+            </a>
+            {% endif %}
+        {% endif %}
+
     </nav>
 
     <div class="sidebar-footer">
+        {% if request.user.is_authenticated %}
         <div class="user-info">
-            <div class="user-avatar">{{ request.user|display_initial }}</div>
+            <div class="user-avatar" aria-hidden="true">{{ request.user|display_initial }}</div>
             <div class="user-details">
                 <p class="user-name">{{ request.user|display_name }}</p>
-                <p class="user-role">{{ profile_type|default:"User" }}</p>
+                <p class="user-role">{{ primary_role_label|default:profile_type|default:"User" }}</p>
             </div>
         </div>
+        <a href="{% url 'listings:home' %}" class="sidebar-home-link mt-2">
+            <i class="fas fa-arrow-left me-1"></i> Back to Site
+        </a>
+        {% endif %}
     </div>
 </aside>

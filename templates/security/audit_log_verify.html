@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Verify Audit Chain — AgriPlot Security{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:700px;">
+  <h1 class="h3 fw-bold mb-1"><i class="fas fa-link me-2 text-success"></i>Audit Chain Verification</h1>
+  <p class="text-muted mb-4">Cryptographic integrity check of the full audit log chain</p>
+
+  <div class="card border-0 shadow-sm mb-4">
+    <div class="card-body text-center py-5">
+      {% if is_valid %}
+      <div class="mb-3"><i class="fas fa-check-circle text-success" style="font-size:3rem;"></i></div>
+      <h4 class="fw-bold text-success">Chain Intact</h4>
+      {% else %}
+      <div class="mb-3"><i class="fas fa-times-circle text-danger" style="font-size:3rem;"></i></div>
+      <h4 class="fw-bold text-danger">Chain Broken</h4>
+      {% endif %}
+      <p class="text-muted mb-3">{{ message }}</p>
+      <div class="row justify-content-center g-3 mt-1">
+        <div class="col-auto">
+          <div class="border rounded-3 px-4 py-2 text-center">
+            <div class="h5 fw-bold mb-0">{{ total_logs }}</div>
+            <small class="text-muted">Total Records</small>
+          </div>
+        </div>
+        <div class="col-auto">
+          <div class="border rounded-3 px-4 py-2 text-center">
+            <div class="h5 fw-bold mb-0">{{ export_date|date:"d M Y H:i" }}</div>
+            <small class="text-muted">Verified At</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <a href="{% url 'security:audit_log' %}" class="btn btn-outline-secondary">
+    <i class="fas fa-arrow-left me-1"></i>Back to Audit Log
+  </a>
+</div>
+{% endblock %}

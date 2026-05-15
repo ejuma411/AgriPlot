@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}Deal Workspace - TRX-{{ transaction.id|stringformat:"05d" }}{% endblock %}
+
+{% block full_width_content %}
+<main class="workspace-page">
+    <section class="workspace-hero">
+        <div class="d-flex align-items-center gap-4">
+            <div class="workspace-stat-icon" style="width: 80px; height: 80px; font-size: 2rem; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; border: none;">
+                <i class="fa-solid fa-map-location-dot"></i>
+            </div>
+            <div>
+                <p class="workspace-kicker">Transaction Workspace · TRX-{{ transaction.id|stringformat:"05d" }}</p>
+                <h1 class="workspace-title">{{ transaction.plot.title }}</h1>
+                <p class="workspace-subtitle">
+                    {{ transaction.plot.county }}, {{ transaction.plot.subcounty }} · Agreed Price: <strong>KES {{ transaction.agreed_price|floatformat:0 }}</strong>
+                </p>
+            </div>
+        </div>
+        <div class="workspace-actions">
+            <a class="ap-btn ap-btn-ghost" href="{% url 'transactions:dashboard' %}">
+                <i class="fa-solid fa-arrow-left"></i> My Deals
+            </a>
+        </div>
+    </section>
+
+    <!-- Progress Bar -->
+    <section class="mb-5">
+        <div class="d-flex justify-content-between mb-2">
+            <span class="text-sm fw-semibold text-muted">TRANSACTION PROGRESS</span>
+            <span class="text-sm fw-bold text-success">{{ progress_percentage }}% Complete</span>
+        </div>
+        <div class="progress" style="height: 10px; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
+            <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress_percentage }}%; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);" aria-valuenow="{{ progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </section>
+
+    <div class="row g-4">
+        <!-- Left Column: Timeline -->
+        <div class="col-lg-8">
+            <article class="workspace-card">
+                <div class="workspace-card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="workspace-card-title">Legal & Conveyancing Timeline</h2>
+                        <p class="workspace-card-meta">Stages in the Kenyan land transfer process.</p>
+                    </div>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2">
+                        Active: {{ transaction.get_stage_display }}
+                    </span>
+                </div>
+                <div class="workspace-card-body">
+                    <div class="legal-timeline">
+                        {% for stage_code, stage_label in transaction.Stage.choices %}
+                            {% with is_past=False is_current=False %}
+                                {# Logic to determine if stage is past, current or future #}
+                                <div class="timeline-item {% if transaction.stage == stage_code %}is-current{% elif transaction.is_completed or stage_code == 'draft' %}is-completed{% endif %}">
+                                    <div class="timeline-marker">
+                                        {% if transaction.stage == stage_code %}
+                                            <i class="fa-solid fa-circle-play"></i>
+                                        {% elif transaction.is_completed or stage_code == 'draft' %}
+                                            <i class="fa-solid fa-circle-check"></i>
+                                        {% else %}
+                                            <i class="fa-solid fa-circle"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div class="timeline-content">
+                                        <h3 class="timeline-title">{{ stage_label }}</h3>
+                                        {% if transaction.stage == stage_code %}
+                                            <div class="timeline-active-info">
+                                                <p class="mb-2">Currently in this stage. AgriPlot is tracking the required documents and consents.</p>
+                                                <div class="d-flex gap-2">
+                                                    <button class="ap-btn ap-btn-primary btn-sm">Update Progress</button>
+                                                    <button class="ap-btn ap-btn-ghost btn-sm">View Requirements</button>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </article>
+
+            <!-- Milestones Log -->
+            <article class="workspace-card mt-4">
+                <div class="workspace-card-header">
+                    <h2 class="workspace-card-title">Activity Log</h2>
+                </div>
+                <div class="workspace-card-body">
+                    <div class="workspace-list">
+                        {% for milestone in transaction.milestones.all %}
+                            <div class="workspace-list-item">
+                                <span>
+                                    <strong>{{ milestone.get_stage_display }}</strong>
+                                    <span>{{ milestone.notes }}</span>
+                                </span>
+                                <small class="text-muted">{{ milestone.created_at|date:"M d, Y H:i" }}</small>
+                            </div>
+                        {% empty %}
+                            <p class="text-center text-muted py-4">No activity recorded yet.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </article>
+        </div>
+
+        <!-- Right Column: Details & Docs -->
+        <div class="col-lg-4">
+            <!-- Parties Card -->
+            <article class="workspace-card mb-4">
+                <div class="workspace-card-header">
+                    <h2 class="workspace-card-title">Parties</h2>
+                </div>
+                <div class="workspace-card-body">
+                    <div class="party-item mb-3 pb-3 border-bottom">
+                        <p class="text-xs fw-bold text-muted mb-1">SELLER</p>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-sm">S</div>
+                            <strong>{{ transaction.seller.get_full_name|default:transaction.seller.username }}</strong>
+                        </div>
+                    </div>
+                    <div class="party-item">
+                        <p class="text-xs fw-bold text-muted mb-1">BUYER</p>
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="avatar-sm bg-primary-subtle text-primary">B</div>
+                            <div>
+                                <strong>{{ transaction.buyer.get_full_name|default:transaction.buyer.username }}</strong>
+                                <br><small class="text-muted">KRA PIN: {{ transaction.buyer_kra_pin|default:"Not provided" }}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Documents Card -->
+            <article class="workspace-card">
+                <div class="workspace-card-header d-flex justify-content-between align-items-center">
+                    <h2 class="workspace-card-title">Documents</h2>
+                    <button class="ap-btn ap-btn-ghost btn-sm p-1"><i class="fa-solid fa-plus"></i></button>
+                </div>
+                <div class="workspace-card-body p-0">
+                    <div class="doc-list">
+                        {% for doc in transaction.documents.all %}
+                            <div class="doc-item p-3 border-bottom d-flex align-items-center gap-3">
+                                <div class="doc-icon"><i class="fa-solid fa-file-pdf"></i></div>
+                                <div class="flex-grow-1">
+                                    <p class="mb-0 fw-semibold">{{ doc.get_doc_type_display }}</p>
+                                    <small class="text-muted">Uploaded {{ doc.uploaded_at|date:"M d" }}</small>
+                                </div>
+                                {% if doc.is_verified %}
+                                    <i class="fa-solid fa-circle-check text-success" title="Verified"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-circle-notch fa-spin text-warning" title="Pending Verification"></i>
+                                {% endif %}
+                            </div>
+                        {% empty %}
+                            <div class="p-4 text-center">
+                                <p class="text-muted small mb-0">No documents uploaded yet.</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </article>
+
+            <!-- GIS Context -->
+            {% if transaction.plot.latitude and transaction.plot.longitude %}
+            <article class="workspace-card mt-4">
+                <div class="workspace-card-header">
+                    <h2 class="workspace-card-title">GIS Context</h2>
+                </div>
+                <div class="workspace-card-body p-0">
+                    <div class="p-3">
+                        <p class="text-xs fw-bold text-muted mb-2">GEOGRAPHICAL COORDINATES</p>
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <i class="fa-solid fa-location-crosshairs text-primary"></i>
+                            <span class="text-monospace">{{ transaction.plot.latitude }}, {{ transaction.plot.longitude }}</span>
+                        </div>
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ transaction.plot.latitude }},{{ transaction.plot.longitude }}" target="_blank" class="ap-btn ap-btn-ghost btn-sm w-100">
+                            <i class="fa-solid fa-map-marked-alt me-2"></i> View on Google Maps
+                        </a>
+                    </div>
+                </div>
+            </article>
+            {% endif %}
+
+            <!-- Financial Summary -->
+            <article class="workspace-card mt-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white;">
+                <div class="workspace-card-body">
+                    <h3 class="text-sm fw-bold text-white-50 mb-3">FINANCIAL SUMMARY</h3>
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Agreed Price</span>
+                        <span class="fw-bold">KES {{ transaction.agreed_price|floatformat:0 }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span>Deposit Paid</span>
+                        <span class="fw-bold">- KES {{ transaction.deposit_paid|floatformat:0 }}</span>
+                    </div>
+                    <hr class="border-white-10 my-3">
+                    <div class="d-flex justify-content-between align-items-end">
+                        <span>Balance Due</span>
+                        <span class="fs-4 fw-bold">KES {{ transaction.balance_due|floatformat:0 }}</span>
+                    </div>
+                </div>
+            </article>
+        </div>
+    </div>
+</main>
+
+<style>
+    .legal-timeline {
+        position: relative;
+        padding-left: 3rem;
+    }
+    .legal-timeline::before {
+        content: '';
+        position: absolute;
+        left: 0.95rem;
+        top: 0.5rem;
+        bottom: 0.5rem;
+        width: 2px;
+        background: #e2e8f0;
+    }
+    .timeline-item {
+        position: relative;
+        padding-bottom: 2.5rem;
+    }
+    .timeline-item:last-child {
+        padding-bottom: 0;
+    }
+    .timeline-marker {
+        position: absolute;
+        left: -3rem;
+        width: 2rem;
+        height: 2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border-radius: 50%;
+        font-size: 1.25rem;
+        color: #cbd5e1;
+        z-index: 2;
+    }
+    .timeline-item.is-completed .timeline-marker {
+        color: #10b981;
+    }
+    .timeline-item.is-current .timeline-marker {
+        color: #3b82f6;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.2); opacity: 0.7; }
+        100% { transform: scale(1); opacity: 1; }
+    }
+    .timeline-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        color: #64748b;
+    }
+    .timeline-item.is-current .timeline-title {
+        color: #0f172a;
+    }
+    .timeline-item.is-completed .timeline-title {
+        color: #10b981;
+    }
+    .timeline-active-info {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1.25rem;
+        border: 1px solid #e2e8f0;
+        margin-top: 0.5rem;
+    }
+    .avatar-sm {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.875rem;
+    }
+    .doc-icon {
+        width: 40px;
+        height: 40px;
+        background: #fee2e2;
+        color: #ef4444;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+    .text-white-50 { color: rgba(255,255,255,0.5); }
+    .border-white-10 { border-color: rgba(255,255,255,0.1); }
+</style>
+{% endblock %}

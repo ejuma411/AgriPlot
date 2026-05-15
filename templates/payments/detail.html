@@ -19,24 +19,24 @@
     }
     
     .payment-detail-page {
-        background: linear-gradient(135deg, #f5f7f0 0%, #eef2ea 100%);
+        background: var(--ap-bg);
         min-height: 100vh;
         padding: 2rem 0;
     }
     
     .payment-container {
-        max-width: 1400px;
+        width: var(--ap-page-width);
         margin: 0 auto;
-        padding: 0 2rem;
     }
     
     /* Header Section */
     .payment-header {
-        background: white;
-        border-radius: 24px;
+        background: var(--ap-surface);
+        border-radius: 16px;
         padding: 1.5rem 2rem;
         margin-bottom: 2rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        box-shadow: var(--ap-shadow);
+        border: 1px solid var(--ap-border);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -46,8 +46,8 @@
     
     .payment-badge {
         display: inline-block;
-        background: rgba(31,139,76,0.1);
-        color: #1f8b4c;
+        background: rgba(47, 133, 90, 0.1);
+        color: var(--ap-green);
         padding: 0.25rem 1rem;
         border-radius: 30px;
         font-size: 0.75rem;
@@ -58,15 +58,14 @@
     }
     
     .payment-title {
-        font-family: 'Space Grotesk', sans-serif;
         font-size: 1.75rem;
         font-weight: 700;
-        color: #0a2a1a;
+        color: var(--ap-text);
         margin-bottom: 0.5rem;
     }
     
     .payment-ref {
-        color: #6c757d;
+        color: var(--ap-muted);
         font-size: 0.9rem;
     }
     
@@ -100,18 +99,13 @@
         color: #721c24;
     }
     
-    .status-secondary {
-        background: #e2e3e5;
-        color: #383d41;
-    }
-    
     .amount-display {
         text-align: right;
     }
     
     .amount-label {
         font-size: 0.75rem;
-        color: #6c757d;
+        color: var(--ap-muted);
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-bottom: 0.25rem;
@@ -120,17 +114,17 @@
     .amount-value {
         font-size: 2rem;
         font-weight: 700;
-        color: #1f8b4c;
-        font-family: 'Space Grotesk', monospace;
+        color: var(--ap-green);
     }
     
     /* Progress Section */
     .progress-section {
-        background: white;
-        border-radius: 20px;
+        background: var(--ap-surface);
+        border-radius: 16px;
         padding: 1.5rem;
         margin-bottom: 2rem;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        box-shadow: var(--ap-shadow);
+        border: 1px solid var(--ap-border);
     }
     
     .progress-header {
@@ -151,11 +145,11 @@
     .progress-percent {
         font-size: 1.1rem;
         font-weight: 700;
-        color: #1f8b4c;
+        color: var(--ap-green);
     }
     
     .progress-track {
-        background: #e9ecef;
+        background: var(--ap-surface-muted);
         border-radius: 20px;
         height: 8px;
         overflow: hidden;
@@ -164,7 +158,7 @@
     .progress-fill {
         display: block;
         height: 100%;
-        background: linear-gradient(90deg, #1f8b4c, #34ce57);
+        background: linear-gradient(90deg, var(--ap-green), #34ce57);
         border-radius: 20px;
         transition: width 0.3s ease;
     }
@@ -178,33 +172,28 @@
     
     /* Cards */
     .info-card {
-        background: white;
-        border-radius: 20px;
+        background: var(--ap-surface);
+        border-radius: 16px;
         padding: 1.5rem;
         margin-bottom: 1.5rem;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .info-card:hover {
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: var(--ap-shadow);
+        border: 1px solid var(--ap-border);
     }
     
     .card-title {
-        font-family: 'Space Grotesk', sans-serif;
         font-size: 1.25rem;
         font-weight: 600;
-        color: #0a2a1a;
+        color: var(--ap-text);
         margin-bottom: 1.25rem;
         display: flex;
         align-items: center;
         gap: 0.5rem;
         padding-bottom: 0.75rem;
-        border-bottom: 2px solid #e9ecef;
+        border-bottom: 1px solid var(--ap-border);
     }
     
     .card-title i {
-        color: #1f8b4c;
+        color: var(--ap-green);
         font-size: 1.1rem;
     }
     
@@ -351,7 +340,7 @@
     .timeline-dot {
         width: 10px;
         height: 10px;
-        background: #1f8b4c;
+        background: var(--ap-green);
         border-radius: 50%;
         margin-top: 0.5rem;
         flex-shrink: 0;
@@ -365,7 +354,7 @@
         top: 10px;
         width: 2px;
         height: 100%;
-        background: #e9ecef;
+        background: var(--ap-border);
     }
     
     .timeline-item:last-child .timeline-dot::before {
@@ -383,7 +372,7 @@
     
     .timeline-date {
         font-size: 0.7rem;
-        color: #6c757d;
+        color: var(--ap-muted);
     }
     
     /* Action Buttons */
@@ -399,7 +388,7 @@
         justify-content: center;
         gap: 0.5rem;
         padding: 0.75rem 1.25rem;
-        border-radius: 40px;
+        border-radius: 8px;
         font-weight: 600;
         text-decoration: none;
         transition: all 0.3s ease;
@@ -409,37 +398,38 @@
     }
     
     .btn-primary {
-        background: linear-gradient(135deg, #1f8b4c, #0a5c30);
+        background: var(--ap-green);
         color: white;
     }
     
     .btn-primary:hover {
+        background: var(--ap-green-dark);
         transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(31,139,76,0.3);
+        box-shadow: 0 4px 15px rgba(47, 133, 90, 0.3);
     }
     
     .btn-secondary {
-        background: #e9ecef;
-        color: #2c3e2f;
+        background: var(--ap-surface-muted);
+        color: var(--ap-text);
     }
     
     .btn-secondary:hover {
-        background: #dee2e6;
+        background: var(--ap-border);
     }
     
     .btn-outline {
         background: transparent;
-        border: 2px solid #1f8b4c;
-        color: #1f8b4c;
+        border: 2px solid var(--ap-green);
+        color: var(--ap-green);
     }
     
     .btn-outline:hover {
-        background: #1f8b4c;
+        background: var(--ap-green);
         color: white;
     }
     
     .btn-danger {
-        background: #dc3545;
+        background: var(--ap-danger);
         color: white;
     }
     

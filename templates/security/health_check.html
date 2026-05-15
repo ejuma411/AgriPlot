@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Security Health Check — AgriPlot{% endblock %}
+
+{% block content %}
+<div class="container py-5" style="max-width:800px;">
+  <h1 class="h3 fw-bold mb-1"><i class="fas fa-heart-pulse me-2 text-danger"></i>Security Health Check</h1>
+  <p class="text-muted mb-4">System integrity and security status overview</p>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="fw-semibold text-uppercase text-muted mb-3 small">Audit Integrity</h6>
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <i class="fas fa-{% if health.audit_log_integrity %}check-circle text-success{% else %}times-circle text-danger{% endif %} fa-2x"></i>
+            <div>
+              <div class="fw-semibold">Chain {% if health.audit_log_integrity %}Intact{% else %}Compromised{% endif %}</div>
+              <small class="text-muted">{{ health.total_audit_logs }} total log entries</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="fw-semibold text-uppercase text-muted mb-3 small">Alert Status</h6>
+          <div class="mb-2 d-flex justify-content-between">
+            <span class="text-muted">Total Alerts</span>
+            <strong>{{ health.total_alerts }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Unresolved</span>
+            <strong class="{% if health.unresolved_alerts %}text-danger{% else %}text-success{% endif %}">{{ health.unresolved_alerts }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="fw-semibold text-uppercase text-muted mb-3 small">Recent Threats (7 days)</h6>
+          <div class="mb-2 d-flex justify-content-between">
+            <span class="text-muted">Screenshot Attempts</span>
+            <strong>{{ health.recent_screenshot_attempts }}</strong>
+          </div>
+          <div class="d-flex justify-content-between">
+            <span class="text-muted">Failed Logins</span>
+            <strong class="{% if health.recent_failed_logins > 10 %}text-danger{% else %}text-success{% endif %}">{{ health.recent_failed_logins }}</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="fw-semibold text-uppercase text-muted mb-3 small">2FA Adoption</h6>
+          <div class="h4 fw-bold text-success">{{ health.two_factor_adoption }}</div>
+          <small class="text-muted">Users with 2FA enabled</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4 d-flex gap-2">
+    <a href="{% url 'security:dashboard' %}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>Security Dashboard
+    </a>
+    <a href="{% url 'security:audit_log_verify' %}" class="btn btn-outline-success">
+      <i class="fas fa-link me-1"></i>Verify Audit Chain
+    </a>
+  </div>
+</div>
+{% endblock %}

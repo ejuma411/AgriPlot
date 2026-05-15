@@ -16,23 +16,32 @@ Including another URLconf
 """
 
 from django.contrib import admin
+from django.contrib.sitemaps.views import sitemap
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from authentication import views_auth
+from listings.sitemaps import PlotSitemap, StaticViewSitemap
+
+
+sitemaps = {
+    "plots": PlotSitemap,
+    "static": StaticViewSitemap,
+}
 
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("payments/", include("payments.urls")),
+    path("transactions/", include("transactions.urls")),
     path('', include('listings.urls')),
     path("", include("verification.urls")),
     path('reports/', include('reports.urls')),
     path('login/', views_auth.TwoFactorLoginView.as_view(), name='login'),
     path('', include('authentication.urls')),
-    path('security/', include('security.urls'))
+    path('security/', include('security.urls')),
+    path("sitemap.xml", sitemap, {"sitemaps": sitemaps}, name="django.contrib.sitemaps.views.sitemap"),
 
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-

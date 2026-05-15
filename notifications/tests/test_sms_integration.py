@@ -1,14 +1,14 @@
 # listings/tests/test_sms_integration.py
 from django.test import TestCase, override_settings
 from unittest.mock import patch, MagicMock
-from notifications.services.sms_service import TextSMSService
+from notifications.services.sms_service import SMSService
 
 @override_settings(USE_SMS_MOCK=False)
 class SMSIntegrationTestCase(TestCase):
     """Integration tests for SMS service"""
     
     def setUp(self):
-        self.sms = TextSMSService()
+        self.sms = SMSService()
         self.test_phone = "+254718810503"
     
     def test_phone_validation(self):

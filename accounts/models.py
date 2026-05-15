@@ -8,12 +8,22 @@ class Profile(models.Model):
     phone_verified = models.BooleanField(default=False)
     email_verified = models.BooleanField(default=False)
     has_2fa_enabled = models.BooleanField(default=False)
-    address = models.TextField(blank=True, default="")
+    INTENT_CHOICES = [
+        ("buy", "Buying Land"),
+        ("lease_in", "Leasing/Renting In"),
+        ("sell", "Selling Land"),
+        ("lease_out", "Leasing/Renting Out"),
+        ("professional", "Providing Services (Agent/Surveyor)"),
+    ]
+    intent = models.CharField(max_length=20, choices=INTENT_CHOICES, default="buy")
+    address = models.TextField(blank=True, null=True)
 
     ROLE_CHOICES = [
         ("buyer", "Buyer"),
         ("landowner", "Landowner"),
         ("agent", "Agent"),
+        ("advocate", "Advocate"),
+        ("lawyer", "Lawyer"),
         ("admin", "Administrator"),
     ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="buyer")
@@ -50,6 +60,11 @@ class Profile(models.Model):
 
 
 class Agent(models.Model):
+    COMMISSION_TYPE_CHOICES = [
+        ("percentage", "Percentage"),
+        ("fixed", "Fixed Amount (KES)"),
+    ]
+
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     phone = models.CharField(
@@ -64,6 +79,16 @@ class Agent(models.Model):
         default="",
         help_text="Professional license number",
     )
+    company_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Registered company or agency name, if applicable.",
+    )
+    earb_registration_number = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Estate Agents Registration Board (EARB) number.",
+    )
     license_doc = models.FileField(
         upload_to="docs/agent_licenses/",
         null=True,
@@ -74,6 +99,11 @@ class Agent(models.Model):
     # Professional & Contact fields
     id_number = models.CharField(max_length=20, help_text="National ID")
     kra_pin = models.FileField(upload_to="docs/agent_kra/", null=True, blank=True)
+    tax_compliance_certificate = models.FileField(
+        upload_to="docs/agent_tax_compliance/",
+        null=True,
+        blank=True,
+    )
     practicing_certificate = models.FileField(
         upload_to="docs/practicing_certs/", null=True, blank=True
     )
@@ -125,7 +155,42 @@ Broker = Agent
 
 
 class LandownerProfile(models.Model):
+    MARITAL_STATUS_CHOICES = [
+        ("single", "Single"),
+        ("married", "Married"),
+    ]
+
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    legal_name = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="Full legal name as it appears on the title deed and ID.",
+    )
+    national_id_number = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="National ID or passport number.",
+    )
+    kra_pin_number = models.CharField(
+        max_length=20,
+        blank=True,
+        help_text="KRA PIN number used for CGT and identity checks.",
+    )
+    marital_status = models.CharField(
+        max_length=20,
+        choices=MARITAL_STATUS_CHOICES,
+        default="single",
+    )
+    spouse_full_name = models.CharField(max_length=200, blank=True)
+    spouse_id_number = models.CharField(max_length=20, blank=True)
+    spouse_id_doc = models.FileField(
+        upload_to="docs/spousal_ids/",
+        blank=True,
+        null=True,
+        help_text="Spouse ID copy when the land is matrimonial property.",
+    )
+    land_rates_paid_up = models.BooleanField(default=False)
+    land_rent_paid_up = models.BooleanField(default=False)
 
     national_id = models.FileField(
         upload_to="docs/national_ids/",

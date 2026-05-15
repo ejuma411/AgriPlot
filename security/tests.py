@@ -12,7 +12,7 @@ from security.models import PhoneOTP
 
 class PhoneVerificationTests(TestCase):
     @override_settings(OTP_PROVIDER="sms", USE_SMS_MOCK=False)
-    @patch("security.views_otp.TextSMSService.send_otp")
+    @patch("security.views_otp.SMSService.send_otp")
     def test_registration_otp_uses_sms_provider(self, mock_send_otp):
         mock_send_otp.return_value = {"success": True}
         session = self.client.session

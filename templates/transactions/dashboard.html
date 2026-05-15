@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions - AgriPlot Connect{% endblock %}
+
+{% block full_width_content %}
+<main class="workspace-page">
+    <section class="workspace-hero">
+        <div>
+            <p class="workspace-kicker">Legal & Conveyancing</p>
+            <h1 class="workspace-title">My Transactions</h1>
+            <p class="workspace-subtitle">
+                Track land transfers, legal milestones, and document submissions for your properties.
+            </p>
+        </div>
+        <div class="workspace-actions">
+            <a class="ap-btn ap-btn-ghost" href="{% url 'listings:dashboard_router' %}">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </section>
+
+    <section class="workspace-grid three mb-3">
+        <article class="workspace-card workspace-stat">
+            <div class="workspace-stat-icon"><i class="fa-solid fa-file-signature"></i></div>
+            <div>
+                <p class="workspace-stat-value">{{ transactions.count }}</p>
+                <p class="workspace-stat-label">Total deals</p>
+            </div>
+        </article>
+        <article class="workspace-card workspace-stat">
+            <div class="workspace-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10b981;"><i class="fa-solid fa-hourglass-half"></i></div>
+            <div>
+                <p class="workspace-stat-value">{{ transactions.filter.count|default:0 }}</p>
+                <p class="workspace-stat-label">In progress</p>
+            </div>
+        </article>
+        <article class="workspace-card workspace-stat">
+            <div class="workspace-stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6;"><i class="fa-solid fa-certificate"></i></div>
+            <div>
+                <p class="workspace-stat-value">{{ transactions.filter.is_completed.count|default:0 }}</p>
+                <p class="workspace-stat-label">Registered titles</p>
+            </div>
+        </article>
+    </section>
+
+    <article class="workspace-card">
+        <div class="workspace-card-header">
+            <div>
+                <h2 class="workspace-card-title">Active Deals</h2>
+                <p class="workspace-card-meta">Track the real-world status of your land transfers.</p>
+            </div>
+        </div>
+        <div class="workspace-card-body p-0">
+            {% if transactions %}
+                <div class="table-responsive">
+                    <table class="table workspace-table mb-0">
+                        <thead>
+                            <tr>
+                                <th>Reference</th>
+                                <th>Plot</th>
+                                <th>Counterparty</th>
+                                <th>Current Stage</th>
+                                <th>Agreed Price</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for trx in transactions %}
+                                <tr>
+                                    <td>
+                                        <span class="text-monospace">TRX-{{ trx.id|stringformat:"05d" }}</span>
+                                    </td>
+                                    <td>
+                                        <strong>{{ trx.plot.title }}</strong><br>
+                                        <small class="text-muted">{{ trx.plot.county }}</small>
+                                    </td>
+                                    <td>
+                                        {% if user == trx.seller %}
+                                            <span class="badge text-bg-light border">Buyer</span> {{ trx.buyer.get_full_name|default:trx.buyer.username }}
+                                        {% else %}
+                                            <span class="badge text-bg-light border">Seller</span> {{ trx.seller.get_full_name|default:trx.seller.username }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">
+                                            <i class="fa-solid fa-circle-play me-1"></i> {{ trx.get_stage_display }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold">KES {{ trx.agreed_price|floatformat:0 }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'transactions:detail' trx.pk %}" class="ap-btn ap-btn-ghost btn-sm">
+                                            Open Workspace
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="p-5 text-center">
+                    <div class="workspace-stat-icon mx-auto mb-3" style="width: 64px; height: 64px; font-size: 1.5rem;">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                    <p class="workspace-empty">No transactions found.</p>
+                    <p class="text-muted small">Transactions are automatically created when a purchase commitment is confirmed.</p>
+                </div>
+            {% endif %}
+        </div>
+    </article>
+</main>
+
+<style>
+    .workspace-table th {
+        background: #f8fafc;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        padding: 1rem 1.5rem;
+        border-top: none;
+    }
+    .workspace-table td {
+        padding: 1.25rem 1.5rem;
+        vertical-align: middle;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .workspace-table tr:last-child td {
+        border-bottom: none;
+    }
+    .text-monospace {
+        font-family: 'JetBrains Mono', 'Courier New', monospace;
+        font-size: 0.85rem;
+        color: #0f172a;
+    }
+</style>
+{% endblock %}
