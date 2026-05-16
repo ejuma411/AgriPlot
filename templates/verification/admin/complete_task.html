@@ -1,512 +1,404 @@
 {% extends "verification/admin/base_admin.html" %}
 {% load static %}
 
-{% block title %}Complete Task: {{ task.get_verification_type_display }}{% endblock %}
+{% block admin_title %}Task Resolution{% endblock %}
 
 {% block admin_content %}
-<!-- Page Header -->
-<div class="page-header">
-    <div class="page-header-content">
-        <div class="page-header-title">
-            <h1><i class="fas fa-check-circle me-2"></i>Complete Task</h1>
-            <p class="page-header-subtitle">{{ task.get_verification_type_display }} for {{ plot.title }}</p>
+<div class="row g-4">
+    <!-- Left Column: Contextual Data -->
+    <div class="col-lg-4">
+        <!-- Task Header Card -->
+        <div class="admin-card mb-4 border-start border-4 {% if task.verification_type == 'document_review' %}border-info{% elif task.verification_type == 'extension_review' %}border-success{% elif task.verification_type == 'surveyor_inspection' %}border-warning{% endif %}">
+            <div class="admin-card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge 
+                        {% if task.verification_type == 'document_review' %}bg-info-soft text-info
+                        {% elif task.verification_type == 'extension_review' %}bg-success-soft text-success
+                        {% elif task.verification_type == 'surveyor_inspection' %}bg-warning-soft text-warning
+                        {% endif %} px-3">{{ task.get_verification_type_display }}</span>
+                    <small class="text-muted"><i class="fas fa-clock me-1"></i> {{ task.assigned_at|timesince }} ago</small>
+                </div>
+                <h4 class="mb-1 fw-bold">{{ plot.title }}</h4>
+                <div class="text-muted small mb-0"><i class="fas fa-fingerprint me-1"></i> PID: #{{ plot.id }}</div>
+            </div>
         </div>
-        <div class="page-header-actions">
-            <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn">
-                <i class="fas fa-arrow-left me-2"></i>Back to Task Inbox
-            </a>
-        </div>
-    </div>
-</div>
 
-<div class="row">
-    <!-- Left Column: Task Info -->
-    <div class="col-md-4 mb-4">
-        <!-- Task Information Card -->
+        <!-- Property Specifications -->
         <div class="admin-card mb-4">
             <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-info-circle me-2"></i>Task Information
-                </h5>
+                <h2 class="admin-card-title"><i class="fas fa-map-marked-alt me-2"></i>Plot Specifications</h2>
             </div>
-            <div class="admin-card-body">
-                <table class="details-table">
-                    <tr>
-                        <th>Task Type:</th>
-                        <td>
-                            <span class="badge 
-                                {% if task.verification_type == 'document_review' %}bg-info
-                                {% elif task.verification_type == 'extension_review' %}bg-success
-                                {% elif task.verification_type == 'surveyor_inspection' %}bg-warning
-                                {% endif %} p-2">
-                                {{ task.get_verification_type_display }}
-                            </span>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Assigned:</th>
-                        <td>{{ task.assigned_at|date:"M d, Y H:i" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Time Elapsed:</th>
-                        <td>{{ task.assigned_at|timesince }}</td>
-                    </tr>
-                </table>
+            <div class="admin-card-body p-0">
+                <div class="list-group list-group-flush small">
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">Location</span>
+                        <span class="fw-bold text-dark">{{ plot.county|default:plot.location }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">Total Area</span>
+                        <span class="fw-bold text-dark">{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">Parcel Number</span>
+                        <span class="fw-bold text-primary">{{ plot.parcel_number|default:"Pending" }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">Classification</span>
+                        <span class="fw-bold text-dark">{{ plot.get_land_type_display }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">Ownership</span>
+                        <span class="fw-bold text-dark">{{ plot.get_listing_type_display }}</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Plot Details Card -->
-        <div class="admin-card mb-4">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-map-marker-alt me-2"></i>Plot Details
-                </h5>
-            </div>
-            <div class="admin-card-body">
-                <table class="details-table">
-                    <tr>
-                        <th>Title:</th>
-                        <td>{{ plot.title }}</td>
-                    </tr>
-                    <tr>
-                        <th>ID:</th>
-                        <td>#{{ plot.id }}</td>
-                    </tr>
-                    <tr>
-                        <th>Location:</th>
-                        <td>
-                            {% if plot.county %}
-                                {{ plot.county }}{% if plot.subcounty %} - {{ plot.subcounty }}{% endif %}
-                            {% else %}
-                                {{ plot.location }}
-                            {% endif %}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Area:</th>
-                        <td>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Parcel Number:</th>
-                        <td>{{ plot.parcel_number|default:"Not provided" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Registration Section:</th>
-                        <td>{{ plot.registration_section|default:"Not provided" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Land Type:</th>
-                        <td>{{ plot.get_land_type_display }}</td>
-                    </tr>
-                    <tr>
-                        <th>Listing Type:</th>
-                        <td>{{ plot.get_listing_type_display }}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-
-        <!-- Document Status Card -->
+        <!-- Vault Status Summary -->
         <div class="admin-card">
             <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-file-alt me-2"></i>Document Status
-                </h5>
+                <h2 class="admin-card-title"><i class="fas fa-file-shield me-2"></i>Vault Status</h2>
             </div>
             <div class="admin-card-body">
-                <ul class="document-checklist">
-                    <li class="{% if plot.title_deed %}completed{% endif %}">
-                        <i class="fas {% if plot.title_deed %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Title Deed
-                        {% if not plot.title_deed %}<small class="text-danger">(Missing)</small>{% endif %}
-                    </li>
-                    <li class="{% if plot.official_search %}completed{% endif %}">
-                        <i class="fas {% if plot.official_search %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Official Search
-                        {% if not plot.official_search %}<small class="text-danger">(Missing)</small>{% endif %}
-                    </li>
-                    <li class="{% if plot.survey_map %}completed{% endif %}">
-                        <i class="fas {% if plot.survey_map %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Survey Map / Mutation
-                        {% if not plot.survey_map %}<small class="text-danger">(Missing)</small>{% endif %}
-                    </li>
-                    <li class="{% if plot.landowner_id_doc %}completed{% endif %}">
-                        <i class="fas {% if plot.landowner_id_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Landowner ID
-                        {% if not plot.landowner_id_doc %}<small class="text-danger">(Missing)</small>{% endif %}
-                    </li>
-                    <li class="{% if plot.kra_pin %}completed{% endif %}">
-                        <i class="fas {% if plot.kra_pin %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        KRA PIN
-                        {% if not plot.kra_pin %}<small class="text-danger">(Missing)</small>{% endif %}
-                    </li>
-                    <li class="{% if plot.rates_clearance %}completed{% endif %}">
-                        <i class="fas {% if plot.rates_clearance %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Rates Clearance
-                        {% if not plot.rates_clearance %}<small class="text-danger">(Missing)</small>{% endif %}
-                    </li>
-                    <li class="{% if plot.rent_clearance %}completed{% endif %}">
-                        <i class="fas {% if plot.rent_clearance %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Rent Clearance
-                        {% if not plot.rent_clearance %}<small class="text-danger">(Missing)</small>{% endif %}
-                    </li>
-                    <li class="{% if plot.spousal_consent_doc %}completed{% endif %}">
-                        <i class="fas {% if plot.spousal_consent_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Spousal Consent
-                        {% if not plot.spousal_consent_doc %}<small class="text-danger">(Missing)</small>{% endif %}
-                    </li>
-                </ul>
+                <div class="d-flex flex-column gap-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="fas {% if plot.title_deed %}fa-check-circle text-success{% else %}fa-times-circle text-danger opacity-50{% endif %} fa-lg"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small">Title Deed</div>
+                            {% if not plot.title_deed %}<div class="text-danger x-small">Missing required document</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="fas {% if plot.official_search %}fa-check-circle text-success{% else %}fa-times-circle text-danger opacity-50{% endif %} fa-lg"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small">Official Search</div>
+                            {% if not plot.official_search %}<div class="text-danger x-small">Missing required document</div>{% endif %}
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="fas {% if plot.landowner_id_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger opacity-50{% endif %} fa-lg"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-bold small">Landowner ID</div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Right Column: Task Completion Form -->
-    <div class="col-md-8 mb-4">
+    <!-- Right Column: Verification Workspace -->
+    <div class="col-lg-8">
         <div class="admin-card">
             <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-clipboard-check me-2"></i>Task Completion Form
-                </h5>
+                <h2 class="admin-card-title"><i class="fas fa-edit me-2"></i>Resolution Workspace</h2>
+                <div class="text-muted small">Step-by-step validation</div>
             </div>
-            <div class="admin-card-body">
-                <form method="POST" id="completeTaskForm">
+            <div class="admin-card-body p-0">
+                <form method="POST" id="completeTaskForm" class="verification-form">
                     {% csrf_token %}
                     
-                    <!-- Task Type Specific Questions -->
                     {% if task.verification_type == 'document_review' %}
-                        <div class="verification-section mb-4">
-                            <h6 class="section-subtitle">Split-Screen Validation</h6>
-                            <div class="row">
-                                <div class="col-md-4 mb-3">
-                                    <div class="card h-100">
-                                        <div class="card-header bg-light">
-                                            <strong>Seller Uploads</strong>
-                                        </div>
-                                        <div class="card-body small">
-                                            <div><strong>Title Deed:</strong>
-                                                {% if plot.title_deed %}
-                                                    <a href="{{ plot.title_deed.url }}" target="_blank">Open</a>
-                                                {% else %}
-                                                    <span class="text-danger">Missing</span>
-                                                {% endif %}
-                                            </div>
-                                            <div><strong>Official Search:</strong>
-                                                {% if plot.official_search %}
-                                                    <a href="{{ plot.official_search.url }}" target="_blank">Open</a>
-                                                {% else %}
-                                                    <span class="text-danger">Missing</span>
-                                                {% endif %}
-                                            </div>
-                                            <div><strong>ID Document:</strong>
-                                                {% if plot.landowner_id_doc %}
-                                                    <a href="{{ plot.landowner_id_doc.url }}" target="_blank">Open</a>
-                                                {% else %}
-                                                    <span class="text-danger">Missing</span>
-                                                {% endif %}
-                                            </div>
-                                            <div><strong>KRA PIN:</strong>
-                                                {% if plot.kra_pin %}
-                                                    <a href="{{ plot.kra_pin.url }}" target="_blank">Open</a>
-                                                {% else %}
-                                                    <span class="text-danger">Missing</span>
-                                                {% endif %}
-                                            </div>
-                                            <div><strong>Rates Clearance:</strong>
-                                                {% if plot.rates_clearance %}
-                                                    <a href="{{ plot.rates_clearance.url }}" target="_blank">Open</a>
-                                                {% else %}
-                                                    <span class="text-muted">Not provided</span>
-                                                {% endif %}
-                                            </div>
-                                            <div><strong>Rent Clearance:</strong>
-                                                {% if plot.rent_clearance %}
-                                                    <a href="{{ plot.rent_clearance.url }}" target="_blank">Open</a>
-                                                {% else %}
-                                                    <span class="text-muted">Not provided</span>
-                                                {% endif %}
-                                            </div>
-                                        </div>
-                                    </div>
+                        <!-- Integrated Document Workspace -->
+                        <div class="doc-workspace border-bottom">
+                            <div class="doc-sidebar">
+                                <button type="button" class="doc-nav-item active" data-target="title">
+                                    <div class="doc-icon"><i class="fas fa-file-contract"></i></div>
+                                    <div class="doc-label">Title Deed</div>
+                                </button>
+                                <button type="button" class="doc-nav-item" data-target="search">
+                                    <div class="doc-icon"><i class="fas fa-search"></i></div>
+                                    <div class="doc-label">Official Search</div>
+                                </button>
+                                <button type="button" class="doc-nav-item" data-target="id_doc">
+                                    <div class="doc-icon"><i class="fas fa-id-card"></i></div>
+                                    <div class="doc-label">ID Document</div>
+                                </button>
+                                <button type="button" class="doc-nav-item" data-target="registry">
+                                    <div class="doc-icon text-primary"><i class="fas fa-database"></i></div>
+                                    <div class="doc-label">Registry API</div>
+                                </button>
+                            </div>
+                            <div class="doc-viewer">
+                                <div id="doc-title" class="doc-content active">
+                                    {% if plot.title_deed %}
+                                        <iframe src="{{ plot.title_deed.url }}" width="100%" height="500px" style="border: none;"></iframe>
+                                    {% else %}<div class="doc-placeholder text-center p-5"><i class="fas fa-file-contract fa-3x mb-3 opacity-25"></i><p>Title Deed missing.</p></div>{% endif %}
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <div class="card h-100">
-                                        <div class="card-header bg-light">
-                                            <strong>Seller Form Data</strong>
-                                        </div>
-                                        <div class="card-body small">
-                                            <div><strong>Registered Owner:</strong> {{ plot.owner_full_name|default:"-" }}</div>
-                                            <div><strong>Owner ID:</strong> {{ plot.owner_id_number|default:"-" }}</div>
-                                            <div><strong>KRA PIN:</strong> {{ plot.owner_kra_pin_number|default:"-" }}</div>
-                                            <div><strong>Parcel No:</strong> {{ plot.parcel_number|default:"-" }}</div>
-                                            <div><strong>Reg. Section:</strong> {{ plot.registration_section|default:"-" }}</div>
-                                            <div><strong>Search Ref:</strong> {{ plot.search_reference_number|default:"-" }}</div>
-                                            <div><strong>Search Date:</strong> {{ plot.search_certificate_date|date:"M d, Y"|default:"-" }}</div>
-                                        </div>
-                                    </div>
+                                <div id="doc-search" class="doc-content">
+                                    {% if plot.official_search %}
+                                        <iframe src="{{ plot.official_search.url }}" width="100%" height="500px" style="border: none;"></iframe>
+                                    {% else %}<div class="doc-placeholder text-center p-5"><i class="fas fa-search fa-3x mb-3 opacity-25"></i><p>Official Search missing.</p></div>{% endif %}
                                 </div>
-                                <div class="col-md-4 mb-3">
-                                    <div class="card h-100">
-                                        <div class="card-header bg-light">
-                                            <strong>Registry Data</strong>
-                                        </div>
-                                        <div class="card-body small">
-                                            <div><strong>Owner Name:</strong> {{ registry_data.owner_name|default:"-" }}</div>
-                                            <div><strong>Parcel No:</strong> {{ registry_data.parcel_number|default:"-" }}</div>
-                                            <div><strong>Title No:</strong> {{ registry_data.title_number|default:"-" }}</div>
-                                            <div><strong>Search Ref:</strong> {{ registry_data.search_reference|default:"-" }}</div>
-                                            <div><strong>Encumbrance:</strong> {{ registry_data.encumbrance_result|default:"-" }}</div>
+                                <div id="doc-id_doc" class="doc-content">
+                                    {% if plot.landowner_id_doc %}
+                                        <iframe src="{{ plot.landowner_id_doc.url }}" width="100%" height="500px" style="border: none;"></iframe>
+                                    {% else %}<div class="doc-placeholder text-center p-5"><i class="fas fa-id-card fa-3x mb-3 opacity-25"></i><p>ID Document missing.</p></div>{% endif %}
+                                </div>
+                                <div id="doc-registry" class="doc-content">
+                                    <div class="p-4">
+                                        <div class="comparison-pill p-4 border rounded-3 bg-primary-soft border-primary-soft h-100">
+                                            <div class="text-uppercase small fw-bold text-primary mb-3">Authoritative Registry Data</div>
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <div class="mb-1 fw-bold small">Owner Name</div>
+                                                    <div class="p-2 border rounded bg-white">{{ registry_data.owner_name|default:"Not found" }}</div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <div class="mb-1 fw-bold small">Title Number</div>
+                                                    <div class="p-2 border rounded bg-white">{{ registry_data.title_number|default:"-" }}</div>
+                                                </div>
+                                                <div class="col-md-12">
+                                                    <div class="mb-1 fw-bold small">Encumbrance Result</div>
+                                                    <div class="p-2 border rounded bg-white">{{ registry_data.encumbrance_result|default:"No restrictions identified" }}</div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="verification-section mb-4">
-                            <h6 class="section-subtitle">Document Verification Checklist</h6>
-                            <div class="checklist-group">
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_title" name="check_title" required>
-                                    <label class="form-check-label" for="check_title">
-                                        <strong>Title Deed</strong><br>
-                                        <small class="text-muted">Verify that the title deed is clear, authentic, and matches the plot details</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_search" name="check_search" required>
-                                    <label class="form-check-label" for="check_search">
-                                        <strong>Official Search</strong><br>
-                                        <small class="text-muted">Verify that the official search is recent (within 30 days) and matches title deed</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_id" name="check_id" required>
-                                    <label class="form-check-label" for="check_id">
-                                        <strong>Landowner ID</strong><br>
-                                        <small class="text-muted">Verify that the ID matches the name on title deed and is valid</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_kra" name="check_kra" required>
-                                    <label class="form-check-label" for="check_kra">
-                                        <strong>KRA PIN</strong><br>
-                                        <small class="text-muted">Verify that the KRA PIN matches the landowner's name</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_name_match" name="check_name_match" required>
-                                    <label class="form-check-label" for="check_name_match">
-                                        <strong>Name Match (ID vs Title)</strong><br>
-                                        <small class="text-muted">Exact name match between ID and Title Deed (including middle names)</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_seal_signature" name="check_seal_signature" required>
-                                    <label class="form-check-label" for="check_seal_signature">
-                                        <strong>Seal & Signature</strong><br>
-                                        <small class="text-muted">Title Deed has Ministry of Lands seal and Registrar signature</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_rates_clearance" name="check_rates_clearance" required>
-                                    <label class="form-check-label" for="check_rates_clearance">
-                                        <strong>Rates Clearance</strong><br>
-                                        <small class="text-muted">County rates clearance certificate (last 3 months)</small>
-                                    </label>
-                                </div>
-                                {% if plot.ownership_type == 'leasehold' %}
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_rent_clearance" name="check_rent_clearance" required>
-                                    <label class="form-check-label" for="check_rent_clearance">
-                                        <strong>Rent Clearance</strong><br>
-                                        <small class="text-muted">National government land rent clearance (last 3 months)</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_consent_transfer" name="check_consent_transfer" required>
-                                    <label class="form-check-label" for="check_consent_transfer">
-                                        <strong>Consent to Transfer</strong><br>
-                                        <small class="text-muted">Required approval for leasehold transfer</small>
-                                    </label>
-                                </div>
-                                {% endif %}
-                                {% if plot.land_type == 'agricultural' %}
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_lcb_consent" name="check_lcb_consent" required>
-                                    <label class="form-check-label" for="check_lcb_consent">
-                                        <strong>LCB Consent</strong><br>
-                                        <small class="text-muted">Land Control Board consent for agricultural land</small>
-                                    </label>
-                                </div>
-                                {% endif %}
-                                {% if plot.is_subdivision %}
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_mutation_form" name="check_mutation_form" required>
-                                    <label class="form-check-label" for="check_mutation_form">
-                                        <strong>Mutation Form / Survey Map</strong><br>
-                                        <small class="text-muted">Approved mutation form for subdivision</small>
-                                    </label>
-                                </div>
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_plupa1" name="check_plupa1" required>
-                                    <label class="form-check-label" for="check_plupa1">
-                                        <strong>PLUPA 1 / PPA 1</strong><br>
-                                        <small class="text-muted">County approval for subdivision/change of use</small>
-                                    </label>
-                                </div>
-                                {% endif %}
-                                {% if plot.spousal_consent %}
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_spousal_consent" name="check_spousal_consent" required>
-                                    <label class="form-check-label" for="check_spousal_consent">
-                                        <strong>Spousal Consent</strong><br>
-                                        <small class="text-muted">Affidavit confirming spousal consent</small>
-                                    </label>
-                                </div>
-                                {% endif %}
-                                <div class="form-check mb-3">
-                                    <input class="form-check-input" type="checkbox" id="check_search_recency" name="check_search_recency" required>
-                                    <label class="form-check-label" for="check_search_recency">
-                                        <strong>Search Recency</strong><br>
-                                        <small class="text-muted">Official Search Certificate dated within 30 days</small>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="verification-section mb-4">
-                            <h6 class="section-subtitle">Extracted Document Details</h6>
-                            <div class="row">
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Registered Owner Name (from Title/Official Search)</label>
-                                    <input type="text" class="form-control" name="owner_name_extracted" value="{{ form_data.owner_name_extracted|default:'' }}" required>
-                                    <small class="text-muted">Must match user name: <strong>{{ expected_owner_name }}</strong></small>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">National ID Number (from ID)</label>
-                                    <input type="text" class="form-control" name="id_number_extracted" value="{{ form_data.id_number_extracted|default:'' }}" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">KRA PIN (from KRA Certificate)</label>
-                                    <input type="text" class="form-control" name="kra_pin_extracted" value="{{ form_data.kra_pin_extracted|default:'' }}" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Title Number (from Title Deed)</label>
-                                    <input type="text" class="form-control" name="title_number_extracted" value="{{ form_data.title_number_extracted|default:'' }}" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Parcel/Plot Number (from Title)</label>
-                                    <input type="text" class="form-control" name="parcel_number_extracted" value="{{ form_data.parcel_number_extracted|default:'' }}" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Official Search Reference</label>
-                                    <input type="text" class="form-control" name="search_ref_extracted" value="{{ form_data.search_ref_extracted|default:'' }}" required>
-                                </div>
-                                <div class="col-md-6 mb-3">
-                                    <label class="form-label">Official Search Date</label>
-                                    <input type="date" class="form-control" name="search_date_extracted" value="{{ form_data.search_date_extracted|default:'' }}">
-                                    <small class="text-muted">Should be within 30 days</small>
-                                </div>
-                            </div>
-                            <div class="form-check mt-2">
-                                <input class="form-check-input" type="checkbox" id="confirm_doc_match" name="confirm_doc_match" required>
-                                <label class="form-check-label" for="confirm_doc_match">
-                                    I confirm extracted details match the uploads, form data, and registry data.
-                                </label>
-                            </div>
-                        </div>
-                    {% elif task.verification_type == 'extension_review' %}
-                        <div class="verification-section mb-4">
-                            <h6 class="section-subtitle">Agricultural Assessment</h6>
-                            <div class="mb-3">
-                                <label class="form-label">Soil Type Verification</label>
-                                <select class="form-select" name="soil_verified" required>
-                                    <option value="">Select...</option>
-                                    <option value="yes">✅ Confirmed - Matches description</option>
-                                    <option value="partial">⚠️ Partial Match - Some discrepancies</option>
-                                    <option value="no">❌ Does Not Match</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Crop Suitability Assessment</label>
-                                <select class="form-select" name="crop_assessment" required>
-                                    <option value="">Select...</option>
-                                    <option value="excellent">🌟 Excellent for stated crops</option>
-                                    <option value="good">👍 Good for stated crops</option>
-                                    <option value="fair">👌 Fair - Some limitations</option>
-                                    <option value="poor">👎 Poor - Not suitable</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Additional Recommendations</label>
-                                <textarea class="form-control" name="crop_recommendations" rows="3" 
-                                          placeholder="Suggest alternative crops or improvements..."></textarea>
-                            </div>
-                        </div>
-                    {% elif task.verification_type == 'surveyor_inspection' %}
-                        <div class="verification-section mb-4">
-                            <h6 class="section-subtitle">Site Inspection Form</h6>
-                            <div class="mb-3">
-                                <label class="form-label">GPS Coordinates Verification</label>
-                                <div class="row">
-                                    <div class="col-md-6 mb-2">
-                                        <div class="input-group">
-                                            <span class="input-group-text">Lat</span>
-                                            <input type="text" class="form-control" name="verified_lat" placeholder="{{ plot.latitude }}">
+
+                        <div class="p-4">
+                            <!-- Manual Checks -->
+                            <div class="workspace-section mb-5">
+                                <h3 class="workspace-subtitle">Document Verification Checklist</h3>
+                                <div class="checklist-grid">
+                                    <!-- Mandatory Checks -->
+                                    <label class="check-item">
+                                        <input type="checkbox" name="check_title" required>
+                                        <div class="check-content">
+                                            <div class="fw-bold">Title Deed Authenticity</div>
+                                            <div class="x-small text-muted">Seals and registrar signatures verified.</div>
                                         </div>
+                                    </label>
+                                    <label class="check-item">
+                                        <input type="checkbox" name="check_search" required>
+                                        <div class="check-content">
+                                            <div class="fw-bold">Official Search Validity</div>
+                                            <div class="x-small text-muted">Original document present and valid.</div>
+                                        </div>
+                                    </label>
+                                    <label class="check-item">
+                                        <input type="checkbox" name="check_search_recency" required>
+                                        <div class="check-content">
+                                            <div class="fw-bold">Search Recency</div>
+                                            <div class="x-small text-muted">Search conducted within last 30 days.</div>
+                                        </div>
+                                    </label>
+                                    <label class="check-item">
+                                        <input type="checkbox" name="check_id" required>
+                                        <div class="check-content">
+                                            <div class="fw-bold">Identity Corroboration</div>
+                                            <div class="x-small text-muted">ID matches owner name on record.</div>
+                                        </div>
+                                    </label>
+                                    <label class="check-item">
+                                        <input type="checkbox" name="check_kra" required>
+                                        <div class="check-content">
+                                            <div class="fw-bold">KRA PIN Verification</div>
+                                            <div class="x-small text-muted">PIN certificate matches owner.</div>
+                                        </div>
+                                    </label>
+                                    <label class="check-item">
+                                        <input type="checkbox" name="check_name_match" required>
+                                        <div class="check-content">
+                                            <div class="fw-bold">Full Name Integrity</div>
+                                            <div class="x-small text-muted">Exact match including middle names.</div>
+                                        </div>
+                                    </label>
+                                    <label class="check-item">
+                                        <input type="checkbox" name="check_seal_signature" required>
+                                        <div class="check-content">
+                                            <div class="fw-bold">Seal & Signature</div>
+                                            <div class="x-small text-muted">Registry stamps are legible and valid.</div>
+                                        </div>
+                                    </label>
+                                    <label class="check-item">
+                                        <input type="checkbox" name="check_rates_clearance" required>
+                                        <div class="check-content">
+                                            <div class="fw-bold">Rates Clearance</div>
+                                            <div class="x-small text-muted">County rates fully paid and verified.</div>
+                                        </div>
+                                    </label>
+
+                                    <!-- Conditional Checks -->
+                                    {% if plot.ownership_type == 'leasehold' %}
+                                        <label class="check-item border-warning-soft">
+                                            <input type="checkbox" name="check_rent_clearance" required>
+                                            <div class="check-content">
+                                                <div class="fw-bold text-warning">Rent Clearance</div>
+                                                <div class="x-small text-muted">Land rent clearance for leasehold.</div>
+                                            </div>
+                                        </label>
+                                        <label class="check-item border-warning-soft">
+                                            <input type="checkbox" name="check_consent_transfer" required>
+                                            <div class="check-content">
+                                                <div class="fw-bold text-warning">Consent to Transfer</div>
+                                                <div class="x-small text-muted">Required for leasehold plots.</div>
+                                            </div>
+                                        </label>
+                                    {% endif %}
+
+                                    {% if plot.land_type == 'agricultural' %}
+                                        <label class="check-item border-success-soft">
+                                            <input type="checkbox" name="check_lcb_consent" required>
+                                            <div class="check-content">
+                                                <div class="fw-bold text-success">LCB Consent</div>
+                                                <div class="x-small text-muted">Land Control Board approval.</div>
+                                            </div>
+                                        </label>
+                                    {% endif %}
+
+                                    {% if plot.is_subdivision %}
+                                        <label class="check-item border-info-soft">
+                                            <input type="checkbox" name="check_mutation_form" required>
+                                            <div class="check-content">
+                                                <div class="fw-bold text-info">Mutation Form</div>
+                                                <div class="x-small text-muted">Required for subdivided parcels.</div>
+                                            </div>
+                                        </label>
+                                        <label class="check-item border-info-soft">
+                                            <input type="checkbox" name="check_plupa1" required>
+                                            <div class="check-content">
+                                                <div class="fw-bold text-info">PLUPA 1 Form</div>
+                                                <div class="x-small text-muted">Development approval form.</div>
+                                            </div>
+                                        </label>
+                                    {% endif %}
+
+                                    {% if plot.spousal_consent %}
+                                        <label class="check-item border-danger-soft">
+                                            <input type="checkbox" name="check_spousal_consent" required>
+                                            <div class="check-content">
+                                                <div class="fw-bold text-danger">Spousal Consent</div>
+                                                <div class="x-small text-muted">Affidavit or consent form signed.</div>
+                                            </div>
+                                        </label>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Field Extraction -->
+                            <div class="workspace-section mb-4">
+                                <h3 class="workspace-subtitle">Extract & Confirm Official Data</h3>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Verified Owner Name</label>
+                                        <input type="text" class="form-control" name="owner_name_extracted" value="{{ registry_data.owner_name|default:'' }}" required>
                                     </div>
-                                    <div class="col-md-6 mb-2">
-                                        <div class="input-group">
-                                            <span class="input-group-text">Lng</span>
-                                            <input type="text" class="form-control" name="verified_lng" placeholder="{{ plot.longitude }}">
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Verified Title Number</label>
+                                        <input type="text" class="form-control" name="title_number_extracted" value="{{ registry_data.title_number|default:'' }}" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Verified ID Number</label>
+                                        <input type="text" class="form-control" name="id_number_extracted" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">KRA PIN Extracted</label>
+                                        <input type="text" class="form-control" name="kra_pin_extracted" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Parcel Number Extracted</label>
+                                        <input type="text" class="form-control" name="parcel_number_extracted" value="{{ registry_data.parcel_number|default:'' }}" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Search Reference</label>
+                                        <input type="text" class="form-control" name="search_ref_extracted" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label small fw-bold">Official Search Date</label>
+                                        <input type="date" class="form-control" name="search_date_extracted" required>
+                                    </div>
+                                    <div class="col-12 mt-4">
+                                        <div class="p-3 bg-light border rounded-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="confirm_doc_match" id="confirmDocMatch" required>
+                                                <label class="form-check-label fw-bold" for="confirmDocMatch">
+                                                    I confirm that the extracted details above exactly match the physical documents in the vault.
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <small class="text-muted">Enter actual GPS readings from site visit</small>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Boundary Confirmation</label>
-                                <select class="form-select" name="boundary_status" required>
-                                    <option value="">Select...</option>
-                                    <option value="clear">✅ Clear boundaries - Marked/Beaconed</option>
-                                    <option value="partial">⚠️ Partially clear - Needs demarcation</option>
-                                    <option value="dispute">❌ Boundary dispute suspected</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Site Photos</label>
-                                <input type="file" class="form-control" name="site_photos" multiple accept="image/*">
-                                <small class="text-muted">Upload photos from site visit</small>
-                            </div>
+                        </div>
+
+                    {% elif task.verification_type == 'extension_review' or task.verification_type == 'surveyor_inspection' %}
+                        <div class="p-4">
+                            <!-- Field Work Forms -->
+                            {% if task.verification_type == 'extension_review' %}
+                                <div class="workspace-section mb-5">
+                                    <h3 class="workspace-subtitle">Agricultural Assessment</h3>
+                                    <div class="mb-4">
+                                        <label class="form-label small fw-bold">Soil Profile Consistency</label>
+                                        <select class="form-select" name="soil_verified" required>
+                                            <option value="">Select Findings...</option>
+                                            <option value="yes">✅ Fully Matches Listing Description</option>
+                                            <option value="partial">⚠️ Partial Match (Discrepancies Noted)</option>
+                                            <option value="no">❌ Does Not Match Record</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-4">
+                                        <label class="form-label small fw-bold">Field Recommendations</label>
+                                        <textarea class="form-control" name="crop_recommendations" rows="3" placeholder="Input any specific land-use suggestions..."></textarea>
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div class="workspace-section mb-5">
+                                    <h3 class="workspace-subtitle">Spatial & Boundary Validation</h3>
+                                    <div class="mb-4">
+                                        <label class="form-label small fw-bold">Boundary Integrity</label>
+                                        <select class="form-select" name="boundary_status" required>
+                                            <option value="">Select Status...</option>
+                                            <option value="clear">✅ Boundaries Clear and Unchallenged</option>
+                                            <option value="partial">⚠️ Boundaries Vague (Needs Re-beaconing)</option>
+                                            <option value="dispute">❌ Boundary Dispute Identified</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            {% endif %}
                         </div>
                     {% endif %}
 
-                    <!-- Common Fields -->
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Task Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="4" 
-                                  placeholder="Enter your findings, observations, and recommendations..." required></textarea>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="form-label d-block">Decision</label>
-                        <div class="btn-group w-100" role="group">
-                            <input type="radio" class="btn-check" name="approved" id="approve" value="true" autocomplete="off" required>
-                            <label class="btn btn-outline-success" for="approve">
-                                <i class="fas fa-check-circle me-2"></i>Approve
-                            </label>
-
-                            <input type="radio" class="btn-check" name="approved" id="reject" value="false" autocomplete="off">
-                            <label class="btn btn-outline-danger" for="reject">
-                                <i class="fas fa-times-circle me-2"></i>Reject
-                            </label>
+                    <!-- Decision Section -->
+                    <div class="p-4 pt-0">
+                        <div class="workspace-section mt-4 pt-4 border-top">
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Resolution Notes</label>
+                                <textarea class="form-control" name="notes" rows="4" placeholder="Detailed justification for your decision..." required></textarea>
+                            </div>
+                            
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="decision-btn approve">
+                                        <input type="radio" name="approved" value="true" required>
+                                        <div class="decision-content">
+                                            <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                            <div class="fw-bold">Approve Task</div>
+                                            <div class="x-small opacity-75">Verified as compliant</div>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="decision-btn reject">
+                                        <input type="radio" name="approved" value="false">
+                                        <div class="decision-content">
+                                            <i class="fas fa-times-circle fa-2x mb-2"></i>
+                                            <div class="fw-bold">Reject Task</div>
+                                            <div class="x-small opacity-75">Flag for discrepancies</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4 d-flex gap-3">
+                                <button type="submit" class="admin-btn admin-btn-primary flex-grow-1 py-3" id="submitBtn">
+                                    <i class="fas fa-save me-2"></i>Submit Resolution
+                                </button>
+                                <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="admin-btn admin-btn-outline py-3 px-4">Exit</a>
+                            </div>
                         </div>
-                    </div>
-
-                    <div class="d-grid gap-2">
-                        <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
-                            <i class="fas fa-check-circle me-2"></i>
-                            <span id="submitText">Submit Task Completion</span>
-                            <span id="loadingSpinner" class="spinner-border spinner-border-sm ms-2 d-none"></span>
-                        </button>
-                        <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn btn-outline-secondary">Cancel</a>
                     </div>
                 </form>
             </div>
@@ -515,213 +407,113 @@
 </div>
 
 <style>
-    .details-table {
-        width: 100%;
-    }
-
-    .details-table th {
-        text-align: left;
-        padding: 0.5rem 0;
-        color: var(--secondary);
-        font-weight: 500;
-        width: 40%;
-    }
-
-    .details-table td {
-        padding: 0.5rem 0;
-    }
-
-    .document-checklist {
-        list-style: none;
-        padding: 0;
-        margin: 0;
-    }
-
-    .document-checklist li {
-        padding: 0.75rem 0;
-        border-bottom: 1px solid #e9ecef;
+    .bg-info-soft { background: rgba(13, 202, 240, 0.1); }
+    .bg-success-soft { background: rgba(25, 135, 84, 0.1); }
+    .bg-warning-soft { background: rgba(255, 193, 7, 0.1); }
+    .bg-primary-soft { background: rgba(var(--ag-green-rgb), 0.1); }
+    .border-primary-soft { border-color: rgba(var(--ag-green-rgb), 0.2) !important; }
+    
+    /* Doc Workspace Styling */
+    .doc-workspace { display: flex; height: 500px; background: #fff; }
+    .doc-sidebar { width: 120px; background: var(--ag-sand-100); border-right: 1px solid var(--ag-border); display: flex; flex-direction: column; padding: 0.5rem; gap: 0.5rem; }
+    .doc-nav-item { background: none; border: 1px solid transparent; padding: 0.75rem; border-radius: 8px; text-align: left; display: flex; flex-direction: column; align-items: center; gap: 0.4rem; transition: var(--ag-transition); color: var(--ag-text-secondary); cursor: pointer; }
+    .doc-nav-item .doc-icon { font-size: 1.1rem; }
+    .doc-nav-item .doc-label { font-size: 10px; font-weight: 700; text-transform: uppercase; text-align: center; }
+    .doc-nav-item:hover { background: var(--ag-sand-200); }
+    .doc-nav-item.active { background: #fff; border-color: var(--ag-border); color: var(--ag-green-700); box-shadow: var(--ag-shadow-soft); }
+    
+    .doc-viewer { flex-grow: 1; position: relative; background: #fdfdfd; }
+    .doc-content { display: none; height: 100%; overflow-y: auto; }
+    .doc-content.active { display: block; }
+    
+    .workspace-subtitle {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--ag-green-700);
+        font-weight: 800;
+        margin-bottom: 1.5rem;
         display: flex;
         align-items: center;
+        gap: 0.75rem;
     }
-
-    .document-checklist li:last-child {
-        border-bottom: none;
+    .workspace-subtitle::after { content: ''; height: 1px; flex-grow: 1; background: var(--ag-border); }
+    
+    .checklist-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 1rem;
     }
-
-    .verification-section {
-        background: var(--light);
-        padding: 1.5rem;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-    }
-
-    .section-subtitle {
-        color: var(--primary);
-        font-weight: 600;
-        margin-bottom: 1rem;
-        padding-bottom: 0.5rem;
-        border-bottom: 2px solid #e9ecef;
-    }
-
-    .checklist-group {
-        max-height: 300px;
-        overflow-y: auto;
-        padding-right: 0.5rem;
-    }
-
-.checklist-group .form-check,
-.verification-section > .form-check {
-    display: flex !important;
-    align-items: flex-start;
-    gap: 0.85rem;
-    padding: 0.75rem;
-    margin-bottom: 0.75rem;
-    background: white;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-    cursor: pointer;
-}
-
-.checklist-group .form-check:last-child,
-.verification-section > .form-check:last-child {
-    margin-bottom: 0;
-}
-
-.checklist-group .form-check-input,
-.verification-section > .form-check .form-check-input {
-    flex-shrink: 0;
-    width: 1.15rem;
-    height: 1.15rem;
-    margin-top: 0.15rem;
-    cursor: pointer;
-}
-
-.checklist-group .form-check-label,
-.verification-section > .form-check .form-check-label {
-    flex: 1;
-    margin: 0;
-    line-height: 1.45;
-    color: #22372b;
-    cursor: pointer;
-}
-
-/* Make the entire card clickable */
-.checklist-group .form-check:hover,
-.verification-section > .form-check:hover {
-    background-color: #f8f9fa;
-    border-color: var(--primary);
-}
-
-    .checklist-group .form-check-label strong,
-    .verification-section > .form-check .form-check-label strong {
-        display: block;
-        margin-bottom: 0.2rem;
-    }
-
-    .checklist-group .form-check-label small,
-    .verification-section > .form-check .form-check-label small {
-        display: block;
-        line-height: 1.45;
-        word-break: break-word;
-    }
-
-    .form-check-input:checked {
-        background-color: var(--success);
-        border-color: var(--success);
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M4.5 10.5l3.2 3.2 7.8-8.2'/%3e%3c/svg%3e");
-        background-size: 0.82rem;
-        background-position: center;
-        background-repeat: no-repeat;
-    }
-
-    .form-check-input:focus {
-        border-color: rgba(31, 139, 76, 0.48);
-        box-shadow: 0 0 0 0.2rem rgba(31, 139, 76, 0.14);
-    }
-
-    .btn-group {
-        gap: 0.5rem;
-    }
-
-    .btn-group .btn {
-        border-radius: 8px !important;
+    
+    .check-item {
+        display: flex;
+        gap: 1rem;
         padding: 1rem;
+        background: var(--ag-sand-100);
+        border: 1px solid var(--ag-border);
+        border-radius: 12px;
+        cursor: pointer;
+        transition: var(--ag-transition);
     }
-
-    .input-group-text {
-        background: var(--light);
-        border: 1px solid #e9ecef;
+    .check-item:hover { border-color: var(--ag-green-700); background: #fff; }
+    .check-item input[type="checkbox"] { width: 1.1rem; height: 1.1rem; margin-top: 0.2rem; cursor: pointer; }
+    
+    .decision-btn {
+        display: block;
+        cursor: pointer;
+        text-align: center;
+        border: 2px solid var(--ag-border);
+        border-radius: 12px;
+        padding: 1.5rem;
+        transition: var(--ag-transition);
     }
+    .decision-btn input { display: none; }
+    .decision-btn:hover { background: var(--ag-sand-100); }
+    
+    .decision-btn.approve input:checked + .decision-content { color: #198754; }
+    .decision-btn.approve:has(input:checked) { border-color: #198754; background: rgba(25, 135, 84, 0.05); }
+    
+    .decision-btn.reject input:checked + .decision-content { color: #dc3545; }
+    .decision-btn.reject:has(input:checked) { border-color: #dc3545; background: rgba(220, 53, 69, 0.05); }
+    
+    .x-small { font-size: 0.75rem; }
 
-    @media (max-width: 768px) {
-        .verification-section {
-            padding: 1rem;
-        }
-
-        .checklist-group {
-            max-height: none;
-            overflow: visible;
-            padding-right: 0;
-        }
-
-        .checklist-group .form-check,
-        .verification-section > .form-check {
-            padding: 0.85rem;
-            padding-left: 0.9rem;
-            column-gap: 0.75rem;
-        }
-
-        .btn-group {
-            flex-direction: column;
-        }
-
-        .btn-group .btn {
-            width: 100%;
-        }
+    @media (max-width: 991px) {
+        .doc-workspace { height: 400px; flex-direction: column; }
+        .doc-sidebar { width: 100%; flex-direction: row; border-right: 0; border-bottom: 1px solid var(--ag-border); }
+        .doc-nav-item { flex-direction: row; gap: 0.5rem; }
     }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Document navigation
+    const docItems = document.querySelectorAll('.doc-nav-item');
+    const docContents = document.querySelectorAll('.doc-content');
+
+    docItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const target = item.dataset.target;
+            
+            docItems.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            
+            docContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === `doc-${target}`) {
+                    content.classList.add('active');
+                }
+            });
+        });
+    });
+
     const form = document.getElementById('completeTaskForm');
     const submitBtn = document.getElementById('submitBtn');
-    const submitText = document.getElementById('submitText');
-    const loadingSpinner = document.getElementById('loadingSpinner');
     
-    {% if task.verification_type == 'document_review' %}
-    // Validate that all checkboxes are checked for document review
     form.addEventListener('submit', function(e) {
-        const checkboxes = document.querySelectorAll('.form-check-input');
-        const requiredInputs = form.querySelectorAll('input[required], select[required], textarea[required]');
-        let allChecked = true;
-        
-        checkboxes.forEach(cb => {
-            if (!cb.checked) {
-                allChecked = false;
-            }
-        });
-
-        let allFilled = true;
-        requiredInputs.forEach(input => {
-            if (input.type === 'radio') return;
-            if (!input.value) {
-                allFilled = false;
-            }
-        });
-        
-        if (!allChecked || !allFilled) {
-            e.preventDefault();
-            AgriPlotUI.showToast({ message: 'Please complete all required document checks and extracted fields before submitting.', type: 'warning' });
-            return false;
-        }
-    });
-    {% endif %}
-    
-    // Show loading state on submit
-    form.addEventListener('submit', function() {
+        if (!form.checkValidity()) return;
         submitBtn.disabled = true;
-        submitText.textContent = 'Submitting...';
-        loadingSpinner.classList.remove('d-none');
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processing...';
     });
 });
 </script>

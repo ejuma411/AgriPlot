@@ -1,19 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
-        .header { background: #0f5132; color: white; padding: 18px; text-align: center; }
-        .content { background: #f9f9f9; padding: 20px; }
-        .meta { background: #ffffff; border: 1px solid #e5e7eb; padding: 12px; border-radius: 6px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>New Support Ticket</h2>
-    </div>
-    <div class="content">
-        <p>Hello {{ admin|display_name }},</p>
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block content %}
+<p>Hello {{ admin|display_name }},</p>
         <p>A new support ticket has been submitted.</p>
         <div class="meta">
             <p><strong>Subject:</strong> {{ ticket.subject }}</p>
@@ -23,6 +11,4 @@
         </div>
         <p style="margin-top: 16px;"><strong>Message:</strong></p>
         <p>{{ ticket.message }}</p>
-    </div>
-</body>
-</html>
+{% endblock %}

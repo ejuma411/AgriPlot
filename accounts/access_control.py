@@ -149,6 +149,7 @@ class DashboardModule:
     permission: str
     section: str
     badge_key: str = ""
+    url_name: str = ""
 
 
 DASHBOARD_MODULES = (
@@ -170,6 +171,7 @@ DASHBOARD_MODULES = (
         permission="tasks.view_assigned",
         section="Operations",
         badge_key="my_tasks_count",
+        url_name="verification:my_tasks",
     ),
     DashboardModule(
         key="verification",
@@ -180,6 +182,7 @@ DASHBOARD_MODULES = (
         permission="verification.review",
         section="Operations",
         badge_key="pending_review_count",
+        url_name="verification:verification_queue",
     ),
     DashboardModule(
         key="task_assignment",
@@ -190,6 +193,7 @@ DASHBOARD_MODULES = (
         permission="tasks.assign",
         section="Operations",
         badge_key="unassigned_tasks_count",
+        url_name="verification:task_assignment",
     ),
     DashboardModule(
         key="survey",
@@ -200,6 +204,7 @@ DASHBOARD_MODULES = (
         permission="survey.view_assigned",
         section="Fieldwork",
         badge_key="surveyor_tasks_count",
+        url_name="verification:surveyor_dashboard",
     ),
     DashboardModule(
         key="extension",
@@ -210,6 +215,7 @@ DASHBOARD_MODULES = (
         permission="extension.view_assigned",
         section="Fieldwork",
         badge_key="extension_tasks_count",
+        url_name="verification:extension_dashboard",
     ),
     DashboardModule(
         key="wallet",
@@ -257,6 +263,7 @@ DASHBOARD_MODULES = (
         section_key="audit",
         permission="audit.view_all",
         section="Governance",
+        url_name="verification:audit_logs",
     ),
     DashboardModule(
         key="users",
@@ -379,7 +386,7 @@ def build_dashboard_modules(access_profile: AccessProfile, badge_counts=None):
                 "icon": module.icon,
                 "section": module.section,
                 "section_key": module.section_key,
-                "url": build_dashboard_url(module.section_key),
+                "url": reverse(module.url_name) if module.url_name else build_dashboard_url(module.section_key),
                 "badge": badge_counts.get(module.badge_key, 0) if module.badge_key else 0,
             }
         )

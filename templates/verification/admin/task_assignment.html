@@ -1,131 +1,98 @@
 {% extends "verification/admin/base_admin.html" %}
-{% load static %}
+{% load static humanize %}
 
-{% block title %}Task Assignment - AgriPlot Admin{% endblock %}
+{% block admin_title %}Workload Management{% endblock %}
 
 {% block admin_content %}
-<!-- Page Header -->
-<div class="page-header">
-    <div class="page-header-content">
-        <div class="page-header-title">
-            <h1><i class="fas fa-tasks me-2"></i>Task Assignment</h1>
-            <p class="page-header-subtitle">Assign document review, extension assessment, and surveyor inspection tasks</p>
-        </div>
-        <div class="page-header-actions">
-            <a href="{% url 'verification:verification_dashboard' %}" class="btn">
-                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
-            </a>
-        </div>
+<!-- Operational Stats -->
+<div class="stat-grid mb-4">
+    <div class="stat-card">
+        <div class="stat-label">Pending Queue</div>
+        <div class="stat-value text-primary">{{ task_stats.pending|default:0 }}</div>
+        <div class="stat-trend">Unassigned tasks</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Active Workload</div>
+        <div class="stat-value text-warning">{{ task_stats.in_progress|default:0 }}</div>
+        <div class="stat-trend">Tasks in progress</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Daily Output</div>
+        <div class="stat-value text-success">{{ task_stats.completed_today|default:0 }}</div>
+        <div class="stat-trend">Completed today</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">SLA Breaches</div>
+        <div class="stat-value text-danger">{{ task_stats.overdue|default:0 }}</div>
+        <div class="stat-trend">Overdue assignments</div>
     </div>
 </div>
 
-<!-- Stats Cards -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-clock"></i></div>
-        <div class="stat-value">{{ task_stats.pending|default:0 }}</div>
-        <div class="stat-label">Pending (Unassigned)</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-sync-alt"></i></div>
-        <div class="stat-value">{{ task_stats.in_progress|default:0 }}</div>
-        <div class="stat-label">In Progress</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-        <div class="stat-value">{{ task_stats.completed_today|default:0 }}</div>
-        <div class="stat-label">Completed Today</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
-        <div class="stat-value">{{ task_stats.overdue|default:0 }}</div>
-        <div class="stat-label">Overdue</div>
-    </div>
-</div>
-
-<!-- Extension Officers Summary -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="admin-card">
+<!-- Officer Directory -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="admin-card h-100">
             <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-user-graduate me-2"></i>Available Extension Officers
-                </h5>
+                <h2 class="admin-card-title"><i class="fas fa-user-graduate me-2"></i>Extension Officers</h2>
             </div>
             <div class="admin-card-body">
-                <p class="text-muted mb-3">
-                    Extension Officers provide soil/agronomic assessments and crop suitability recommendations.
-                </p>
-                <div class="row">
+                <div class="d-flex flex-column gap-3">
                     {% for officer in extension_officers %}
-                    <div class="col-md-4 mb-3">
-                        <div class="officer-card">
-                            <div class="d-flex align-items-center mb-2">
-                                <div class="officer-avatar me-2">
+                    <div class="officer-mini-card border rounded-3 p-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex gap-3">
+                                <div class="officer-initials bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
                                     {{ officer.user|display_initial }}
                                 </div>
                                 <div>
-                                    <strong>{{ officer.user|display_name }}</strong>
-                                    <br>
-                                    <small class="text-muted">{{ officer.designation }}</small>
+                                    <div class="fw-bold text-dark">{{ officer.user|display_name }}</div>
+                                    <small class="text-muted d-block">{{ officer.designation }}</small>
                                 </div>
                             </div>
-                            <div class="small">
-                                <div><i class="fas fa-map-marker-alt me-1"></i> Station: {{ officer.station }}</div>
-                                <div><i class="fas fa-globe me-1"></i> Counties: {{ officer.assigned_counties|join:", " }}</div>
-                                <div><i class="fas fa-tasks me-1"></i> Workload: {{ officer.current_workload }}/{{ officer.max_daily_tasks }}</div>
+                            <div class="text-end">
+                                <span class="badge bg-light border text-dark">Load: {{ officer.current_workload }}/{{ officer.max_daily_tasks }}</span>
                             </div>
+                        </div>
+                        <div class="mt-2 small text-muted">
+                            <i class="fas fa-map-marker-alt me-1"></i> {{ officer.station|default:"Remote" }} • {{ officer.assigned_counties|join:", " }}
                         </div>
                     </div>
                     {% empty %}
-                    <div class="col-12">
-                        <p class="text-muted text-center">No active extension officers found.</p>
-                    </div>
+                    <div class="text-center py-3 text-muted">No active extension officers.</div>
                     {% endfor %}
                 </div>
             </div>
         </div>
     </div>
-</div>
-
-<!-- Land Surveyors Summary -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="admin-card">
+    <div class="col-lg-6">
+        <div class="admin-card h-100">
             <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-map-marked-alt me-2"></i>Available Land Surveyors
-                </h5>
+                <h2 class="admin-card-title"><i class="fas fa-map-marked-alt me-2"></i>Licensed Surveyors</h2>
             </div>
             <div class="admin-card-body">
-                <p class="text-muted mb-3">
-                    Land Surveyors verify boundaries, GPS coordinates, and land legality on site.
-                </p>
-                <div class="row">
+                <div class="d-flex flex-column gap-3">
                     {% for surveyor in surveyors %}
-                    <div class="col-md-4 mb-3">
-                        <div class="officer-card">
-                            <div class="d-flex align-items-center mb-2">
-                                <div class="officer-avatar me-2">
+                    <div class="officer-mini-card border rounded-3 p-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="d-flex gap-3">
+                                <div class="officer-initials bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
                                     {{ surveyor.user|display_initial }}
                                 </div>
                                 <div>
-                                    <strong>{{ surveyor.user|display_name }}</strong>
-                                    <br>
-                                    <small class="text-muted">{{ surveyor.designation }}</small>
+                                    <div class="fw-bold text-dark">{{ surveyor.user|display_name }}</div>
+                                    <small class="text-muted d-block">{{ surveyor.designation }}</small>
                                 </div>
                             </div>
-                            <div class="small">
-                                <div><i class="fas fa-map-marker-alt me-1"></i> Station: {{ surveyor.station }}</div>
-                                <div><i class="fas fa-globe me-1"></i> Counties: {{ surveyor.assigned_counties|join:", " }}</div>
-                                <div><i class="fas fa-tasks me-1"></i> Workload: {{ surveyor.current_workload }}/{{ surveyor.max_daily_tasks }}</div>
+                            <div class="text-end">
+                                <span class="badge bg-light border text-dark">Load: {{ surveyor.current_workload }}/{{ surveyor.max_daily_tasks }}</span>
                             </div>
+                        </div>
+                        <div class="mt-2 small text-muted">
+                            <i class="fas fa-map-marker-alt me-1"></i> {{ surveyor.station|default:"Remote" }} • {{ surveyor.assigned_counties|join:", " }}
                         </div>
                     </div>
                     {% empty %}
-                    <div class="col-12">
-                        <p class="text-muted text-center">No active land surveyors found.</p>
-                    </div>
+                    <div class="text-center py-3 text-muted">No active surveyors found.</div>
                     {% endfor %}
                 </div>
             </div>
@@ -133,541 +100,227 @@
     </div>
 </div>
 
-
-<!-- Pending Tasks Queue -->
+<!-- Task Queue -->
 <div class="admin-card mb-4">
     <div class="admin-card-header">
-        <h5 class="admin-card-title">
-            <i class="fas fa-hourglass-half me-2" style="color: #ffc107;"></i>
-            Pending Tasks ({{ pending_tasks|length }})
-        </h5>
+        <h2 class="admin-card-title"><i class="fas fa-hourglass-half me-2"></i>Unassigned Task Queue</h2>
+        <span class="badge bg-warning-soft text-warning border border-warning px-3">{{ pending_tasks|length }} pending</span>
     </div>
-    <div class="admin-card-body">
-        {% if pending_tasks %}
-        <div class="table-responsive">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Task Type</th>
-                        <th>Plot</th>
-                        <th>Location</th>
-                        <th>Assignee</th>
-                        <th>Reason</th>
-                        <th>Created</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for task in pending_tasks %}
-                    <tr>
-                        <td>
-                            <span class="badge 
-                                {% if task.verification_type == 'registry_search' %}bg-secondary
-                                {% elif task.verification_type == 'document_review' %}bg-info
-                                {% elif task.verification_type == 'extension_review' %}bg-success
-                                {% elif task.verification_type == 'surveyor_inspection' %}bg-warning
-                                {% endif %} p-2">
-                                {{ task.get_verification_type_display }}
-                            </span>
-                        </td>
-                        <td>
-                            <a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank">
-                                {{ task.plot.title|truncatechars:30 }}
-                            </a>
-                        </td>
-                        <td>
-                            {% if task.plot.county %}
-                                {{ task.plot.county }}
-                                {% if task.plot.subcounty %} - {{ task.plot.subcounty }}{% endif %}
-                            {% else %}
-                                {{ task.plot.location|truncatechars:20 }}
-                            {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge bg-secondary">Unassigned</span>
-                        </td>
-                        <td>
-                            <small class="text-muted">{{ task.unassigned_reason|default:"Awaiting assignment" }}</small>
-                        </td>
-                        <td>{{ task.assigned_at|timesince }} ago</td>
-                        <td>
-                            {% if task.verification_type == 'registry_search' %}
-                                <button class="btn btn-sm btn-outline-secondary" disabled>
-                                    <i class="fas fa-cog me-1"></i> Automated
-                                </button>
-                            {% else %}
-                                <button class="btn btn-sm btn-success assign-btn" 
-                                        data-task-id="{{ task.id }}"
-                                        data-task-type="{{ task.get_verification_type_display }}"
-                                        data-plot-title="{{ task.plot.title }}"
-                                        data-plot-county="{{ task.plot.county }}">
-                                    <i class="fas fa-user-plus me-1"></i> Assign
-                                </button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="text-center py-4">
-            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-            <p class="text-muted">No pending tasks</p>
-        </div>
-        {% endif %}
+    <div class="admin-table-wrapper">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Plot Identification</th>
+                    <th>Location</th>
+                    <th>Age</th>
+                    <th class="text-end">Assignment</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in pending_tasks %}
+                <tr>
+                    <td>
+                        <span class="badge 
+                            {% if task.verification_type == 'registry_search' %}bg-secondary-soft text-secondary
+                            {% elif task.verification_type == 'document_review' %}bg-info-soft text-info
+                            {% elif task.verification_type == 'extension_review' %}bg-success-soft text-success
+                            {% elif task.verification_type == 'surveyor_inspection' %}bg-warning-soft text-warning
+                            {% endif %}">{{ task.get_verification_type_display }}</span>
+                    </td>
+                    <td>
+                        <a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank" class="text-dark fw-bold text-decoration-none">{{ task.plot.title|truncatechars:40 }}</a>
+                        <small class="text-muted d-block">PID: #{{ task.plot.id }}</small>
+                    </td>
+                    <td>{{ task.plot.county|default:"Unknown" }}</td>
+                    <td><small class="text-muted">{{ task.assigned_at|timesince }}</small></td>
+                    <td class="text-end">
+                        {% if task.verification_type == 'registry_search' %}
+                            <span class="badge bg-light border text-muted">Automated</span>
+                        {% else %}
+                            <button class="admin-btn admin-btn-primary py-1 px-3 assign-btn" 
+                                    data-task-id="{{ task.id }}"
+                                    data-task-type="{{ task.get_verification_type_display }}"
+                                    data-plot-title="{{ task.plot.title }}"
+                                    data-plot-county="{{ task.plot.county }}">
+                                <i class="fas fa-user-plus me-2"></i>Assign
+                            </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted opacity-50">
+                        <i class="fas fa-check-double fa-3x mb-3"></i>
+                        <h5>No pending tasks</h5>
+                        <p class="mb-0">All verification tasks are currently assigned or completed.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
-<!-- In Progress Tasks -->
+<!-- Active Assignments -->
 <div class="admin-card">
     <div class="admin-card-header">
-        <h5 class="admin-card-title">
-            <i class="fas fa-sync-alt fa-spin me-2"></i>
-            In Progress Tasks ({{ in_progress_tasks|length }})
-        </h5>
+        <h2 class="admin-card-title"><i class="fas fa-sync-alt fa-spin me-2"></i>Active Assignments</h2>
     </div>
-    <div class="admin-card-body">
-        {% if in_progress_tasks %}
-        <div class="table-responsive">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Task Type</th>
-                        <th>Plot</th>
-                        <th>Assigned To</th>
-                        <th>Assigned</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for task in in_progress_tasks %}
-                    <tr>
-                        <td>
-                            <span class="badge 
-                                {% if task.verification_type == 'registry_search' %}bg-secondary
-                                {% elif task.verification_type == 'document_review' %}bg-info
-                                {% elif task.verification_type == 'extension_review' %}bg-success
-                                {% elif task.verification_type == 'surveyor_inspection' %}bg-warning
-                                {% endif %} p-2">
-                                {{ task.get_verification_type_display }}
-                            </span>
-                        </td>
-                        <td>
-                            <a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank">
-                                {{ task.plot.title|truncatechars:30 }}
-                            </a>
-                        </td>
-                        <td>
-                            <i class="fas fa-user me-1"></i>
-                            {{ task.assigned_to|display_name }}
-                        </td>
-                        <td>{{ task.assigned_at|timesince }} ago</td>
-                        <td>
-                            <a href="{% url 'verification:review_plot' task.plot.id %}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-eye"></i> View
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="text-muted text-center py-3">No tasks in progress</p>
-        {% endif %}
+    <div class="admin-table-wrapper">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Plot</th>
+                    <th>Assigned To</th>
+                    <th>Assigned</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in in_progress_tasks %}
+                <tr>
+                    <td><span class="badge bg-light border text-dark">{{ task.get_verification_type_display }}</span></td>
+                    <td><div class="fw-bold text-dark">{{ task.plot.title|truncatechars:40 }}</div></td>
+                    <td><i class="fas fa-user-circle me-1 text-muted"></i> {{ task.assigned_to|display_name }}</td>
+                    <td><small class="text-muted">{{ task.assigned_at|timesince }} ago</small></td>
+                    <td class="text-end">
+                        <a href="{% url 'verification:review_plot' task.plot.id %}" class="admin-btn admin-btn-outline py-1 px-3">Review</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">No active assignments found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
-<!-- Custom Modal (No Bootstrap dependency) -->
-<div id="customModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); z-index: 9999; overflow: auto;">
-    <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px;">
-        <div style="background: white; border-radius: 12px; width: 100%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideDown 0.3s ease;">
-            
-            <!-- Modal Header -->
-            <div style="background: linear-gradient(135deg, var(--acc-olive) 0%, var(--acc-forest) 100%); color: white; padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0; display: flex; justify-content: space-between; align-items: center;">
-                <h5 style="margin: 0; font-size: 1.25rem; font-weight: 600;">
-                    <i class="fas fa-user-plus me-2"></i><span id="assignModalTitle">Assign Task</span>
-                </h5>
-                <button type="button" onclick="closeCustomModal()" style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer; line-height: 1;">&times;</button>
+<!-- Assignment Modal -->
+<div id="assignModal" class="ag-modal">
+    <div class="ag-modal-content">
+        <div class="ag-modal-header">
+            <h5 class="ag-modal-title"><i class="fas fa-user-plus me-2"></i>Assign Verification Task</h5>
+            <button type="button" class="ag-modal-close">&times;</button>
+        </div>
+        <div class="ag-modal-body">
+            <div id="modalTaskPreview" class="mb-4 p-3 bg-light rounded-3 border-start border-4 border-primary">
+                <div class="small text-muted text-uppercase fw-bold mb-1">Target Object</div>
+                <h6 id="modalPlotTitle" class="mb-1 fw-bold"></h6>
+                <div id="modalTaskType" class="badge bg-primary-soft text-primary mb-2"></div>
+                <div class="small"><i class="fas fa-map-marker-alt me-1"></i> <span id="modalPlotCounty"></span></div>
             </div>
             
-            <!-- Modal Body -->
-            <div style="padding: 1.5rem;">
-                <div id="customTaskInfo" style="background: rgba(54, 95, 68, 0.10); border-left: 4px solid var(--acc-olive); padding: 1rem; margin-bottom: 1.5rem; border-radius: 8px; display: none;">
-                    <p style="margin: 0 0 0.5rem 0;"><strong>Task:</strong> <span id="customTaskType"></span></p>
-                    <p style="margin: 0 0 0.5rem 0;"><strong>Plot:</strong> <span id="customPlotTitle"></span></p>
-                    <p style="margin: 0;"><strong>County:</strong> <span id="customPlotCounty"></span></p>
+            <form id="assignForm">
+                {% csrf_token %}
+                <input type="hidden" name="task_id" id="modalTaskId">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Select Responsible Officer</label>
+                    <select id="staffSelect" class="form-select" required>
+                        <option value="">-- Choose Officer --</option>
+                        {% for officer in extension_officers %}
+                            <option value="{{ officer.user.id }}" data-role="extension" data-counties="{{ officer.assigned_counties|join:',' }}">
+                                {{ officer.user|display_name }} (Extension)
+                            </option>
+                        {% endfor %}
+                        {% for surveyor in surveyors %}
+                            <option value="{{ surveyor.user.id }}" data-role="surveyor" data-counties="{{ surveyor.assigned_counties|join:',' }}">
+                                {{ surveyor.user|display_name }} (Surveyor)
+                            </option>
+                        {% endfor %}
+                        {% for staff in staff_users %}
+                            <option value="{{ staff.id }}" data-role="staff">
+                                {{ staff|display_name }} (Staff)
+                            </option>
+                        {% endfor %}
+                    </select>
                 </div>
-                
-                <form id="customAssignForm">
-                    {% csrf_token %}
-                    <input type="hidden" name="task_id" id="customTaskIdInput">
-                    
-                    <div style="margin-bottom: 1.5rem;">
-                        <label for="customStaffSelect" id="customStaffLabel" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #333;">
-                            <i class="fas fa-user-graduate me-1"></i> Select Officer
-                        </label>
-                        <select id="customStaffSelect" required style="width: 100%; padding: 0.75rem; border: 2px solid #e9ecef; border-radius: 8px; font-size: 1rem; background: white;">
-                            <option value="">-- Choose an Officer --</option>
-                            {% for officer in extension_officers %}
-                                <option value="{{ officer.user.id }}" 
-                                        data-role="extension"
-                                        data-counties="{{ officer.assigned_counties|join:',' }}"
-                                        data-station="{{ officer.station }}">
-                                    {{ officer.user|display_name }}
-                                    {% if officer.station %} - {{ officer.station }}{% endif %}
-                                    ({{ officer.assigned_counties|length }} counties)
-                                </option>
-                            {% endfor %}
-                            {% for surveyor in surveyors %}
-                                <option value="{{ surveyor.user.id }}" 
-                                        data-role="surveyor"
-                                        data-counties="{{ surveyor.assigned_counties|join:',' }}"
-                                        data-station="{{ surveyor.station }}">
-                                    {{ surveyor.user|display_name }}
-                                    {% if surveyor.station %} - {{ surveyor.station }}{% endif %}
-                                    ({{ surveyor.assigned_counties|length }} counties)
-                                </option>
-                            {% endfor %}
-                            {% for staff in staff_users %}
-                                <option value="{{ staff.id }}"
-                                        data-role="staff"
-                                        data-counties=""
-                                        data-station="">
-                                    {{ staff|display_name }} (Staff)
-                                </option>
-                            {% endfor %}
-                        </select>
-                        <small style="display: block; margin-top: 0.5rem; color: #6c757d;">
-                            <i class="fas fa-info-circle me-1"></i> Only showing verified, active officers
-                        </small>
-                    </div>
-
-                    <!-- Officer Details (shown when selected) -->
-                    <div id="officerDetails" style="display: none; background: #f8f9fa; padding: 1rem; border-radius: 8px; margin-top: 1rem;">
-                        <h6 style="margin: 0 0 0.5rem 0; font-weight: 600;">Officer Details:</h6>
-                        <p style="margin: 0 0 0.25rem 0;"><strong>Station:</strong> <span id="officerStation"></span></p>
-                        <p style="margin: 0;"><strong>Assigned Counties:</strong> <span id="officerCounties"></span></p>
-                    </div>
-                </form>
-            </div>
-            
-            <!-- Modal Footer -->
-            <div style="padding: 1rem 1.5rem; border-top: 1px solid #e9ecef; display: flex; justify-content: flex-end; gap: 0.75rem;">
-                <button type="button" onclick="closeCustomModal()" style="padding: 0.6rem 1.2rem; border: 2px solid #6c757d; background: white; color: #6c757d; border-radius: 8px; font-weight: 500; cursor: pointer; transition: all 0.3s ease;">
-                    Cancel
-                </button>
-                <button type="button" onclick="assignTask()" style="padding: 0.6rem 1.2rem; background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest)); color: white; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.3s ease; display: inline-flex; align-items: center; gap: 0.5rem;">
-                    <i class="fas fa-check"></i> Assign to Officer
-                </button>
-            </div>
+                <div id="countyWarning" class="alert alert-warning py-2 px-3 small d-none">
+                    <i class="fas fa-exclamation-triangle me-2"></i> This officer does not cover the plot's county.
+                </div>
+            </form>
         </div>
-    </div>
-</div>
-
-<!-- Loading Spinner -->
-<div id="customLoadingSpinner" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
-    <div style="background: white; padding: 2rem; border-radius: 12px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-        <div class="spinner-border text-success" style="width: 3rem; height: 3rem; margin-bottom: 1rem;" role="status">
-            <span class="visually-hidden">Loading...</span>
+        <div class="ag-modal-footer">
+            <button type="button" class="admin-btn admin-btn-outline ag-modal-close-btn">Cancel</button>
+            <button type="button" id="confirmAssignBtn" class="admin-btn admin-btn-primary">Confirm Assignment</button>
         </div>
-        <h6 style="margin: 0; color: #333; font-size: 1rem;">Assigning task...</h6>
     </div>
 </div>
 
 <style>
-    @keyframes slideDown {
-        from {
-            transform: translateY(-30px);
-            opacity: 0;
-        }
-        to {
-            transform: translateY(0);
-            opacity: 1;
-        }
+    .bg-info-soft { background: rgba(13, 202, 240, 0.1); }
+    .bg-warning-soft { background: rgba(255, 193, 7, 0.1); }
+    .bg-success-soft { background: rgba(25, 135, 84, 0.1); }
+    .bg-danger-soft { background: rgba(220, 53, 69, 0.1); }
+    .bg-primary-soft { background: rgba(var(--ag-green-rgb), 0.1); }
+    
+    .officer-mini-card {
+        background: white;
+        transition: all 0.2s ease;
+    }
+    .officer-mini-card:hover {
+        border-color: var(--ag-green-700) !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
     
-    .btn-success {
-        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
-        color: white;
-        border: none;
+    /* Custom Modal Styles */
+    .ag-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 2000;
+        backdrop-filter: blur(2px);
     }
-    
-    .btn-success:hover {
-        background: linear-gradient(135deg, var(--acc-olive), var(--acc-forest));
+    .ag-modal-content {
+        position: relative;
+        background: white;
+        margin: 10vh auto;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 16px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        animation: modalFadeIn 0.3s ease;
     }
-    
-    /* Ensure modal is above everything */
-    #customModal {
-        font-family: "Outfit", sans-serif;
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
-
-    .officer-card {
-        background: var(--light);
-        padding: 1rem;
-        border-radius: 8px;
-        border: 1px solid #e9ecef;
-        transition: all 0.3s ease;
-    }
-
-    .officer-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        border-color: var(--primary);
-    }
-
-    .officer-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: var(--primary);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 600;
-    }
+    .ag-modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+    .ag-modal-title { margin: 0; font-weight: 700; color: var(--ag-charcoal); }
+    .ag-modal-close { background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer; opacity: 0.5; }
+    .ag-modal-close:hover { opacity: 1; }
+    .ag-modal-body { padding: 1.5rem; }
+    .ag-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 0.75rem; }
 </style>
 
 <script>
-// Simple modal functions - no Bootstrap dependencies
 let currentTaskId = null;
 let currentPlotCounty = null;
-let currentTaskType = null;
 
 function openCustomModal(taskId, taskType, plotTitle, plotCounty) {
-    console.log('Opening modal for task:', taskId, 'County:', plotCounty);
-    
-    // Store current task ID and county
-    currentTaskId = taskId;
-    currentPlotCounty = plotCounty;
-    currentTaskType = (taskType || '').toLowerCase();
-    
-    // Set values
-    document.getElementById('customTaskIdInput').value = taskId;
-    document.getElementById('customTaskType').textContent = taskType || 'Verification Task';
-    document.getElementById('customPlotTitle').textContent = plotTitle || 'Unknown Plot';
-    document.getElementById('customPlotCounty').textContent = plotCounty || 'Unknown County';
-    
-    // Show task info
-    document.getElementById('customTaskInfo').style.display = 'block';
-    
-    // Update modal title and label based on task type
-    const titleEl = document.getElementById('assignModalTitle');
-    const labelEl = document.getElementById('customStaffLabel');
-    if (currentTaskType.includes('survey')) {
-        titleEl.textContent = 'Assign Surveyor Task';
-        labelEl.innerHTML = '<i class="fas fa-map-marked-alt me-1"></i> Select Land Surveyor';
-    } else if (currentTaskType.includes('extension')) {
-        titleEl.textContent = 'Assign Extension Task';
-        labelEl.innerHTML = '<i class="fas fa-seedling me-1"></i> Select Extension Officer';
-    } else if (currentTaskType.includes('document')) {
-        titleEl.textContent = 'Assign Document Review';
-        labelEl.innerHTML = '<i class="fas fa-file-alt me-1"></i> Select Staff';
-    } else {
-        titleEl.textContent = 'Assign Task';
-        labelEl.innerHTML = '<i class="fas fa-user-graduate me-1"></i> Select Officer';
-    }
-
-    // Reset and filter officers
-    const select = document.getElementById('customStaffSelect');
-    select.value = '';
-    document.getElementById('officerDetails').style.display = 'none';
-    
-    // Filter by role and highlight officers that cover this county
-    Array.from(select.options).forEach(option => {
-        if (option.value) {
-            const role = option.dataset.role;
-            if (currentTaskType.includes('survey') && role !== 'surveyor') {
-                option.style.display = 'none';
-                return;
-            }
-            if (currentTaskType.includes('extension') && role !== 'extension') {
-                option.style.display = 'none';
-                return;
-            }
-            if (currentTaskType.includes('document') && role !== 'staff') {
-                option.style.display = 'none';
-                return;
-            }
-            option.style.display = '';
-            const counties = option.dataset.counties ? option.dataset.counties.split(',') : [];
-            if (counties.includes(plotCounty)) {
-                option.style.fontWeight = 'bold';
-                option.style.backgroundColor = '#e8f5e9';
-            } else {
-                option.style.fontWeight = 'normal';
-                option.style.backgroundColor = '';
-            }
-        }
-    });
-    
-    // Show modal
-    document.getElementById('customModal').style.display = 'block';
-    
-    // Prevent body scrolling
-    document.body.style.overflow = 'hidden';
-}
-
-// Function to handle task assignment
-function assignTask() {
-    const taskId = document.getElementById('customTaskIdInput').value;
-    const userId = document.getElementById('customStaffSelect').value;
-    
-    console.log('Assigning task:', taskId, 'to user:', userId);
-    
-    if (!taskId) {
-        AgriPlotUI.showToast({ message: 'Error: No task selected', type: 'danger' });
-        return;
-    }
-    
-    if (!userId) {
-        AgriPlotUI.showToast({ message: 'Please select an officer', type: 'warning' });
-        return;
-    }
-    
-    // Show loading spinner
-    document.getElementById('customLoadingSpinner').style.display = 'flex';
-    
-    // Get CSRF token
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    
-    // Send AJAX request
-    fetch('{% url "verification:ajax_assign_task" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({
-            task_id: taskId,
-            user_id: userId
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Response:', data);
-        
-        // Hide loading spinner
-        document.getElementById('customLoadingSpinner').style.display = 'none';
-        
-        if (data.success) {
-            // Close modal
-            closeCustomModal();
-            
-            // Show success message
-            AgriPlotUI.showToast({ message: data.message || 'Task assigned successfully!', type: 'success' });
-            AgriPlotUI.trackEvent('cta_click', { cta: 'assign_task' });
-            
-            // Reload page to show updated data
-            location.reload();
-        } else {
-            AgriPlotUI.showToast({ message: 'Error: ' + (data.message || 'Unknown error'), type: 'danger' });
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        document.getElementById('customLoadingSpinner').style.display = 'none';
-        AgriPlotUI.showToast({ message: 'An error occurred while assigning the task. Please check the console for details.', type: 'danger' });
-    });
-}
-
-function closeCustomModal() {
-    console.log('Closing modal');
-    
-    // Hide modal
-    document.getElementById('customModal').style.display = 'none';
-    
-    // Hide task info
-    document.getElementById('customTaskInfo').style.display = 'none';
-    
-    // Reset
-    document.getElementById('customTaskIdInput').value = '';
-    document.getElementById('officerDetails').style.display = 'none';
-    currentTaskId = null;
-    currentPlotCounty = null;
-    
-    // Restore body scrolling
-    document.body.style.overflow = 'auto';
-}
-
-// Show officer details when selected
-document.getElementById('customStaffSelect').addEventListener('change', function(e) {
-    const selected = this.options[this.selectedIndex];
-    
-    if (selected.value) {
-        const station = selected.dataset.station || 'Not specified';
-        const counties = selected.dataset.counties || '';
-        
-        document.getElementById('officerStation').textContent = station;
-        document.getElementById('officerCounties').textContent = counties.replace(/,/g, ', ');
-        document.getElementById('officerDetails').style.display = 'block';
-        
-        // Check if officer covers this county
-        const countyList = counties.split(',');
-        if (!countyList.includes(currentPlotCounty)) {
-            // Show warning but don't prevent assignment
-            const warning = document.createElement('div');
-            warning.className = 'alert alert-warning';
-            warning.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> This officer does not cover ' + currentPlotCounty;
-            
-            // Remove old warning if exists
-            const oldWarning = document.getElementById('countyWarning');
-            if (oldWarning) oldWarning.remove();
-            
-            warning.id = 'countyWarning';
-            document.getElementById('officerDetails').appendChild(warning);
-        } else {
-            const oldWarning = document.getElementById('countyWarning');
-            if (oldWarning) oldWarning.remove();
-        }
-    } else {
-        document.getElementById('officerDetails').style.display = 'none';
-    }
-});
-
-// Update the assign button click handler
-document.querySelectorAll('.assign-btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        const taskId = this.dataset.taskId;
-        const taskType = this.dataset.taskType;
-        const plotTitle = this.dataset.plotTitle;
-        const plotCounty = this.dataset.plotCounty || 'Unknown';  // Add this data attribute
-        
-        openCustomModal(taskId, taskType, plotTitle, plotCounty);
-    });
-});
-
-
-function openCustomModal(taskId, taskType, plotTitle, plotCounty) {
-    console.log('Opening modal for task:', taskId, 'County:', plotCounty);
+    console.log('Opening modal for task:', taskId);
     
     // Store current task ID and county
     currentTaskId = taskId;
     currentPlotCounty = plotCounty;
     
     // Set values
-    document.getElementById('customTaskIdInput').value = taskId;
-    document.getElementById('customTaskType').textContent = taskType || 'Extension Review';
-    document.getElementById('customPlotTitle').textContent = plotTitle || 'Unknown Plot';
-    document.getElementById('customPlotCounty').textContent = plotCounty || 'Unknown County';
-    
-    // Show task info
-    document.getElementById('customTaskInfo').style.display = 'block';
+    document.getElementById('modalTaskId').value = taskId;
+    document.getElementById('modalTaskType').textContent = taskType || 'Extension Review';
+    document.getElementById('modalPlotTitle').textContent = plotTitle || 'Unknown Plot';
+    document.getElementById('modalPlotCounty').textContent = plotCounty || 'Unknown County';
     
     // Reset and filter officers
-    const select = document.getElementById('customStaffSelect');
+    const select = document.getElementById('staffSelect');
     select.value = '';
-    document.getElementById('officerDetails').style.display = 'none';
+    document.getElementById('countyWarning').classList.add('d-none');
     
     // Highlight officers that cover this county
     Array.from(select.options).forEach(option => {
@@ -684,7 +337,7 @@ function openCustomModal(taskId, taskType, plotTitle, plotCounty) {
     });
     
     // Show modal
-    document.getElementById('customModal').style.display = 'block';
+    document.getElementById('assignModal').style.display = 'block';
     
     // Prevent body scrolling
     document.body.style.overflow = 'hidden';
@@ -694,14 +347,10 @@ function closeCustomModal() {
     console.log('Closing modal');
     
     // Hide modal
-    document.getElementById('customModal').style.display = 'none';
-    
-    // Hide task info
-    document.getElementById('customTaskInfo').style.display = 'none';
+    document.getElementById('assignModal').style.display = 'none';
     
     // Reset
-    document.getElementById('customTaskIdInput').value = '';
-    document.getElementById('officerDetails').style.display = 'none';
+    document.getElementById('modalTaskId').value = '';
     currentTaskId = null;
     currentPlotCounty = null;
     
@@ -710,44 +359,28 @@ function closeCustomModal() {
 }
 
 // Show officer details when selected
-document.getElementById('customStaffSelect').addEventListener('change', function(e) {
+document.getElementById('staffSelect').addEventListener('change', function(e) {
     const selected = this.options[this.selectedIndex];
     
     if (selected.value) {
-        const station = selected.dataset.station || 'Not specified';
         const counties = selected.dataset.counties || '';
-        
-        document.getElementById('officerStation').textContent = station;
-        document.getElementById('officerCounties').textContent = counties.replace(/,/g, ', ');
-        document.getElementById('officerDetails').style.display = 'block';
-        
-        // Check if officer covers this county
         const countyList = counties.split(',');
-        if (!countyList.includes(currentPlotCounty)) {
-            // Show warning but don't prevent assignment
-            const warning = document.createElement('div');
-            warning.className = 'alert alert-warning';
-            warning.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> This officer does not cover ' + currentPlotCounty;
-            
-            // Remove old warning if exists
-            const oldWarning = document.getElementById('countyWarning');
-            if (oldWarning) oldWarning.remove();
-            
-            warning.id = 'countyWarning';
-            document.getElementById('officerDetails').appendChild(warning);
+        
+        if (currentPlotCounty && !countyList.includes(currentPlotCounty)) {
+            document.getElementById('countyWarning').classList.remove('d-none');
         } else {
-            const oldWarning = document.getElementById('countyWarning');
-            if (oldWarning) oldWarning.remove();
+            document.getElementById('countyWarning').classList.add('d-none');
         }
     } else {
-        document.getElementById('officerDetails').style.display = 'none';
+        document.getElementById('countyWarning').classList.add('d-none');
     }
 });
 
-// Function to handle task assignment - THIS WAS MISSING
-function assignTask() {
-    const taskId = document.getElementById('customTaskIdInput').value;
-    const userId = document.getElementById('customStaffSelect').value;
+// Function to handle task assignment
+async function assignTask() {
+    const taskId = document.getElementById('modalTaskId').value;
+    const userId = document.getElementById('staffSelect').value;
+    const confirmBtn = document.getElementById('confirmAssignBtn');
     
     console.log('Assigning task:', taskId, 'to user:', userId);
     
@@ -757,86 +390,76 @@ function assignTask() {
     }
     
     if (!userId) {
-        AgriPlotUI.showToast({ message: 'Please select an extension officer', type: 'warning' });
+        AgriPlotUI.showToast({ message: 'Please select an officer', type: 'warning' });
         return;
     }
     
-    // Show loading spinner
-    document.getElementById('customLoadingSpinner').style.display = 'flex';
+    // Show loading state
+    const originalText = confirmBtn.innerHTML;
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Assigning...';
     
     // Get CSRF token
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
     
-    // Send AJAX request
-    fetch('{% url "verification:ajax_assign_task" %}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': csrfToken
-        },
-        body: JSON.stringify({
-            task_id: taskId,
-            user_id: userId
-        })
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-        return response.json();
-    })
-    .then(data => {
-        console.log('Response:', data);
+    try {
+        const response = await fetch('{% url "verification:ajax_assign_task" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                task_id: taskId,
+                user_id: userId
+            })
+        });
         
-        // Hide loading spinner
-        document.getElementById('customLoadingSpinner').style.display = 'none';
+        const data = await response.json();
         
         if (data.success) {
-            // Close modal
             closeCustomModal();
-            
-            // Show success message
             AgriPlotUI.showToast({ message: data.message || 'Task assigned successfully!', type: 'success' });
-            AgriPlotUI.trackEvent('cta_click', { cta: 'assign_extension_task' });
-            
-            // Reload page to show updated data
-            location.reload();
+            setTimeout(() => location.reload(), 800);
         } else {
             AgriPlotUI.showToast({ message: 'Error: ' + (data.message || 'Unknown error'), type: 'danger' });
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = originalText;
         }
-    })
-    .catch(error => {
+    } catch (error) {
         console.error('Error:', error);
-        document.getElementById('customLoadingSpinner').style.display = 'none';
-        AgriPlotUI.showToast({ message: 'An error occurred while assigning the task. Please check the console for details.', type: 'danger' });
-    });
+        AgriPlotUI.showToast({ message: 'An error occurred while assigning the task.', type: 'danger' });
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = originalText;
+    }
 }
 
-// Update the assign button click handler
+// Event Listeners
 document.querySelectorAll('.assign-btn').forEach(btn => {
     btn.addEventListener('click', function(e) {
         e.preventDefault();
-        e.stopPropagation();
-        
-        const taskId = this.dataset.taskId;
-        const taskType = this.dataset.taskType;
-        const plotTitle = this.dataset.plotTitle;
-        const plotCounty = this.dataset.plotCounty || 'Unknown';
-        
+        const { taskId, taskType, plotTitle, plotCounty } = this.dataset;
         openCustomModal(taskId, taskType, plotTitle, plotCounty);
     });
 });
 
+document.getElementById('confirmAssignBtn').addEventListener('click', assignTask);
+
+document.querySelectorAll('.ag-modal-close, .ag-modal-close-btn').forEach(btn => {
+    btn.addEventListener('click', closeCustomModal);
+});
+
 // Close modal when clicking outside
-document.getElementById('customModal').addEventListener('click', function(e) {
-    if (e.target === this) {
+window.addEventListener('click', function(e) {
+    const modal = document.getElementById('assignModal');
+    if (e.target === modal) {
         closeCustomModal();
     }
 });
 
 // Handle escape key
 document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape' && document.getElementById('customModal').style.display === 'block') {
+    if (e.key === 'Escape') {
         closeCustomModal();
     }
 });

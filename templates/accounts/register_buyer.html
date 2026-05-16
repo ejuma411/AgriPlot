@@ -21,7 +21,14 @@
             {% if field.help_text %}
                 <div class="small text-muted">{{ field.help_text }}</div>
             {% endif %}
-            {{ field }}
+            {% if 'password' in field.name|lower %}
+            <div class="password-wrap">
+                {{ field }}
+                <button type="button" class="password-toggle" onclick="togglePassword('{{ field.auto_id }}', this)">Show</button>
+            </div>
+            {% else %}
+                {{ field }}
+            {% endif %}
             <small class="text-error">{{ field.errors }}</small>
         </div>
     {% endfor %}

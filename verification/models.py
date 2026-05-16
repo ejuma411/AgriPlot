@@ -692,6 +692,12 @@ class ExtensionReport(models.Model):
     lcb_zone = models.BooleanField(default=False)
     project_feasibility_note = models.TextField(blank=True)
     soil_analysis_notes = models.TextField(blank=True)
+    soil_analysis_report = models.FileField(
+        upload_to="documents/soil_analysis_reports/",
+        null=True,
+        blank=True,
+        help_text="Official soil analysis report from the field or lab.",
+    )
     topography_summary = models.TextField(blank=True)
 
     site_photos = models.JSONField(default=list)
@@ -848,8 +854,8 @@ class SurveyorReport(models.Model):
     beacon_status = models.CharField(
         max_length=50,
         choices=[
-            ("all_present", "All beacons present and intact"),
-            ("missing", "Some beacons missing (re-establishment required)"),
+            ("all_present_and_intact", "All beacons present and intact"),
+            ("beacons_missing", "Some beacons missing (re-establishment required)"),
             ("displaced", "Beacons displaced or tampered with"),
             ("boundary_dispute", "Boundary dispute noted with adjacent plots"),
         ],
@@ -881,6 +887,9 @@ class SurveyorReport(models.Model):
     )
     boundary_report = models.FileField(
         upload_to="documents/boundary_reports/", null=True, blank=True
+    )
+    signed_survey_plan = models.FileField(
+        upload_to="documents/signed_survey_plans/", null=True, blank=True
     )
     encroachment_found = models.BooleanField(default=False)
     encroachment_details = models.TextField(blank=True)

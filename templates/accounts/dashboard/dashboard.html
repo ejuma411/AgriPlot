@@ -41,28 +41,180 @@
     </nav>
 
     <section class="workspace-grid three mb-3" aria-label="Dashboard summary">
-        <article class="workspace-card workspace-stat">
-            <div class="workspace-stat-icon"><i class="fa-solid fa-map-location-dot"></i></div>
-            <div>
-                <p class="workspace-stat-value">{{ total_plots|default:0 }}</p>
-                <p class="workspace-stat-label">Visible plots</p>
-            </div>
-        </article>
-        <article class="workspace-card workspace-stat">
-            <div class="workspace-stat-icon"><i class="fa-solid fa-shield-halved"></i></div>
-            <div>
-                <p class="workspace-stat-value">{{ verified_plots|default:0 }}</p>
-                <p class="workspace-stat-label">Verified plots</p>
-            </div>
-        </article>
-        <article class="workspace-card workspace-stat">
-            <div class="workspace-stat-icon"><i class="fa-solid fa-inbox"></i></div>
-            <div>
-                <p class="workspace-stat-value">{{ recent_interests_count|default:0 }}</p>
-                <p class="workspace-stat-label">Recent inquiries</p>
-            </div>
-        </article>
+        {% if active_section == "tasks" %}
+            <article class="workspace-card workspace-stat">
+                <div class="workspace-stat-icon"><i class="fa-solid fa-list-check"></i></div>
+                <div>
+                    <p class="workspace-stat-value">{{ task_stats.pending|add:my_tasks_count|default:0 }}</p>
+                    <p class="workspace-stat-label">Total queue</p>
+                </div>
+            </article>
+            <article class="workspace-card workspace-stat">
+                <div class="workspace-stat-icon"><i class="fa-solid fa-hourglass-start"></i></div>
+                <div>
+                    <p class="workspace-stat-value">{{ task_stats.pending|default:0 }}</p>
+                    <p class="workspace-stat-label">Pending assignment</p>
+                </div>
+            </article>
+            <article class="workspace-card workspace-stat">
+                <div class="workspace-stat-icon"><i class="fa-solid fa-user-check"></i></div>
+                <div>
+                    <p class="workspace-stat-value">{{ my_tasks_count|default:0 }}</p>
+                    <p class="workspace-stat-label">My active tasks</p>
+                </div>
+            </article>
+        {% else %}
+            <article class="workspace-card workspace-stat">
+                <div class="workspace-stat-icon"><i class="fa-solid fa-map-location-dot"></i></div>
+                <div>
+                    <p class="workspace-stat-value">{{ total_plots|default:0 }}</p>
+                    <p class="workspace-stat-label">Visible plots</p>
+                </div>
+            </article>
+            <article class="workspace-card workspace-stat">
+                <div class="workspace-stat-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <div>
+                    <p class="workspace-stat-value">{{ verified_plots|default:0 }}</p>
+                    <p class="workspace-stat-label">Verified plots</p>
+                </div>
+            </article>
+            <article class="workspace-card workspace-stat">
+                <div class="workspace-stat-icon"><i class="fa-solid fa-inbox"></i></div>
+                <div>
+                    <p class="workspace-stat-value">{{ recent_interests_count|default:0 }}</p>
+                    <p class="workspace-stat-label">Recent inquiries</p>
+                </div>
+            </article>
+        {% endif %}
     </section>
+
+    {% if active_section == "tasks" %}
+        <section class="workspace-grid two">
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">My Operational Tasks</h2>
+                        <p class="workspace-card-meta">Verification cases assigned to your profile for action.</p>
+                    </div>
+                    <a href="{% url 'verification:my_tasks' %}" class="ap-btn ap-btn-ghost btn-sm">Full Workspace</a>
+                </div>
+                <div class="workspace-card-body">
+                    {% if workspace_tasks %}
+                        <div class="workspace-list">
+                            {% for task in workspace_tasks %}
+                                <a class="workspace-list-item" href="{% if task.status == 'in_progress' and task.verification_type == 'extension_review' %}{% url 'verification:conduct_extension_review' task.id %}{% elif task.status == 'in_progress' and task.verification_type == 'surveyor_inspection' %}{% url 'verification:conduct_surveyor_inspection' task.id %}{% elif task.status == 'in_progress' %}{% url 'verification:complete_task' task.id %}{% else %}{% url 'verification:my_tasks' %}{% endif %}">
+                                    <span>
+                                        <strong>{{ task.plot.title|default:task.get_verification_type_display }}</strong>
+                                        <span>{{ task.get_verification_type_display }} · Deadline: {{ task.deadline_at|date:"M d"|default:"None" }}</span>
+                                    </span>
+                                    <span class="badge {% if task.status == 'in_progress' %}text-bg-success{% else %}text-bg-warning{% endif %} border">{{ task.get_status_display }}</span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="workspace-empty mb-0">No active tasks are currently assigned to you.</p>
+                    {% endif %}
+                </div>
+            </article>
+
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">Task Operations</h2>
+                        <p class="workspace-card-meta">Manage distributions and field reporting.</p>
+                    </div>
+                </div>
+                <div class="workspace-card-body">
+                    <div class="workspace-list">
+                        {% if can_manage_task_queue %}
+                        <a class="workspace-list-item" href="{% url 'verification:task_assignment' %}">
+                            <span>
+                                <strong><i class="fa-solid fa-tasks me-2 text-primary"></i>Task Assignment</strong>
+                                <span>Distribute pending cases to field officers.</span>
+                            </span>
+                        </a>
+                        {% endif %}
+                        <a class="workspace-list-item" href="{% url 'verification:my_tasks' %}">
+                            <span>
+                                <strong><i class="fa-solid fa-clipboard-check me-2 text-success"></i>My Tasks</strong>
+                                <span>Access your personal work queue and history.</span>
+                            </span>
+                        </a>
+                        {% if is_staff_dashboard_admin %}
+                        <a class="workspace-list-item" href="{% url 'verification:verification_queue' %}">
+                            <span>
+                                <strong><i class="fa-solid fa-list-check me-2 text-info"></i>Verification Queue</strong>
+                                <span>Review all plots waiting for onboarding.</span>
+                            </span>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </article>
+        </section>
+    {% endif %}
+
+    {% if active_section == "verification" %}
+        <section class="workspace-grid two">
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">Pending Plot Verifications</h2>
+                        <p class="workspace-card-meta">Plots awaiting document review and field validation.</p>
+                    </div>
+                    <a href="{% url 'verification:verification_queue' %}" class="ap-btn ap-btn-ghost btn-sm">View Full Queue</a>
+                </div>
+                <div class="workspace-card-body">
+                    {% if verification_pending_plots %}
+                        <div class="workspace-list">
+                            {% for plot in verification_pending_plots %}
+                                <a class="workspace-list-item" href="{% url 'verification:review_plot' plot.id %}">
+                                    <span>
+                                        <strong>{{ plot.title }}</strong>
+                                        <span>{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }} · {{ plot.county }}</span>
+                                    </span>
+                                    <span class="badge text-bg-warning border">Review Pending</span>
+                                </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="workspace-empty mb-0">No plots are currently in the verification queue.</p>
+                    {% endif %}
+                </div>
+            </article>
+
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">Verification Tools</h2>
+                        <p class="workspace-card-meta">Specialized operations and audit utilities.</p>
+                    </div>
+                </div>
+                <div class="workspace-card-body">
+                    <div class="workspace-list">
+                        <a class="workspace-list-item" href="{% url 'verification:registry_mismatches' %}">
+                            <span>
+                                <strong><i class="fa-solid fa-triangle-exclamation me-2 text-danger"></i>Registry Mismatches</strong>
+                                <span>View failed parcel ownership lookups.</span>
+                            </span>
+                        </a>
+                        <a class="workspace-list-item" href="{% url 'verification:audit_logs' %}">
+                            <span>
+                                <strong><i class="fa-solid fa-shield-halved me-2 text-success"></i>Audit Trail</strong>
+                                <span>Immutable records of all sensitive actions.</span>
+                            </span>
+                        </a>
+                        <a class="workspace-list-item" href="{% url 'verification:registry_parcels' %}">
+                            <span>
+                                <strong><i class="fa-solid fa-map me-2 text-primary"></i>Registry Records</strong>
+                                <span>Browse authoritative land registry documents.</span>
+                            </span>
+                        </a>
+                    </div>
+                </div>
+            </article>
+        </section>
+    {% endif %}
 
     <section class="workspace-grid two">
         <article class="workspace-card">

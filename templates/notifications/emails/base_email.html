@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            line-height: 1.6; 
+            color: #333; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin: 20px auto;
+        }
+        .header { 
+            background: linear-gradient(135deg, #069132 0%, #047a29 100%); 
+            color: white; 
+            padding: 32px 24px; 
+            text-align: center; 
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .tagline {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .content { 
+            padding: 32px 24px; 
+        }
+        .vision-box {
+            background: #e8f5e9;
+            border-left: 4px solid #069132;
+            padding: 16px 20px;
+            margin: 24px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        .feature-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .feature-item {
+            flex: 1;
+            min-width: 160px;
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .feature-icon {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        .feature-title {
+            font-weight: bold;
+            color: #069132;
+            margin-bottom: 4px;
+        }
+        .feature-desc {
+            font-size: 12px;
+            color: #666;
+        }
+        .button { 
+            display: inline-block; 
+            padding: 14px 28px; 
+            background: #069132; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 6px; 
+            font-weight: bold;
+            transition: background 0.3s ease;
+        }
+        .button:hover {
+            background: #047a29;
+        }
+        .divider {
+            border-top: 1px solid #e0e0e0;
+            margin: 24px 0;
+        }
+        .footer { 
+            text-align: center; 
+            padding: 20px 24px; 
+            background: #f5f5f5;
+            color: #666; 
+            font-size: 12px; 
+        }
+        .footer a {
+            color: #069132;
+            text-decoration: none;
+        }
+        .small-text {
+            font-size: 11px;
+            color: #999;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 16px 20px;
+            margin: 24px 0;
+            border-radius: 0 8px 8px 0;
+            color: #856404;
+        }
+        .info-box {
+            background-color: #e2e3e5;
+            border-left: 4px solid #6c757d;
+            padding: 16px 20px;
+            margin: 24px 0;
+            border-radius: 0 8px 8px 0;
+            color: #383d41;
+        }
+        .highlight-box {
+            background: #f4f6f9;
+            padding: 15px;
+            border-radius: 6px;
+            color: #069132;
+            font-size: 13px;
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            word-break: break-all;
+        }
+        @media (max-width: 480px) {
+            .feature-grid {
+                flex-direction: column;
+            }
+            .content {
+                padding: 20px 16px;
+            }
+            .header {
+                padding: 24px 16px;
+            }
+        }
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🌾 AgriPlot Connect</div>
+            <div class="tagline">Kenya's Trusted Agricultural Land Marketplace</div>
+        </div>
+        
+        <div class="content">
+            {% block content %}
+            {% endblock %}
+        </div>
+        
+        <div class="footer">
+            <p>© {% now "Y" %} AgriPlot Connect. All rights reserved.</p>
+            <p class="small-text">
+                AgriPlot Connect is a verified agricultural land marketplace dedicated to transparency, 
+                security, and trust in land transactions across Kenya.
+            </p>
+            <p class="small-text">
+                {% block footer_note %}This email was sent by AgriPlot Connect. If you have any concerns, please contact our support team.{% endblock %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

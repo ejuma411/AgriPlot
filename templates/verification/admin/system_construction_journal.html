@@ -1,168 +1,95 @@
 {% extends "verification/admin/base_admin.html" %}
 {% load static %}
 
-{% block title %}System Construction Journal - AgriPlot Admin{% endblock %}
+{% block admin_title %}System Construction Journal{% endblock %}
 
 {% block admin_content %}
-<style>
-    .print-header {
-        display: none;
-    }
-    @media print {
-        @page {
-            margin: 12mm;
-        }
-        .page-header-actions,
-        .admin-sidebar,
-        .top-navbar,
-        .no-print {
-            display: none !important;
-        }
-        .print-header {
-            display: block;
-            text-align: center;
-            margin-bottom: 16px;
-        }
-        .print-header h2 {
-            margin: 0;
-            font-size: 18px;
-            letter-spacing: 0.5px;
-        }
-        .print-header p {
-            margin: 4px 0 0;
-            font-size: 12px;
-            color: #555;
-        }
-        .admin-content {
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        .page-header {
-            margin-bottom: 8px !important;
-        }
-        .admin-card {
-            margin-top: 0 !important;
-        }
-        .admin-card {
-            box-shadow: none !important;
-            border: 1px solid #e0e0e0 !important;
-        }
-        .admin-card-header {
-            border-bottom: 1px solid #e0e0e0 !important;
-        }
-        .admin-table {
-            width: 100% !important;
-            border-collapse: collapse !important;
-            font-size: 11px !important;
-        }
-        .admin-table th,
-        .admin-table td {
-            border: 1px solid #ddd !important;
-            padding: 6px 8px !important;
-            vertical-align: top;
-            white-space: normal !important;
-            word-break: break-word !important;
-            overflow-wrap: anywhere !important;
-        }
-        .admin-table th:first-child,
-        .admin-table td:first-child {
-            width: 110px !important;
-            white-space: nowrap !important;
-        }
-        .admin-table th {
-            background: #f3f3f3 !important;
-            color: #222 !important;
-            font-weight: 700 !important;
-        }
-        .admin-table tr {
-            page-break-inside: avoid !important;
-        }
-        .badge {
-            border: 1px solid #ccc !important;
-            color: #222 !important;
-            background: #f6f6f6 !important;
-        }
-        a[href]:after {
-            content: "";
-        }
-    }
-</style>
-<div class="page-header">
-    <div class="page-header-content">
-        <div class="page-header-title">
-            <h1><i class="fas fa-clipboard-list me-2"></i>System Construction Journal</h1>
-            {% comment %} <p class="page-header-subtitle">Admin-only progress log for system construction</p> {% endcomment %}
+<div class="no-print">
+    <div class="admin-card mb-4">
+        <div class="admin-card-header">
+            <h2 class="admin-card-title"><i class="fas fa-info-circle me-2"></i>About the Journal</h2>
+            <div class="admin-card-actions">
+                {% if request.user.is_superuser %}
+                <a class="admin-btn admin-btn-primary" href="{% url 'verification:system_construction_journal_pdf' %}" data-analytics="journal_export_pdf">
+                    <i class="fas fa-file-pdf me-2"></i>Export Audit PDF
+                </a>
+                {% endif %}
+            </div>
         </div>
-        <div class="page-header-actions">
-            {% if request.user.is_superuser %}
-            <a class="btn btn-outline-primary no-print" href="{% url 'verification:system_construction_journal_pdf' %}" data-analytics="journal_export_pdf">
-                <i class="fas fa-file-pdf me-2"></i>Export PDF
-            </a>
-            {% endif %}
+        <div class="admin-card-body">
+            <p class="mb-0 text-muted">
+                This journal tracks the technical construction progress of the AgriPlot Connect platform. 
+                It serves as an immutable record of module completion, evidence of work, and roadmap alignment.
+            </p>
         </div>
     </div>
 </div>
 
-<div class="print-header">
-    <h2>AgriPlot Connect — System Construction Journal</h2>
-    <p>Generated on {{ now|date:"F j, Y" }}</p>
+<div class="print-only mb-4 text-center">
+    <h1 class="h3 fw-bold">AgriPlot Connect — System Construction Journal</h1>
+    <p class="text-muted">Generated on {{ now|date:"F j, Y" }}</p>
 </div>
 
 <div class="admin-card">
     <div class="admin-card-header">
-        <h5 class="admin-card-title">
-            <i class="fas fa-history me-2" style="color: #0d6efd;"></i>
-            Journal Entries
-        </h5>
-        <div class="admin-card-actions">
-            <span class="text-muted">Updated in the JSON file</span>
-        </div>
+        <h2 class="admin-card-title"><i class="fas fa-clipboard-list me-2"></i>Technical Log</h2>
+        <span class="badge bg-light border text-dark">{{ entries|length }} milestones recorded</span>
     </div>
-    <div class="admin-card-body">
-        {% comment %} <div class="alert alert-info mb-3">
-            Auto-log new entries from git commits and migrations with:
-            <code>python manage.py update_journal</code>
-        </div> {% endcomment %}
-        {% if entries %}
-        <div class="table-responsive">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Module / Feature</th>
-                        <th>Work Done</th>
-                        <th>Evidence</th>
-                        <th>Status</th>
-                        <th>Next Step</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for entry in entries %}
-                    <tr>
-                        <td><strong>{{ entry.date }}</strong></td>
-                        <td>{{ entry.module }}</td>
-                        <td>{{ entry.work_done }}</td>
-                        <td>{{ entry.evidence }}</td>
-                        <td>
-                            {% if entry.status|lower == 'done' %}
-                                <span class="badge bg-success">Done</span>
-                            {% elif entry.status|lower == 'partial' %}
-                                <span class="badge bg-warning">Partial</span>
-                            {% elif entry.status|lower == 'started' %}
-                                <span class="badge bg-info">Started</span>
-                            {% else %}
-                                <span class="badge bg-secondary">{{ entry.status }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ entry.next_step }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <p class="text-muted mb-0">No journal entries found. Add entries to the JSON file to display them here.</p>
-        {% endif %}
+    
+    <div class="admin-table-wrapper">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th style="width: 120px;">Date</th>
+                    <th style="width: 200px;">Module</th>
+                    <th>Work Done</th>
+                    <th>Evidence</th>
+                    <th style="width: 100px;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr>
+                    <td class="fw-bold"><code>{{ entry.date }}</code></td>
+                    <td><span class="text-dark fw-bold">{{ entry.module }}</span></td>
+                    <td>{{ entry.work_done }}</td>
+                    <td class="text-muted small">{{ entry.evidence }}</td>
+                    <td>
+                        {% if entry.status|lower == 'done' %}
+                            <span class="badge bg-success">Complete</span>
+                        {% elif entry.status|lower == 'partial' %}
+                            <span class="badge bg-warning text-dark">Partial</span>
+                        {% elif entry.status|lower == 'started' %}
+                            <span class="badge bg-info">Active</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ entry.status }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-5 text-muted">
+                        <i class="fas fa-folder-open fa-3x opacity-25 mb-3"></i>
+                        <h5>No journal entries found</h5>
+                        <p class="mb-0">Populate the technical journal JSON to see entries here.</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
+
+<style>
+    .print-only { display: none; }
+    
+    @media print {
+        .no-print, .admin-sidebar, .top-navbar { display: none !important; }
+        .print-only { display: block; }
+        .admin-content { margin-left: 0 !important; padding: 0 !important; }
+        .admin-card { border: 1px solid #eee !important; box-shadow: none !important; }
+        .admin-table th { background: #f8f9fa !important; color: #333 !important; }
+        .admin-table td { border-bottom: 1px solid #eee !important; }
+    }
+</style>
 {% endblock %}

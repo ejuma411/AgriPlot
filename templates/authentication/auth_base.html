@@ -226,31 +226,40 @@
 
     .password-wrap {
         position: relative;
+        display: block;
+        width: 100%;
     }
 
     .password-wrap input {
-        padding-right: 60px !important; /* Ensure space for Show/Hide text */
+        width: 100%;
+        padding-right: 70px !important; /* Ensure space for Show/Hide text */
+        box-sizing: border-box !important;
     }
 
     .password-toggle {
         position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
+        right: 0;
+        top: 0;
+        height: 100%;
+        padding: 0 16px;
         border: 0;
         background: transparent;
         color: var(--ap-green);
-        font-weight: 800;
+        font-weight: 700;
         font-size: 13px;
         cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 4px;
-        transition: background 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
         z-index: 2;
+        border-radius: 0 8px 8px 0;
+        user-select: none;
     }
 
-    .password-toggle:hover {
-        background: rgba(47, 133, 90, 0.08);
+    .password-toggle:hover, .password-toggle:active {
+        color: #047a29;
+        background: rgba(47, 133, 90, 0.06);
     }
 
     @media (max-width: 900px) {
@@ -275,4 +284,20 @@
         }
     }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+{{ block.super }}
+<script>
+    function togglePassword(inputId, btn) {
+        const input = document.getElementById(inputId);
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.textContent = 'Hide';
+        } else {
+            input.type = 'password';
+            btn.textContent = 'Show';
+        }
+    }
+</script>
 {% endblock %}

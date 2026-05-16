@@ -839,3 +839,11 @@ JAZZMIN_SETTINGS = {
     "changeform_format": "horizontal_tabs",
     "language_chooser": False,
 }
+
+# =============================================================================
+# FILE UPLOAD LIMITS
+# =============================================================================
+
+# Increase max memory sizes for data and file uploads (50MB)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 52428800
+FILE_UPLOAD_MAX_MEMORY_SIZE = 52428800

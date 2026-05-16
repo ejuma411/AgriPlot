@@ -1,97 +1,50 @@
 {% extends "verification/admin/base_admin.html" %}
 {% load static %}
 
-{% block title %}My Tasks - AgriPlot Admin{% endblock %}
+{% block admin_title %}Operational Workspace{% endblock %}
 
 {% block admin_content %}
-<!-- Page Header -->
-<div class="page-header">
-    <div class="page-header-content">
-        <div class="page-header-title">
-            <h1><i class="fas fa-tasks me-2"></i>My Tasks</h1>
-            <p class="page-header-subtitle">Welcome back, {{ request.user|display_name }}</p>
-        </div>
-        <div class="page-header-actions">
-            <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn">
-                <i class="fas fa-arrow-left me-2"></i>Back to Workspace
-            </a>
-        </div>
-    </div>
-</div>
-
-<!-- Quick Stats -->
-<div class="stats-grid">
+<!-- Task Overview Stats -->
+<div class="stat-grid mb-4">
     <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-clock"></i></div>
-        <div class="stat-value">{{ my_tasks|length }}</div>
         <div class="stat-label">Active Tasks</div>
-        <div class="stat-trend">
-            <span>Currently assigned to you</span>
-        </div>
+        <div class="stat-value">{{ my_tasks|length }}</div>
+        <div class="stat-trend">Currently assigned to you</div>
     </div>
     {% if can_manage_task_queue %}
     <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-file-signature"></i></div>
-        <div class="stat-value">{{ pending_admin_tasks|length }}</div>
-        <div class="stat-label">Pending Admin Reviews</div>
-        <div class="stat-trend">
-            <span>Unassigned document reviews</span>
-        </div>
+        <div class="stat-label">Unassigned Reviews</div>
+        <div class="stat-value text-primary">{{ pending_admin_tasks|length }}</div>
+        <div class="stat-trend">Awaiting ownership</div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-gavel"></i></div>
-        <div class="stat-value">{{ admin_review_plots|length }}</div>
-        <div class="stat-label">Final Approvals</div>
-        <div class="stat-trend">
-            <span>Plots awaiting admin decision</span>
-        </div>
-    </div>
-    {% endif %}
-    {% if pending_in_area != None %}
-    <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-map-marker-alt"></i></div>
-        <div class="stat-value">{{ pending_in_area }}</div>
-        <div class="stat-label">Pending in Your Area</div>
-        <div class="stat-trend">
-            <span>Awaiting admin assignment</span>
-        </div>
+        <div class="stat-label">Pending Approval</div>
+        <div class="stat-value text-warning">{{ admin_review_plots|length }}</div>
+        <div class="stat-trend">Awaiting final decision</div>
     </div>
     {% endif %}
     <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-        <div class="stat-value">{{ completed_tasks|length }}</div>
-        <div class="stat-label">Completed</div>
-        <div class="stat-trend">
-            <span>Last 10 completed tasks</span>
-        </div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-icon"><i class="fas fa-star"></i></div>
-        <div class="stat-value">{{ request.user.verificationtask_set.count }}</div>
-        <div class="stat-label">Total Assigned</div>
-        <div class="stat-trend">
-            <span>All time</span>
-        </div>
+        <div class="stat-label">Total Completed</div>
+        <div class="stat-value text-success">{{ completed_tasks|length }}</div>
+        <div class="stat-trend">Last 10 events shown</div>
     </div>
 </div>
 
 {% if officer or surveyor %}
 <div class="admin-card mb-4">
     <div class="admin-card-header">
-        <h5 class="admin-card-title">
-            <i class="fas fa-search me-2"></i>Find Plot by Parcel Number
-        </h5>
+        <h2 class="admin-card-title"><i class="fas fa-search me-2"></i>Plot Quick Lookup</h2>
     </div>
     <div class="admin-card-body">
         <form method="post" action="{% if officer %}{% url 'verification:extension_find_plot' %}{% else %}{% url 'verification:surveyor_find_plot' %}{% endif %}">
             {% csrf_token %}
-            <div class="row g-3 align-items-center">
-                <div class="col-md-8">
-                    <input type="text" name="parcel_number" class="form-control" placeholder="Enter parcel number (e.g., REGISTRY/BLOCK/PARCEL)" required>
+            <div class="row g-3">
+                <div class="col-md-9">
+                    <input type="text" name="parcel_number" class="form-control" placeholder="Enter full parcel number (e.g., REGISTRY/BLOCK/PARCEL)" required>
                 </div>
-                <div class="col-md-4">
-                    <button type="submit" class="btn btn-primary w-100">
-                        <i class="fas fa-search me-2"></i>Open Plot
+                <div class="col-md-3">
+                    <button type="submit" class="admin-btn admin-btn-primary w-100">
+                        <i class="fas fa-folder-open me-2"></i>Open Record
                     </button>
                 </div>
             </div>
@@ -101,397 +54,252 @@
 {% endif %}
 
 {% if can_manage_task_queue %}
+<!-- Unassigned Task Queue -->
 <div class="admin-card mb-4">
     <div class="admin-card-header">
-        <h5 class="admin-card-title">
-            <i class="fas fa-file-signature me-2"></i>
-            Pending Document Reviews ({{ pending_admin_tasks|length }})
-        </h5>
+        <h2 class="admin-card-title"><i class="fas fa-file-signature me-2"></i>Available Reviews</h2>
+        <span class="badge bg-light border text-dark">{{ pending_admin_tasks|length }} pending</span>
     </div>
     <div class="admin-card-body">
         {% if pending_admin_tasks %}
-            <div class="task-grid">
+            <div class="row g-4">
                 {% for task in pending_admin_tasks %}
-                    <div class="task-card">
-                        <div class="task-header">
-                            <span class="badge bg-info p-2">Document Review</span>
-                            <small class="text-muted">{{ task.assigned_at|timesince }} ago</small>
-                        </div>
-                        <div class="task-body">
-                            <h6 class="task-title">
-                                <a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank">
-                                    {{ task.plot.title|truncatechars:40 }}
-                                </a>
-                            </h6>
-                            <div class="task-details">
-                                <div class="task-detail">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <span>{{ task.plot.county|default:task.plot.location|truncatechars:25 }}</span>
-                                </div>
-                                <div class="task-detail">
-                                    <i class="fas fa-ruler-combined"></i>
-                                    <span>{{ task.plot.area }} {{ task.plot.get_area_unit_display|default:"Acres" }}</span>
-                                </div>
-                                <div class="task-detail">
-                                    <i class="fas fa-tag"></i>
-                                    <span>{{ task.plot.get_land_type_display }}</span>
-                                </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="workspace-task-card border rounded-3 p-3 h-100 d-flex flex-column">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge bg-info-soft text-info">Document Review</span>
+                                <small class="text-muted">{{ task.assigned_at|timesince }} ago</small>
                             </div>
-                        </div>
-                        <div class="task-footer">
-                            <button class="btn btn-outline-primary w-100 assign-to-me-btn" data-task-id="{{ task.id }}">
-                                <i class="fas fa-user-check me-2"></i>Assign to Me
+                            <h5 class="mb-3"><a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank" class="text-dark fw-bold text-decoration-none">{{ task.plot.title|truncatechars:40 }}</a></h5>
+                            <div class="mb-4 small text-muted">
+                                <div class="mb-1"><i class="fas fa-map-marker-alt me-2"></i>{{ task.plot.county|default:task.plot.location|truncatechars:25 }}</div>
+                                <div><i class="fas fa-tag me-2"></i>{{ task.plot.get_land_type_display }}</div>
+                            </div>
+                            <button class="admin-btn admin-btn-outline w-100 mt-auto assign-to-me-btn" data-task-id="{{ task.id }}">
+                                <i class="fas fa-user-plus me-2"></i>Assign to Me
                             </button>
                         </div>
                     </div>
                 {% endfor %}
             </div>
         {% else %}
-            <div class="text-center py-4">
-                <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
-                <h6>No pending admin document reviews.</h6>
+            <div class="text-center py-5 opacity-50">
+                <i class="fas fa-check-double fa-3x mb-3"></i>
+                <h5>Queue is empty</h5>
+                <p class="mb-0">All document reviews are currently assigned or completed.</p>
             </div>
         {% endif %}
     </div>
 </div>
 
+<!-- Awaiting Decision -->
 <div class="admin-card mb-4">
     <div class="admin-card-header">
-        <h5 class="admin-card-title">
-            <i class="fas fa-gavel me-2"></i>
-            Final Admin Approval ({{ admin_review_plots|length }})
-        </h5>
+        <h2 class="admin-card-title"><i class="fas fa-gavel me-2"></i>Final Administrative Review</h2>
+        <span class="badge bg-warning-soft text-warning border border-warning">{{ admin_review_plots|length }} active</span>
     </div>
     <div class="admin-card-body">
         {% if admin_review_plots %}
-            <div class="task-grid">
+            <div class="row g-4">
                 {% for plot in admin_review_plots %}
-                    <div class="task-card">
-                        <div class="task-header">
-                            <span class="badge bg-warning p-2">Admin Review</span>
-                            <small class="text-muted">Awaiting decision</small>
-                        </div>
-                        <div class="task-body">
-                            <h6 class="task-title">
-                                <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank">
-                                    {{ plot.title|truncatechars:40 }}
-                                </a>
-                            </h6>
-                            <div class="task-details">
-                                <div class="task-detail">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <span>{{ plot.county|default:plot.location|truncatechars:25 }}</span>
-                                </div>
-                                <div class="task-detail">
-                                    <i class="fas fa-ruler-combined"></i>
-                                    <span>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
-                                </div>
-                                <div class="task-detail">
-                                    <i class="fas fa-tag"></i>
-                                    <span>{{ plot.get_land_type_display }}</span>
-                                </div>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="workspace-task-card border border-warning rounded-3 p-3 h-100 d-flex flex-column" style="background: rgba(255, 193, 7, 0.02);">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge bg-warning-soft text-warning">Decision Pending</span>
+                                <small class="text-muted">Awaiting Action</small>
                             </div>
-                        </div>
-                        <div class="task-footer">
-                            <a href="{% url 'verification:review_plot' plot.id %}" class="btn btn-success w-100">
-                                <i class="fas fa-clipboard-check me-2"></i>Open Admin Review
+                            <h5 class="mb-3"><a href="{% url 'listings:plot_detail' plot.id %}" target="_blank" class="text-dark fw-bold text-decoration-none">{{ plot.title|truncatechars:40 }}</a></h5>
+                            <div class="mb-4 small text-muted">
+                                <div class="mb-1"><i class="fas fa-map-marker-alt me-2"></i>{{ plot.county|default:plot.location|truncatechars:25 }}</div>
+                                <div><i class="fas fa-ruler-combined me-2"></i>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</div>
+                            </div>
+                            <a href="{% url 'verification:review_plot' plot.id %}" class="admin-btn admin-btn-primary w-100 mt-auto text-center">
+                                <i class="fas fa-clipboard-check me-2"></i>Open Review
                             </a>
                         </div>
                     </div>
                 {% endfor %}
             </div>
         {% else %}
-            <div class="text-center py-4">
-                <i class="fas fa-check-circle fa-3x text-success mb-2"></i>
-                <h6>No plots awaiting admin approval.</h6>
+            <div class="text-center py-5 opacity-50">
+                <i class="fas fa-clipboard-check fa-3x mb-3"></i>
+                <h5>No pending decisions</h5>
+                <p class="mb-0">No plots are currently awaiting final administrative approval.</p>
             </div>
         {% endif %}
     </div>
 </div>
 {% endif %}
 
-<!-- Active Tasks -->
+<!-- Your Active Tasks -->
 <div class="admin-card mb-4">
     <div class="admin-card-header">
-        <h5 class="admin-card-title">
-            <i class="fas fa-sync-alt fa-spin me-2"></i>
-            Active Tasks ({{ my_tasks|length }})
-        </h5>
+        <h2 class="admin-card-title"><i class="fas fa-user-clock me-2"></i>My Active Assignments</h2>
+        <span class="badge bg-primary px-3">{{ my_tasks|length }} tasks</span>
     </div>
     <div class="admin-card-body">
         {% if my_tasks %}
-            <div class="task-grid">
+            <div class="row g-4">
                 {% for task in my_tasks %}
-                    <div class="task-card">
-                        <div class="task-header">
-                            <span class="badge 
-                                {% if task.verification_type == 'registry_search' %}bg-secondary
-                                {% elif task.verification_type == 'document_review' %}bg-info
-                                {% elif task.verification_type == 'extension_review' %}bg-success
-                                {% elif task.verification_type == 'surveyor_inspection' %}bg-warning
-                                {% endif %} p-2">
-                                {{ task.get_verification_type_display }}
-                            </span>
-                            <small class="text-muted">{{ task.assigned_at|timesince }} ago</small>
-                        </div>
-                        
-                        <div class="task-body">
-                            <h6 class="task-title">
-                                <a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank">
-                                    {{ task.plot.title|truncatechars:40 }}
-                                </a>
-                            </h6>
+                    <div class="col-md-6 col-lg-4">
+                        <div class="workspace-task-card border rounded-3 p-3 h-100 d-flex flex-column shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="badge 
+                                    {% if task.verification_type == 'registry_search' %}bg-secondary-soft text-secondary
+                                    {% elif task.verification_type == 'document_review' %}bg-info-soft text-info
+                                    {% elif task.verification_type == 'extension_review' %}bg-success-soft text-success
+                                    {% elif task.verification_type == 'surveyor_inspection' %}bg-warning-soft text-warning
+                                    {% endif %}">{{ task.get_verification_type_display }}</span>
+                                <small class="text-muted">{{ task.assigned_at|timesince }} ago</small>
+                            </div>
                             
-                            <div class="task-details">
-                                <div class="task-detail">
-                                    <i class="fas fa-map-marker-alt"></i>
-                                    <span>{{ task.plot.county|default:task.plot.location|truncatechars:25 }}</span>
-                                </div>
-                                <div class="task-detail">
-                                    <i class="fas fa-ruler-combined"></i>
-                                    <span>{{ task.plot.area }} {{ task.plot.get_area_unit_display|default:"Acres" }}</span>
-                                </div>
-                                <div class="task-detail">
-                                    <i class="fas fa-tag"></i>
-                                    <span>{{ task.plot.get_land_type_display }}</span>
-                                </div>
+                            <h5 class="mb-3"><a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank" class="text-dark fw-bold text-decoration-none">{{ task.plot.title|truncatechars:40 }}</a></h5>
+                            
+                            <div class="mb-3 small text-muted flex-grow-1">
+                                <div class="mb-1"><i class="fas fa-map-marker-alt me-2"></i>{{ task.plot.county|default:task.plot.location|truncatechars:25 }}</div>
+                                <div class="mb-1"><i class="fas fa-ruler-combined me-2"></i>{{ task.plot.area }} {{ task.plot.get_area_unit_display|default:"Acres" }}</div>
                                 {% if task.deadline_at %}
-                                <div class="task-detail">
-                                    <i class="fas fa-hourglass-end"></i>
-                                    <span>Deadline: {{ task.deadline_at|date:"M d, H:i" }}</span>
-                                </div>
-                                {% endif %}
-                                {% if task.confirm_by %}
-                                <div class="task-detail">
-                                    <i class="fas fa-check-circle"></i>
-                                    <span>Confirm by: {{ task.confirm_by|date:"M d, H:i" }}</span>
-                                </div>
+                                <div class="text-danger mt-2"><i class="fas fa-hourglass-end me-2"></i>Due: {{ task.deadline_at|date:"M d, H:i" }}</div>
                                 {% endif %}
                             </div>
 
-                            <!-- Document Status -->
-                            <div class="document-status mt-3">
-                                <small class="text-muted d-block mb-2">Required Documents:</small>
-                                <div class="document-icons">
-                                    <span class="badge {% if task.plot.title_deed %}bg-success{% else %}bg-danger{% endif %}" 
-                                          title="{% if task.plot.title_deed %}Title Deed ✓{% else %}Missing Title Deed{% endif %}">
-                                        <i class="fas fa-file-contract"></i>
-                                    </span>
-                                    <span class="badge {% if task.plot.official_search %}bg-success{% else %}bg-danger{% endif %}"
-                                          title="{% if task.plot.official_search %}Official Search ✓{% else %}Missing Official Search{% endif %}">
-                                        <i class="fas fa-search"></i>
-                                    </span>
-                                    <span class="badge {% if task.plot.landowner_id_doc %}bg-success{% else %}bg-danger{% endif %}"
-                                          title="{% if task.plot.landowner_id_doc %}ID Document ✓{% else %}Missing ID{% endif %}">
-                                        <i class="fas fa-id-card"></i>
-                                    </span>
-                                    <span class="badge {% if task.plot.kra_pin %}bg-success{% else %}bg-danger{% endif %}"
-                                          title="{% if task.plot.kra_pin %}KRA PIN ✓{% else %}Missing KRA PIN{% endif %}">
-                                        <i class="fas fa-file-invoice"></i>
-                                    </span>
+                            <div class="mb-3 py-2 px-3 bg-light rounded-2">
+                                <small class="text-muted d-block mb-1 fw-bold">Documents:</small>
+                                <div class="d-flex gap-2">
+                                    <i class="fas fa-file-contract {% if task.plot.title_deed %}text-success{% else %}text-danger opacity-25{% endif %}" title="Title Deed"></i>
+                                    <i class="fas fa-search {% if task.plot.official_search %}text-success{% else %}text-danger opacity-25{% endif %}" title="Official Search"></i>
+                                    <i class="fas fa-id-card {% if task.plot.landowner_id_doc %}text-success{% else %}text-danger opacity-25{% endif %}" title="ID Document"></i>
+                                    <i class="fas fa-file-invoice {% if task.plot.kra_pin %}text-success{% else %}text-danger opacity-25{% endif %}" title="KRA PIN"></i>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="task-footer">
-                            {% if task.confirmation_status != 'confirmed' %}
-                                {% if task.verification_type == 'extension_review' %}
-                                    <a href="{% url 'verification:confirm_extension_task' task.id %}" class="btn btn-outline-primary w-100 mb-2">
-                                        <i class="fas fa-check me-2"></i>Confirm Task
-                                    </a>
-                                {% elif task.verification_type == 'surveyor_inspection' %}
-                                    <a href="{% url 'verification:confirm_surveyor_task' task.id %}" class="btn btn-outline-primary w-100 mb-2">
-                                        <i class="fas fa-check me-2"></i>Confirm Task
-                                    </a>
+                            
+                            <div class="mt-auto pt-3 border-top d-flex flex-column gap-2">
+                                {% if task.confirmation_status != 'confirmed' %}
+                                    {% if task.verification_type == 'extension_review' %}
+                                        <a href="{% url 'verification:confirm_extension_task' task.id %}" class="admin-btn admin-btn-outline w-100 text-center">Confirm Arrival</a>
+                                    {% elif task.verification_type == 'surveyor_inspection' %}
+                                        <a href="{% url 'verification:confirm_surveyor_task' task.id %}" class="admin-btn admin-btn-outline w-100 text-center">Confirm Arrival</a>
+                                    {% endif %}
                                 {% endif %}
-                            {% endif %}
-                            {% if task.verification_type == 'registry_search' %}
-                                <button class="btn btn-outline-secondary w-100" disabled>
-                                    <i class="fas fa-cog me-2"></i>Automated Task
-                                </button>
-                            {% elif task.verification_type == 'extension_review' %}
-                                <a href="{% url 'verification:conduct_extension_review' task.id %}" class="btn btn-success w-100">
-                                    <i class="fas fa-seedling me-2"></i>Open Extension Review
-                                </a>
-                            {% elif task.verification_type == 'surveyor_inspection' %}
-                                <a href="{% url 'verification:conduct_surveyor_inspection' task.id %}" class="btn btn-success w-100">
-                                    <i class="fas fa-map-marked-alt me-2"></i>Open Surveyor Inspection
-                                </a>
-                            {% else %}
-                                <a href="{% url 'verification:complete_task' task.id %}" class="btn btn-success w-100">
-                                    <i class="fas fa-check-circle me-2"></i>Complete Task
-                                </a>
-                            {% endif %}
+
+                                {% if task.verification_type == 'registry_search' %}
+                                    <button class="admin-btn admin-btn-outline w-100" disabled>Processing...</button>
+                                {% elif task.verification_type == 'extension_review' %}
+                                    <a href="{% url 'verification:conduct_extension_review' task.id %}" class="admin-btn admin-btn-primary w-100 text-center">Conduct Review</a>
+                                {% elif task.verification_type == 'surveyor_inspection' %}
+                                    <a href="{% url 'verification:conduct_surveyor_inspection' task.id %}" class="admin-btn admin-btn-primary w-100 text-center">Perform Inspection</a>
+                                {% else %}
+                                    <a href="{% url 'verification:complete_task' task.id %}" class="admin-btn admin-btn-primary w-100 text-center">Complete Task</a>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                 {% endfor %}
             </div>
         {% else %}
-            <div class="text-center py-5">
-                <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
-                <h5>All Caught Up!</h5>
-                <p class="text-muted">You have no active tasks at the moment.</p>
-                {% if request.user.is_superuser %}
-                <a href="{% url 'verification:task_assignment' %}" class="btn btn-outline-primary mt-3">
-                    <i class="fas fa-tasks me-2"></i>View Available Tasks
-                </a>
-                {% endif %}
+            <div class="text-center py-5 opacity-50">
+                <i class="fas fa-clipboard-check fa-4x mb-3 text-success"></i>
+                <h5>All tasks completed</h5>
+                <p class="mb-0">You have no active assignments. New tasks will appear here when assigned.</p>
             </div>
         {% endif %}
     </div>
 </div>
 
-<!-- Recently Completed -->
 {% if completed_tasks %}
+<!-- Recently Completed -->
 <div class="admin-card">
     <div class="admin-card-header">
-        <h5 class="admin-card-title">
-            <i class="fas fa-history me-2"></i>
-            Recently Completed
-        </h5>
+        <h2 class="admin-card-title"><i class="fas fa-history me-2"></i>Completed Audit</h2>
     </div>
-    <div class="admin-card-body">
-        <div class="table-responsive">
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>Task Type</th>
-                        <th>Plot</th>
-                        <th>Completed</th>
-                        <th>Status</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for task in completed_tasks %}
-                    <tr>
-                        <td>
-                            <span class="badge 
-                                {% if task.verification_type == 'document_review' %}bg-info
-                                {% elif task.verification_type == 'extension_review' %}bg-success
-                                {% elif task.verification_type == 'surveyor_inspection' %}bg-warning
-                                {% endif %}">
-                                {{ task.get_verification_type_display }}
-                            </span>
-                        </td>
-                        <td>
-                            <a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank">
-                                {{ task.plot.title|truncatechars:30 }}
-                            </a>
-                        </td>
-                        <td>{{ task.completed_at|timesince }} ago</td>
-                        <td>
-                            {% if task.approved == True %}
-                                <span class="badge bg-success">Approved</span>
-                            {% elif task.approved == False %}
-                                <span class="badge bg-danger">Rejected</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Completed</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <a href="{% url 'verification:review_plot' task.plot.id %}" class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-eye"></i> View
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+    <div class="admin-table-wrapper">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>Task Type</th>
+                    <th>Plot Information</th>
+                    <th>Completed</th>
+                    <th>Result</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in completed_tasks %}
+                <tr>
+                    <td>
+                        <span class="badge bg-light border text-dark">{{ task.get_verification_type_display }}</span>
+                    </td>
+                    <td>
+                        <div class="fw-bold text-dark">{{ task.plot.title|truncatechars:40 }}</div>
+                        <small class="text-muted">#{{ task.plot.id }} • {{ task.plot.county }}</small>
+                    </td>
+                    <td><small class="text-muted">{{ task.completed_at|timesince }} ago</small></td>
+                    <td>
+                        {% if task.approved == True %}
+                            <span class="badge bg-success-soft text-success">Approved</span>
+                        {% elif task.approved == False %}
+                            <span class="badge bg-danger-soft text-danger">Flagged</span>
+                        {% else %}
+                            <span class="badge bg-light border text-muted">Finished</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{% url 'verification:review_plot' task.plot.id %}" class="admin-btn admin-btn-outline py-1 px-3">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endif %}
 
 <style>
-    .task-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-        gap: 1.5rem;
-    }
-
-    .task-card {
-        background: var(--light);
-        border-radius: 12px;
-        overflow: hidden;
-        border: 1px solid #e9ecef;
-        transition: all 0.3s ease;
-    }
-
-    .task-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
-        border-color: var(--primary);
-    }
-
-    .task-header {
+    .bg-info-soft { background: rgba(13, 202, 240, 0.1); }
+    .bg-warning-soft { background: rgba(255, 193, 7, 0.1); }
+    .bg-success-soft { background: rgba(25, 135, 84, 0.1); }
+    .bg-danger-soft { background: rgba(220, 53, 69, 0.1); }
+    .bg-secondary-soft { background: rgba(108, 117, 125, 0.1); }
+    
+    .workspace-task-card {
         background: white;
-        padding: 1rem;
-        border-bottom: 1px solid #e9ecef;
+        border: 1px solid var(--ag-border);
+        border-radius: 12px;
+        transition: var(--ag-transition);
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        height: 100%;
+    }
+    
+    .workspace-task-card:hover {
+        border-color: var(--ag-green-700);
+        box-shadow: var(--ag-shadow-soft);
+        transform: translateY(-2px);
     }
 
-    .task-body {
-        padding: 1rem;
-    }
-
-    .task-title {
-        margin-bottom: 1rem;
-    }
-
-    .task-title a {
-        color: var(--dark);
-        text-decoration: none;
-        font-weight: 600;
-    }
-
-    .task-title a:hover {
-        color: var(--primary);
-    }
-
-    .task-details {
-        display: grid;
-        gap: 0.5rem;
-    }
-
-    .task-detail {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        font-size: 0.9rem;
-        color: #666;
-    }
-
-    .task-detail i {
-        width: 16px;
-        color: var(--primary);
-    }
-
-    .document-icons {
+    .doc-status-indicator {
         display: flex;
         gap: 0.5rem;
+        padding: 0.75rem;
+        background: var(--ag-sand-100);
+        border-radius: 8px;
     }
 
-    .task-footer {
-        padding: 1rem;
-        border-top: 1px solid #e9ecef;
-    }
-
-    @media (max-width: 768px) {
-        .task-grid {
-            grid-template-columns: 1fr;
-        }
+    @media (max-width: 576px) {
+        .stat-grid { grid-template-columns: 1fr; }
+        .workspace-task-card { padding: 1rem !important; }
     }
 </style>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     document.querySelectorAll('.assign-to-me-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const taskId = this.dataset.taskId;
-            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '{{ csrf_token }}';
+            const csrfToken = '{{ csrf_token }}';
             this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Assigning...';
+            
             try {
                 const res = await fetch('{% url "verification:ajax_assign_task" %}', {
                     method: 'POST',
@@ -508,12 +316,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success) {
                     window.location.reload();
                 } else {
-                    AgriPlotUI.showToast({ message: data.message || 'Failed to assign task.', type: 'danger' });
+                    alert(data.message || 'Failed to assign task.');
                     this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-user-plus me-2"></i>Assign to Me';
                 }
             } catch (err) {
-                AgriPlotUI.showToast({ message: 'Failed to assign task.', type: 'danger' });
+                alert('An error occurred. Please try again.');
                 this.disabled = false;
+                this.innerHTML = '<i class="fas fa-user-plus me-2"></i>Assign to Me';
             }
         });
     });

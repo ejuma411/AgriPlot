@@ -1,604 +1,83 @@
-{% extends "base.html" %}
+{% extends "verification/admin/base_admin.html" %}
 {% load static humanize %}
 
-{% block title %}Audit Logs - AgriPlot Verification{% endblock %}
+{% block admin_title %}Audit Trail Report{% endblock %}
 
-{% block extra_css %}
-<style>
-    /* ============================================
-       AUDIT LOGS - CLEAN READABLE DESIGN
-    ============================================ */
-    
-    :root {
-        --primary: #1f8b4c;
-        --primary-dark: #0f4a2e;
-        --primary-light: #e8f5e9;
-        --secondary: #6c757d;
-        --success: #28a745;
-        --danger: #dc3545;
-        --warning: #ffc107;
-        --info: #17a2b8;
-        --dark: #1a2e1a;
-        --light: #f8f9fa;
-        --border: #e9ecef;
-        --gray-100: #f8f9fa;
-        --gray-200: #e9ecef;
-        --gray-300: #dee2e6;
-        --gray-400: #ced4da;
-        --gray-500: #adb5bd;
-        --gray-600: #6c757d;
-        --gray-700: #495057;
-        --gray-800: #343a40;
-        --gray-900: #212529;
-    }
-    
-    /* Page Header - Dark text on light gradient */
-    .page-header {
-        background: linear-gradient(135deg, var(--primary-light), #ffffff);
-        border-radius: 16px;
-        padding: 25px 30px;
-        margin-bottom: 30px;
-        border: 1px solid var(--border);
-    }
-    
-    .page-header h1 {
-        color: var(--primary-dark);
-        margin: 0 0 8px 0;
-        font-size: 28px;
-        font-weight: 700;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    
-    .page-header h1 i {
-        color: var(--primary);
-    }
-    
-    .page-header p {
-        color: var(--gray-700);
-        margin: 0;
-        font-size: 14px;
-    }
-    
-    /* Stats Cards - White background, dark text */
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 20px;
-        margin-bottom: 30px;
-    }
-    
-    .stat-card {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        text-align: center;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        border: 1px solid var(--border);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
-    }
-    
-    .stat-icon {
-        font-size: 32px;
-        color: var(--primary);
-        margin-bottom: 10px;
-    }
-    
-    .stat-value {
-        font-size: 32px;
-        font-weight: 700;
-        color: var(--gray-900);
-        line-height: 1.2;
-        margin-bottom: 5px;
-    }
-    
-    .stat-label {
-        font-size: 12px;
-        color: var(--gray-600);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        font-weight: 600;
-    }
-    
-    /* Filter Panel - White background */
-    .filter-panel {
-        background: white;
-        border-radius: 16px;
-        padding: 20px;
-        margin-bottom: 25px;
-        border: 1px solid var(--border);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-    
-    .filter-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--primary-dark);
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid var(--primary);
-        display: inline-block;
-    }
-    
-    .form-label {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--gray-700);
-        margin-bottom: 6px;
-        display: block;
-    }
-    
-    .form-control, .form-select {
-        width: 100%;
-        padding: 8px 12px;
-        border: 1px solid var(--gray-300);
-        border-radius: 8px;
-        font-size: 13px;
-        transition: all 0.2s ease;
-        background: white;
-        color: var(--gray-900);
-    }
-    
-    .form-control:focus, .form-select:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px rgba(31,139,76,0.1);
-    }
-    
-    /* Export Buttons */
-    .export-buttons {
-        display: flex;
-        gap: 12px;
-        margin-bottom: 25px;
-        flex-wrap: wrap;
-    }
-    
-    .btn {
-        padding: 10px 20px;
-        border-radius: 30px;
-        font-size: 13px;
-        font-weight: 600;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        transition: all 0.2s ease;
-        cursor: pointer;
-        border: none;
-    }
-    
-    .btn-primary { background: var(--primary); color: white; }
-    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); color: white; }
-    .btn-success { background: var(--success); color: white; }
-    .btn-success:hover { background: #218838; transform: translateY(-1px); color: white; }
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-danger:hover { background: #c82333; transform: translateY(-1px); color: white; }
-    .btn-info { background: var(--info); color: white; }
-    .btn-info:hover { background: #138496; transform: translateY(-1px); color: white; }
-    .btn-secondary { background: var(--gray-500); color: white; }
-    .btn-secondary:hover { background: var(--gray-600); transform: translateY(-1px); color: white; }
-    
-    /* Audit Table */
-    .audit-table-wrapper {
-        background: white;
-        border-radius: 16px;
-        overflow-x: auto;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-        border: 1px solid var(--border);
-    }
-    
-    .audit-table {
-        width: 100%;
-        border-collapse: collapse;
-        min-width: 900px;
-    }
-    
-    .audit-table th {
-        background: var(--gray-100);
-        color: var(--gray-800);
-        padding: 14px 12px;
-        font-size: 12px;
-        font-weight: 600;
-        text-align: left;
-        border-bottom: 2px solid var(--border);
-        white-space: nowrap;
-    }
-    
-    .audit-table td {
-        padding: 12px;
-        font-size: 12px;
-        border-bottom: 1px solid var(--border);
-        vertical-align: top;
-        color: var(--gray-700);
-        background: white;
-    }
-    
-    .audit-table tbody tr:hover td {
-        background-color: var(--primary-light);
-    }
-    
-    /* Badges - Good contrast */
-    .badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 30px;
-        font-size: 10px;
-        font-weight: 600;
-    }
-    
-    .badge-create { background: #d4edda; color: #155724; }
-    .badge-update { background: #cce5ff; color: #004085; }
-    .badge-delete { background: #f8d7da; color: #721c24; }
-    .badge-login { background: #d1ecf1; color: #0c5460; }
-    .badge-logout { background: #e2e3e5; color: #383d41; }
-    .badge-payment { background: #fff3cd; color: #856404; }
-    .badge-verify { background: #d4edda; color: #155724; }
-    .badge-view { background: #e2e3e5; color: #383d41; }
-    .badge-default { background: #e2e3e5; color: #383d41; }
-    
-    /* Severity indicators - Clear contrast */
-    .severity-critical {
-        display: inline-block;
-        background: #dc3545;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 9px;
-        font-weight: 600;
-        margin-left: 6px;
-    }
-    
-    .severity-warning {
-        display: inline-block;
-        background: #ffc107;
-        color: #212529;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 9px;
-        font-weight: 600;
-        margin-left: 6px;
-    }
-    
-    .severity-info {
-        display: inline-block;
-        background: #17a2b8;
-        color: white;
-        padding: 2px 8px;
-        border-radius: 4px;
-        font-size: 9px;
-        font-weight: 600;
-        margin-left: 6px;
-    }
-    
-    /* Hash Code */
-    .hash-code {
-        font-family: 'Monaco', 'Menlo', monospace;
-        font-size: 10px;
-        background: var(--gray-100);
-        padding: 3px 6px;
-        border-radius: 4px;
-        color: var(--gray-700);
-    }
-    
-    /* User info */
-    .user-name {
-        font-weight: 600;
-        color: var(--gray-900);
-    }
-    
-    .user-email {
-        font-size: 10px;
-        color: var(--gray-600);
-        margin-top: 2px;
-    }
-    
-    /* Object info */
-    .object-type {
-        font-weight: 600;
-        color: var(--gray-800);
-    }
-    
-    .object-id {
-        color: var(--gray-600);
-        font-size: 10px;
-        margin-left: 4px;
-    }
-    
-    /* Pagination */
-    .pagination {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        gap: 8px;
-        margin-top: 25px;
-        flex-wrap: wrap;
-    }
-    
-    .page-link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 36px;
-        height: 36px;
-        padding: 0 10px;
-        border: 1px solid var(--border);
-        border-radius: 8px;
-        text-decoration: none;
-        color: var(--gray-700);
-        font-size: 13px;
-        font-weight: 500;
-        transition: all 0.2s ease;
-        background: white;
-    }
-    
-    .page-link:hover {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
-    }
-    
-    .page-active {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
-    }
-    
-    /* Empty State */
-    .empty-state {
-        text-align: center;
-        padding: 50px;
-        color: var(--gray-500);
-    }
-    
-    .empty-state i {
-        font-size: 48px;
-        margin-bottom: 15px;
-        opacity: 0.5;
-    }
-    
-    /* Footer Note */
-    .footer-note {
-        text-align: center;
-        margin-top: 30px;
-        padding: 15px;
-        background: var(--gray-100);
-        border-radius: 8px;
-        color: var(--gray-600);
-        font-size: 11px;
-    }
-    
-    /* Responsive Design */
-    @media (max-width: 1200px) {
-        .stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-        }
-    }
-    
-    @media (max-width: 992px) {
-        .page-header h1 {
-            font-size: 24px;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        .page-header {
-            padding: 20px;
-            text-align: center;
-        }
-        
-        .page-header h1 {
-            font-size: 20px;
-            flex-direction: column;
-            text-align: center;
-            gap: 8px;
-        }
-        
-        .page-header p {
-            text-align: center;
-        }
-        
-        .stats-grid {
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-        
-        .stat-card {
-            padding: 15px;
-        }
-        
-        .stat-value {
-            font-size: 28px;
-        }
-        
-        .filter-panel {
-            padding: 15px;
-        }
-        
-        .export-buttons {
-            justify-content: center;
-        }
-        
-        .btn {
-            padding: 8px 16px;
-            font-size: 12px;
-        }
-    }
-    
-    @media (max-width: 576px) {
-        .page-header h1 {
-            font-size: 18px;
-        }
-        
-        .stat-value {
-            font-size: 24px;
-        }
-        
-        .stat-icon {
-            font-size: 28px;
-        }
-        
-        .btn {
-            width: 100%;
-            justify-content: center;
-        }
-        
-        .export-buttons {
-            flex-direction: column;
-        }
-        
-        .pagination {
-            gap: 5px;
-        }
-        
-        .page-link {
-            min-width: 32px;
-            height: 32px;
-            font-size: 12px;
-        }
-    }
-</style>
-{% endblock %}
+{% block admin_content %}
+<!-- Stats Cards -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ total_count|default:"0"|intcomma }}</span>
+        <span class="stat-label">Total Records</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ last_24h|default:"0"|intcomma }}</span>
+        <span class="stat-label">Last 24 Hours</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ action_counts.count|default:action_counts|length }}</span>
+        <span class="stat-label">Action Types</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-value">{{ top_users|length }}</span>
+        <span class="stat-label">Active Users</span>
+    </div>
+</div>
 
-{% block content %}
-<div class="container-fluid py-4">
-    <!-- Page Header -->
-    <div class="page-header">
-        <h1>
-            <i class="fas fa-history"></i>
-            Audit Trail Report
-        </h1>
-        <p>Complete audit log of all system activities with cryptographic verification and non-repudiation</p>
-    </div>
-    
-    <!-- Stats Cards -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-database"></i>
-            </div>
-            <div class="stat-value">{{ total_count|default:"0"|intcomma }}</div>
-            <div class="stat-label">Total Records</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-users"></i>
-            </div>
-            <div class="stat-value">{{ unique_users|default:"0"|intcomma }}</div>
-            <div class="stat-label">Unique Users</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-network-wired"></i>
-            </div>
-            <div class="stat-value">{{ unique_ips|default:"0"|intcomma }}</div>
-            <div class="stat-label">Unique IPs</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon">
-                <i class="fas fa-tags"></i>
-            </div>
-            <div class="stat-value">{{ unique_actions|default:"0"|intcomma }}</div>
-            <div class="stat-label">Action Types</div>
+<!-- Filter Panel -->
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title"><i class="fas fa-filter me-2"></i>Filter Records</h2>
+        <div class="d-flex gap-2">
+            <a href="?format=csv&{{ request.GET.urlencode }}" class="admin-btn admin-btn-outline py-1">
+                <i class="fas fa-file-csv"></i> CSV
+            </a>
+            <a href="?format=json&{{ request.GET.urlencode }}" class="admin-btn admin-btn-outline py-1">
+                <i class="fas fa-file-code"></i> JSON
+            </a>
         </div>
     </div>
     
-    <!-- Filter Panel -->
-    <div class="filter-panel">
-        <div class="filter-title">
-            <i class="fas fa-filter"></i> Filter Records
-        </div>
-        <form method="get">
-            <div class="row g-3">
-                <div class="col-md-3 col-sm-6">
-                    <label class="form-label">User</label>
-                    <input type="text" name="user" class="form-control" placeholder="Username or email" value="{{ request.GET.user|default:'' }}">
-                </div>
-                <div class="col-md-2 col-sm-6">
-                    <label class="form-label">Action</label>
-                    <select name="action" class="form-select">
-                        <option value="">All Actions</option>
-                        {% for action_value, action_label in action_choices %}
-                        <option value="{{ action_value }}" {% if request.GET.action == action_value %}selected{% endif %}>{{ action_label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2 col-sm-6">
-                    <label class="form-label">Object Type</label>
-                    <select name="object_type" class="form-select">
-                        <option value="">All</option>
-                        {% for obj_type in object_types %}
-                        <option value="{{ obj_type }}" {% if request.GET.object_type == obj_type %}selected{% endif %}>{{ obj_type }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2 col-sm-6">
-                    <label class="form-label">Severity</label>
-                    <select name="severity" class="form-select">
-                        <option value="">All</option>
-                        <option value="info" {% if request.GET.severity == 'info' %}selected{% endif %}>Info</option>
-                        <option value="warning" {% if request.GET.severity == 'warning' %}selected{% endif %}>Warning</option>
-                        <option value="critical" {% if request.GET.severity == 'critical' %}selected{% endif %}>Critical</option>
-                    </select>
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <label class="form-label">IP Address</label>
-                    <input type="text" name="ip_address" class="form-control" placeholder="IP address" value="{{ request.GET.ip_address|default:'' }}">
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <label class="form-label">Start Date</label>
-                    <input type="date" name="start_date" class="form-control" value="{{ request.GET.start_date|default:'' }}">
-                </div>
-                <div class="col-md-3 col-sm-6">
-                    <label class="form-label">End Date</label>
-                    <input type="date" name="end_date" class="form-control" value="{{ request.GET.end_date|default:'' }}">
-                </div>
-                <div class="col-md-2 col-sm-6">
-                    <label class="form-label">Page Size</label>
-                    <select name="page_size" class="form-select">
-                        <option value="50" {% if page_size == 50 %}selected{% endif %}>50</option>
-                        <option value="100" {% if page_size == 100 %}selected{% endif %}>100</option>
-                        <option value="200" {% if page_size == 200 %}selected{% endif %}>200</option>
-                        <option value="500" {% if page_size == 500 %}selected{% endif %}>500</option>
-                    </select>
-                </div>
-                <div class="col-md-2 col-sm-12">
-                    <label class="form-label">&nbsp;</label>
-                    <div class="d-flex gap-2">
-                        <button type="submit" class="btn btn-primary w-100">
-                            <i class="fas fa-search"></i> Apply
-                        </button>
-                        <a href="{% url 'verification:audit_logs' %}" class="btn btn-secondary w-100">
-                            <i class="fas fa-undo"></i> Clear
-                        </a>
-                    </div>
-                </div>
+    <form method="get" class="admin-form">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label small fw-bold">User</label>
+                <input type="text" name="user" class="form-control form-control-sm" placeholder="Username or email" value="{{ filters.user }}">
             </div>
-        </form>
-    </div>
-    
-    <!-- Export Buttons -->
-    <div class="export-buttons">
-        <a href="?{{ request.GET.urlencode }}&export=csv" class="btn btn-success">
-            <i class="fas fa-file-csv"></i> Export CSV
-        </a>
-        <a href="?{{ request.GET.urlencode }}&export=json" class="btn btn-info">
-            <i class="fas fa-file-code"></i> Export JSON
-        </a>
-        <a href="{% url 'verification:export_audit_logs_pdf' %}?{{ request.GET.urlencode }}" class="btn btn-danger">
-            <i class="fas fa-file-pdf"></i> Export PDF
-        </a>
-    </div>
-    
-    <!-- Audit Table -->
-    <div class="audit-table-wrapper">
-        <table class="audit-table">
+            <div class="col-md-2">
+                <label class="form-label small fw-bold">Action</label>
+                <select name="action" class="form-select form-select-sm">
+                    <option value="">All Actions</option>
+                    {% for action_value, action_label in action_choices %}
+                    <option value="{{ action_value }}" {% if filters.action == action_value %}selected{% endif %}>{{ action_label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold">Object Type</label>
+                <input type="text" name="object_type" class="form-control form-control-sm" placeholder="e.g. Plot" value="{{ filters.object_type }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold">From Date</label>
+                <input type="date" name="date_from" class="form-control form-control-sm" value="{{ filters.date_from }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold">To Date</label>
+                <input type="date" name="date_to" class="form-control form-control-sm" value="{{ filters.date_to }}">
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="submit" class="admin-btn admin-btn-primary w-100 py-1 justify-content-center">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Audit Table -->
+<div class="admin-card">
+    <div class="admin-table-wrapper">
+        <table class="admin-table">
             <thead>
                 <tr>
                     <th>Timestamp</th>
@@ -607,45 +86,32 @@
                     <th>Object</th>
                     <th>IP Address</th>
                     <th>User Agent</th>
-                    <th>Hash</th>
                 </tr>
             </thead>
             <tbody>
                 {% for log in logs %}
                 <tr>
                     <td style="white-space: nowrap;">
-                        <div>{{ log.created_at|date:"Y-m-d" }}</div>
-                        <small class="text-muted">{{ log.created_at|date:"H:i:s" }}</small>
+                        <small class="text-muted d-block">{{ log.created_at|date:"Y-m-d" }}</small>
+                        {{ log.created_at|date:"H:i:s" }}
                     </td>
                     <td>
                         {% if log.user %}
-                            <div class="user-name">{{ log.user|display_name:"System" }}</div>
-                            {% if log.user|contact_email %}
-                                <div class="user-email">{{ log.user|contact_email|truncatechars:25 }}</div>
-                            {% endif %}
+                            <div class="fw-bold">{{ log.user.username }}</div>
+                            <div class="small text-muted">{{ log.user.email|truncatechars:20 }}</div>
                         {% else %}
                             <span class="text-muted">System</span>
                         {% endif %}
                     </td>
                     <td>
-                        <span class="badge badge-{{ log.action|cut:'_' }}">
+                        <span class="badge {% if 'delete' in log.action %}bg-danger{% elif 'create' in log.action %}bg-success{% else %}bg-info{% endif %}">
                             {{ log.get_action_display|default:log.action|title }}
                         </span>
-                        {% if log.severity == 'critical' %}
-                            <span class="severity-critical">CRITICAL</span>
-                        {% elif log.severity == 'warning' %}
-                            <span class="severity-warning">WARNING</span>
-                        {% endif %}
                     </td>
                     <td>
                         {% if log.object_type %}
-                            <span class="object-type">{{ log.object_type }}</span>
-                            {% if log.object_id %}
-                                <span class="object-id">#{{ log.object_id }}</span>
-                            {% endif %}
-                            {% if log.object_repr %}
-                                <div class="text-muted small mt-1">{{ log.object_repr|truncatechars:30 }}</div>
-                            {% endif %}
+                            <div class="fw-bold">{{ log.object_type }}</div>
+                            <div class="small text-muted">ID: {{ log.object_id|default:"N/A" }}</div>
                         {% else %}
                             <span class="text-muted">—</span>
                         {% endif %}
@@ -653,61 +119,46 @@
                     <td><code class="small">{{ log.ip_address|default:"—" }}</code></td>
                     <td>
                         <small class="text-muted" title="{{ log.user_agent|default:'' }}">
-                            {{ log.user_agent|truncatechars:35|default:"—" }}
-                        </small>
-                    </td>
-                    <td>
-                        <code class="hash-code" title="{{ log.hash_signature }}">
-                            {{ log.hash_signature|truncatechars:12 }}
-                        </code>
-                        <br>
-                        <small class="text-muted" title="Previous hash: {{ log.previous_hash|default:'Genesis' }}">
-                            prev: {{ log.previous_hash|truncatechars:8|default:"Genesis" }}
+                            {{ log.user_agent|truncatechars:30|default:"—" }}
                         </small>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" class="empty-state">
-                        <i class="fas fa-database"></i>
+                    <td colspan="6" class="text-center py-5">
+                        <div class="text-muted mb-3"><i class="fas fa-database fa-3x opacity-25"></i></div>
                         <p>No audit records found matching your criteria.</p>
-                        <a href="{% url 'verification:audit_logs' %}" class="btn btn-primary btn-sm">Clear Filters</a>
+                        <a href="{% url 'verification:audit_logs' %}" class="admin-btn admin-btn-outline btn-sm">Clear Filters</a>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
-    
+
     <!-- Pagination -->
-    {% if num_pages > 1 %}
-    <div class="pagination">
-        {% if has_previous %}
-            <a href="?page=1&{{ request.GET.urlencode }}" class="page-link">
-                <i class="fas fa-angle-double-left"></i>
-            </a>
-            <a href="?page={{ previous_page_number }}&{{ request.GET.urlencode }}" class="page-link">
-                <i class="fas fa-angle-left"></i>
-            </a>
+    {% if page_obj.has_other_pages %}
+    <div class="mt-4 d-flex justify-content-center gap-2">
+        {% if page_obj.has_previous %}
+            <a href="?page=1&{{ base_querystring }}" class="admin-btn admin-btn-outline py-1 px-3">First</a>
+            <a href="?page={{ page_obj.previous_page_number }}&{{ base_querystring }}" class="admin-btn admin-btn-outline py-1 px-3">Prev</a>
         {% endif %}
         
-        <span class="page-link page-active">Page {{ page }} of {{ num_pages }}</span>
+        <span class="admin-btn admin-btn-primary py-1 px-3">
+            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+        </span>
         
-        {% if has_next %}
-            <a href="?page={{ next_page_number }}&{{ request.GET.urlencode }}" class="page-link">
-                <i class="fas fa-angle-right"></i>
-            </a>
-            <a href="?page={{ num_pages }}&{{ request.GET.urlencode }}" class="page-link">
-                <i class="fas fa-angle-double-right"></i>
-            </a>
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&{{ base_querystring }}" class="admin-btn admin-btn-outline py-1 px-3">Next</a>
+            <a href="?page={{ page_obj.paginator.num_pages }}&{{ base_querystring }}" class="admin-btn admin-btn-outline py-1 px-3">Last</a>
         {% endif %}
     </div>
     {% endif %}
-    
-    <!-- Footer Note -->
-    <div class="footer-note">
-        <i class="fas fa-lock"></i> This audit log is cryptographically secured using SHA-256 blockchain-style chaining.
-        Any tampering will break the chain and be immediately detectable.
-    </div>
+</div>
+
+<div class="admin-card mt-3" style="background: var(--ag-sand-200);">
+    <p class="mb-0 small text-muted">
+        <i class="fas fa-lock me-2"></i> This audit log is cryptographically secured. Any tampering will be immediately detectable.
+    </p>
 </div>
 {% endblock %}

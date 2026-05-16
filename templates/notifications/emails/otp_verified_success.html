@@ -1,21 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #069132 0%, #047a29 100%); color: white; padding: 24px; text-align: center; }
-        .content { background: #f9f9f9; padding: 24px; }
-        .button { display: inline-block; padding: 12px 24px; background: #069132; color: white; text-decoration: none; border-radius: 5px; }
-        .footer { text-align: center; padding: 16px; color: #666; font-size: 12px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>Verification Successful</h2>
-    </div>
-    <div class="content">
-        <p>Hello {{ user|display_name }},</p>
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block content %}
+<p>Hello {{ user|display_name }},</p>
         <p>Your account has been successfully verified. You can now log in and start using AgriPlot Connect.</p>
         <p>If you want to Request To Change Your Role (Landowner, Agent, Extension Officer, or Land Surveyor), you can apply from the <strong>Profile</strong> section after logging in. An admin will review your documents and approve your request.</p>
         <div style="text-align: center; margin: 24px 0;">
@@ -26,9 +12,4 @@
         </div>
         <p>If you did not create this account, please ignore this email.</p>
         <p>Thank you for joining AgriPlot.</p>
-    </div>
-    <div class="footer">
-        <p>© {% now "Y" %} AgriPlot Connect. All rights reserved.</p>
-    </div>
-</body>
-</html>
+{% endblock %}

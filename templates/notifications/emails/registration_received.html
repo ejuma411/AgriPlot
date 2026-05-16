@@ -1,25 +1,11 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #069132 0%, #047a29 100%); color: white; padding: 24px; text-align: center; }
-        .content { background: #f9f9f9; padding: 24px; }
-        .button { display: inline-block; padding: 12px 24px; background: #069132; color: white; text-decoration: none; border-radius: 5px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>Welcome to AgriPlot</h2>
-    </div>
-    <div class="content">
-        <p>Hello {{ user|display_name }},</p>
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block content %}
+<p>Hello {{ user|display_name }},</p>
         <p>Your registration was successful.</p>
         <p>If you want to Request To Change Your Role (Landowner, Agent, Extension Officer, or Land Surveyor), you can apply directly from your profile page. An admin will review your documents and approve your request.</p>
         <div style="text-align: center; margin: 24px 0;">
             <a href="{{ profile_url }}" class="button">Go to Profile</a>
         </div>
         <p>Thank you for joining AgriPlot.</p>
-    </div>
-</body>
-</html>
+{% endblock %}

@@ -301,6 +301,7 @@ class ExtensionReportForm(forms.ModelForm):
         distance_to_tarmac_m = cleaned.get("distance_to_tarmac_m")
         distance_to_market_m = cleaned.get("distance_to_market_m")
         site_photos = cleaned.get("site_photos") or []
+        soil_analysis_report = cleaned.get("soil_analysis_report")
 
         if soil_ph is not None and not (0 <= soil_ph <= 14):
             self.add_error("soil_ph", "Soil pH must be between 0 and 14.")
@@ -315,6 +316,13 @@ class ExtensionReportForm(forms.ModelForm):
             _validate_multiple_files("Site photos", site_photos, ALLOWED_IMAGE_EXTENSIONS)
         except forms.ValidationError as exc:
             self.add_error("site_photos", exc)
+
+        try:
+            _validate_uploaded_file(
+                "Official soil analysis report", soil_analysis_report, ALLOWED_DOC_EXTENSIONS
+            )
+        except forms.ValidationError as exc:
+            self.add_error("soil_analysis_report", exc)
 
         if selected_sources:
             cleaned["water_sources_available"] = ", ".join(selected_sources)
@@ -341,6 +349,9 @@ class ExtensionReportForm(forms.ModelForm):
             ),
             "soil_analysis_notes": forms.Textarea(
                 attrs={"rows": 3, "class": "form-control"}
+            ),
+            "soil_analysis_report": forms.ClearableFileInput(
+                attrs={"class": "form-control", "accept": ".pdf,.jpg,.jpeg,.png"}
             ),
             "topography_summary": forms.Textarea(
                 attrs={"rows": 3, "class": "form-control"}
@@ -398,6 +409,7 @@ class SurveyorReportForm(forms.ModelForm):
         if "boundary_data_file" in self.fields:
             self.fields["boundary_data_file"].help_text = "Upload the site boundary as .geojson, .kml, or .shp."
         if self.instance and self.instance.beacon_status:
+            # Handle comma-separated values from the model
             self.initial["beacon_status"] = [
                 item.strip()
                 for item in self.instance.beacon_status.split(",")
@@ -416,13 +428,23 @@ class SurveyorReportForm(forms.ModelForm):
         deed_area = cleaned.get("deed_area")
         boundary_data_file = cleaned.get("boundary_data_file")
         plot_images = cleaned.get("plot_images") or []
-
+        
         if not cleaned.get("surveyor_declaration"):
             self.add_error(
                 "surveyor_declaration",
                 "You must certify that you physically visited and verified the parcel."
             )
+            
+        # Standardize the beacon_status into a comma-separated string for the model
         if beacon_status:
+            cleaned["beacon_status"] = ", ".join(beacon_status)
+        
+        # Legacy value mapping (if any)
+        if "all_present" in beacon_status:
+            beacon_status = ["all_present_and_intact" if x == "all_present" else x for x in beacon_status]
+            cleaned["beacon_status"] = ", ".join(beacon_status)
+        if "missing" in beacon_status:
+            beacon_status = ["beacons_missing" if x == "missing" else x for x in beacon_status]
             cleaned["beacon_status"] = ", ".join(beacon_status)
         if price_realistic is False and not (suggested_sale_price or suggested_price_per_acre):
             self.add_error(
@@ -445,6 +467,7 @@ class SurveyorReportForm(forms.ModelForm):
             ("mutation_form", "Mutation form", ALLOWED_DOC_EXTENSIONS),
             ("beacon_certificate", "Beacon certificate", ALLOWED_DOC_EXTENSIONS),
             ("boundary_report", "Boundary report", ALLOWED_DOC_EXTENSIONS),
+            ("signed_survey_plan", "Signed survey plan", ALLOWED_DOC_EXTENSIONS),
             ("boundary_data_file", "Boundary data file", ALLOWED_BOUNDARY_EXTENSIONS),
         ):
             try:
@@ -487,6 +510,9 @@ class SurveyorReportForm(forms.ModelForm):
                 attrs={"class": "form-control", "accept": ".pdf,.jpg,.jpeg,.png"}
             ),
             "boundary_report": forms.ClearableFileInput(
+                attrs={"class": "form-control", "accept": ".pdf,.jpg,.jpeg,.png"}
+            ),
+            "signed_survey_plan": forms.ClearableFileInput(
                 attrs={"class": "form-control", "accept": ".pdf,.jpg,.jpeg,.png"}
             ),
             "boundary_data_file": forms.ClearableFileInput(

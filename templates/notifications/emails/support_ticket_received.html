@@ -1,23 +1,10 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
-        .header { background: #069132; color: white; padding: 18px; text-align: center; }
-        .content { background: #f9f9f9; padding: 20px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>Support Ticket Received</h2>
-    </div>
-    <div class="content">
-        <p>Hello {{ ticket.name }},</p>
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block content %}
+<p>Hello {{ ticket.name }},</p>
         <p>We have received your support request and will get back to you shortly.</p>
         <p><strong>Subject:</strong> {{ ticket.subject }}</p>
         <p><strong>Your message:</strong></p>
         <p>{{ ticket.message }}</p>
         <p>Thank you for using AgriPlot Connect.</p>
-    </div>
-</body>
-</html>
+{% endblock %}

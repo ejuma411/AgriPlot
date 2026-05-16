@@ -1,21 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #069132 0%, #047a29 100%); color: white; padding: 24px; text-align: center; }
-        .content { background: #f9f9f9; padding: 24px; }
-        .button { display: inline-block; padding: 10px 18px; background: #069132; color: white; text-decoration: none; border-radius: 5px; }
-        .footer { text-align: center; padding: 16px; color: #666; font-size: 12px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>Role Request Received</h2>
-    </div>
-    <div class="content">
-        <p>Hello {{ user|display_name }},</p>
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block content %}
+<p>Hello {{ user|display_name }},</p>
         <p>Your request for the <strong>{{ role }}</strong> role has been received and is under review.</p>
         {% if details %}
             <p><strong>Submitted details:</strong></p>
@@ -25,9 +11,4 @@
             <a href="{{ profile_url }}" class="button">View Profile</a>
         </div>
         <p>We’ll notify you once a decision has been made.</p>
-    </div>
-    <div class="footer">
-        <p>© {% now "Y" %} AgriPlot Connect. All rights reserved.</p>
-    </div>
-</body>
-</html>
+{% endblock %}

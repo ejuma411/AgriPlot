@@ -1,22 +1,7 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; }
-        .header { background: linear-gradient(135deg, #069132 0%, #047a29 100%); color: white; padding: 24px; text-align: center; }
-        .content { background: #f9f9f9; padding: 24px; }
-        .code { font-size: 24px; letter-spacing: 4px; font-weight: bold; background: #fff; border: 1px dashed #069132; padding: 12px 16px; display: inline-block; }
-        .button { display: inline-block; padding: 10px 18px; background: #069132; color: white; text-decoration: none; border-radius: 5px; }
-        .footer { text-align: center; padding: 16px; color: #666; font-size: 12px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h2>AgriPlot Verification Code</h2>
-    </div>
-    <div class="content">
-        <p>Hello {% if user %}{{ user|display_name }}{% else %}{{ display_name }}{% endif %},</p>
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block content %}
+<p>Hello {% if user %}{{ user|display_name }}{% else %}{{ display_name }}{% endif %},</p>
         <p>Use the verification code below to complete your sign‑up:</p>
         <p><span class="code">{{ otp }}</span></p>
         <p>This code expires in {{ expiry_minutes }} minutes.</p>
@@ -24,9 +9,4 @@
         <div style="text-align:center; margin: 16px 0;">
             <a href="{{ support_url }}" class="button">Contact Support</a>
         </div>
-    </div>
-    <div class="footer">
-        <p>© {% now "Y" %} AgriPlot Connect. All rights reserved.</p>
-    </div>
-</body>
-</html>
+{% endblock %}

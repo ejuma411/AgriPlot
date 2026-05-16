@@ -1,64 +1,81 @@
-{% extends "base.html" %}
+{% extends "verification/admin/base_admin.html" %}
+{% load static humanize %}
 
-{% block title %}Registry Mismatch Report{% endblock %}
+{% block admin_title %}Registry Mismatch Report{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <div>
-            <h2 class="mb-1">Registry Mismatch Report</h2>
-            <p class="text-muted mb-0">Failed registry verification attempts</p>
-        </div>
-        <form method="get" class="d-flex gap-2" aria-label="Search registry mismatches">
-            <input type="text" name="q" value="{{ query }}" class="form-control" placeholder="Search parcel or owner" aria-label="Search parcel or owner">
-            <button class="btn btn-outline-primary" type="submit" data-analytics="registry_mismatch_search">Search</button>
-        </form>
-    </div>
-
-    <div class="card shadow-sm">
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-striped mb-0" aria-describedby="registryMismatchCaption">
-                    <caption id="registryMismatchCaption" class="visually-hidden">
-                        Registry mismatch attempts including parcel number and owner information.
-                    </caption>
-                    <thead class="table-light">
-                        <tr>
-                            <th scope="col">Parcel Number</th>
-                            <th scope="col">Provided Owner</th>
-                            <th scope="col">Provided ID</th>
-                            <th scope="col">User</th>
-                            <th scope="col">Reason</th>
-                            <th scope="col">Attempted At</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% if attempts %}
-                            {% for attempt in attempts %}
-                            <tr>
-                                <td>{{ attempt.parcel_number }}</td>
-                                <td>{{ attempt.provided_owner_name|default:"-" }}</td>
-                                <td>{{ attempt.provided_owner_id|default:"-" }}</td>
-                                <td>
-                                    {% if attempt.user %}
-                                        {{ attempt.user|display_name }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </td>
-                                <td>{{ attempt.reason|default:"-" }}</td>
-                                <td>{{ attempt.created_at|date:"Y-m-d H:i" }}</td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            <tr>
-                                <td colspan="6" class="text-center text-muted py-4">No mismatch attempts found.</td>
-                            </tr>
-                        {% endif %}
-                    </tbody>
-                </table>
-            </div>
+{% block admin_content %}
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2 class="admin-card-title">Mismatched Land Records</h2>
+        <div class="d-flex gap-2">
+            <form method="get" class="d-flex gap-2" aria-label="Search registry mismatches">
+                <input type="text" name="q" value="{{ query }}" class="form-control form-control-sm" placeholder="Search parcel or owner" aria-label="Search parcel or owner">
+                <button class="admin-btn admin-btn-primary py-1 px-3" type="submit">Search</button>
+            </form>
+            {% if query %}
+                <a href="{% url 'verification:registry_mismatches' %}" class="admin-btn admin-btn-outline py-1 px-3">Clear</a>
+            {% endif %}
         </div>
     </div>
+
+    <div class="admin-table-wrapper">
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th scope="col">Timestamp</th>
+                    <th scope="col">Parcel Number</th>
+                    <th scope="col">Provided Owner</th>
+                    <th scope="col">Provided ID</th>
+                    <th scope="col">User</th>
+                    <th scope="col">Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if attempts %}
+                    {% for attempt in attempts %}
+                    <tr>
+                        <td>
+                            <small class="text-muted d-block">{{ attempt.created_at|date:"Y-m-d" }}</small>
+                            {{ attempt.created_at|date:"H:i" }}
+                        </td>
+                        <td><code>{{ attempt.parcel_number }}</code></td>
+                        <td><strong>{{ attempt.provided_owner_name|default:"-" }}</strong></td>
+                        <td>{{ attempt.provided_owner_id|default:"-" }}</td>
+                        <td>
+                            {% if attempt.user %}
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar-circle-sm" style="background: var(--ag-sand-200); color: var(--ag-green-900); width: 24px; height: 24px; font-size: 10px; display: grid; place-items: center; border-radius: 50%;">
+                                        {{ attempt.user.username|first|upper }}
+                                    </div>
+                                    {{ attempt.user|display_name }}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if attempt.mismatch_type == 'owner' %}bg-danger{% else %}bg-warning{% endif %}">
+                                {{ attempt.reason|default:"Mismatch"|title }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <div class="text-muted mb-3"><i class="fa-solid fa-circle-check fa-3x opacity-25"></i></div>
+                            <p class="mb-0">No registry mismatches recorded. All lookups matching registry records.</p>
+                        </td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    
+    {% if total > 500 %}
+    <div class="mt-3 text-muted small">
+        <i class="fa-solid fa-info-circle me-1"></i> Showing the most recent 500 records.
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

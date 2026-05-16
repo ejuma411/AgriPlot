@@ -1,107 +1,163 @@
 {% extends "base.html" %}
 
-{% block content %}
-<section class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-lg-8">
-            <div class="card shadow-sm">
-                <div class="card-body">
-                    <h2 class="mb-2">Request {{ role_label }} Role</h2>
-                    <p class="text-muted">
-                        Provide the details below. Your request will be reviewed by an admin before approval.
-                    </p>
-                    <div class="alert alert-light border">
-                        This request upgrades your existing AgriPlot account, so your username, profile details, and password stay the same.
-                    </div>
+{% block title %}Request {{ role_label }} Role - AgriPlot{% endblock %}
 
-                    <div class="alert alert-info">
-                        <strong>Approval Requirements:</strong>
-                        <ul class="mb-0">
-                            {% for item in requirements %}
-                                <li>{{ item }}</li>
-                            {% endfor %}
-                        </ul>
-                    </div>
+{% block full_width_content %}
+<main class="workspace-page">
+    <section class="workspace-hero">
+        <div>
+            <p class="workspace-kicker">Role Upgrade</p>
+            <h1 class="workspace-title">Request {{ role_label }} Access</h1>
+            <p class="workspace-subtitle">
+                Unlock specialized tools for {{ role_label|lower }}s. Your request will be reviewed by our administrative team.
+            </p>
+        </div>
+        <div class="workspace-actions">
+            <a href="{% url 'listings:dashboard_router' %}" class="ap-btn ap-btn-ghost">
+                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </section>
 
-                    <form method="post" class="mt-3" enctype="multipart/form-data">
-                        {% csrf_token %}
-                        
-                        {% for field in form %}
-                        <div class="mb-3">
-                            <label class="form-label {% if field.field.required %}required-field{% endif %}" for="{{ field.id_for_label }}">
-                                {{ field.label }}
-                                {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                            </label>
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="workspace-card mb-4">
+                    <div class="workspace-card-header">
+                        <div>
+                            <h2 class="workspace-card-title">Professional Requirements</h2>
+                            <p class="workspace-card-meta">Please ensure you meet these criteria before submitting.</p>
+                        </div>
+                    </div>
+                    <div class="workspace-card-body">
+                        <div class="p-3 border rounded bg-light mb-0">
+                            <ul class="mb-0 ps-3">
+                                {% for item in requirements %}
+                                    <li class="mb-1 fw-medium text-dark">{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="workspace-card">
+                    <div class="workspace-card-header">
+                        <div>
+                            <h2 class="workspace-card-title">Application Form</h2>
+                            <p class="workspace-card-meta">Provide accurate professional details for faster approval.</p>
+                        </div>
+                    </div>
+                    <div class="workspace-card-body">
+                        <form method="post" enctype="multipart/form-data" class="ap-form">
+                            {% csrf_token %}
                             
-                            {% if field.name == "assigned_counties" %}
-                                <!-- Custom rendering for county checkboxes -->
-                                <div class="border rounded p-3 bg-light" style="max-height: 300px; overflow-y: auto;">
-                                    <div class="row g-2">
-                                        {% for choice in field.field.choices %}
-                                            <div class="col-md-4 col-sm-6">
-                                                <div class="form-check">
-                                                    <input type="checkbox" 
-                                                           name="{{ field.name }}" 
-                                                           value="{{ choice.0 }}" 
-                                                           id="id_{{ field.name }}_{{ forloop.counter }}"
-                                                           class="form-check-input"
-                                                           {% if choice.0 in field.value %}checked{% endif %}>
-                                                    <label class="form-check-label" for="id_{{ field.name }}_{{ forloop.counter }}">
-                                                        {{ choice.1 }}
-                                                    </label>
+                            {% for field in form %}
+                            <div class="mb-4">
+                                <label class="form-label fw-bold mb-1 {% if field.field.required %}required-field{% endif %}" for="{{ field.id_for_label }}">
+                                    {{ field.label }}
+                                    {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                
+                                {% if field.name == "assigned_counties" %}
+                                    <div class="border rounded p-3 bg-light" style="max-height: 250px; overflow-y: auto;">
+                                        <div class="row g-2">
+                                            {% for choice in field.field.choices %}
+                                                <div class="col-md-4 col-sm-6">
+                                                    <div class="form-check">
+                                                        <input type="checkbox" 
+                                                               name="{{ field.name }}" 
+                                                               value="{{ choice.0 }}" 
+                                                               id="id_{{ field.name }}_{{ forloop.counter }}"
+                                                               class="form-check-input"
+                                                               {% if choice.0 in field.value %}checked{% endif %}>
+                                                        <label class="form-check-label small" for="id_{{ field.name }}_{{ forloop.counter }}">
+                                                            {{ choice.1 }}
+                                                        </label>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    {{ field }}
+                                {% endif %}
+                                
+                                {% if field.help_text %}
+                                    <div class="form-text small text-muted mt-1">{{ field.help_text }}</div>
+                                {% endif %}
+                                
+                                {% if field.errors %}
+                                    <div class="text-danger small mt-1">
+                                        {% for error in field.errors %}
+                                            <i class="fa-solid fa-circle-exclamation me-1"></i>{{ error }}
                                         {% endfor %}
                                     </div>
-                                </div>
-                            {% else %}
-                                <!-- Default field rendering -->
-                                {{ field }}
-                            {% endif %}
+                                {% endif %}
+                            </div>
+                            {% endfor %}
                             
-                            {% if field.help_text %}
-                                <div class="form-text text-muted">{{ field.help_text }}</div>
-                            {% endif %}
-                            
-                            {% if field.errors %}
-                                <div class="text-danger small mt-1">
-                                    {% for error in field.errors %}
-                                        {{ error }}{% if not forloop.last %}<br>{% endif %}
-                                    {% endfor %}
-                                </div>
-                            {% endif %}
-                        </div>
-                        {% endfor %}
-                        
-                        <div class="d-flex gap-2 mt-4">
-                            <button type="submit" class="btn btn-primary px-4">Submit Request</button>
-                            <a href="{% url 'listings:profile_management' %}" class="btn btn-outline-secondary px-4">Cancel</a>
-                        </div>
-                    </form>
+                            <div class="d-flex gap-3 mt-5 pt-3 border-top">
+                                <button type="submit" class="ap-btn ap-btn-primary px-5">Submit Application</button>
+                                <a href="{% url 'listings:dashboard_router' %}" class="ap-btn ap-btn-ghost px-4">Cancel</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                
+                <div class="mt-4 p-3 bg-light rounded border text-center">
+                    <p class="mb-0 small text-muted">
+                        <i class="fa-solid fa-info-circle me-1"></i> This request upgrades your existing account. Your login credentials will remain unchanged.
+                    </p>
                 </div>
             </div>
         </div>
     </div>
-</section>
+</main>
+{% endblock %}
 
+{% block extra_css %}
+{{ block.super }}
 <style>
+    .workspace-page {
+        background: var(--ag-sand-100);
+        min-height: calc(100vh - 70px);
+    }
+    
     .required-field:after {
-        color: #e32;
+        color: var(--ag-green-700);
         content: ' *';
         display: inline;
     }
     
-    .form-check {
-        margin-bottom: 0.5rem;
+    .form-check-input:checked {
+        background-color: var(--ag-green-700);
+        border-color: var(--ag-green-700);
     }
     
-    .form-check-input:checked {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M4.5 10.5l3.2 3.2 7.8-8.2'/%3e%3c/svg%3e");
-        background-size: 0.82rem;
-        background-position: center;
-        background-repeat: no-repeat;
+    .ap-form input[type="text"],
+    .ap-form input[type="email"],
+    .ap-form input[type="number"],
+    .ap-form input[type="file"],
+    .ap-form select,
+    .ap-form textarea {
+        display: block;
+        width: 100%;
+        padding: 0.6rem 0.9rem;
+        font-size: 14px;
+        font-weight: 400;
+        line-height: 1.5;
+        color: var(--ag-charcoal);
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid var(--ag-border);
+        border-radius: 8px;
+        transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
+    }
+    
+    .ap-form input:focus, .ap-form select:focus, .ap-form textarea:focus {
+        border-color: var(--ag-green-700);
+        outline: 0;
+        box-shadow: 0 0 0 0.25rem rgba(31, 139, 76, 0.1);
     }
 </style>
 {% endblock %}

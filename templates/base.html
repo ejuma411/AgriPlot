@@ -4,18 +4,27 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="{% block meta_description %}AgriPlot Connect helps buyers, landowners, agents, surveyors, and agricultural officers trade and verify agricultural land with confidence.{% endblock %}">
-    <meta name="theme-color" content="#2F855A">
+    <meta name="description" content="{% block meta_description %}AgriPlot Connect helps buyers, landowners, agents, surveyors, and agricultural organizations connect to the Agribot platform.{% endblock %}">
     <meta name="color-scheme" content="light">
 
     <title>{% block title %}AgriPlot Connect{% endblock %}</title>
+    
+    <!-- Favicon - Fixed static tag syntax -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/favicon32x32.png' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/favicon.svg' %}">
+    <link rel="shortcut icon" href="{% static 'images/favicon.ico' %}">
+    <link rel="manifest" href="{% static 'images/site.webmanifest' %}">
 
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap & Font Awesome -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+    
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="{% static 'css/marketplace.css' %}">
 
     <style>
@@ -301,6 +310,24 @@
             font-weight: 600;
         }
 
+        .form-control,
+        .form-select,
+        input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+        select,
+        textarea {
+            max-width: 100%;
+            border-radius: var(--ap-radius);
+            font-size: 15px;
+        }
+
+        input[type="checkbox"],
+        input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            flex: 0 0 16px;
+            accent-color: var(--ap-green);
+        }
+
         .badge, .text-uppercase {
             letter-spacing: .04em;
         }
@@ -528,9 +555,9 @@
 
         .workspace-fields {
             display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px;
-            padding: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+            gap: 14px;
+            padding: 18px;
         }
 
         .workspace-field.full {
@@ -539,7 +566,7 @@
 
         .workspace-field label {
             display: block;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             color: var(--ap-text);
             font-size: 14px;
             font-weight: 700;
@@ -575,7 +602,7 @@
         }
 
         .workspace-field textarea {
-            min-height: 120px;
+            min-height: 96px;
             resize: vertical;
         }
 
@@ -583,14 +610,16 @@
         .form-check {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 12px 16px;
+            gap: 8px;
+            min-height: 38px;
+            padding: 8px 10px;
             background: var(--ap-surface-muted);
-            border: 1.5px solid transparent;
+            border: 1px solid transparent;
             border-radius: var(--ap-radius);
             cursor: pointer;
             transition: all .2s ease;
             user-select: none;
+            line-height: 1.3;
         }
 
         .form-check:hover {
@@ -599,11 +628,12 @@
         }
 
         .form-check-input {
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
+            flex: 0 0 16px;
             margin: 0;
-            border-radius: 6px !important;
-            border: 2px solid var(--ap-border) !important;
+            border-radius: 4px !important;
+            border: 1.5px solid #A8B8AD !important;
             appearance: none;
             background-color: #fff;
             background-repeat: no-repeat;
@@ -625,7 +655,7 @@
         }
 
         .form-check span {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 600;
             color: var(--ap-text);
         }
@@ -640,7 +670,7 @@
 
         .workspace-help {
             display: block;
-            margin-top: 8px;
+            margin-top: 5px;
             color: var(--ap-muted);
             font-size: 13px;
             font-weight: 500;
@@ -674,6 +704,192 @@
             background: rgba(255, 255, 255, 0.95);
             box-shadow: 0 20px 40px rgba(26, 32, 44, 0.1);
             backdrop-filter: blur(12px);
+        }
+
+        /* Responsive hardening for legacy and rebuilt screens */
+        .ap-main,
+        .ap-content,
+        .workspace-page,
+        .workspace-card,
+        .workspace-form-section,
+        .container,
+        .container-fluid,
+        .row,
+        [class*="col-"] {
+            min-width: 0;
+        }
+
+        .ap-main {
+            overflow-x: clip;
+        }
+
+        .ap-content > *,
+        .workspace-page > *,
+        .admin-content > *,
+        .workspace-card,
+        .admin-card,
+        .card,
+        .table-responsive,
+        form {
+            max-width: 100%;
+        }
+
+        p,
+        li,
+        td,
+        th,
+        label,
+        .detail-value,
+        .workspace-card-title,
+        .workspace-list-item,
+        .admin-card-title {
+            overflow-wrap: anywhere;
+        }
+
+        .btn,
+        .ap-btn,
+        .admin-btn,
+        button,
+        input[type="submit"],
+        input[type="button"] {
+            min-height: clamp(40px, 4.8vw, 48px);
+            max-width: 100%;
+            white-space: normal;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .btn-sm,
+        .ap-btn.btn-sm,
+        .admin-btn.btn-sm {
+            min-height: 34px;
+            font-size: 14px;
+            padding-block: 6px;
+        }
+
+        .form-control,
+        .form-select,
+        input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="submit"]):not([type="button"]),
+        select,
+        textarea {
+            width: 100%;
+            min-width: 0;
+            min-height: clamp(42px, 5vw, 50px);
+            padding: 10px 14px;
+            line-height: 1.45;
+        }
+
+        textarea,
+        textarea.form-control {
+            min-height: clamp(96px, 18vw, 150px);
+            resize: vertical;
+        }
+
+        input[type="file"].form-control,
+        input[type="file"] {
+            min-height: auto;
+            padding: 9px 12px;
+            font-size: 14px;
+        }
+
+        input[type="checkbox"],
+        input[type="radio"],
+        .form-check-input {
+            width: 16px;
+            height: 16px;
+            min-width: 16px;
+            min-height: 16px;
+            flex: 0 0 16px;
+        }
+
+        .form-check,
+        .checkbox-label,
+        .size-pill,
+        .verified-toggle {
+            max-width: 100%;
+            min-width: 0;
+        }
+
+        .form-check-label,
+        .checkbox-label span,
+        .size-pill span {
+            min-width: 0;
+        }
+
+        table {
+            max-width: 100%;
+            font-size: clamp(13px, 1.7vw, 15px);
+        }
+
+        th,
+        td {
+            vertical-align: middle;
+        }
+
+        .table-responsive,
+        .responsive-table,
+        .table-scroll {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table-responsive table,
+        .responsive-table table,
+        .table-scroll table {
+            min-width: 680px;
+        }
+
+        .d-flex,
+        .workspace-actions,
+        .filter-actions,
+        .results-header,
+        .card-actions {
+            min-width: 0;
+        }
+
+        .list-group-item,
+        .workspace-list-item {
+            min-width: 0;
+        }
+
+        @media (max-width: 767.98px) {
+            .btn,
+            .ap-btn,
+            .admin-btn,
+            button[type="submit"],
+            input[type="submit"] {
+                width: 100%;
+            }
+
+            .btn-group,
+            .workspace-actions,
+            .filter-actions,
+            .card-actions,
+            .admin-topline,
+            .results-header {
+                align-items: stretch;
+                flex-direction: column;
+            }
+
+            .workspace-card-header,
+            .admin-card-header,
+            .workspace-list-item,
+            .list-group-item.d-flex {
+                align-items: flex-start !important;
+                flex-direction: column;
+            }
+
+            .workspace-card-body,
+            .admin-card-body {
+                padding: 16px !important;
+            }
+
+            .table-responsive table,
+            .responsive-table table,
+            .table-scroll table {
+                min-width: 560px;
+            }
         }
 
         @media (max-width: 991.98px) {
@@ -783,6 +999,58 @@
     </style>
 
     {% block extra_css %}{% endblock %}
+    <style id="ap-final-responsive-guard">
+        /* Final guard loaded after page-level CSS so legacy screens cannot force horizontal overflow. */
+        html,
+        body,
+        .ap-shell,
+        .ap-main {
+            max-width: 100%;
+            overflow-x: clip;
+        }
+
+        .ap-main *,
+        .ap-main *::before,
+        .ap-main *::after {
+            box-sizing: border-box;
+        }
+
+        .ap-main img,
+        .ap-main svg,
+        .ap-main canvas,
+        .ap-main video,
+        .ap-main iframe {
+            max-width: 100%;
+        }
+
+        .ap-main input,
+        .ap-main select,
+        .ap-main textarea {
+            max-width: 100%;
+        }
+
+        @media (max-width: 767.98px) {
+            .ap-main .row {
+                --bs-gutter-x: 1rem;
+            }
+
+            .ap-main [style*="width: 1000px"],
+            .ap-main [style*="width:1000px"],
+            .ap-main [style*="width: 900px"],
+            .ap-main [style*="width:900px"],
+            .ap-main [style*="width: 800px"],
+            .ap-main [style*="width:800px"] {
+                width: 100% !important;
+            }
+
+            .ap-main [style*="max-width: 1200px"],
+            .ap-main [style*="max-width:1200px"],
+            .ap-main [style*="max-width: 1100px"],
+            .ap-main [style*="max-width:1100px"] {
+                max-width: 100% !important;
+            }
+        }
+    </style>
     {% block head %}{% endblock %}
 </head>
 <body>

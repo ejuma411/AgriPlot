@@ -383,7 +383,13 @@ def staff_dashboard(request):
                 "subtitle": task.get_verification_type_display(),
                 "meta": task.plot.county if task.plot and task.plot.county else "Assigned case",
                 "status": task.get_status_display(),
-                "url": None,
+                "url": (
+                    reverse("verification:conduct_extension_review", args=[task.pk])
+                    if task.verification_type == "extension_review"
+                    else reverse("verification:conduct_surveyor_inspection", args=[task.pk])
+                    if task.verification_type == "surveyor_inspection"
+                    else reverse("verification:complete_task", args=[task.pk])
+                ),
             }
             for task in task_queryset
         ]

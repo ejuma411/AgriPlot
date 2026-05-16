@@ -3,7 +3,9 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
+from django.core.files.storage import default_storage
 from django.utils import timezone
+from django.utils.text import get_valid_filename
 from django.urls import reverse
 from django.contrib.gis.geos import Point
 from crops.services import suggest_crops
@@ -22,6 +24,16 @@ from verification.verification_service import VerificationService
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _persist_uploaded_files(files, base_path):
+    saved_paths = []
+    for upload in files or []:
+        if not upload:
+            continue
+        filename = get_valid_filename(getattr(upload, "name", "upload"))
+        saved_paths.append(default_storage.save(f"{base_path}/{filename}", upload))
+    return saved_paths
 
 
 def _extension_crop_suggestions(form, plot):
@@ -98,6 +110,17 @@ def conduct_extension_review(request, task_id):
                     item["crop"].name for item in auto_suggestions[:3]
                 )
             report.save()
+
+            site_photos = form.cleaned_data.get("site_photos") or []
+            if not isinstance(site_photos, (list, tuple)):
+                site_photos = [site_photos]
+            saved_site_photos = _persist_uploaded_files(
+                site_photos,
+                f"documents/extension_site_photos/{task.id}",
+            )
+            if saved_site_photos:
+                report.site_photos = saved_site_photos
+                report.save(update_fields=["site_photos"])
 
             # Persist verified agricultural data back to plot for search/filtering
             plot_updates = {}

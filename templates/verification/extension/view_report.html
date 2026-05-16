@@ -1,183 +1,237 @@
 {% extends "verification/admin/base_admin.html" %}
 
-{% block title %}{% if report.surveyor %}Surveyor Report{% else %}Extension Report{% endif %} - {{ plot.title }}{% endblock %}
+{% block admin_title %}{% if report.surveyor %}Surveyor Report{% else %}Extension Report{% endif %}{% endblock %}
 
 {% block admin_content %}
-<div class="page-header">
-    <div class="page-header-content">
-        <div class="page-header-title">
-            <h1>{% if report.surveyor %}Surveyor Report{% else %}Extension Report{% endif %}</h1>
-            <p class="page-header-subtitle">{{ plot.title }}</p>
-        </div>
-        <div class="page-header-actions">
-            <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="btn">
-                <i class="fas fa-arrow-left me-2"></i>Back to Task Inbox
-            </a>
-        </div>
-    </div>
-</div>
-
 <div class="row g-4">
-    <div class="col-12 col-xl-4">
-        <div class="admin-card">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title"><i class="fas fa-file-lines"></i>Report Summary</h5>
-            </div>
+    <div class="col-xl-4">
+        <div class="admin-card mb-4 border-start border-4 {% if report.surveyor %}border-warning{% else %}border-success{% endif %}">
             <div class="admin-card-body">
-                <table class="details-table">
-                    <tr>
-                        <th>Plot</th>
-                        <td>{{ plot.title }}</td>
-                    </tr>
-            {% if report.officer %}
-                    <tr>
-                        <th>Officer</th>
-                        <td>{{ report.officer.user|display_name }}</td>
-                    </tr>
-            {% endif %}
-            {% if report.surveyor %}
-                    <tr>
-                        <th>Surveyor</th>
-                        <td>{{ report.surveyor.user|display_name }}</td>
-                    </tr>
-            {% endif %}
-                    <tr>
-                        <th>Visit Date</th>
-                        <td>{{ report.visit_date|date:"Y-m-d H:i" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Recommendation</th>
-                        <td>{{ report.get_recommendation_display }}</td>
-                    </tr>
-                </table>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="badge {% if report.surveyor %}bg-warning-soft text-warning{% else %}bg-success-soft text-success{% endif %} px-3">
+                        <i class="fas {% if report.surveyor %}fa-map-location-dot{% else %}fa-leaf{% endif %} me-2"></i>
+                        {% if report.surveyor %}Surveyor{% else %}Extension{% endif %} Report
+                    </span>
+                    <small class="text-muted"><i class="fas fa-calendar-alt me-1"></i>{{ report.visit_date|date:"M d, Y" }}</small>
+                </div>
+                <h4 class="mb-1 fw-bold">{{ plot.title }}</h4>
+                <div class="text-muted small"><i class="fas fa-map-marker-alt me-1"></i>{{ plot.county|default:plot.location }}</div>
+            </div>
+        </div>
+
+        <div class="admin-card mb-4">
+            <div class="admin-card-header">
+                <h2 class="admin-card-title"><i class="fas fa-user-check me-2"></i>Official Summary</h2>
+            </div>
+            <div class="admin-card-body p-0">
+                <div class="list-group list-group-flush small">
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">{% if report.officer %}Officer{% else %}Surveyor{% endif %}</span>
+                        <span class="fw-bold text-end">{% if report.officer %}{{ report.officer.user|display_name }}{% else %}{{ report.surveyor.user|display_name }}{% endif %}</span>
+                    </div>
+                    {% if report.lsb_license_number %}
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">LSB License</span>
+                        <span class="fw-bold">{{ report.lsb_license_number }}</span>
+                    </div>
+                    {% endif %}
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">Recommendation</span>
+                        <span class="badge bg-light border text-dark">{{ report.get_recommendation_display }}</span>
+                    </div>
+                </div>
             </div>
         </div>
 
         <div class="admin-card">
             <div class="admin-card-header">
-                <h5 class="admin-card-title"><i class="fas fa-location-dot"></i>Plot Context</h5>
+                <h2 class="admin-card-title"><i class="fas fa-map me-2"></i>Property Context</h2>
             </div>
-            <div class="admin-card-body">
-                <table class="details-table">
-                    <tr>
-                        <th>Location</th>
-                        <td>{% if plot.county %}{{ plot.county }}{% if plot.subcounty %} - {{ plot.subcounty }}{% endif %}{% else %}{{ plot.location }}{% endif %}</td>
-                    </tr>
-                    <tr>
-                        <th>Parcel No.</th>
-                        <td>{{ plot.parcel_number|default:"Not provided" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Area</th>
-                        <td>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Listing Type</th>
-                        <td>{{ plot.get_listing_type_display }}</td>
-                    </tr>
-                </table>
+            <div class="admin-card-body p-0">
+                <div class="list-group list-group-flush small">
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">Parcel No.</span>
+                        <span class="fw-bold text-end">{{ plot.parcel_number|default:"Pending" }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">Stated Area</span>
+                        <span class="fw-bold">{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between py-3">
+                        <span class="text-muted">Listing Type</span>
+                        <span class="badge bg-light border text-dark">{{ plot.get_listing_type_display }}</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="col-12 col-xl-8">
+    <div class="col-xl-8">
         <div class="admin-card">
             <div class="admin-card-header">
-                <h5 class="admin-card-title"><i class="fas fa-clipboard-check"></i>Findings</h5>
+                <h2 class="admin-card-title"><i class="fas fa-clipboard-list me-2"></i>Verified Findings</h2>
             </div>
-            <div class="admin-card-body">
-            {% if report.overall_suitability %}
-            <p class="mb-2"><strong>Overall Suitability:</strong> {{ report.get_overall_suitability_display }}</p>
-            {% endif %}
-            {% if report.recommended_crops %}
-            <p class="mb-2"><strong>Recommended Crops:</strong> {{ report.recommended_crops|default:"-" }}</p>
-            {% endif %}
-            {% if report.improvement_suggestions %}
-            <p class="mb-2"><strong>Improvements:</strong> {{ report.improvement_suggestions|default:"-" }}</p>
-            {% endif %}
-            {% if report.zoning_status %}
-            <p class="mb-2"><strong>Zoning Status:</strong> {{ report.get_zoning_status_display }}</p>
-            {% endif %}
-            {% if report.lcb_approval_potential %}
-            <p class="mb-2"><strong>LCB Approval:</strong> {{ report.get_lcb_approval_potential_display }}</p>
-            {% endif %}
-            {% if report.lcb_zone %}
-            <p class="mb-2"><strong>LCB Zone:</strong> Yes</p>
-            {% endif %}
-            {% if report.topography %}
-            <p class="mb-2"><strong>Topography:</strong> {{ report.get_topography_display }}</p>
-            {% endif %}
-            {% if report.soil_ph %}
-            <p class="mb-2"><strong>Soil pH:</strong> {{ report.soil_ph }}</p>
-            {% endif %}
-            {% if report.soil_classification %}
-            <p class="mb-2"><strong>Soil Classification:</strong> {{ report.soil_classification_display }}</p>
-            {% endif %}
-            {% if report.current_land_use %}
-            <p class="mb-2"><strong>Current Land Use:</strong> {{ report.current_land_use_display }}</p>
-            {% endif %}
-            {% if report.water_sources_available %}
-            <p class="mb-2"><strong>Verified Water Sources:</strong> {{ report.water_sources_available }}</p>
-            {% endif %}
-            {% if report.distance_to_tarmac_m %}
-            <p class="mb-2"><strong>Distance to Tarmac:</strong> {{ report.distance_to_tarmac_m }} m</p>
-            {% endif %}
-            {% if report.distance_to_market_m %}
-            <p class="mb-2"><strong>Distance to Market/Town:</strong> {{ report.distance_to_market_m }} m</p>
-            {% endif %}
-            {% if report.irrigation_viability %}
-            <p class="mb-2"><strong>Irrigation Viability:</strong> {{ report.get_irrigation_viability_display }}</p>
-            {% endif %}
-            {% if report.power_access %}
-            <p class="mb-2"><strong>Power Access:</strong> {{ report.get_power_access_display }}</p>
-            {% endif %}
-            {% if report.project_feasibility_note %}
-            <p class="mb-2"><strong>Project Feasibility:</strong> {{ report.project_feasibility_note }}</p>
-            {% endif %}
-            {% if report.boundary_confirmed is not None %}
-            <p class="mb-2"><strong>Boundary Confirmed:</strong> {{ report.boundary_confirmed }}</p>
-            {% endif %}
-            {% if report.acreage_confirmed is not None %}
-            <p class="mb-2"><strong>Acreage Confirmed:</strong> {{ report.acreage_confirmed }}</p>
-            {% endif %}
-            {% if report.ground_acreage %}
-            <p class="mb-2"><strong>Ground Acreage:</strong> {{ report.ground_acreage }}</p>
-            {% endif %}
-            {% if report.deed_area %}
-            <p class="mb-2"><strong>Deed Area:</strong> {{ report.deed_area }}</p>
-            {% endif %}
-            {% if report.rim_map_sheet_no %}
-            <p class="mb-2"><strong>RIM Map Sheet:</strong> {{ report.rim_map_sheet_no }}</p>
-            {% endif %}
-            {% if report.official_document_reference %}
-            <p class="mb-2"><strong>Reference Type:</strong> {{ report.get_official_document_reference_display }}</p>
-            {% endif %}
-            {% if report.reference_number %}
-            <p class="mb-2"><strong>Reference Number:</strong> {{ report.reference_number }}</p>
-            {% endif %}
-            {% if report.beacon_status %}
-            <p class="mb-2"><strong>Beacon Status:</strong> {{ report.beacon_status_display }}</p>
-            {% endif %}
-            {% if report.lsb_license_number %}
-            <p class="mb-2"><strong>LSB License:</strong> {{ report.lsb_license_number }}</p>
-            {% endif %}
-            {% if report.mutation_form %}
-            <p class="mb-2"><strong>Mutation Form:</strong> <a href="{{ report.mutation_form.url }}" target="_blank">View</a></p>
-            {% endif %}
-            {% if report.boundary_data_file %}
-            <p class="mb-2"><strong>Boundary Data:</strong> <a href="{{ report.boundary_data_file.url }}" target="_blank">Download</a></p>
-            {% endif %}
-            {% if report.variance_flagged %}
-            <p class="mb-2"><strong>Area Variance:</strong> <span class="text-warning">Flagged for admin review</span></p>
-            {% endif %}
-            {% if report.encroachment_found %}
-            <p class="mb-2"><strong>Encroachment:</strong> Yes</p>
-            {% endif %}
-            {% if report.encroachment_details %}
-            <p class="mb-2"><strong>Encroachment Details:</strong> {{ report.encroachment_details }}</p>
-            {% endif %}
-            <p class="mb-0"><strong>Comments:</strong> {{ report.comments|default:report.notes|default:"-" }}</p>
+            <div class="admin-card-body p-4 p-lg-5">
+                {% if report.officer %}
+                    <section class="report-section mb-5">
+                        <h3 class="report-section-title"><i class="fas fa-seedling me-2"></i>Soil & Agronomy</h3>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="detail-label">Soil pH & Classification</label>
+                                    <div class="detail-value">pH {{ report.soil_ph|default:"-" }} · {{ report.soil_classification_display|default:"-" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="detail-label">Terrain</label>
+                                    <div class="detail-value">{{ report.get_topography_display|default:"-" }} · {{ report.get_soil_drainage_display|default:"-" }} drainage</div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="detail-item">
+                                    <label class="detail-label">Recommended Crops</label>
+                                    <div class="detail-value">{{ report.recommended_crops|default:"No specific recommendations" }}</div>
+                                </div>
+                            </div>
+                            {% if report.soil_analysis_report %}
+                            <div class="col-12">
+                                <a href="{{ report.soil_analysis_report.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-3">
+                                    <i class="fas fa-file-pdf me-2"></i>Official Soil Analysis Report
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </section>
+
+                    <section class="report-section mb-5">
+                        <h3 class="report-section-title"><i class="fas fa-droplet me-2"></i>Infrastructure & Access</h3>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="detail-label">Water Status</label>
+                                    <div class="detail-value">{{ report.water_sources_available|default:"-" }} · {{ report.get_irrigation_viability_display|default:"-" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="detail-label">Access</label>
+                                    <div class="detail-value">{{ report.distance_to_tarmac_m|default:"-" }}m to tarmac · {{ report.distance_to_market_m|default:"-" }}m to market</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="detail-label">Electricity</label>
+                                    <div class="detail-value">{{ report.get_power_access_display|default:"-" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                {% else %}
+                    <section class="report-section mb-5">
+                        <h3 class="report-section-title"><i class="fas fa-ruler-combined me-2"></i>Spatial Verification</h3>
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="detail-label">Acreage Ground vs Deed</label>
+                                    <div class="detail-value fw-bold {% if report.variance_flagged %}text-danger{% else %}text-success{% endif %}">
+                                        {{ report.ground_acreage|default:"-" }} / {{ report.deed_area|default:"-" }}
+                                        {% if report.variance_flagged %}<i class="fas fa-triangle-exclamation ms-2"></i>{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="detail-label">Beacon Status</label>
+                                    <div class="detail-value">{{ report.beacon_status_display|default:"-" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="detail-label">Document Reference</label>
+                                    <div class="detail-value">{{ report.get_official_document_reference_display|default:"-" }} · {{ report.reference_number|default:"-" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="detail-item">
+                                    <label class="detail-label">Coordinates</label>
+                                    <div class="detail-value">{{ report.gps_latitude|default:"-" }}, {{ report.gps_longitude|default:"-" }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="report-section mb-5">
+                        <h3 class="report-section-title"><i class="fas fa-file-signature me-2"></i>Technical Evidence</h3>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% if report.mutation_form %}<a href="{{ report.mutation_form.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-3"><i class="fas fa-file-pdf me-2"></i>Mutation Form</a>{% endif %}
+                            {% if report.beacon_certificate %}<a href="{{ report.beacon_certificate.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-3"><i class="fas fa-certificate me-2"></i>Beacon Certificate</a>{% endif %}
+                            {% if report.boundary_report %}<a href="{{ report.boundary_report.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-3"><i class="fas fa-file-lines me-2"></i>Field Survey Report</a>{% endif %}
+                            {% if report.signed_survey_plan %}<a href="{{ report.signed_survey_plan.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-3"><i class="fas fa-signature me-2"></i>Signed Survey Plan</a>{% endif %}
+                            {% if report.boundary_data_file %}<a href="{{ report.boundary_data_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary px-3"><i class="fas fa-draw-polygon me-2"></i>Boundary Data</a>{% endif %}
+                        </div>
+                    </section>
+                {% endif %}
+
+                <section class="report-section">
+                    <h3 class="report-section-title"><i class="fas fa-comment-dots me-2"></i>Final Remarks</h3>
+                    <div class="p-4 bg-light rounded-3 border">
+                        <div class="detail-value" style="white-space: pre-line;">{{ report.comments|default:report.notes|default:"No additional comments provided." }}</div>
+                    </div>
+                </section>
+
+                <div class="mt-5 pt-4 border-top d-flex flex-column flex-md-row gap-3 justify-content-between align-items-md-center">
+                    <div class="text-muted small"><i class="fas fa-fingerprint me-1"></i>Report Hash: <code>{{ report.id|stringformat:"08x" }}</code></div>
+                    <a href="{% url 'listings:dashboard_router' %}?section=tasks" class="admin-btn admin-btn-outline px-4">
+                        <i class="fas fa-arrow-left me-2"></i>Back to Tasks
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
 </div>
+
+<style>
+    .bg-success-soft { background: rgba(25, 135, 84, 0.1); }
+    .bg-warning-soft { background: rgba(255, 193, 7, 0.1); }
+
+    .report-section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-bottom: 1.5rem;
+        color: var(--ag-green-700);
+        font-size: 0.85rem;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+    }
+
+    .report-section-title::after {
+        content: "";
+        height: 1px;
+        flex: 1;
+        background: var(--ag-border);
+    }
+
+    .detail-label {
+        display: block;
+        margin-bottom: 0.25rem;
+        color: var(--ag-muted);
+        font-size: 0.75rem;
+        font-weight: 800;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+    }
+
+    .detail-value {
+        color: var(--ag-charcoal);
+        font-size: 1rem;
+        line-height: 1.5;
+    }
+
+    .list-group-item {
+        border-color: rgba(0, 0, 0, 0.05);
+    }
+</style>
 {% endblock %}

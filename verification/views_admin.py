@@ -453,7 +453,8 @@ def review_plot(request, plot_id):
             verification.save()
 
             plot.is_published = True
-            plot.save(update_fields=['is_published'])
+            plot.is_hidden = False
+            plot.save(update_fields=['is_published', 'is_hidden'])
             
             # Create log entry
             VerificationLog.objects.create(
@@ -1086,6 +1087,11 @@ def complete_task_view(request, task_id):
     """View for completing a task"""
     
     task = get_object_or_404(VerificationTask, id=task_id, assigned_to=request.user)
+    if task.verification_type == "extension_review":
+        return redirect("verification:conduct_extension_review", task_id=task.id)
+    if task.verification_type == "surveyor_inspection":
+        return redirect("verification:conduct_surveyor_inspection", task_id=task.id)
+
     plot_content_type = ContentType.objects.get_for_model(Plot)
     verification = VerificationStatus.objects.filter(
         content_type=plot_content_type,

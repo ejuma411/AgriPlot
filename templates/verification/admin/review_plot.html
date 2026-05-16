@@ -1,987 +1,364 @@
 {% extends "verification/admin/base_admin.html" %}
-{% load static %}
-{% load plot_extras %}
+{% load static humanize plot_extras %}
 
-{% block title %}Review Plot: {{ plot.title }}{% endblock %}
+{% block admin_title %}Property Audit: {{ plot.title }}{% endblock %}
 
 {% block admin_content %}
-<!-- Page Header -->
-<div class="page-header">
-    <div class="page-header-content">
-        <div class="page-header-title">
-            <h1><i class="fas fa-search me-2"></i>Review Plot</h1>
-            <p class="page-header-subtitle">{{ plot.title }}</p>
-        </div>
-        <div class="page-header-actions">
-            <a href="{% url 'verification:verification_queue' %}" class="btn">
-                <i class="fas fa-arrow-left me-2"></i>Back to Queue
-            </a>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <!-- Left Column: Plot Information -->
-    <div class="col-md-4 mb-4">
-        <!-- Plot Details Card -->
-        <div class="admin-card mb-4">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-info-circle me-2"></i>Plot Details
-                </h5>
+<div class="row g-4">
+    <!-- Main Audit Pane -->
+    <div class="col-xl-9">
+        <!-- Overview Grid -->
+        <div class="stat-grid mb-4">
+            <div class="stat-card">
+                <div class="stat-label">Asking Price</div>
+                <div class="stat-value text-dark">KES {{ plot.price|floatformat:0|intcomma }}</div>
+                <div class="stat-trend">{{ plot.get_listing_type_display }}</div>
             </div>
-            <div class="admin-card-body">
-                <table class="details-table">
-                    <tr>
-                        <th>Title:</th>
-                        <td>{{ plot.title }}</td>
-                    </tr>
-                    <tr>
-                        <th>ID:</th>
-                        <td>#{{ plot.id }}</td>
-                    </tr>
-                    <tr>
-                        <th>Location:</th>
-                        <td>
-                            {% if plot.county %}
-                                {{ plot.county }}{% if plot.subcounty %} - {{ plot.subcounty }}{% endif %}
-                            {% else %}
-                                {{ plot.location }}
-                            {% endif %}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Area:</th>
-                        <td>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Parcel Number:</th>
-                        <td>{{ plot.parcel_number|default:"Not provided" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Registration Section:</th>
-                        <td>{{ plot.registration_section|default:"Not provided" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Listing Type:</th>
-                        <td>
-                            {% if plot.listing_type == 'sale' %}
-                                For Sale
-                            {% elif plot.listing_type == 'lease' %}
-                                For Lease
-                            {% elif plot.listing_type == 'both' %}
-                                Sale & Lease
-                            {% endif %}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>Land Type:</th>
-                        <td>{{ plot.get_land_type_display }}</td>
-                    </tr>
-                    <tr>
-                        <th>Price:</th>
-                        <td>KES {{ plot.price|floatformat:0|intcomma }}</td>
-                    </tr>
-                    <tr>
-                        <th>Created:</th>
-                        <td>{{ plot.created_at|date:"M d, Y H:i" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Last Updated:</th>
-                        <td>{{ plot.updated_at|date:"M d, Y H:i" }}</td>
-                    </tr>
-                </table>
+            <div class="stat-card">
+                <div class="stat-label">Area Scale</div>
+                <div class="stat-value text-primary">{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</div>
+                <div class="stat-trend">{{ plot.get_land_type_display }}</div>
             </div>
-        </div>
-
-        <!-- Seller Information Card -->
-        <div class="admin-card mb-4">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-user me-2"></i>Seller Information
-                </h5>
+            <div class="stat-card">
+                <div class="stat-label">Ownership Reference</div>
+                <div class="stat-value text-dark">#{{ plot.parcel_number|default:plot.id }}</div>
+                <div class="stat-trend">PID: #{{ plot.id }}</div>
             </div>
-            <div class="admin-card-body">
-                {% if plot.agent %}
-                    <div class="Seller-type mb-2">
-                        <span class="badge bg-info">Licensed Agent</span>
-                        {% if plot.agent.verified %}
-                            <span class="badge bg-success">Verified</span>
-                        {% else %}
-                            <span class="badge bg-warning">Unverified</span>
-                        {% endif %}
-                    </div>
-                    <table class="details-table">
-                        <tr>
-                            <th>Name:</th>
-                            <td>{{ plot.agent.user|display_name }}</td>
-                        </tr>
-                        <tr>
-                            <th>Email:</th>
-                            <td>{{ plot.agent.user|contact_email|default:"Not provided" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Phone:</th>
-                            <td>{{ plot.agent.phone|default:"Not provided" }}</td>
-                        </tr>
-                        <tr>
-                            <th>License:</th>
-                            <td>{{ plot.agent.license_number|default:"Not provided" }}</td>
-                        </tr>
-                    </table>
-                {% elif plot.landowner %}
-                    <div class="Seller-type mb-2">
-                        <span class="badge bg-primary">Landowner</span>
-                        {% if plot.landowner.verified %}
-                            <span class="badge bg-success">Verified</span>
-                        {% else %}
-                            <span class="badge bg-warning">Unverified</span>
-                        {% endif %}
-                    </div>
-                    <table class="details-table">
-                        <tr>
-                            <th>Name:</th>
-                            <td>{{ plot.landowner.user|display_name }}</td>
-                        </tr>
-                        <tr>
-                            <th>Email:</th>
-                            <td>{{ plot.landowner.user|contact_email|default:"Not provided" }}</td>
-                        </tr>
-                        <tr>
-                            <th>Phone:</th>
-                            <td>{{ plot.landowner.phone|default:"Not provided" }}</td>
-                        </tr>
-                    </table>
-                {% else %}
-                    <p class="text-muted">No Seller information available</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Verification Activity (Recent) -->
-        <div class="admin-card mb-4">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-history me-2"></i>Recent Activity
-                </h5>
-                <a href="{% url 'verification:verification_history' plot.id %}" class="btn btn-sm btn-outline-primary">
-                    Full History
-                </a>
-            </div>
-            <div class="admin-card-body">
-                {% if verification_logs %}
-                    <ul class="list-group">
-                        {% for log in verification_logs %}
-                        <li class="list-group-item">
-                            <div class="fw-bold">{{ log.verification_type|title }}</div>
-                            <div>{{ log.comment|default:"No comments provided." }}</div>
-                            <div class="small text-muted mt-1">
-                                {% if log.verified_by %}
-                                    {{ log.verified_by|display_name }}
-                                {% else %}
-                                    System
-                                {% endif %}
-                                • {{ log.created_at|timesince }} ago
-                            </div>
-                        </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <p class="text-muted mb-0">No verification activity yet.</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Agricultural Details Card -->
-        <div class="admin-card mb-4">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-seedling me-2"></i>Agricultural Details
-                </h5>
-            </div>
-            <div class="admin-card-body">
-                <table class="details-table">
-                    <tr>
-                        <th>Soil Type:</th>
-                        <td>{{ plot.soil_type|default:"Not specified" }}</td>
-                    </tr>
-                    <tr>
-                        <th>pH Level:</th>
-                        <td>{{ plot.ph_level|default:"Not specified" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Crop Suitability:</th>
-                        <td>{{ plot.crop_suitability|default:"Not specified" }}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
-        
-        <!-- Title Search Results Card (if available) -->
-        {% if plot.search_result %}
-        <div class="admin-card mb-4">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-search me-2"></i>Title Search Results
-                </h5>
-            </div>
-            <div class="admin-card-body">
-                <table class="details-table">
-                    <tr>
-                        <th>Platform:</th>
-                        <td>{{ plot.search_result.search_platform|title }}</td>
-                    </tr>
-                    <tr>
-                        <th>Owner:</th>
-                        <td>{{ plot.search_result.official_owner }}</td>
-                    </tr>
-                    <tr>
-                        <th>Parcel Number:</th>
-                        <td>{{ plot.search_result.parcel_number }}</td>
-                    </tr>
-                    <tr>
-                        <th>Search Date:</th>
-                        <td>{{ plot.search_result.search_date|date:"M d, Y" }}</td>
-                    </tr>
-                    <tr>
-                        <th>Verified:</th>
-                        <td>
-                            {% if plot.search_result.verified %}
-                                <span class="badge bg-success">Yes</span>
-                            {% else %}
-                                <span class="badge bg-danger">No</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                </table>
-                {% if plot.search_result.notes %}
-                <div class="mt-2 p-2 bg-light rounded">
-                    <small>{{ plot.search_result.notes }}</small>
+            <div class="stat-card">
+                <div class="stat-label">Registry Status</div>
+                <div class="stat-value {% if verification.progress_percentage >= 100 %}text-success{% else %}text-warning{% endif %}">
+                    {{ verification.progress_percentage }}%
                 </div>
-                {% endif %}
-                {% if plot.search_result.raw_response_file %}
-                <a href="{{ plot.search_result.raw_response_file.url }}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
-                    <i class="fas fa-download me-1"></i> Download Raw Response
-                </a>
-                {% endif %}
+                <div class="stat-trend">{{ verification.get_current_stage_display|default:"Pending Review" }}</div>
             </div>
         </div>
-        {% endif %}
+
+        <div class="row g-4">
+            <!-- Document Investigation -->
+            <div class="col-lg-7">
+                <div class="admin-card h-100">
+                    <div class="admin-card-header">
+                        <h2 class="admin-card-title"><i class="fas fa-file-contract me-2"></i>Official Documents</h2>
+                        <div class="text-muted small">Vault verification</div>
+                    </div>
+                    <div class="admin-card-body p-0">
+                        <div class="doc-workspace">
+                            <div class="doc-sidebar">
+                                <button class="doc-nav-item active" data-target="title">
+                                    <div class="doc-icon"><i class="fas fa-file-contract"></i></div>
+                                    <div class="doc-label">Title Deed</div>
+                                    {% if plot.title_deed %}<i class="fas fa-check-circle text-success ms-auto"></i>{% endif %}
+                                </button>
+                                <button class="doc-nav-item" data-target="search">
+                                    <div class="doc-icon"><i class="fas fa-search"></i></div>
+                                    <div class="doc-label">Official Search</div>
+                                    {% if plot.official_search %}<i class="fas fa-check-circle text-success ms-auto"></i>{% endif %}
+                                </button>
+                                <button class="doc-nav-item" data-target="id_doc">
+                                    <div class="doc-icon"><i class="fas fa-id-card"></i></div>
+                                    <div class="doc-label">Owner ID</div>
+                                    {% if plot.landowner_id_doc %}<i class="fas fa-check-circle text-success ms-auto"></i>{% endif %}
+                                </button>
+                                <button class="doc-nav-item" data-target="kra">
+                                    <div class="doc-icon"><i class="fas fa-file-invoice"></i></div>
+                                    <div class="doc-label">KRA PIN</div>
+                                    {% if plot.kra_pin %}<i class="fas fa-check-circle text-success ms-auto"></i>{% endif %}
+                                </button>
+                                <button class="doc-nav-item" data-target="soil">
+                                    <div class="doc-icon"><i class="fas fa-flask"></i></div>
+                                    <div class="doc-label">Soil Report</div>
+                                    {% if plot.soil_report %}<i class="fas fa-check-circle text-success ms-auto"></i>{% endif %}
+                                </button>
+                            </div>
+                            <div class="doc-viewer">
+                                <div id="doc-title" class="doc-content active">
+                                    {% if plot.title_deed %}
+                                        {% if plot.title_deed.url|lower|slice:'-4:' == '.pdf' %}
+                                            <iframe src="{{ plot.title_deed.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                        {% else %}
+                                            <img src="{{ plot.title_deed.url }}" class="img-fluid rounded" alt="Title Deed">
+                                        {% endif %}
+                                    {% else %}<div class="doc-placeholder"><i class="fas fa-file-contract fa-3x mb-3"></i><p>Title Deed missing from vault.</p></div>{% endif %}
+                                </div>
+                                <div id="doc-search" class="doc-content">
+                                    {% if plot.official_search %}
+                                        {% if plot.official_search.url|lower|slice:'-4:' == '.pdf' %}
+                                            <iframe src="{{ plot.official_search.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                        {% else %}
+                                            <img src="{{ plot.official_search.url }}" class="img-fluid rounded" alt="Official Search">
+                                        {% endif %}
+                                    {% else %}<div class="doc-placeholder"><i class="fas fa-search fa-3x mb-3"></i><p>Official Search record missing.</p></div>{% endif %}
+                                </div>
+                                <div id="doc-id_doc" class="doc-content">
+                                    {% if plot.landowner_id_doc %}
+                                        {% if plot.landowner_id_doc.url|lower|slice:'-4:' == '.pdf' %}
+                                            <iframe src="{{ plot.landowner_id_doc.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                        {% else %}
+                                            <img src="{{ plot.landowner_id_doc.url }}" class="img-fluid rounded" alt="ID Document">
+                                        {% endif %}
+                                    {% else %}<div class="doc-placeholder"><i class="fas fa-id-card fa-3x mb-3"></i><p>Identity document missing.</p></div>{% endif %}
+                                </div>
+                                <div id="doc-kra" class="doc-content">
+                                    {% if plot.kra_pin %}
+                                        {% if plot.kra_pin.url|lower|slice:'-4:' == '.pdf' %}
+                                            <iframe src="{{ plot.kra_pin.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                        {% else %}
+                                            <img src="{{ plot.kra_pin.url }}" class="img-fluid rounded" alt="KRA PIN">
+                                        {% endif %}
+                                    {% else %}<div class="doc-placeholder"><i class="fas fa-file-invoice fa-3x mb-3"></i><p>Tax compliance record missing.</p></div>{% endif %}
+                                </div>
+                                <div id="doc-soil" class="doc-content">
+                                    {% if plot.soil_report %}
+                                        {% if plot.soil_report.url|lower|slice:'-4:' == '.pdf' %}
+                                            <iframe src="{{ plot.soil_report.url }}" width="100%" height="600px" style="border: none;"></iframe>
+                                        {% else %}
+                                            <img src="{{ plot.soil_report.url }}" class="img-fluid rounded" alt="Soil Report">
+                                        {% endif %}
+                                    {% else %}<div class="doc-placeholder"><i class="fas fa-flask fa-3x mb-3"></i><p>Agricultural analysis missing.</p></div>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Property Data & Status -->
+            <div class="col-lg-5">
+                <!-- Location & Physical -->
+                <div class="admin-card mb-4">
+                    <div class="admin-card-header">
+                        <h2 class="admin-card-title"><i class="fas fa-map-marker-alt me-2"></i>Physical Attributes</h2>
+                    </div>
+                    <div class="admin-card-body p-0">
+                        <div class="list-group list-group-flush small">
+                            <div class="list-group-item d-flex justify-content-between py-3">
+                                <span class="text-muted">Primary Location</span>
+                                <span class="fw-bold text-dark">{{ plot.county|default:"Not specified" }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between py-3">
+                                <span class="text-muted">Sub-county/Area</span>
+                                <span class="fw-bold text-dark">{{ plot.subcounty|default:plot.location }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between py-3">
+                                <span class="text-muted">Soil Profile</span>
+                                <span class="fw-bold text-dark">{{ plot.soil_type|default:"Awaiting data" }}</span>
+                            </div>
+                            <div class="list-group-item d-flex justify-content-between py-3">
+                                <span class="text-muted">Crop Viability</span>
+                                <span class="fw-bold text-dark">{{ plot.crop_suitability|default:"Unknown" }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Seller Context -->
+                <div class="admin-card">
+                    <div class="admin-card-header">
+                        <h2 class="admin-card-title"><i class="fas fa-user-tie me-2"></i>Entity Information</h2>
+                    </div>
+                    <div class="admin-card-body">
+                        {% if plot.agent %}
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 48px; height: 48px;">{{ plot.agent.user|display_initial }}</div>
+                            <div>
+                                <div class="fw-bold text-dark">{{ plot.agent.user|display_name }}</div>
+                                <div class="small text-muted">Licensed Real Estate Agent</div>
+                            </div>
+                            <span class="badge bg-success-soft text-success ms-auto px-2">Verified Entity</span>
+                        </div>
+                        <div class="small text-muted">
+                            <div class="mb-1"><i class="fas fa-envelope me-2"></i>{{ plot.agent.user|contact_email }}</div>
+                            <div class="mb-1"><i class="fas fa-phone me-2"></i>{{ plot.agent.phone }}</div>
+                            <div><i class="fas fa-certificate me-2"></i>License: {{ plot.agent.license_number }}</div>
+                        </div>
+                        {% elif plot.landowner %}
+                        <div class="d-flex align-items-center gap-3 mb-3">
+                            <div class="bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 48px; height: 48px;">{{ plot.landowner.user|display_initial }}</div>
+                            <div>
+                                <div class="fw-bold text-dark">{{ plot.landowner.user|display_name }}</div>
+                                <div class="small text-muted">Direct Property Owner</div>
+                            </div>
+                            <span class="badge bg-info-soft text-info ms-auto px-2">Individual Seller</span>
+                        </div>
+                        <div class="small text-muted">
+                            <div class="mb-1"><i class="fas fa-envelope me-2"></i>{{ plot.landowner.user|contact_email }}</div>
+                            <div><i class="fas fa-phone me-2"></i>{{ plot.landowner.phone }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Middle Column: Document Viewer -->
-    <div class="col-md-5 mb-4">
-        <div class="admin-card h-100">
+    <!-- Right Column: Verification Engine -->
+    <div class="col-xl-3">
+        <!-- Verification Timeline -->
+        <div class="admin-card mb-4">
             <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-file-alt me-2"></i>Document Viewer
-                </h5>
+                <h2 class="admin-card-title"><i class="fas fa-shield-alt me-2"></i>Audit Trail</h2>
             </div>
             <div class="admin-card-body p-0">
-                <div class="document-tabs p-3">
-                    <ul class="nav nav-pills mb-3" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="title-tab" data-bs-toggle="pill" data-bs-target="#title" type="button" role="tab">
-                                <i class="fas fa-file-contract me-1"></i> Title Deed
-                                {% if plot.title_deed %}
-                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
-                                {% else %}
-                                    <span class="badge bg-danger ms-1"><i class="fas fa-times"></i></span>
-                                {% endif %}
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="search-tab" data-bs-toggle="pill" data-bs-target="#search" type="button" role="tab">
-                                <i class="fas fa-search me-1"></i> Official Search
-                                {% if plot.official_search %}
-                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
-                                {% else %}
-                                    <span class="badge bg-danger ms-1"><i class="fas fa-times"></i></span>
-                                {% endif %}
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="id-tab" data-bs-toggle="pill" data-bs-target="#id" type="button" role="tab">
-                                <i class="fas fa-id-card me-1"></i> ID Document
-                                {% if plot.landowner_id_doc %}
-                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
-                                {% else %}
-                                    <span class="badge bg-danger ms-1"><i class="fas fa-times"></i></span>
-                                {% endif %}
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="kra-tab" data-bs-toggle="pill" data-bs-target="#kra" type="button" role="tab">
-                                <i class="fas fa-file-invoice me-1"></i> KRA PIN
-                                {% if plot.kra_pin %}
-                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
-                                {% else %}
-                                    <span class="badge bg-danger ms-1"><i class="fas fa-times"></i></span>
-                                {% endif %}
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="soil-tab" data-bs-toggle="pill" data-bs-target="#soil" type="button" role="tab">
-                                <i class="fas fa-flask me-1"></i> Soil Report
-                                {% if plot.soil_report %}
-                                    <span class="badge bg-success ms-1"><i class="fas fa-check"></i></span>
-                                {% else %}
-                                    <span class="badge bg-secondary ms-1">Optional</span>
-                                {% endif %}
-                            </button>
-                        </li>
-                    </ul>
-
-                    <div class="tab-content">
-                        <div class="tab-pane fade show active" id="title" role="tabpanel">
-                            {% if plot.title_deed %}
-                                <div class="document-viewer-container">
-                                    {% if plot.title_deed.url|lower|slice:'-4:' == '.pdf' %}
-                                        <iframe src="{{ plot.title_deed.url }}" width="100%" height="600px" style="border: none;"></iframe>
-                                    {% else %}
-                                        <img src="{{ plot.title_deed.url }}" class="img-fluid" alt="Title Deed">
-                                    {% endif %}
-                                </div>
-                                <div class="mt-2">
-                                    <a href="{{ plot.title_deed.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
-                                    </a>
-                                </div>
-                            {% else %}
-                                <div class="text-center py-5">
-                                    <i class="fas fa-file-contract fa-4x text-muted mb-3"></i>
-                                    <h5>No Title Deed Uploaded</h5>
-                                    <p class="text-muted">This document is required for verification.</p>
-                                </div>
-                            {% endif %}
+                <div class="audit-timeline p-4">
+                    {% for stage in verification_stages %}
+                    <div class="audit-step {% if stage.completed %}completed{% elif stage.active %}active{% endif %}">
+                        <div class="step-icon">
+                            {% if stage.completed %}<i class="fas fa-check-circle"></i>
+                            {% elif stage.active %}<i class="fas fa-circle-notch fa-spin"></i>
+                            {% else %}<i class="fas fa-circle"></i>{% endif %}
                         </div>
-
-                        <div class="tab-pane fade" id="search" role="tabpanel">
-                            {% if plot.official_search %}
-                                <div class="document-viewer-container">
-                                    {% if plot.official_search.url|lower|slice:'-4:' == '.pdf' %}
-                                        <iframe src="{{ plot.official_search.url }}" width="100%" height="600px" style="border: none;"></iframe>
-                                    {% else %}
-                                        <img src="{{ plot.official_search.url }}" class="img-fluid" alt="Official Search">
-                                    {% endif %}
-                                </div>
-                                <div class="mt-2">
-                                    <a href="{{ plot.official_search.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
-                                    </a>
-                                </div>
-                            {% else %}
-                                <div class="text-center py-5">
-                                    <i class="fas fa-search fa-4x text-muted mb-3"></i>
-                                    <h5>No Official Search Uploaded</h5>
-                                    <p class="text-muted">This document is required for verification.</p>
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="tab-pane fade" id="id" role="tabpanel">
-                            {% if plot.landowner_id_doc %}
-                                <div class="document-viewer-container">
-                                    {% if plot.landowner_id_doc.url|lower|slice:'-4:' == '.pdf' %}
-                                        <iframe src="{{ plot.landowner_id_doc.url }}" width="100%" height="600px" style="border: none;"></iframe>
-                                    {% else %}
-                                        <img src="{{ plot.landowner_id_doc.url }}" class="img-fluid" alt="ID Document">
-                                    {% endif %}
-                                </div>
-                                <div class="mt-2">
-                                    <a href="{{ plot.landowner_id_doc.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
-                                    </a>
-                                </div>
-                            {% else %}
-                                <div class="text-center py-5">
-                                    <i class="fas fa-id-card fa-4x text-muted mb-3"></i>
-                                    <h5>No ID Document Uploaded</h5>
-                                    <p class="text-muted">This document is required for verification.</p>
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="tab-pane fade" id="kra" role="tabpanel">
-                            {% if plot.kra_pin %}
-                                <div class="document-viewer-container">
-                                    {% if plot.kra_pin.url|lower|slice:'-4:' == '.pdf' %}
-                                        <iframe src="{{ plot.kra_pin.url }}" width="100%" height="600px" style="border: none;"></iframe>
-                                    {% else %}
-                                        <img src="{{ plot.kra_pin.url }}" class="img-fluid" alt="KRA PIN">
-                                    {% endif %}
-                                </div>
-                                <div class="mt-2">
-                                    <a href="{{ plot.kra_pin.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
-                                    </a>
-                                </div>
-                            {% else %}
-                                <div class="text-center py-5">
-                                    <i class="fas fa-file-invoice fa-4x text-muted mb-3"></i>
-                                    <h5>No KRA PIN Uploaded</h5>
-                                    <p class="text-muted">This document is required for verification.</p>
-                                </div>
-                            {% endif %}
-                        </div>
-
-                        <div class="tab-pane fade" id="soil" role="tabpanel">
-                            {% if plot.soil_report %}
-                                <div class="document-viewer-container">
-                                    {% if plot.soil_report.url|lower|slice:'-4:' == '.pdf' %}
-                                        <iframe src="{{ plot.soil_report.url }}" width="100%" height="600px" style="border: none;"></iframe>
-                                    {% else %}
-                                        <img src="{{ plot.soil_report.url }}" class="img-fluid" alt="Soil Report">
-                                    {% endif %}
-                                </div>
-                                <div class="mt-2">
-                                    <a href="{{ plot.soil_report.url }}" target="_blank" class="btn btn-sm btn-outline-primary">
-                                        <i class="fas fa-external-link-alt me-1"></i> Open in New Tab
-                                    </a>
-                                </div>
-                            {% else %}
-                                <div class="text-center py-5">
-                                    <i class="fas fa-flask fa-4x text-muted mb-3"></i>
-                                    <h5>No Soil Report Uploaded</h5>
-                                    <p class="text-muted">This document is optional but recommended.</p>
-                                </div>
-                            {% endif %}
+                        <div class="step-label">
+                            <div class="fw-bold small">{{ stage.name }}</div>
+                            <div class="x-small text-muted">{{ stage.date|date:"M d, Y"|default:"Pending" }}</div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Right Column: Review Actions -->
-    <div class="col-md-3 mb-4">
-        <!-- Verification Status Card -->
-        <div class="admin-card mb-4">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-check-circle me-2"></i>Verification Status
-                </h5>
-            </div>
-            <div class="admin-card-body">
-                {% if verification %}
-                    <div class="status-timeline">
-                        <!-- Stage 1: Documents Uploaded -->
-                        <div class="timeline-item {% if verification.current_stage == 'document_uploaded' or verification.progress_percentage >= 14 %}active{% endif %} 
-                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <strong>1. Documents Uploaded</strong>
-                                <small>{{ verification.document_uploaded_at|date:"M d, Y"|default:"Pending" }}</small>
-                                {% if verification.progress_percentage >= 14 %}
-                                    <span class="badge bg-success float-end">✓</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Stage 2: API Verification Started -->
-                        <div class="timeline-item {% if verification.current_stage == 'api_verification_started' or verification.progress_percentage >= 28 %}active{% endif %}
-                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <strong>2. API Verification Started</strong>
-                                <small>{{ verification.api_started_at|date:"M d, Y"|default:"Pending" }}</small>
-                                {% if verification.progress_percentage >= 28 %}
-                                    <span class="badge bg-success float-end">✓</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Stage 3: Title Search Completed -->
-                        <div class="timeline-item {% if verification.current_stage == 'title_search_completed' or verification.progress_percentage >= 42 %}active{% endif %}
-                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <strong>3. Title Search Completed</strong>
-                                <small>{{ verification.title_search_at|date:"M d, Y"|default:"Pending" }}</small>
-                                {% if verification.progress_percentage >= 42 %}
-                                    <span class="badge bg-success float-end">✓</span>
-                                {% endif %}
-                                {% if verification.search_reference %}
-                                    <small class="text-muted d-block">Ref: {{ verification.search_reference }}</small>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Stage 4: Owner Verified -->
-                        <div class="timeline-item {% if verification.current_stage == 'owner_verified' or verification.progress_percentage >= 57 %}active{% endif %}
-                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <strong>4. Owner Identity Verified</strong>
-                                <small>{{ verification.owner_verified_at|date:"M d, Y"|default:"Pending" }}</small>
-                                {% if verification.progress_percentage >= 57 %}
-                                    <span class="badge bg-success float-end">✓</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Stage 5: Encumbrance Check -->
-                        <div class="timeline-item {% if verification.current_stage == 'encumbrance_check' or verification.progress_percentage >= 71 %}active{% endif %}
-                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <strong>5. Encumbrance Check</strong>
-                                <small>{{ verification.encumbrance_check_at|date:"M d, Y"|default:"Pending" }}</small>
-                                {% if verification.progress_percentage >= 71 %}
-                                    <span class="badge bg-success float-end">✓</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Stage 6: Physical Location Verified -->
-                        <div class="timeline-item {% if verification.current_stage == 'physical_location_verified' or verification.progress_percentage >= 85 %}active{% endif %}
-                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <strong>6. Physical Location Verified</strong>
-                                <small>{{ verification.physical_location_verified_at|date:"M d, Y"|default:"Pending" }}</small>
-                                {% if verification.progress_percentage >= 85 %}
-                                    <span class="badge bg-success float-end">✓</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Stage 7: Admin Review -->
-                        <div class="timeline-item {% if verification.current_stage == 'admin_review' or verification.progress_percentage >= 92 %}active{% endif %}
-                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <strong>7. Admin Review</strong>
-                                <small>{{ verification.admin_review_at|date:"M d, Y"|default:"Pending" }}</small>
-                                {% if verification.progress_percentage >= 92 %}
-                                    <span class="badge bg-success float-end">✓</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Stage 8: Approved -->
-                        <div class="timeline-item {% if verification.current_stage == 'approved' %}active completed{% endif %}
-                                                {% if verification.progress_percentage >= 100 %}completed{% endif %}">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <strong>8. Approved</strong>
-                                <small>{{ verification.approved_at|date:"M d, Y"|default:"Pending" }}</small>
-                                {% if verification.progress_percentage >= 100 %}
-                                    <span class="badge bg-success float-end">✓</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                        
-                        <!-- Stage: Rejected (if applicable) -->
-                        {% if verification.current_stage == 'rejected' %}
-                        <div class="timeline-item active completed" style="margin-top: 10px;">
-                            <div class="timeline-dot" style="background: var(--danger);"></div>
-                            <div class="timeline-content">
-                                <strong class="text-danger">❌ Rejected</strong>
-                                <small>{{ verification.rejected_at|date:"M d, Y"|default:"Rejected" }}</small>
-                                {% if verification.stage_details.rejection_reason %}
-                                    <p class="text-muted small mt-1">{{ verification.stage_details.rejection_reason|truncatechars:50 }}</p>
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% endif %}
-                    </div>
+                    {% endfor %}
                     
-                    <!-- Progress Bar with Percentage -->
-                    <div class="mt-4">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <strong>Overall Progress:</strong>
-                            <strong class="{% if verification.progress_percentage >= 100 %}text-success
-                                        {% elif verification.current_stage == 'rejected' %}text-danger
-                                        {% endif %}">
-                                {% if verification.current_stage == 'rejected' %}
-                                    Rejected
-                                {% else %}
-                                    {{ verification.progress_percentage }}%
-                                {% endif %}
-                            </strong>
+                    {% if verification.current_stage == 'rejected' %}
+                    <div class="audit-step rejected mt-3">
+                        <div class="step-icon text-danger"><i class="fas fa-times-circle"></i></div>
+                        <div class="step-label">
+                            <div class="fw-bold small text-danger">Verification Rejected</div>
+                            <div class="x-small text-muted">{{ verification.rejected_at|date:"M d, Y" }}</div>
                         </div>
-                        
-                        {% if verification.current_stage != 'rejected' %}
-                        <div class="progress" style="height: 20px;">
-                            <div class="progress-bar 
-                                {% if verification.progress_percentage >= 100 %}bg-success
-                                {% elif verification.progress_percentage >= 75 %}bg-info
-                                {% elif verification.progress_percentage >= 50 %}bg-warning
-                                {% else %}bg-danger{% endif %}" 
-                                role="progressbar" 
-                                style="width: {{ verification.progress_percentage }}%;" 
-                                aria-valuenow="{{ verification.progress_percentage }}" 
-                                aria-valuemin="0" 
-                                aria-valuemax="100">
-                                {% if verification.progress_percentage >= 100 %}
-                                    <i class="fas fa-check-circle me-1"></i> COMPLETE
-                                {% endif %}
-                            </div>
-                        </div>
-                        {% else %}
-                        <div class="progress" style="height: 20px;">
-                            <div class="progress-bar bg-danger" role="progressbar" style="width: 100%;">
-                                <i class="fas fa-times-circle me-1"></i> REJECTED
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <!-- Stage Details -->
-                        {% if verification.stage_details %}
-                        <div class="mt-3">
-                            <button class="btn btn-sm btn-outline-secondary w-100" type="button" data-bs-toggle="collapse" data-bs-target="#stageDetails">
-                                <i class="fas fa-info-circle me-1"></i> View Stage Details
-                            </button>
-                            <div class="collapse mt-2" id="stageDetails">
-                                <div class="card card-body p-2 bg-light">
-                                    <pre class="small mb-0" style="white-space: pre-wrap;">{{ verification.stage_details|pprint }}</pre>
-                                </div>
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <!-- Completion Message -->
-                        {% if verification.progress_percentage >= 100 %}
-                            <div class="alert alert-success mt-3 mb-0">
-                                <i class="fas fa-check-circle me-2"></i>
-                                <strong>Verification Complete!</strong> This plot has been fully verified and approved.
-                            </div>
-                        {% elif verification.current_stage == 'rejected' %}
-                            <div class="alert alert-danger mt-3 mb-0">
-                                <i class="fas fa-times-circle me-2"></i>
-                                <strong>Verification Rejected</strong> This plot did not pass verification.
-                                {% if verification.stage_details.rejection_reason %}
-                                    <p class="mt-1 mb-0 small">{{ verification.stage_details.rejection_reason }}</p>
-                                {% endif %}
-                            </div>
-                        {% endif %}
                     </div>
-                {% else %}
-                    <p class="text-muted">No verification status found.</p>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Ardhisasa API Action Card -->
-        <div class="admin-card mb-4">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-cloud me-2"></i>Ardhisasa Integration
-                </h5>
-            </div>
-            <div class="admin-card-body">
-                {% if verification and verification.current_stage == 'document_uploaded' or verification.current_stage == 'api_verification_started' %}
-                    <div class="mb-3">
-                        {% if verification.current_stage == 'api_verification_started' %}
-                            <div class="alert alert-info mb-3">
-                                <i class="fas fa-sync-alt fa-spin me-2"></i>
-                                Verification in progress...
-                            </div>
-                        {% endif %}
-                        <button type="button" class="btn btn-info w-100 mb-2" onclick="triggerArdhisasa()">
-                            <i class="fas fa-cloud-upload-alt me-2"></i> Run Ardhisasa Check
-                        </button>
-                        <small class="text-muted d-block">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Automatically verifies title with Ardhisasa (mock)
-                        </small>
-                    </div>
-                {% elif verification.current_stage == 'title_search_completed' %}
-                    <div class="alert alert-success mb-3">
-                        <i class="fas fa-check-circle me-2"></i>
-                        Title verification completed
-                    </div>
-                    {% if verification.search_reference %}
-                        <p class="mb-1"><strong>Ref:</strong> {{ verification.search_reference }}</p>
                     {% endif %}
-                {% elif verification.current_stage|lower in 'approved,rejected' %}
-                    <div class="alert alert-secondary mb-3">
-                        <i class="fas fa-info-circle me-2"></i>
-                        Title verification already processed
+                </div>
+                
+                <div class="px-4 pb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small fw-bold">Overall Compliance</span>
+                        <span class="badge {% if verification.progress_percentage >= 100 %}bg-success{% else %}bg-primary{% endif %} px-2">{{ verification.progress_percentage }}%</span>
                     </div>
-                {% else %}
-                    <div class="alert alert-warning mb-3">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Documents must be uploaded first
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- API Data Card (if available) -->
-        {% if verification and verification.api_responses %}
-        <div class="admin-card mb-4">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-cloud me-2"></i>API Response Data
-                </h5>
-            </div>
-            <div class="admin-card-body">
-                {% if verification.search_reference %}
-                <p><strong>Search Reference:</strong> {{ verification.search_reference }}</p>
-                {% endif %}
-                {% if verification.search_fee_paid %}
-                <p><strong>Search Fee:</strong> KES {{ verification.search_fee_paid }}</p>
-                {% endif %}
-                <button class="btn btn-sm btn-outline-info w-100" type="button" data-bs-toggle="collapse" data-bs-target="#apiResponses">
-                    <i class="fas fa-code me-1"></i> View Raw API Responses
-                </button>
-                <div class="collapse mt-2" id="apiResponses">
-                    <div class="card card-body p-2 bg-light">
-                        <pre class="small mb-0" style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;">{{ verification.api_responses|pprint }}</pre>
+                    <div class="progress rounded-pill" style="height: 8px;">
+                        <div class="progress-bar {% if verification.progress_percentage >= 100 %}bg-success{% else %}bg-primary{% endif %}" role="progressbar" style="width: {{ verification.progress_percentage }}%;"></div>
                     </div>
                 </div>
             </div>
         </div>
-        {% endif %}
 
-        <!-- Review Actions Card -->
+        <!-- System Integrations -->
         <div class="admin-card mb-4">
             <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-gavel me-2"></i>Review Actions
-                </h5>
+                <h2 class="admin-card-title"><i class="fas fa-network-wired me-2"></i>External Sync</h2>
+            </div>
+            <div class="admin-card-body">
+                <button type="button" class="admin-btn admin-btn-outline w-100 mb-3" id="ardhisasaSyncBtn" 
+                        {% if verification.current_stage == 'approved' or verification.current_stage == 'rejected' %}disabled{% endif %}>
+                    <i class="fas fa-cloud-upload-alt me-2"></i>Ardhisasa Query
+                </button>
+                <div class="text-center">
+                    <small class="text-muted d-block x-small">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Automated title search on Ardhisasa digital registry.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Adjudication Panel -->
+        <div class="admin-card adjudication-card">
+            <div class="admin-card-header">
+                <h2 class="admin-card-title"><i class="fas fa-gavel me-2"></i>Adjudication</h2>
             </div>
             <div class="admin-card-body">
                 <form method="POST" id="reviewForm">
                     {% csrf_token %}
-                    
                     <div class="mb-3">
-                        <label for="notes" class="form-label">Review Notes</label>
-                        <textarea class="form-control" id="notes" name="notes" rows="4" 
-                                placeholder="Enter your observations, concerns, or approval notes..."></textarea>
+                        <label class="form-label small fw-bold">Reviewer Observations</label>
+                        <textarea class="form-control" name="notes" rows="4" placeholder="Enter findings for history log..." required></textarea>
                     </div>
-
                     <div class="d-grid gap-2">
                         {% if admin_ready %}
-                        <button type="submit" name="action" value="publish" class="btn btn-success btn-lg"
-                                onclick="return confirm('Are you sure you want to PUBLISH this plot?')">
-                            <i class="fas fa-check-circle me-2"></i> Publish Plot
+                        <button type="submit" name="action" value="publish" class="admin-btn admin-btn-primary py-3">
+                            <i class="fas fa-rocket me-2"></i>Approve & Publish
                         </button>
                         {% else %}
-                        <button type="button" class="btn btn-outline-secondary btn-lg" disabled>
-                            <i class="fas fa-hourglass-half me-2"></i> Awaiting Final Readiness
+                        <button type="button" class="admin-btn admin-btn-outline py-3 opacity-50" disabled>
+                            <i class="fas fa-hourglass-half me-2"></i>Awaiting Registry
                         </button>
                         {% endif %}
-                        
-                        <button type="submit" name="action" value="request_changes" class="btn btn-warning btn-lg"
-                                onclick="return confirm('Request changes from the Seller?')">
-                            <i class="fas fa-edit me-2"></i> Request Changes
+                        <button type="submit" name="action" value="request_changes" class="admin-btn admin-btn-outline py-2">
+                            <i class="fas fa-edit me-2"></i>Request Changes
                         </button>
-                        
-                        <button type="submit" name="action" value="reject" class="btn btn-danger btn-lg"
-                                onclick="return confirm('Are you sure you want to REJECT this plot? This action cannot be undone.')">
-                            <i class="fas fa-times-circle me-2"></i> Reject Plot
+                        <button type="submit" name="action" value="reject" class="admin-btn admin-btn-outline border-danger text-danger py-2">
+                            <i class="fas fa-times-circle me-2"></i>Final Rejection
                         </button>
                     </div>
                 </form>
             </div>
         </div>
-
-        <!-- Recent Activity Card -->
-        <div class="admin-card">
-            <div class="admin-card-header">
-                <h5 class="admin-card-title">
-                    <i class="fas fa-history me-2"></i>Recent Activity
-                </h5>
-            </div>
-            <div class="admin-card-body p-0">
-                <div class="activity-list">
-                    {% for log in verification_logs %}
-                        <div class="activity-item">
-                            <div class="activity-icon">
-                                {% if log.verification_type == 'approval' %}
-                                    <i class="fas fa-check-circle text-success"></i>
-                                {% elif log.verification_type == 'rejection' %}
-                                    <i class="fas fa-times-circle text-danger"></i>
-                                {% elif log.verification_type == 'change_request' %}
-                                    <i class="fas fa-edit text-warning"></i>
-                                {% elif log.verification_type == 'assignment' %}
-                                    <i class="fas fa-user-plus text-info"></i>
-                                {% elif log.verification_type == 'system' %}
-                                    <i class="fas fa-cog text-secondary"></i>
-                                {% elif log.verification_type == 'api_verification' %}
-                                    <i class="fas fa-cloud text-primary"></i>
-                                {% else %}
-                                    <i class="fas fa-info-circle text-info"></i>
-                                {% endif %}
-                            </div>
-                            <div class="activity-content">
-                                <strong>{{ log.get_verification_type_display }}</strong>
-                                <p class="mb-0">{{ log.comment|truncatechars:50 }}</p>
-                                <small class="text-muted">
-                                    by {% if log.verified_by %}{{ log.verified_by|display_name }}{% else %}System{% endif %} 
-                                    {{ log.created_at|timesince }} ago
-                                </small>
-                            </div>
-                        </div>
-                    {% empty %}
-                        <div class="text-center py-4">
-                            <p class="text-muted">No activity yet</p>
-                        </div>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="admin-card-footer text-center">
-                <a href="{% url 'verification:verification_history' plot.id %}" class="btn btn-sm btn-outline-primary">
-                    View Full History
-                </a>
-            </div>
-        </div>
     </div>
 </div>
 
-<!-- Include the existing styles here (they remain the same) -->
 <style>
-    /* All your existing styles remain exactly the same */
-    .details-table {
-        width: 100%;
-    }
-
-    .details-table th {
-        text-align: left;
-        padding: 0.5rem 0;
-        color: var(--secondary);
-        font-weight: 500;
-        width: 40%;
-    }
-
-    .details-table td {
-        padding: 0.5rem 0;
-    }
-
-    .nav-pills {
+    .bg-success-soft { background: rgba(25, 135, 84, 0.1); }
+    .bg-info-soft { background: rgba(13, 202, 240, 0.1); }
+    
+    /* Doc Workspace Styling */
+    .doc-workspace {
         display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem;
+        height: 650px;
     }
-
-    .nav-pills .nav-link {
-        border-radius: 30px;
-        color: var(--secondary);
-        margin-bottom: 0.25rem;
-        padding: 0.5rem 1rem;
-        font-size: 0.9rem;
+    .doc-sidebar {
+        width: 180px;
+        background: #f8f9fa;
+        border-right: 1px solid #eee;
+        display: flex;
+        flex-direction: column;
+        padding: 0.5rem;
+        gap: 0.5rem;
     }
-
-    .nav-pills .nav-link.active {
-        background: var(--primary);
-        color: white;
+    .doc-nav-item {
+        background: none;
+        border: 1px solid transparent;
+        padding: 1rem 0.75rem;
+        border-radius: 10px;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s ease;
+        color: var(--ag-charcoal);
     }
-
-    .nav-pills .nav-link .badge {
-        margin-left: 0.5rem;
+    .doc-nav-item .doc-icon { font-size: 1.25rem; opacity: 0.6; }
+    .doc-nav-item .doc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
+    .doc-nav-item:hover { background: rgba(0,0,0,0.03); border-color: #eee; }
+    .doc-nav-item.active { background: white; border-color: #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.05); color: var(--ag-green-700); }
+    .doc-nav-item.active .doc-icon { opacity: 1; color: var(--ag-green-700); }
+    
+    .doc-viewer { flex-grow: 1; position: relative; background: #fafafa; }
+    .doc-content { display: none; height: 100%; overflow-y: auto; padding: 1.5rem; }
+    .doc-content.active { display: block; }
+    .doc-placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ccc; }
+    
+    /* Audit Timeline */
+    .audit-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
     }
-
-    .document-viewer-container {
-        background: var(--light);
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .document-viewer-container iframe,
-    .document-viewer-container img {
-        max-width: 100%;
-        height: auto;
-    }
-
-    /* Timeline */
-    .status-timeline {
+    .audit-step {
+        display: flex;
+        gap: 1rem;
         position: relative;
-        padding-left: 30px;
     }
-
-    .timeline-item {
-        position: relative;
-        padding-bottom: 1.5rem;
-    }
-
-    .timeline-item:last-child {
-        padding-bottom: 0;
-    }
-
-    .timeline-item::before {
+    .audit-step::after {
         content: '';
         position: absolute;
-        left: -20px;
-        top: 0;
-        bottom: 0;
+        left: 9px;
+        top: 24px;
+        bottom: -24px;
         width: 2px;
-        background: #e9ecef;
+        background: #eee;
     }
-
-    .timeline-item:last-child::before {
-        display: none;
-    }
-
-    .timeline-dot {
-        position: absolute;
-        left: -24px;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: #e9ecef;
-        border: 2px solid white;
+    .audit-step:last-child::after { display: none; }
+    .audit-step .step-icon {
+        width: 20px;
+        height: 20px;
+        background: white;
         z-index: 1;
-    }
-
-    .timeline-item.active .timeline-dot {
-        background: var(--primary);
-        box-shadow: 0 0 0 3px rgba(6, 145, 50, 0.2);
-    }
-
-    .timeline-item.completed .timeline-dot {
-        background: var(--success);
-    }
-
-    .timeline-content {
-        padding-left: 0.5rem;
-    }
-
-    .timeline-content strong {
-        display: block;
-        font-size: 0.95rem;
-    }
-
-    .timeline-content small {
-        color: var(--secondary);
-    }
-
-    /* Activity List */
-    .activity-list {
-        max-height: 300px;
-        overflow-y: auto;
-    }
-
-    .activity-item {
-        display: flex;
-        padding: 1rem;
-        border-bottom: 1px solid #e9ecef;
-    }
-
-    .activity-item:last-child {
-        border-bottom: none;
-    }
-
-    .activity-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: var(--light);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 1rem;
-        flex-shrink: 0;
-    }
-
-    .activity-content {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .activity-content p {
         font-size: 0.9rem;
         margin: 0.25rem 0;
         word-wrap: break-word;

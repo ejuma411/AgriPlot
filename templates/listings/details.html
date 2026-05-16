@@ -6,7 +6,7 @@
 {% block meta_description %}{{ plot.title }} in {{ plot.county|default:plot.location }}. {{ plot.area|floatformat:1 }} {{ plot.get_area_unit_display|default:"Acres" }} listed for {{ plot.get_listing_type_display|lower }} on AgriPlot Connect.{% endblock %}
 
 {% block content %}
-<section class="detail-hero" style="background-image: url('{% if plot.images.first %}{{ plot.images.first.image.url }}{% elif plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
+<section class="detail-hero" style="background-image: url('{% if plot.images.first %}{{ plot.images.first.image.url }}{% elif plot.extension_reports.first and plot.extension_reports.first.site_photos and plot.extension_reports.first.site_photos.0 %}/media/{{ plot.extension_reports.first.site_photos.0 }}{% else %}{% static 'images/placeholder-plot.jpeg' %}{% endif %}');">
     <div class="detail-hero-overlay"></div>
     <div class="detail-hero-card">
         <div class="hero-card-logo">
@@ -488,7 +488,7 @@
                                     {% endfor %}
                                 {% elif plot.extension_reports.first and plot.extension_reports.first.site_photos %}
                                     {% for photo in plot.extension_reports.first.site_photos %}
-                                        <img src="{{ photo }}" alt="Plot photo" class="gallery-thumb">
+                                        <img src="/media/{{ photo }}" alt="Plot photo" class="gallery-thumb">
                                     {% endfor %}
                                 {% else %}
                                     <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
