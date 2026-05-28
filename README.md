@@ -40,10 +40,12 @@ source env/bin/activate
 pip install -r requirements.txt
 ```
 
-Create `.env` (example values in `agriplot/.env`). Key variables:
+Create `.env` from `.env.example`. Key variables:
 - `DJANGO_SECRET_KEY`
-- `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`
+- `DATABASE_URL` for Supabase/hosted Postgres, or `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` for local Postgres
 - `SITE_URL`
+
+For Supabase, copy a Postgres connection string from the Supabase Dashboard's **Connect** panel. The session pooler string is a good default for a persistent Django server on IPv4 networks. Keep SSL enabled with either `?sslmode=require` in `DATABASE_URL` or `DB_SSL=True`/`DB_SSLMODE=require` when using the individual `DB_*` variables.
 
 ## Migrations
 ```bash

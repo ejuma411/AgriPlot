@@ -7,9 +7,13 @@ from pathlib import Path
 import os
 import logging
 import importlib.util
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 from dotenv import load_dotenv
 from django.core.management.utils import get_random_secret_key
+try:
+    import dj_database_url
+except ModuleNotFoundError:
+    dj_database_url = None
 try:
     from decouple import config
 except ModuleNotFoundError:
@@ -95,6 +99,84 @@ def _host_from_url(value: str) -> str:
     return parsed.hostname or ""
 
 
+def _host_requires_ssl(host: str) -> bool:
+    """Return True for managed Postgres hosts that should use SSL."""
+    normalized = (host or "").lower()
+    if normalized in {"localhost", "127.0.0.1", "::1", ""}:
+        return False
+    return "supabase.co" in normalized or "pooler.supabase.com" in normalized
+
+
+def _database_from_url(database_url: str) -> dict:
+    """Build a PostGIS Django database config from a Postgres URL."""
+    conn_max_age = int(os.environ.get("DB_CONN_MAX_AGE", "600"))
+    if dj_database_url:
+        database = dj_database_url.parse(
+            database_url,
+            conn_max_age=conn_max_age,
+            engine="django.contrib.gis.db.backends.postgis",
+        )
+    else:
+        parsed = urlparse(database_url)
+        database = {
+            "ENGINE": "django.contrib.gis.db.backends.postgis",
+            "NAME": unquote(parsed.path.lstrip("/") or "postgres"),
+            "USER": unquote(parsed.username or ""),
+            "PASSWORD": unquote(parsed.password or ""),
+            "HOST": parsed.hostname or "",
+            "PORT": str(parsed.port or 5432),
+            "CONN_MAX_AGE": conn_max_age,
+            "OPTIONS": {},
+        }
+        query = parse_qs(parsed.query)
+        if query.get("sslmode"):
+            database["OPTIONS"]["sslmode"] = query["sslmode"][-1]
+
+    options = database.setdefault("OPTIONS", {})
+    options.setdefault("connect_timeout", int(os.environ.get("DB_CONNECT_TIMEOUT", "10")))
+
+    host = database.get("HOST", "")
+    sslmode = os.environ.get("DB_SSLMODE")
+    if sslmode:
+        options["sslmode"] = sslmode
+    elif _env_bool("DB_SSL", default=_host_requires_ssl(host)):
+        options.setdefault("sslmode", "require")
+
+    return database
+
+
+def _database_from_parts() -> dict:
+    """Build the default database config from individual DB_* values."""
+    host = config("DB_HOST", default="localhost")
+    options = {
+        "connect_timeout": int(os.environ.get("DB_CONNECT_TIMEOUT", "10")),
+    }
+    sslmode = os.environ.get("DB_SSLMODE")
+    if sslmode:
+        options["sslmode"] = sslmode
+    elif _env_bool("DB_SSL", default=_host_requires_ssl(host)):
+        options["sslmode"] = "require"
+
+    return {
+        "ENGINE": "django.contrib.gis.db.backends.postgis",
+        "NAME": config("DB_NAME", default="agriplot"),
+        "USER": config("DB_USER", default="postgres"),
+        "PASSWORD": config("DB_PASSWORD", default="postgres"),
+        "HOST": host,
+        "PORT": config("DB_PORT", default="5432"),
+        "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", "600")),
+        "OPTIONS": options,
+    }
+
+
+def _database_config() -> dict:
+    """Prefer a DATABASE_URL/SUPABASE_DATABASE_URL, otherwise use DB_* values."""
+    database_url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DATABASE_URL")
+    if database_url:
+        return _database_from_url(database_url)
+    return _database_from_parts()
+
+
 # =============================================================================
 # CORE SECURITY SETTINGS
 # =============================================================================
@@ -111,6 +193,10 @@ DEBUG = _env_bool("DJANGO_DEBUG", default=True)
 
 # Host/domain validation
 ALLOWED_HOSTS = _env_csv("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1,testserver")
+if DEBUG:
+    for development_host in [".ngrok-free.dev"]:
+        if development_host not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(development_host)
 
 # Security middleware settings
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -212,20 +298,7 @@ WSGI_APPLICATION = "agriplot.wsgi.application"
 # =============================================================================
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': config('DB_NAME', default='agriplot'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='postgres'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
-        
-        # Connection pooling and performance settings
-        'CONN_MAX_AGE': 600,  # Keep connections alive for 10 minutes
-        'OPTIONS': {
-            'connect_timeout': 10,  # Connection timeout in seconds
-        },
-    }
+    "default": _database_config()
 }
 
 
@@ -490,7 +563,7 @@ LOGGING = {
             "datefmt": "%H:%M:%S",
         },
         "error_detail": {
-            "format": "{levelname} | {asctime} | {name} | {module}.{funcName}:{lineno} | {message}\n{exc_info}",
+            "format": "{levelname} | {asctime} | {name} | {module}.{funcName}:{lineno} | {message}",
             "style": "{",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
@@ -628,6 +701,13 @@ LOGGING = {
             "propagate": False,
         },
 
+        # Authentication App
+        "authentication": {
+            "handlers": ["system_file", "error_file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+
         # Security App
         "security": {
             "handlers": ["system_file", "error_file"],
@@ -653,6 +733,13 @@ LOGGING = {
         "registry_mock": {
             "handlers": ["system_file", "error_file"],
             "level": "WARNING",
+            "propagate": False,
+        },
+
+        # Transactions App
+        "transactions": {
+            "handlers": ["system_file", "error_file"],
+            "level": "INFO",
             "propagate": False,
         },
     },

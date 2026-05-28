@@ -230,7 +230,7 @@ class NotificationService:
                 status="pending",
             )
         except Exception as exc:
-            logger.error("EmailLog creation failed: %s", exc)
+            logger.error("EmailLog creation failed: %s", exc, exc_info=True)
 
         if immediate:
             try:
@@ -250,7 +250,7 @@ class NotificationService:
                     log.status = "failed"
                     log.error_message = f"Immediate send failed: {exc}"
                     log.save(update_fields=["status", "error_message"])
-                logger.error("Failed to send email immediately to %s: %s", recipient, exc)
+                logger.error("Failed to send email immediately to %s: %s", recipient, exc, exc_info=True)
                 return None
 
         try:
@@ -269,7 +269,12 @@ class NotificationService:
                     )
                     queue_state["queued"] = True
                 except Exception as exc:
-                    logger.error("Email queue failed for %s: %s. Falling back to immediate send.", recipient, exc)
+                    logger.error(
+                        "Email queue failed for %s: %s. Falling back to immediate send.",
+                        recipient,
+                        exc,
+                        exc_info=True,
+                    )
                     from notifications.tasks import _send_email_now
 
                     sent = _send_email_now(
@@ -291,7 +296,7 @@ class NotificationService:
                 log.status = "failed"
                 log.error_message = f"Queue setup failed: {exc}"
                 log.save(update_fields=["status", "error_message"])
-            logger.error("Failed to queue email to %s: %s", recipient, exc)
+            logger.error("Failed to queue email to %s: %s", recipient, exc, exc_info=True)
 
         if queue_state["queued"]:
             return log

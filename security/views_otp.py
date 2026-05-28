@@ -15,6 +15,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from notifications.services.sms_service import SMSService
 from notifications.notification_service import NotificationService
+from notifications.models import EmailLog
 from accounts.models import Profile, LandownerProfile, Agent
 from security.models import PhoneOTP, EmailOTP, PhoneEmailVerification
 from security.forms import OTPVerificationForm
@@ -131,8 +132,16 @@ def _deliver_otp(request, *, phone, email, otp, reg_data):
             if email_log:
                 sent_channels.append("email")
             else:
-                email_error_message = "Email delivery queue is unavailable."
-                logger.error("Failed to queue email OTP for %s", email)
+                failed_log = (
+                    EmailLog.objects.filter(recipient=email, subject="AgriPlot verification code")
+                    .order_by("-created_at")
+                    .first()
+                )
+                if failed_log and failed_log.error_message:
+                    email_error_message = failed_log.error_message
+                else:
+                    email_error_message = "Email delivery queue is unavailable."
+                logger.error("Failed to send email OTP for %s: %s", email, email_error_message)
         except Exception as exc:
             email_error_message = str(exc)
             logger.error("Failed to send email OTP: %s", exc, exc_info=True)
