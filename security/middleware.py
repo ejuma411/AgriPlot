@@ -281,7 +281,7 @@ class EnforceTwoFactorEnrollmentMiddleware(MiddlewareMixin):
                     profile, created = Profile.objects.get_or_create(user=user)
                 
                 if profile and not profile.has_2fa_enabled:
-                    return redirect(reverse('listings:two_factor_setup'))
+                    return redirect(reverse('authentication:two_factor_setup'))
             except Exception as e:
                 logger.error(f"2FA enrollment error: {e}")
         

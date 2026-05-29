@@ -67,10 +67,40 @@ logger = logging.getLogger(__name__)
 
 PAYMENT_METHOD_CARDS = [
     {
-        "name": "M-Pesa STK Push",
+        "name": "Bank Transfer",
+        "slug": PaymentRequest.Method.BANK_TRANSFER,
+        "description": (
+            "Primary payment method. Transfer funds directly to the AgriPlot settlement account. "
+            "Secure, traceable, and suitable for all transaction sizes."
+        ),
+        "tone": "blue",
+        "badge": "Recommended",
+        "icon": "fa-building-columns",
+        "priority": 1,
+    },
+    {
+        "name": "AgriPlot Wallet",
+        "slug": PaymentRequest.Method.WALLET,
+        "description": (
+            "Pay instantly from your AgriPlot wallet balance. "
+            "Top up via M-Pesa, then use your wallet for fast, fee-free platform payments."
+        ),
+        "tone": "purple",
+        "badge": None,
+        "icon": "fa-wallet",
+        "priority": 2,
+    },
+    {
+        "name": "M-Pesa (Test Mode)",
         "slug": PaymentRequest.Method.MPESA_STK,
-        "description": "The primary buyer checkout flow: enter a number, send an STK push, and confirm on the phone.",
+        "description": (
+            "M-Pesa STK push for testing purposes. "
+            "Transactions are simulated and marked successful instantly — no real money moves."
+        ),
         "tone": "green",
+        "badge": "Testing Only",
+        "icon": "fa-mobile-screen-button",
+        "priority": 3,
     },
 ]
 
@@ -86,14 +116,15 @@ def _gateway_ready():
 
 
 def _payment_method_backend_enabled(method):
-    if method == PaymentRequest.Method.MPESA_STK:
-        return daraja_ready()
-    if method == PaymentRequest.Method.WALLET:
-        return getattr(settings, "WALLET_ENABLED", True)
-    if method == PaymentRequest.Method.CARD:
-        return getattr(settings, "CARD_PAYMENTS_ENABLED", False)
     if method == PaymentRequest.Method.BANK_TRANSFER:
         return getattr(settings, "BANK_TRANSFER_ENABLED", False)
+    if method == PaymentRequest.Method.WALLET:
+        return getattr(settings, "WALLET_ENABLED", True)
+    if method == PaymentRequest.Method.MPESA_STK:
+        # Always treat as available in test mode; real mode requires Daraja credentials.
+        return getattr(settings, "WALLET_TEST_MODE", False) or daraja_ready()
+    if method == PaymentRequest.Method.CARD:
+        return getattr(settings, "CARD_PAYMENTS_ENABLED", False)
     if method == PaymentRequest.Method.AIRTEL_MONEY:
         return getattr(settings, "AIRTEL_MONEY_ENABLED", False)
     if method == PaymentRequest.Method.MANUAL_ESCROW:
@@ -103,11 +134,11 @@ def _payment_method_backend_enabled(method):
 
 def _payment_method_unavailable_message(method):
     messages_map = {
-        PaymentRequest.Method.MPESA_STK: "Safaricom Daraja is not configured yet.",
-        PaymentRequest.Method.CARD: "Card payments are scaffolded but not configured yet. Add your card gateway credentials first.",
-        PaymentRequest.Method.BANK_TRANSFER: "Bank transfer is scaffolded but not configured yet. Add your settlement account details first.",
-        PaymentRequest.Method.AIRTEL_MONEY: "Airtel Money is scaffolded but not configured yet. Add the Airtel credentials first.",
+        PaymentRequest.Method.BANK_TRANSFER: "Bank transfer is not yet configured. Contact support to add your settlement account details.",
         PaymentRequest.Method.WALLET: "The AgriPlot Wallet is currently disabled in backend settings.",
+        PaymentRequest.Method.MPESA_STK: "M-Pesa (test mode) is not available right now.",
+        PaymentRequest.Method.CARD: "Card payments are not yet configured.",
+        PaymentRequest.Method.AIRTEL_MONEY: "Airtel Money is not yet configured.",
     }
     return messages_map.get(method, "This payment method is not configured yet.")
 
@@ -1152,6 +1183,32 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                     return redirect("payments:detail", pk=payment.pk)
 
                 if payment.method == PaymentRequest.Method.MPESA_STK:
+                    # Test mode: auto-mark payment as successful without real STK push
+                    if getattr(settings, "WALLET_TEST_MODE", False):
+                        test_verification = {
+                            "test_mode": True,
+                            "auto_completed_at": timezone.now().isoformat(),
+                            "message": "Simulated M-Pesa payment in test mode.",
+                        }
+                        _handle_successful_gateway_payment(
+                            payment,
+                            provider="mpesa_test",
+                            verification=test_verification,
+                            actor=self.request.user if self.request.user.is_authenticated else None,
+                        )
+                        payment.add_event(
+                            "mpesa_test_auto_paid",
+                            "M-Pesa test mode: payment automatically marked as paid (no real money moved).",
+                            actor=self.request.user if self.request.user.is_authenticated else None,
+                        )
+                        _notify_payment_activity(payment, "initiated")
+                        messages.success(
+                            self.request,
+                            "🧪 M-Pesa test mode: Payment simulated and marked as paid. No real transaction occurred.",
+                        )
+                        return redirect("payments:detail", pk=payment.pk)
+
+                    # Live mode: send real STK push
                     callback_url = settings.MPESA_CALLBACK_URL or (
                         f"{settings.SITE_URL.rstrip('/')}{reverse('payments:daraja_callback')}"
                     )
@@ -1197,9 +1254,18 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                     )
                     return redirect("payments:detail", pk=payment.pk)
 
+                bank_name = getattr(settings, "BANK_TRANSFER_BANK_NAME", "")
+                acct_name = getattr(settings, "BANK_TRANSFER_ACCOUNT_NAME", "")
+                acct_number = getattr(settings, "BANK_TRANSFER_ACCOUNT_NUMBER", "")
+                bank_details = ""
+                if bank_name and acct_number:
+                    bank_details = f" Bank: {bank_name}, Account Name: {acct_name}, Account Number: {acct_number}."
                 gateway_messages = {
                     PaymentRequest.Method.CARD: "Card payment request created. Connect the configured card gateway credentials to take this live.",
-                    PaymentRequest.Method.BANK_TRANSFER: "Bank transfer request created. Share the configured settlement instructions with the buyer.",
+                    PaymentRequest.Method.BANK_TRANSFER: (
+                        f"Bank transfer request created.{bank_details} "
+                        f"Reference: {payment.internal_reference}. AgriPlot will confirm once your transfer is received."
+                    ),
                     PaymentRequest.Method.AIRTEL_MONEY: "Airtel Money request created. Finish the provider credentials to take this live.",
                 }
                 payment.add_event(
@@ -2014,11 +2080,7 @@ class PaymentDisputeCreateView(LoginRequiredMixin, View):
 
 @login_required
 def wallet_dashboard(request):
-    """Wallet dashboard view"""
-    if resolve_access_profile is not None:
-        access_profile = resolve_access_profile(request.user)
-        if getattr(access_profile, 'can', lambda x: False)('finance.view_escrow'):
-            return redirect(f"{reverse('listings:dashboard_router')}?section=finance")
+    """Wallet dashboard view — always routes to the wallet section."""
     return redirect(f"{reverse('listings:dashboard_router')}?section=wallet")
 
 

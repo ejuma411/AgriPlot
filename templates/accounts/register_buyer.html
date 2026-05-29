@@ -1,5 +1,5 @@
 {% extends "authentication/auth_base.html" %}
-{% block title %}Register Buyer{% endblock %}
+{% block title %}Register{% endblock %}
 
 {% block content %}
 <p class="auth-kicker">Buyer Access</p>
@@ -38,7 +38,7 @@
     {% elif requested_role == "land_surveyor" %}
     <button class="auth-btn">Continue to Land Surveyor Request</button>
     {% else %}
-    <button class="auth-btn">Register Buyer</button>
+    <button class="auth-btn">Register</button>
     {% endif %}
 </form>
 {% endblock %}

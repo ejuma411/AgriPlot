@@ -2112,21 +2112,19 @@ def land_full_details(request, pk):
 @login_required
 def two_factor_setup(request):
     """
-    Two-factor authentication setup view.
-    Currently a placeholder - full implementation coming soon.
+    Two-factor authentication setup — delegates to the real authentication view.
     """
-    messages.info(request, "Two-factor authentication setup will be available in the next release.")
-    return redirect('listings:profile_management')
+    from authentication.views_auth import two_factor_setup as _real_setup
+    return _real_setup(request)
 
 
 @login_required
 def two_factor_verify(request):
     """
-    Two-factor authentication verification view.
-    Currently a placeholder - full implementation coming soon.
+    Two-factor authentication verification — delegates to the real authentication view.
     """
-    messages.info(request, "Two-factor authentication verification will be available in the next release.")
-    return redirect('listings:profile_management')
+    from authentication.views_auth import two_factor_verify as _real_verify
+    return _real_verify(request)
 
 
 @login_required

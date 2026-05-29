@@ -111,14 +111,14 @@ def _deliver_otp(request, *, phone, email, otp, reg_data):
             sms_error_message = str(exc)
             logger.error("Exception sending SMS OTP: %s", exc, exc_info=True)
 
-    should_send_email = otp_provider in ("email", "both") or (
-        otp_provider == "sms" and email and "sms" not in sent_channels
-    )
-    if should_send_email and email:
+    # Only send an email OTP when the provider explicitly includes email.
+    # When provider=sms, we NEVER fall back to an email OTP — email is reserved
+    # for the post-registration verification LINK, which is a separate step.
+    if otp_provider in ("email", "both") and email:
         try:
             email_log = NotificationService.send_email(
                 recipient=email,
-                subject="AgriPlot verification code",
+                subject="Your AgriPlot phone verification code",
                 template="otp_verification",
                 context={
                     "user": None,
@@ -133,7 +133,7 @@ def _deliver_otp(request, *, phone, email, otp, reg_data):
                 sent_channels.append("email")
             else:
                 failed_log = (
-                    EmailLog.objects.filter(recipient=email, subject="AgriPlot verification code")
+                    EmailLog.objects.filter(recipient=email, subject__icontains="verification code")
                     .order_by("-created_at")
                     .first()
                 )
@@ -246,15 +246,13 @@ def send_otp_verification(request):
         return redirect('listings:register_choice')
     
     if delivery["sent_channels"]:
-        if delivery["sent_channels"] == ["sms"]:
-            messages.success(request, "Verification code sent to your phone.")
-        elif delivery["sent_channels"] == ["email"]:
-            if otp_provider == "sms":
-                messages.warning(request, "SMS delivery is unavailable right now, so we sent the verification code to your email instead.")
-            else:
-                messages.success(request, "Verification code sent to your email.")
+        channel = delivery["sent_channels"]
+        if "sms" in channel:
+            messages.success(request, "We sent a 6-digit verification code to your phone number. Enter it below to continue.")
+        elif "email" in channel:
+            messages.success(request, "We sent a 6-digit verification code to your email address. Enter it below to continue.")
         else:
-            messages.success(request, f"Verification code sent via {', '.join(delivery['sent_channels'])}. Check your messages.")
+            messages.success(request, "Verification code sent. Check your messages.")
         return redirect(verify_otp_url)
 
     errors = []
@@ -416,12 +414,16 @@ def verify_otp(request):
             if email_link_sent:
                 messages.success(
                     request,
-                    "Account created successfully. Your phone is verified, and we sent an email verification link to complete your account."
+                    "Phone verified ✅ Account created successfully! "
+                    "We’ve sent a separate email verification link to your inbox — "
+                    "please click it to fully activate your account."
                 )
             else:
-                messages.warning(
+                messages.success(
                     request,
-                    "Account created successfully and your phone is verified, but we could not send the email verification link yet. Use the resend email option from your dashboard."
+                    "Phone verified ✅ Account created successfully! "
+                    "We couldn’t send the email verification link right now — "
+                    "you can request a new one from your dashboard."
                 )
 
             # Redirect based on role

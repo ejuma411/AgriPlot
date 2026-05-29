@@ -40,6 +40,15 @@ logger = logging.getLogger(__name__)
 class TwoFactorLoginView(LoginView):
     template_name = 'authentication/login.html'
 
+    def get_success_url(self):
+        # After successful login (no 2FA), redirect to home page
+        next_url = self.request.GET.get('next') or self.request.POST.get('next')
+        if next_url:
+            from django.utils.http import url_has_allowed_host_and_scheme
+            if url_has_allowed_host_and_scheme(next_url, allowed_hosts={self.request.get_host()}):
+                return next_url
+        return '/'
+
     def form_valid(self, form):
         user = form.get_user()
         # Only require 2FA challenge if user has enabled it.
@@ -151,7 +160,7 @@ def two_factor_setup(request):
             backup_codes = _generate_backup_codes(request.user)
             request.session["backup_codes"] = backup_codes
             messages.success(request, "New backup codes generated.")
-            return redirect('listings:two_factor_setup')
+            return redirect('authentication:two_factor_setup')
 
         if request.POST.get("disable_2fa"):
             settings_obj.is_enabled = False
@@ -171,8 +180,8 @@ def two_factor_setup(request):
                 profile.save()
                 backup_codes = _generate_backup_codes(request.user)
                 request.session["backup_codes"] = backup_codes
-                messages.success(request, "Two-factor authentication enabled.")
-                return redirect('listings:two_factor_setup')
+                messages.success(request, "Two-factor authentication enabled successfully. Save your backup codes.")
+                return redirect('authentication:two_factor_setup')
             messages.error(request, "Invalid code. Please try again.")
     else:
         form = TwoFactorSetupForm()
@@ -227,7 +236,7 @@ def two_factor_verify(request):
                 code = form.cleaned_data['code']
                 if method not in available_methods:
                     messages.error(request, "Selected method is not available for your account.")
-                    return redirect('listings:two_factor_verify')
+                    return redirect('authentication:two_factor_verify')
 
                 if method == 'totp':
                     totp = pyotp.TOTP(settings_obj.totp_secret)
@@ -440,13 +449,13 @@ def password_reset_confirm_request(request):
             except Exception as e:
                 logger.error(f"Error sending password reset email: {str(e)}")
                 messages.error(request, "An error occurred. Please try again.")
-                return redirect('listings:password_reset')
+                return redirect('authentication:password_reset')
                 
         elif action == 'cancel':
             if 'reset_email' in request.session:
                 del request.session['reset_email']
             messages.info(request, "Password reset cancelled.")
-            return redirect('listings:login')
+            return redirect('login')
     
     masked_email = mask_email(email)
     return render(request, 'authentication/password_reset_confirm_request.html', {

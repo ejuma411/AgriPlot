@@ -334,6 +334,190 @@
                 </div>
             </article>
         </section>
+
+        <section class="workspace-grid two mt-3">
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">Recent Transactions</h2>
+                        <p class="workspace-card-meta">Your latest wallet activity.</p>
+                    </div>
+                </div>
+                <div class="workspace-card-body">
+                    {% if wallet_transactions %}
+                        <div class="workspace-list">
+                            {% for txn in wallet_transactions %}
+                                <div class="workspace-list-item">
+                                    <span>
+                                        <strong>
+                                            {% if txn.transaction_type == 'credit' %}
+                                                <i class="fa-solid fa-arrow-down text-success me-1"></i>
+                                            {% else %}
+                                                <i class="fa-solid fa-arrow-up text-danger me-1"></i>
+                                            {% endif %}
+                                            {{ txn.description|default:txn.reference }}
+                                        </strong>
+                                        <span>{{ txn.created_at|date:"M d, Y H:i" }} · {{ txn.reference }}</span>
+                                    </span>
+                                    <span>
+                                        <span class="{% if txn.transaction_type == 'credit' %}text-success{% else %}text-danger{% endif %}" style="font-weight:600;">
+                                            {% if txn.transaction_type == 'credit' %}+{% else %}-{% endif %}KES {{ txn.amount|floatformat:0 }}
+                                        </span>
+                                    </span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <p class="workspace-empty mb-0">No wallet transactions yet. Top up your wallet to get started.</p>
+                    {% endif %}
+                </div>
+            </article>
+
+            <article class="workspace-card">
+                <div class="workspace-card-header">
+                    <div>
+                        <h2 class="workspace-card-title">Wallet Actions</h2>
+                        <p class="workspace-card-meta">Manage your wallet balance and security.</p>
+                    </div>
+                </div>
+                <div class="workspace-card-body">
+                    <div class="workspace-list">
+                        {% if not wallet_cards.has_pin %}
+                        <div class="workspace-list-item" style="background: #fff3cd; border-radius: 8px; padding: 1rem;">
+                            <span>
+                                <strong><i class="fa-solid fa-shield-exclamation me-2 text-warning"></i>Set Wallet PIN</strong>
+                                <span>You need to set a 4-digit PIN before you can make payments or withdrawals.</span>
+                            </span>
+                            <button class="ap-btn ap-btn-primary btn-sm" onclick="document.getElementById('pinModal').style.display='flex'">Set PIN</button>
+                        </div>
+                        {% endif %}
+                        <div class="workspace-list-item">
+                            <span>
+                                <strong><i class="fa-solid fa-arrow-down me-2 text-success"></i>Deposit via M-Pesa</strong>
+                                <span>Top up your wallet from your M-Pesa account.</span>
+                            </span>
+                            <button class="ap-btn ap-btn-ghost btn-sm" onclick="document.getElementById('depositModal').style.display='flex'">Deposit</button>
+                        </div>
+                        {% if wallet_cards.has_pin %}
+                        <div class="workspace-list-item">
+                            <span>
+                                <strong><i class="fa-solid fa-arrow-up me-2 text-danger"></i>Withdraw to M-Pesa</strong>
+                                <span>Send funds from your wallet to your M-Pesa.</span>
+                            </span>
+                            <button class="ap-btn ap-btn-ghost btn-sm" onclick="document.getElementById('withdrawModal').style.display='flex'">Withdraw</button>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mt-4 pt-3" style="border-top: 1px solid var(--border-subtle, #eee);">
+                        <h5 class="mb-3">Wallet Details</h5>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Purchase payments</span>
+                            <strong>{{ wallet_cards.purchase_payments|default:0 }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Lease payments</span>
+                            <strong>{{ wallet_cards.lease_payments|default:0 }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Total debits</span>
+                            <strong>KES {{ wallet_cards.debit_total|floatformat:0 }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        {# ---- Wallet modals ---- #}
+        <div id="pinModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:#fff;border-radius:12px;padding:2rem;max-width:380px;width:90%;">
+                <h3 style="margin-top:0;">Set Wallet PIN</h3>
+                <p class="text-muted">Choose a 4-digit PIN for wallet payments.</p>
+                <input type="password" id="pinInput" maxlength="4" placeholder="Enter 4-digit PIN" class="form-control mb-2" pattern="\d{4}">
+                <input type="password" id="pinConfirm" maxlength="4" placeholder="Confirm PIN" class="form-control mb-3" pattern="\d{4}">
+                <div id="pinError" style="color:red;margin-bottom:.5rem;display:none;"></div>
+                <div class="d-flex gap-2">
+                    <button class="ap-btn ap-btn-primary" onclick="submitPin()">Set PIN</button>
+                    <button class="ap-btn ap-btn-ghost" onclick="document.getElementById('pinModal').style.display='none'">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="depositModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:#fff;border-radius:12px;padding:2rem;max-width:380px;width:90%;">
+                <h3 style="margin-top:0;">Deposit to Wallet</h3>
+                <p class="text-muted">Enter amount and your M-Pesa number.</p>
+                <input type="number" id="depositAmount" placeholder="Amount (KES)" class="form-control mb-2" min="10">
+                <input type="tel" id="depositPhone" placeholder="Phone (e.g. 0712345678)" class="form-control mb-3">
+                <div id="depositError" style="color:red;margin-bottom:.5rem;display:none;"></div>
+                <div class="d-flex gap-2">
+                    <button class="ap-btn ap-btn-primary" onclick="submitDeposit()">Deposit</button>
+                    <button class="ap-btn ap-btn-ghost" onclick="document.getElementById('depositModal').style.display='none'">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="withdrawModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:9999;align-items:center;justify-content:center;">
+            <div style="background:#fff;border-radius:12px;padding:2rem;max-width:380px;width:90%;">
+                <h3 style="margin-top:0;">Withdraw from Wallet</h3>
+                <p class="text-muted">Funds will be sent to your M-Pesa.</p>
+                <input type="number" id="withdrawAmount" placeholder="Amount (KES)" class="form-control mb-2" min="10">
+                <input type="tel" id="withdrawPhone" placeholder="Phone (e.g. 0712345678)" class="form-control mb-2">
+                <input type="password" id="withdrawPin" maxlength="4" placeholder="Wallet PIN" class="form-control mb-3">
+                <div id="withdrawError" style="color:red;margin-bottom:.5rem;display:none;"></div>
+                <div class="d-flex gap-2">
+                    <button class="ap-btn ap-btn-primary" onclick="submitWithdraw()">Withdraw</button>
+                    <button class="ap-btn ap-btn-ghost" onclick="document.getElementById('withdrawModal').style.display='none'">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <script>
+        function getCookie(name) {
+            let v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
+            return v ? v[2] : null;
+        }
+        async function walletFetch(url, body) {
+            const r = await fetch(url, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+                body: JSON.stringify(body),
+            });
+            return r.json();
+        }
+        async function submitPin() {
+            const pin = document.getElementById('pinInput').value;
+            const confirm = document.getElementById('pinConfirm').value;
+            const err = document.getElementById('pinError');
+            if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { err.textContent='PIN must be 4 digits'; err.style.display='block'; return; }
+            if (pin !== confirm) { err.textContent='PINs do not match'; err.style.display='block'; return; }
+            err.style.display='none';
+            const res = await walletFetch('{% url "payments:wallet_set_pin" %}', {pin, confirm_pin: confirm});
+            if (res.success) { location.reload(); } else { err.textContent=res.message; err.style.display='block'; }
+        }
+        async function submitDeposit() {
+            const amount = document.getElementById('depositAmount').value;
+            const phone = document.getElementById('depositPhone').value;
+            const err = document.getElementById('depositError');
+            if (!amount || amount < 10) { err.textContent='Minimum deposit is KES 10'; err.style.display='block'; return; }
+            if (!phone) { err.textContent='Enter your M-Pesa number'; err.style.display='block'; return; }
+            err.style.display='none';
+            const res = await walletFetch('{% url "payments:wallet_deposit" %}', {amount, phone_number: phone});
+            if (res.success) { location.reload(); } else { err.textContent=res.message; err.style.display='block'; }
+        }
+        async function submitWithdraw() {
+            const amount = document.getElementById('withdrawAmount').value;
+            const phone = document.getElementById('withdrawPhone').value;
+            const pin = document.getElementById('withdrawPin').value;
+            const err = document.getElementById('withdrawError');
+            if (!amount || amount < 10) { err.textContent='Minimum withdrawal is KES 10'; err.style.display='block'; return; }
+            if (!phone) { err.textContent='Enter your M-Pesa number'; err.style.display='block'; return; }
+            if (!pin) { err.textContent='Enter your wallet PIN'; err.style.display='block'; return; }
+            err.style.display='none';
+            const res = await walletFetch('{% url "payments:wallet_withdraw" %}', {amount, phone_number: phone, pin});
+            if (res.success) { location.reload(); } else { err.textContent=res.message; err.style.display='block'; }
+        }
+        </script>
     {% endif %}
 
     {% if active_section == "profile" %}
@@ -466,6 +650,31 @@
                         <div class="mt-4">
                             <button type="submit" class="ap-btn ap-btn-primary">Update Password</button>
                         </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <h5 class="mb-3"><i class="fa-solid fa-shield-halved me-2"></i>Two-Factor Authentication</h5>
+                    <p class="text-muted mb-3">
+                        {% if profile.has_2fa_enabled %}
+                            <span class="text-success"><i class="fa-solid fa-check-circle me-1"></i> 2FA is enabled</span> — Your account is protected with an authenticator app.
+                        {% else %}
+                            <span class="text-warning"><i class="fa-solid fa-exclamation-triangle me-1"></i> 2FA is not enabled</span> — Set up an authenticator app to protect your account.
+                        {% endif %}
+                    </p>
+                    <a href="{% url 'listings:two_factor_setup' %}" class="ap-btn {% if profile.has_2fa_enabled %}ap-btn-ghost{% else %}ap-btn-primary{% endif %} btn-sm">
+                        <i class="fa-solid fa-qrcode me-1"></i>
+                        {% if profile.has_2fa_enabled %}Manage 2FA{% else %}Set Up 2FA{% endif %}
+                    </a>
+
+                    <hr class="my-4">
+
+                    <h5 class="mb-3"><i class="fa-solid fa-right-from-bracket me-2"></i>Session Management</h5>
+                    <form method="post" action="{% url 'listings:sign_out_all_sessions' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="ap-btn ap-btn-ghost btn-sm text-danger">
+                            <i class="fa-solid fa-ban me-1"></i> Sign out all other sessions
+                        </button>
                     </form>
                 </div>
             </article>
