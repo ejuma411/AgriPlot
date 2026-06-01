@@ -10,8 +10,6 @@ from django.core.management import call_command
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
-import hashlib
-import hmac
 import json
 from requests import ConnectionError as RequestsConnectionError
 from unittest.mock import patch
@@ -605,7 +603,6 @@ class PaymentAuthorizationTests(TestCase):
         self.payment.refresh_from_db()
         self.assertEqual(self.payment.status, PaymentRequest.Status.PAID)
 
-    @override_settings(PAYSTACK_ENABLED=False)
     @override_settings(ENABLE_SMS_NOTIFICATIONS=True)
     @patch("notifications.notification_service.SMSService.send_sms")
     def test_purchase_request_notifies_seller_when_created(self, mock_send_sms):
@@ -1570,58 +1567,6 @@ class PaymentAuthorizationTests(TestCase):
         )
 
     @override_settings(
-        PAYSTACK_ENABLED=True,
-        PAYSTACK_PUBLIC_KEY="pk_test_x",
-        PAYSTACK_SECRET_KEY="sk_test_x",
-        PAYSTACK_AUTO_RELEASE_TEST_DEALS=True,
-        SITE_URL="http://testserver",
-    )
-    @patch("payments.views.initialize_transaction")
-    def test_create_request_redirects_to_paystack_checkout(self, mock_initialize):
-        owner_user = self.User.objects.create_user(
-            username="paystack_owner",
-            password="secret123",
-            email="owner2@example.com",
-        )
-        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
-        landowner = LandownerProfile.objects.create(
-            user=owner_user,
-            national_id=SimpleUploadedFile("paystack_id.txt", b"id"),
-            kra_pin=SimpleUploadedFile("paystack_pin.txt", b"pin"),
-        )
-        plot = Plot.objects.create(
-            landowner=landowner,
-            title="Paystack Plot",
-            location="Nakuru",
-            area=4,
-            price="500000.00",
-            sale_price="500000.00",
-            listing_type="sale",
-        )
-        mock_initialize.return_value = {
-            "reference": "AGP-TESTREF",
-            "access_code": "ACCESS123",
-            "authorization_url": "https://checkout.paystack.com/demo",
-        }
-        self.client.login(username="buyer_auth", password="secret123")
-
-        response = self.client.post(
-            reverse("payments:create_request"),
-            data={
-                "plot": plot.pk,
-                "transaction_type": PaymentRequest.TransactionType.PURCHASE,
-                "amount": "10.00",
-                "category": PaymentRequest.Category.RESERVATION_DEPOSIT,
-                "phone_number": "254700123456",
-                "lease_start_date": "",
-                "lease_end_date": "",
-            },
-        )
-
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response["Location"], "https://checkout.paystack.com/demo")
-
-    @override_settings(
         MPESA_CONSUMER_KEY="consumer",
         MPESA_CONSUMER_SECRET="secret",
         MPESA_BUSINESS_SHORTCODE="123456",
@@ -1752,133 +1697,6 @@ class PaymentAuthorizationTests(TestCase):
                 category=PaymentRequest.Category.COMMITMENT_FEE,
             ).exists()
         )
-
-    @override_settings(
-        PAYSTACK_ENABLED=True,
-        PAYSTACK_PUBLIC_KEY="pk_test_x",
-        PAYSTACK_SECRET_KEY="sk_test_x",
-        PAYSTACK_AUTO_RELEASE_TEST_DEALS=True,
-    )
-    @patch("payments.views.verify_transaction")
-    def test_paystack_callback_auto_releases_test_purchase(self, mock_verify):
-        owner_user = self.User.objects.create_user(
-            username="callback_owner",
-            password="secret123",
-        )
-        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
-        landowner = LandownerProfile.objects.create(
-            user=owner_user,
-            national_id=SimpleUploadedFile("callback_id.txt", b"id"),
-            kra_pin=SimpleUploadedFile("callback_pin.txt", b"pin"),
-        )
-        plot = Plot.objects.create(
-            landowner=landowner,
-            title="Callback Plot",
-            location="Kitale",
-            area=3,
-            price="800000.00",
-            sale_price="800000.00",
-            listing_type="sale",
-        )
-        payment = PaymentRequest.objects.create(
-            buyer=self.buyer,
-            seller=owner_user,
-            plot=plot,
-            title="Reservation Deposit for Purchase: Callback Plot",
-            description="M-Pesa checkout for reservation deposit.",
-            amount="10.00",
-            method=PaymentRequest.Method.MPESA_STK,
-            category=PaymentRequest.Category.RESERVATION_DEPOSIT,
-            transaction_type=PaymentRequest.TransactionType.PURCHASE,
-            status=PaymentRequest.Status.PENDING,
-            phone_number="254700000444",
-        )
-        mock_verify.return_value = {
-            "status": "success",
-            "gateway_response": "Successful",
-            "paid_at": "2026-03-25T12:00:00Z",
-        }
-
-        self.client.login(username="buyer_auth", password="secret123")
-        response = self.client.get(
-            reverse("payments:paystack_callback"),
-            {"reference": payment.internal_reference},
-        )
-
-        self.assertRedirects(response, reverse("payments:detail", kwargs={"pk": payment.pk}))
-        payment.refresh_from_db()
-        plot.refresh_from_db()
-        self.assertEqual(payment.status, PaymentRequest.Status.RELEASED)
-        self.assertEqual(plot.market_status, "reserved")
-
-    @override_settings(
-        PAYSTACK_ENABLED=True,
-        PAYSTACK_PUBLIC_KEY="pk_test_x",
-        PAYSTACK_SECRET_KEY="sk_test_x",
-        PAYSTACK_AUTO_RELEASE_TEST_DEALS=True,
-    )
-    def test_paystack_webhook_auto_releases_test_purchase(self):
-        owner_user = self.User.objects.create_user(
-            username="webhook_owner",
-            password="secret123",
-        )
-        Profile.objects.get_or_create(user=owner_user, defaults={"role": "landowner"})
-        landowner = LandownerProfile.objects.create(
-            user=owner_user,
-            national_id=SimpleUploadedFile("webhook_id.txt", b"id"),
-            kra_pin=SimpleUploadedFile("webhook_pin.txt", b"pin"),
-        )
-        plot = Plot.objects.create(
-            landowner=landowner,
-            title="Webhook Plot",
-            location="Machakos",
-            area=2,
-            price="650000.00",
-            sale_price="650000.00",
-            listing_type="sale",
-        )
-        payment = PaymentRequest.objects.create(
-            buyer=self.buyer,
-            seller=owner_user,
-            plot=plot,
-            title="Reservation Deposit for Purchase: Webhook Plot",
-            description="M-Pesa checkout for reservation deposit.",
-            amount="10.00",
-            method=PaymentRequest.Method.MPESA_STK,
-            category=PaymentRequest.Category.RESERVATION_DEPOSIT,
-            transaction_type=PaymentRequest.TransactionType.PURCHASE,
-            status=PaymentRequest.Status.PENDING,
-            phone_number="254700000555",
-        )
-        payload = {
-            "event": "charge.success",
-            "data": {
-                "reference": payment.internal_reference,
-                "status": "success",
-                "gateway_response": "Successful",
-                "paid_at": "2026-03-25T12:00:00Z",
-                "channel": "mobile_money",
-            },
-        }
-        raw = json.dumps(payload).encode("utf-8")
-        signature = hmac.new(
-            b"sk_test_x",
-            raw,
-            hashlib.sha512,
-        ).hexdigest()
-
-        response = self.client.post(
-            reverse("payments:paystack_webhook"),
-            data=raw,
-            content_type="application/json",
-            HTTP_X_PAYSTACK_SIGNATURE=signature,
-        )
-
-        self.assertEqual(response.status_code, 200)
-        payment.refresh_from_db()
-        plot.refresh_from_db()
-        self.assertEqual(payment.status, PaymentRequest.Status.RELEASED)
-        self.assertEqual(plot.market_status, "reserved")
 
     def test_buyer_can_open_dispute(self):
         self.client.login(username="buyer_auth", password="secret123")

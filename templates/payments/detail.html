@@ -832,11 +832,7 @@
                         Quick Actions
                     </h3>
                     <div class="action-buttons">
-                        {% if payment_provider == 'paystack' and paystack_authorization_url and payment.status == 'pending' %}
-                        <a href="{{ paystack_authorization_url }}" class="btn btn-primary w-100">
-                            <i class="fas fa-credit-card"></i> Continue Paystack Checkout
-                        </a>
-                        {% elif payment_provider == 'daraja' and payment.status == 'pending' %}
+                        {% if payment_provider == 'daraja' and payment.status == 'pending' %}
                         <div class="waiting-box" id="daraja-wait-box" data-poll-url="{{ payment_status_poll_url }}">
                             <strong><span class="pulse-dot"></span>Waiting for M-Pesa confirmation</strong>
                             <div class="notice-text" id="daraja-wait-message">
@@ -904,6 +900,28 @@
                                 <div class="milestone-title">{{ revenue.label }}</div>
                                 <div class="milestone-status">{{ revenue.amount }}</div>
                                 <div class="milestone-desc">{{ revenue.detail }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Bank Transfers -->
+                {% if bank_transfer_requests %}
+                <div class="info-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-building-columns"></i>
+                        Bank Transfers
+                    </h3>
+                    <div class="milestone-list">
+                        {% for transfer in bank_transfer_requests %}
+                        <div class="milestone-item">
+                            <div class="milestone-number">{{ forloop.counter }}</div>
+                            <div class="milestone-content">
+                                <div class="milestone-title">{{ transfer.beneficiary_name }}</div>
+                                <div class="milestone-status">{{ transfer.get_status_display }} • {{ transfer.get_rail_display }} • {{ transfer.currency }} {{ transfer.amount|floatformat:2|intcomma }}</div>
+                                <div class="milestone-desc">{{ transfer.bank_name }}{% if transfer.bank_code %} ({{ transfer.bank_code }}){% endif %} • {{ transfer.account_number }}</div>
                             </div>
                         </div>
                         {% endfor %}

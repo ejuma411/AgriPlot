@@ -1,5 +1,3 @@
-import hashlib
-import hmac
 import json
 import logging
 from datetime import timedelta
@@ -7,13 +5,12 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Count, Q, Sum
-from django.http import Http404, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
+from django.http import Http404, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
@@ -29,8 +26,7 @@ except ImportError:
 from accounts.validators import validate_kenyan_phone
 from listings.models import Plot, UserInterest
 from notifications.notification_service import NotificationService
-from .wallet_service import WalletService
-from .models import Wallet, WalletTransaction, WalletDepositRequest, WalletWithdrawalRequest
+
 from .forms import (
     PaymentClosingStepForm,
     PaymentDisputeForm,
@@ -38,15 +34,14 @@ from .forms import (
     PaymentRequestForm,
 )
 from .models import (
-    PaymentCertificate,
     PaymentClosingStep,
     PaymentDisbursement,
     PaymentDispute,
     PaymentMilestone,
     PaymentRequest,
 )
+from .bank_transfer_service import BankTransferService
 from .daraja import DarajaError, daraja_ready, extract_callback_metadata, initiate_stk_push
-from .paystack import PaystackError, initialize_transaction, paystack_ready, verify_transaction
 from .permissions import (
     describe_payment_actor,
     step_allowed_actor_labels,
@@ -61,6 +56,7 @@ from .permissions import (
     user_can_view_payment,
     user_is_finance_admin,
 )
+from .wallet_service import WalletService
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +108,18 @@ def _active_payment_provider():
 def _gateway_ready():
     if _active_payment_provider() == "daraja":
         return daraja_ready()
-    return paystack_ready()
+    return False
+
+
+def _active_bank_transfer_provider():
+    return getattr(settings, "BANK_TRANSFER_PROVIDER", "jenga").lower()
+
+
+def _bank_transfer_ready():
+    return bool(
+        getattr(settings, "BANK_TRANSFER_ENABLED", False)
+        and getattr(settings, "BANK_TRANSFER_BEARER_TOKEN", "").strip()
+    )
 
 
 def _payment_method_backend_enabled(method):
@@ -256,15 +263,6 @@ def _notify_buyer_payment_success(payment):
     )
 
 
-def _handle_successful_paystack_payment(payment, verification, actor=None):
-    _handle_successful_gateway_payment(
-        payment,
-        provider="paystack",
-        verification=verification,
-        actor=actor,
-    )
-
-
 def _handle_successful_gateway_payment(payment, provider, verification, actor=None):
     _ensure_payment_workflow_seeded(payment)
     anchor = payment.workflow_anchor_payment
@@ -325,17 +323,6 @@ def _handle_successful_gateway_payment(payment, provider, verification, actor=No
 
     _maybe_auto_complete_test_deal(payment)
     payment.save(update_fields=["metadata", "updated_at"])
-
-
-def _paystack_signature_is_valid(raw_body, received_signature):
-    if not settings.PAYSTACK_SECRET_KEY or not received_signature:
-        return False
-    digest = hmac.new(
-        settings.PAYSTACK_SECRET_KEY.encode("utf-8"),
-        raw_body,
-        hashlib.sha512,
-    ).hexdigest()
-    return hmac.compare_digest(digest, received_signature)
 
 
 def _journey_context():
@@ -492,7 +479,7 @@ def _ensure_payment_workflow_seeded(payment):
 
 
 def _maybe_auto_complete_test_deal(payment):
-    if not settings.PAYSTACK_AUTO_RELEASE_TEST_DEALS:
+    if not getattr(settings, "WALLET_TEST_MODE", False):
         return
     if payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
         payment.add_event(
@@ -1098,7 +1085,10 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             "airtel_money": PaymentRequest.Method.AIRTEL_MONEY,
             "wallet": PaymentRequest.Method.WALLET,
         }
-        payment.method = method_mapping.get(selected_method, form.cleaned_data.get("method", PaymentRequest.Method.MPESA_STK))
+        payment.method = method_mapping.get(
+            selected_method,
+            form.cleaned_data.get("method", PaymentRequest.Method.MPESA_STK),
+        )
 
         phone_number = self.request.POST.get("phone_number") or payment.phone_number
         if payment.method in {PaymentRequest.Method.MPESA_STK, PaymentRequest.Method.AIRTEL_MONEY} and phone_number:
@@ -1362,6 +1352,9 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
         context["transaction_stage_matrix"] = presenter.transaction_stage_matrix
         context["transaction_certificates"] = workspace_payment.certificates.all()
         context["disbursement_plan"] = workspace_payment.disbursements.all()
+        context["bank_transfer_requests"] = workspace_payment.bank_transfer_requests.select_related(
+            "beneficiary", "disbursement"
+        ).order_by("-created_at")
         context["officer_payment_rules"] = presenter.officer_payment_rules
         context["platform_revenue_streams"] = presenter.platform_revenue_streams
         action_labels = [
@@ -1395,6 +1388,8 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
             and self.object.buyer_id == self.request.user.id
         )
         context["payment_provider"] = _active_payment_provider()
+        context["bank_transfer_provider"] = _active_bank_transfer_provider()
+        context["bank_transfer_ready"] = _bank_transfer_ready()
         context["gateway_ready"] = _gateway_ready()
         context["daraja_customer_message"] = (self.object.metadata or {}).get(
             "daraja_customer_message", ""
@@ -1406,52 +1401,7 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
                 "payment_id": self.object.pk,
             },
         )
-        context["paystack_authorization_url"] = (self.object.metadata or {}).get(
-            "paystack_authorization_url", ""
-        )
         return context
-
-
-class PaystackCallbackView(View):
-    def get(self, request):
-        reference = request.GET.get("reference") or request.GET.get("trxref")
-        if not reference:
-            messages.error(request, "Missing Paystack reference.")
-            return redirect("payments:dashboard")
-
-        payment = get_object_or_404(PaymentRequest, internal_reference=reference)
-        if not paystack_ready():
-            messages.error(request, "Paystack is not configured yet.")
-            return redirect("payments:detail", pk=payment.pk)
-
-        try:
-            verification = verify_transaction(reference)
-        except PaystackError as exc:
-            messages.error(request, f"Could not verify Paystack payment: {exc}")
-            return redirect("payments:detail", pk=payment.pk)
-
-        if verification.get("status") == "success":
-            _handle_successful_paystack_payment(payment, verification)
-            messages.success(
-                request,
-                f"Payment {payment.internal_reference} verified successfully through Paystack.",
-            )
-            return redirect(_payment_next_workspace_url(payment))
-        else:
-            metadata = dict(payment.metadata or {})
-            metadata["paystack_verification"] = {
-                "status": verification.get("status", ""),
-                "gateway_response": verification.get("gateway_response", ""),
-                "paid_at": verification.get("paid_at", ""),
-                "channel": verification.get("channel", ""),
-            }
-            payment.metadata = metadata
-            payment.save(update_fields=["metadata", "updated_at"])
-            messages.warning(
-                request,
-                f"Paystack returned status '{verification.get('status', 'unknown')}' for this transaction.",
-            )
-        return redirect("payments:detail", pk=payment.pk)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -1517,40 +1467,28 @@ class DarajaCallbackView(View):
 
 
 @method_decorator(csrf_exempt, name="dispatch")
-class PaystackWebhookView(View):
+class BankTransferCallbackView(View):
     http_method_names = ["post"]
 
     def post(self, request):
-        if not paystack_ready():
-            return HttpResponseBadRequest("Paystack not configured.")
-
-        signature = request.headers.get("x-paystack-signature", "")
-        if not _paystack_signature_is_valid(request.body, signature):
-            return HttpResponseForbidden("Invalid signature.")
+        if not _bank_transfer_ready():
+            return HttpResponseBadRequest("Bank transfers are not configured.")
 
         try:
-            event = json.loads(request.body.decode("utf-8"))
+            payload = json.loads(request.body.decode("utf-8"))
         except json.JSONDecodeError:
             return HttpResponseBadRequest("Invalid JSON payload.")
 
-        if event.get("event") != "charge.success":
-            return JsonResponse({"received": True, "ignored": True})
+        try:
+            BankTransferService.handle_callback(payload, request.headers)
+        except ValidationError as exc:
+            logger.warning("Bank transfer callback rejected: %s", exc)
+            return JsonResponse({"status": "rejected", "message": str(exc)}, status=400)
+        except Exception as exc:
+            logger.exception("Unexpected bank transfer callback error: %s", exc)
+            return JsonResponse({"status": "error", "message": "Internal error"}, status=500)
 
-        data = event.get("data") or {}
-        reference = data.get("reference")
-        if not reference:
-            return HttpResponseBadRequest("Missing payment reference.")
-
-        payment = PaymentRequest.objects.filter(internal_reference=reference).first()
-        if not payment:
-            return JsonResponse({"received": True, "ignored": True})
-
-        _handle_successful_paystack_payment(payment, data)
-        payment.add_event(
-            "paystack_webhook_received",
-            "Paystack webhook confirmed a successful charge.",
-        )
-        return JsonResponse({"received": True})
+        return JsonResponse({"status": "accepted"})
 
 
 class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
@@ -2212,25 +2150,38 @@ def wallet_transactions(request):
     
     transactions = WalletService.get_transaction_history(request.user, limit=limit)
     
+    # Format transactions for template display
     data = [{
         'id': t.id,
         'date': t.created_at.strftime('%Y-%m-%d %H:%M'),
-        'type': t.get_transaction_type_display(),
+        'type_display': t.get_transaction_type_display(),
+        'type_code': t.type,
         'amount': float(t.amount),
-        'status': t.status,
-        'description': t.description,
+        'status': t.get_status_display(),
+        'status_code': t.status,
+        'description': t.description or t.get_channel_display(),
         'reference': t.reference,
+        'mpesa_receipt': (t.metadata or {}).get('mpesa_receipt') or t.provider_reference or '',
     } for t in transactions]
     
-    return JsonResponse({'success': True, 'transactions': data})
-
+    # Return as object with success flag for AJAX
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({'success': True, 'transactions': data})
+    
+    # For regular page load, render template
+    return render(request, 'payments/wallet_transactions.html', {'transactions': data})
 
 @login_required
 def wallet_balance_api(request):
     """API endpoint to get wallet balance"""
-    balance = WalletService.get_balance(request.user)
-    return JsonResponse({'success': True, 'balance': float(balance)})
+    balance_info = WalletService.get_balance_dict(request.user)
+    return JsonResponse({'success': True, 'balance': float(balance_info['balance'])})
 
+@login_required
+def wallet_has_pin(request):
+    """Check if user has set wallet PIN"""
+    has_pin = WalletService.has_pin(request.user)
+    return JsonResponse({'has_pin': has_pin})
 
 @csrf_exempt
 def mpesa_wallet_callback(request):

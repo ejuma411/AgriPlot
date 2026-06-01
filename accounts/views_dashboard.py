@@ -4,7 +4,6 @@ from urllib.parse import urlencode
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
-from django.core.paginator import Paginator
 from django.db.models import Avg, Count, Q, Sum
 from django.db.models.functions import TruncMonth
 from django.shortcuts import get_object_or_404, redirect, render
@@ -18,7 +17,7 @@ from accounts.access_control import (
     humanize_role,
     resolve_access_profile,
 )
-from listings.models import ContactRequest, Plot, UserInterest
+from listings.models import Plot, UserInterest
 from payments.models import (
     PaymentClosingStep,
     PaymentRequest,
@@ -30,15 +29,10 @@ from payments.models import (
 from payments.wallet_service import WalletService
 from payments.permissions import step_requires_admin_action, user_is_finance_admin
 from security.models import AuditLog
-from verification.models import VerificationLog, VerificationStatus, VerificationTask
+from verification.models import VerificationStatus, VerificationTask
 from transactions.models import Transaction
 from accounts.views_profile import _build_profile_context
-from accounts.forms import (
-    AccountDetailsForm,
-    AgentDetailsForm,
-    ExtensionOfficerEditForm,
-    LandSurveyorEditForm,
-)
+from accounts.forms import AccountDetailsForm, AgentDetailsForm
 
 logger = logging.getLogger(__name__)
 
@@ -477,19 +471,23 @@ def staff_dashboard(request):
     if access_profile.can("wallet.view_own"):
         wallet = WalletService.get_or_create_wallet(request.user)
         wallet_transactions = list(
-            wallet.transactions.select_related("related_payment").order_by("-created_at")[:8]
+            wallet.transactions.select_related("payment_request", "related_payment").order_by("-created_at")[:8]
         )
         purchase_wallet_count = wallet.transactions.filter(
-            related_payment__transaction_type=PaymentRequest.TransactionType.PURCHASE
+            Q(payment_request__transaction_type=PaymentRequest.TransactionType.PURCHASE)
+            | Q(related_payment__transaction_type=PaymentRequest.TransactionType.PURCHASE)
         ).count()
         lease_wallet_count = wallet.transactions.filter(
-            related_payment__transaction_type=PaymentRequest.TransactionType.LEASE
+            Q(payment_request__transaction_type=PaymentRequest.TransactionType.LEASE)
+            | Q(related_payment__transaction_type=PaymentRequest.TransactionType.LEASE)
         ).count()
         total_deposit_amount = wallet.transactions.filter(
-            transaction_type="credit", status="completed"
+            type=WalletTransaction.TYPE_CREDIT,
+            status=WalletTransaction.STATUS_SUCCESS,
         ).aggregate(total=Sum("amount"))["total"] or 0
         total_debit_amount = wallet.transactions.filter(
-            transaction_type="debit", status="completed"
+            type=WalletTransaction.TYPE_DEBIT,
+            status=WalletTransaction.STATUS_SUCCESS,
         ).aggregate(total=Sum("amount"))["total"] or 0
         context["wallet"] = wallet
         context["wallet_transactions"] = wallet_transactions
@@ -508,13 +506,15 @@ def staff_dashboard(request):
         pending_deposits = WalletDepositRequest.objects.filter(status__in=["pending", "processing"]).order_by("-created_at")[:6]
         pending_withdrawals = WalletWithdrawalRequest.objects.filter(status__in=["pending", "processing"]).order_by("-created_at")[:6]
         recent_wallet_transactions = WalletTransaction.objects.select_related(
-            "wallet__user", "related_payment"
+            "wallet__user", "payment_request", "related_payment"
         ).order_by("-created_at")[:8]
         deposit_volume = WalletTransaction.objects.filter(
-            transaction_type="credit", status="completed"
+            type=WalletTransaction.TYPE_CREDIT,
+            status=WalletTransaction.STATUS_SUCCESS,
         ).aggregate(total=Sum("amount"))["total"] or 0
         payout_volume = WalletTransaction.objects.filter(
-            transaction_type="debit", status="completed"
+            type=WalletTransaction.TYPE_DEBIT,
+            status=WalletTransaction.STATUS_SUCCESS,
         ).aggregate(total=Sum("amount"))["total"] or 0
         context["finance_wallet_cards"] = {
             "wallets": total_wallets,

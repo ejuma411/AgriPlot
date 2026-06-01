@@ -6,76 +6,214 @@
 {% block content %}
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Wallet Transactions</h2>
+        <div>
+            <h2 class="mb-0">Wallet Transactions</h2>
+            <p class="text-muted mb-0">View all your wallet activity</p>
+        </div>
         <a href="{% url 'payments:wallet_dashboard' %}" class="btn btn-outline-primary">
-            <i class="fas fa-arrow-left"></i> Back to Wallet
+            <i class="fas fa-arrow-left me-2"></i>Back to Wallet
         </a>
     </div>
     
-    <div class="card">
-        <div class="card-body">
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover" id="transactionsTable">
-                    <thead>
+                <table class="table table-hover mb-0" id="transactionsTable">
+                    <thead class="table-light">
                         <tr>
-                            <th>Date</th>
+                            <th>Date & Time</th>
                             <th>Reference</th>
                             <th>Description</th>
                             <th>Type</th>
                             <th>Amount</th>
                             <th>Status</th>
+                            <th>Receipt</th>
                         </tr>
                     </thead>
                     <tbody id="transactionsBody">
                         <tr>
-                            <td colspan="6" class="text-center">Loading...</td>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-2 text-muted">Loading transactions...</p>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+    
+    <div class="text-center mt-3">
+        <small class="text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            Transactions are updated in real-time. Deposits may take a few minutes to reflect.
+        </small>
+    </div>
 </div>
 
 <script>
 async function loadTransactions() {
     try {
-        const response = await fetch("{% url 'payments:wallet_transactions' %}?limit=100");
+        const response = await fetch("{% url 'payments:wallet_transactions' %}?limit=100", {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        });
         const data = await response.json();
         
         if (data.success && data.transactions) {
             const tbody = document.getElementById('transactionsBody');
             tbody.innerHTML = '';
             
+            if (data.transactions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-5 text-muted">
+                            <i class="fas fa-wallet fa-3x mb-3 opacity-50"></i>
+                            <p>No transactions yet</p>
+                            <small>Your first deposit will appear here</small>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
             data.transactions.forEach(t => {
+                // Determine badge colors
+                let typeBadgeClass = '';
+                let typeIcon = '';
+                
+                if (t.type_code === 'CREDIT') {
+                    typeBadgeClass = 'bg-success';
+                    typeIcon = 'fa-arrow-down';
+                } else {
+                    typeBadgeClass = 'bg-warning text-dark';
+                    typeIcon = 'fa-arrow-up';
+                }
+                
+                let statusBadgeClass = '';
+                if (t.status_code === 'SUCCESS') {
+                    statusBadgeClass = 'bg-success';
+                } else if (t.status_code === 'PENDING') {
+                    statusBadgeClass = 'bg-warning text-dark';
+                } else if (t.status_code === 'FAILED') {
+                    statusBadgeClass = 'bg-danger';
+                } else {
+                    statusBadgeClass = 'bg-secondary';
+                }
+                
                 const row = `
                     <tr>
-                        <td>${t.date}</td>
-                        <td><code>${t.reference}</code></td>
-                        <td>${t.description}</td>
-                        <td>
-                            <span class="badge ${t.type === 'Credit (Deposit)' ? 'bg-success' : 'bg-warning'}">
-                                ${t.type}
-                            </span>
-                        </td>
-                        <td class="${t.type === 'Credit (Deposit)' ? 'text-success' : 'text-danger'}">
-                            ${t.type === 'Credit (Deposit)' ? '+' : '-'} KES ${t.amount.toLocaleString()}
+                        <td class="text-nowrap">
+                            <small class="text-muted">${t.date}</small>
                         </td>
                         <td>
-                            <span class="badge ${t.status === 'completed' ? 'bg-success' : 'bg-secondary'}">
-                                ${t.status}
+                            <code class="small">${t.reference}</code>
+                            ${t.mpesa_receipt ? `<br><small class="text-muted">M-Pesa: ${t.mpesa_receipt}</small>` : ''}
+                        </td>
+                        <td>${escapeHtml(t.description || '-')}</td>
+                        <td>
+                            <span class="badge ${typeBadgeClass}">
+                                <i class="fas ${typeIcon} me-1"></i>${t.type_display}
                             </span>
+                        </td>
+                        <td class="${t.type_code === 'CREDIT' ? 'text-success fw-bold' : 'text-danger fw-bold'}">
+                            ${t.type_code === 'CREDIT' ? '+' : '-'} KES ${t.amount.toLocaleString()}
+                        </td>
+                        <td>
+                            <span class="badge ${statusBadgeClass}">${t.status}</span>
+                        </td>
+                        <td>
+                            ${t.mpesa_receipt ? `
+                                <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${t.mpesa_receipt}')" title="Copy receipt number">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            ` : '-'}
                         </td>
                     </tr>
                 `;
                 tbody.innerHTML += row;
             });
+        } else {
+            showError('Failed to load transactions');
         }
     } catch (error) {
         console.error('Error loading transactions:', error);
+        showError('Error loading transactions. Please refresh the page.');
     }
 }
 
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showError(message) {
+    const tbody = document.getElementById('transactionsBody');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="7" class="text-center py-5 text-danger">
+                <i class="fas fa-exclamation-circle fa-2x mb-2"></i>
+                <p>${message}</p>
+                <button class="btn btn-sm btn-outline-primary" onclick="loadTransactions()">
+                    <i class="fas fa-sync-alt me-1"></i>Try Again
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        // Show temporary toast or alert
+        const toast = document.createElement('div');
+        toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success';
+        toast.style.zIndex = '9999';
+        toast.innerHTML = '<i class="fas fa-check-circle me-2"></i>Receipt number copied!';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+    });
+}
+
+// Auto-refresh every 30 seconds
+let refreshInterval = setInterval(loadTransactions, 30000);
+
+// Stop auto-refresh when page is hidden
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        clearInterval(refreshInterval);
+    } else {
+        refreshInterval = setInterval(loadTransactions, 30000);
+        loadTransactions(); // Refresh immediately when tab becomes visible
+    }
+});
+
+// Initial load
 loadTransactions();
 </script>
+
+<style>
+.table th {
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.table td {
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+code {
+    font-size: 0.8rem;
+    background: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+</style>
 {% endblock %}

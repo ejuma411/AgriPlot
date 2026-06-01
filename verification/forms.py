@@ -253,10 +253,10 @@ class ExtensionReportForm(forms.ModelForm):
         help_text="Select up to 3 recommended crops from the agronomy library.",
     )
 
-    site_photos = MultipleFileField(
-        required=False,
-        help_text="Upload photos from the site visit (you can select multiple files)",
-    )
+    # site_photos = MultipleFileField(
+    #     required=False,
+    #     help_text="Upload photos from the site visit (you can select multiple files)",
+    # )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

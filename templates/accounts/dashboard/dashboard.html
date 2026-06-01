@@ -350,7 +350,7 @@
                                 <div class="workspace-list-item">
                                     <span>
                                         <strong>
-                                            {% if txn.transaction_type == 'credit' %}
+                                            {% if txn.type == 'CREDIT' %}
                                                 <i class="fa-solid fa-arrow-down text-success me-1"></i>
                                             {% else %}
                                                 <i class="fa-solid fa-arrow-up text-danger me-1"></i>
@@ -360,8 +360,8 @@
                                         <span>{{ txn.created_at|date:"M d, Y H:i" }} · {{ txn.reference }}</span>
                                     </span>
                                     <span>
-                                        <span class="{% if txn.transaction_type == 'credit' %}text-success{% else %}text-danger{% endif %}" style="font-weight:600;">
-                                            {% if txn.transaction_type == 'credit' %}+{% else %}-{% endif %}KES {{ txn.amount|floatformat:0 }}
+                                        <span class="{% if txn.type == 'CREDIT' %}text-success{% else %}text-danger{% endif %}" style="font-weight:600;">
+                                            {% if txn.type == 'CREDIT' %}+{% else %}-{% endif %}KES {{ txn.amount|floatformat:0 }}
                                         </span>
                                     </span>
                                 </div>

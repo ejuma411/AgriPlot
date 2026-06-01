@@ -40,11 +40,21 @@ def payment_admin_nav(request):
         "payment_admin_task_count": task_count,
     }
 
-from .wallet_service import WalletService
-
 def wallet_balance(request):
-    """Add wallet balance to all templates"""
+    """Add wallet balance to template context"""
     if request.user.is_authenticated:
-        balance = WalletService.get_balance(request.user)
-        return {'wallet_balance': balance}
-    return {'wallet_balance': 0}
+        try:
+            from .wallet_service import WalletService
+            balance = WalletService.get_balance(request.user)
+            return {
+                'wallet_balance': balance['balance'],
+                'wallet_available_balance': balance['available_balance'],
+                'wallet_account_number': balance['account_number'],
+            }
+        except Exception as e:
+            # Log error but don't break the page
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Wallet balance error: {e}")
+            return {}
+    return {}
