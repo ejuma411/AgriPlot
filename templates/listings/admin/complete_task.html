@@ -122,37 +122,37 @@
                     </li>
                     <li class="{% if plot.official_search %}completed{% endif %}">
                         <i class="fas {% if plot.official_search %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Official Search
+                        Official Search Certificate
                         {% if not plot.official_search %}<small class="text-danger">(Missing)</small>{% endif %}
                     </li>
                     <li class="{% if plot.survey_map %}completed{% endif %}">
                         <i class="fas {% if plot.survey_map %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Survey Map / Mutation
+                        Survey Map / Mutation Form
                         {% if not plot.survey_map %}<small class="text-danger">(Missing)</small>{% endif %}
                     </li>
                     <li class="{% if plot.landowner_id_doc %}completed{% endif %}">
                         <i class="fas {% if plot.landowner_id_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Landowner ID
+                        Registered Owner National ID / Passport
                         {% if not plot.landowner_id_doc %}<small class="text-danger">(Missing)</small>{% endif %}
                     </li>
                     <li class="{% if plot.kra_pin %}completed{% endif %}">
                         <i class="fas {% if plot.kra_pin %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        KRA PIN
+                        Registered Owner KRA PIN
                         {% if not plot.kra_pin %}<small class="text-danger">(Missing)</small>{% endif %}
                     </li>
                     <li class="{% if plot.rates_clearance %}completed{% endif %}">
                         <i class="fas {% if plot.rates_clearance %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Rates Clearance
+                        County Rates Clearance
                         {% if not plot.rates_clearance %}<small class="text-danger">(Missing)</small>{% endif %}
                     </li>
                     <li class="{% if plot.rent_clearance %}completed{% endif %}">
                         <i class="fas {% if plot.rent_clearance %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Rent Clearance
+                        Land Rent Clearance
                         {% if not plot.rent_clearance %}<small class="text-danger">(Missing)</small>{% endif %}
                     </li>
                     <li class="{% if plot.spousal_consent_doc %}completed{% endif %}">
                         <i class="fas {% if plot.spousal_consent_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger{% endif %} me-2"></i>
-                        Spousal Consent
+                        Spousal Consent Form
                         {% if not plot.spousal_consent_doc %}<small class="text-danger">(Missing)</small>{% endif %}
                     </li>
                 </ul>
@@ -190,14 +190,14 @@
                                                     <span class="text-danger">Missing</span>
                                                 {% endif %}
                                             </div>
-                                            <div><strong>Official Search:</strong>
+                                            <div><strong>Official Search Certificate:</strong>
                                                 {% if plot.official_search %}
                                                     <a href="{{ plot.official_search.url }}" target="_blank">Open</a>
                                                 {% else %}
                                                     <span class="text-danger">Missing</span>
                                                 {% endif %}
                                             </div>
-                                            <div><strong>ID Document:</strong>
+                                            <div><strong>Registered Owner National ID / Passport:</strong>
                                                 {% if plot.landowner_id_doc %}
                                                     <a href="{{ plot.landowner_id_doc.url }}" target="_blank">Open</a>
                                                 {% else %}
@@ -250,11 +250,11 @@
                                             <strong>Registry Data</strong>
                                         </div>
                                         <div class="card-body small">
-                                            <div><strong>Owner Name:</strong> {{ registry_data.owner_name|default:"-" }}</div>
-                                            <div><strong>Parcel No:</strong> {{ registry_data.parcel_number|default:"-" }}</div>
-                                            <div><strong>Title No:</strong> {{ registry_data.title_number|default:"-" }}</div>
-                                            <div><strong>Search Ref:</strong> {{ registry_data.search_reference|default:"-" }}</div>
-                                            <div><strong>Encumbrance:</strong> {{ registry_data.encumbrance_result|default:"-" }}</div>
+                                            <div><strong>Registered Owner Name:</strong> {{ registry_data.owner_name|default:"-" }}</div>
+                                            <div><strong>Parcel Number:</strong> {{ registry_data.parcel_number|default:"-" }}</div>
+                                            <div><strong>Title Number:</strong> {{ registry_data.title_number|default:"-" }}</div>
+                                            <div><strong>Search Reference:</strong> {{ registry_data.search_reference|default:"-" }}</div>
+                                            <div><strong>Encumbrance Status:</strong> {{ registry_data.encumbrance_result|default:"-" }}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -273,51 +273,51 @@
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_search" name="check_search" required>
                                     <label class="form-check-label" for="check_search">
-                                        <strong>Official Search</strong><br>
-                                        <small class="text-muted">Verify that the official search is recent (within 30 days) and matches title deed</small>
+                                        <strong>Official Search Certificate</strong><br>
+                                        <small class="text-muted">Verify that the official search certificate is current and matches the title deed.</small>
                                     </label>
                                 </div>
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_id" name="check_id" required>
                                     <label class="form-check-label" for="check_id">
-                                        <strong>Landowner ID</strong><br>
-                                        <small class="text-muted">Verify that the ID matches the name on title deed and is valid</small>
+                                        <strong>Registered Owner National ID / Passport</strong><br>
+                                        <small class="text-muted">Verify that the ID or passport matches the name on the title deed.</small>
                                     </label>
                                 </div>
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_kra" name="check_kra" required>
                                     <label class="form-check-label" for="check_kra">
-                                        <strong>KRA PIN</strong><br>
-                                        <small class="text-muted">Verify that the KRA PIN matches the landowner's name</small>
+                                        <strong>Registered Owner KRA PIN</strong><br>
+                                        <small class="text-muted">Verify that the KRA PIN matches the registered owner.</small>
                                     </label>
                                 </div>
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_name_match" name="check_name_match" required>
                                     <label class="form-check-label" for="check_name_match">
                                         <strong>Name Match (ID vs Title)</strong><br>
-                                        <small class="text-muted">Exact name match between ID and Title Deed (including middle names)</small>
+                                        <small class="text-muted">Exact name match between the ID / passport and the title deed.</small>
                                     </label>
                                 </div>
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_seal_signature" name="check_seal_signature" required>
                                     <label class="form-check-label" for="check_seal_signature">
                                         <strong>Seal & Signature</strong><br>
-                                        <small class="text-muted">Title Deed has Ministry of Lands seal and Registrar signature</small>
+                                        <small class="text-muted">Title deed has Ministry of Lands seal and registrar signature.</small>
                                     </label>
                                 </div>
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_rates_clearance" name="check_rates_clearance" required>
                                     <label class="form-check-label" for="check_rates_clearance">
-                                        <strong>Rates Clearance</strong><br>
-                                        <small class="text-muted">County rates clearance certificate (last 3 months)</small>
+                                        <strong>County Rates Clearance</strong><br>
+                                        <small class="text-muted">County rates clearance certificate is current and valid.</small>
                                     </label>
                                 </div>
                                 {% if plot.ownership_type == 'leasehold' %}
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_rent_clearance" name="check_rent_clearance" required>
                                     <label class="form-check-label" for="check_rent_clearance">
-                                        <strong>Rent Clearance</strong><br>
-                                        <small class="text-muted">National government land rent clearance (last 3 months)</small>
+                                        <strong>Land Rent Clearance</strong><br>
+                                        <small class="text-muted">National government land rent clearance is current and valid.</small>
                                     </label>
                                 </div>
                                 <div class="form-check mb-3">
@@ -341,15 +341,15 @@
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_mutation_form" name="check_mutation_form" required>
                                     <label class="form-check-label" for="check_mutation_form">
-                                        <strong>Mutation Form / Survey Map</strong><br>
-                                        <small class="text-muted">Approved mutation form for subdivision</small>
+                                        <strong>Survey Map / Mutation Form</strong><br>
+                                        <small class="text-muted">Approved mutation form or survey map for subdivision.</small>
                                     </label>
                                 </div>
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_plupa1" name="check_plupa1" required>
                                     <label class="form-check-label" for="check_plupa1">
-                                        <strong>PLUPA 1 / PPA 1</strong><br>
-                                        <small class="text-muted">County approval for subdivision/change of use</small>
+                                        <strong>PLUPA 1 / PPA 1 Form</strong><br>
+                                        <small class="text-muted">County approval for subdivision or change of use.</small>
                                     </label>
                                 </div>
                                 {% endif %}
@@ -357,8 +357,8 @@
                                 <div class="form-check mb-3">
                                     <input class="form-check-input" type="checkbox" id="check_spousal_consent" name="check_spousal_consent" required>
                                     <label class="form-check-label" for="check_spousal_consent">
-                                        <strong>Spousal Consent</strong><br>
-                                        <small class="text-muted">Affidavit confirming spousal consent</small>
+                                        <strong>Spousal Consent Form</strong><br>
+                                        <small class="text-muted">Affidavit confirming spousal consent.</small>
                                     </label>
                                 </div>
                                 {% endif %}
@@ -366,7 +366,7 @@
                                     <input class="form-check-input" type="checkbox" id="check_search_recency" name="check_search_recency" required>
                                     <label class="form-check-label" for="check_search_recency">
                                         <strong>Search Recency</strong><br>
-                                        <small class="text-muted">Official Search Certificate dated within 30 days</small>
+                                        <small class="text-muted">Official Search Certificate dated within the acceptable validity window.</small>
                                     </label>
                                 </div>
                             </div>
@@ -375,12 +375,12 @@
                             <h6 class="section-subtitle">Extracted Document Details</h6>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">Registered Owner Name (from Title/Official Search)</label>
+                                    <label class="form-label">Registered Owner Name (from Title Deed and Official Search)</label>
                                     <input type="text" class="form-control" name="owner_name_extracted" value="{{ form_data.owner_name_extracted|default:'' }}" required>
                                     <small class="text-muted">Must match user name: <strong>{{ expected_owner_name }}</strong></small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label class="form-label">National ID Number (from ID)</label>
+                                    <label class="form-label">National ID / Passport Number (from ID)</label>
                                     <input type="text" class="form-control" name="id_number_extracted" value="{{ form_data.id_number_extracted|default:'' }}" required>
                                 </div>
                                 <div class="col-md-6 mb-3">

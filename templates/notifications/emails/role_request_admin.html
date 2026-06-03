@@ -1,13 +1,13 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<p>Hello {{ admin|display_name }},</p>
-        <p>{{ user|display_name }} has submitted a request for <strong>{{ role }}</strong>.</p>
-        {% if details %}
-            <p><strong>Submitted details:</strong></p>
-            <pre style="white-space: pre-wrap;">{{ details }}</pre>
-        {% endif %}
-        <div style="text-align:center; margin-top: 16px;">
-            <a href="{{ review_url }}" class="button">Review Request</a>
-        </div>
+<p>Hello {{ admin.username|default:admin.email|default:"there" }},</p>
+<p>{{ user.username|default:user.email|default:"there" }} has submitted a request for <strong>{{ role }}</strong>.</p>
+{% if details %}
+    <p><strong>Submitted details:</strong></p>
+    <pre style="white-space: pre-wrap;">{{ details }}</pre>
+{% endif %}
+<div style="text-align:center; margin-top: 16px;">
+    <a href="{{ review_url }}" class="button">Review Request</a>
+</div>
 {% endblock %}

@@ -42,6 +42,7 @@ class AccountDetailsForm(_EmailCheckMixin, forms.Form):
     intent = forms.ChoiceField(
         choices=Profile._meta.get_field("intent").choices,
         widget=forms.Select(attrs={"class": "form-select"}),
+        help_text="Choose the option that best describes how you use AgriPlot.",
     )
     address = forms.CharField(
         required=False,

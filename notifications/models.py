@@ -21,6 +21,7 @@ class Notification(models.Model):
         ("no_officer_available", "No Officer Available"),
         ("role_request", "Role Request"),
         ("role_approved", "Role Approved"),
+        ("role_rejected", "Role Rejected"),
         ("account_verified", "Account Verified"),
     ]
 

@@ -420,14 +420,14 @@ if SITE_URL and SITE_URL not in CSRF_TRUSTED_ORIGINS:
 # SMS CONFIGURATION
 # =============================================================================
 
-SMS_PROVIDER = os.environ.get('SMS_PROVIDER', 'opensms').lower()
+SMS_PROVIDER = os.environ.get('SMS_PROVIDER', 'opensms').strip().lower()
 
 OPENSMS_API_URL = os.environ.get(
     'OPENSMS_API_URL',
     'https://api.opensms.co.ke/v3/sms/send'
-)
-OPENSMS_API_TOKEN = os.environ.get('OPENSMS_API_TOKEN', '')
-OPENSMS_SENDER_ID = os.environ.get('OPENSMS_SENDER_ID', 'AgriPlot')
+).strip()
+OPENSMS_API_TOKEN = os.environ.get('OPENSMS_API_TOKEN', '').strip()
+OPENSMS_SENDER_ID = os.environ.get('OPENSMS_SENDER_ID', 'AgriPlot').strip()
 
 
 # =============================================================================
@@ -471,6 +471,11 @@ BANK_TRANSFER_ENABLED = _env_bool("BANK_TRANSFER_ENABLED", default=False)
 BANK_TRANSFER_PROVIDER = os.environ.get("BANK_TRANSFER_PROVIDER", "jenga").lower()
 BANK_TRANSFER_API_BASE_URL = os.environ.get("BANK_TRANSFER_API_BASE_URL", "https://jengaapi.io")
 BANK_TRANSFER_API_PATH = os.environ.get("BANK_TRANSFER_API_PATH", "/v3/transaction/sendmoney")
+BANK_TRANSFER_AUTH_API_BASE_URL = os.environ.get("BANK_TRANSFER_AUTH_API_BASE_URL", "https://api.finserve.africa")
+BANK_TRANSFER_AUTH_API_PATH = os.environ.get(
+    "BANK_TRANSFER_AUTH_API_PATH",
+    "/authentication/api/v3/authenticate/merchant",
+)
 BANK_TRANSFER_SOURCE_COUNTRY_CODE = os.environ.get("BANK_TRANSFER_SOURCE_COUNTRY_CODE", "KE")
 BANK_TRANSFER_DESTINATION_COUNTRY_CODE = os.environ.get("BANK_TRANSFER_DESTINATION_COUNTRY_CODE", "KE")
 BANK_TRANSFER_SOURCE_ACCOUNT_NUMBER = os.environ.get("BANK_TRANSFER_SOURCE_ACCOUNT_NUMBER", "")
@@ -489,6 +494,24 @@ BANK_TRANSFER_BANK_NAME = os.environ.get("BANK_TRANSFER_BANK_NAME", "")
 BANK_TRANSFER_ACCOUNT_NAME = os.environ.get("BANK_TRANSFER_ACCOUNT_NAME", "")
 BANK_TRANSFER_ACCOUNT_NUMBER = os.environ.get("BANK_TRANSFER_ACCOUNT_NUMBER", "")
 BANK_TRANSFER_SWIFT_CODE = os.environ.get("BANK_TRANSFER_SWIFT_CODE", "")
+BANK_TRANSFER_SENDER_NAME = os.environ.get("BANK_TRANSFER_SENDER_NAME", "")
+BANK_TRANSFER_SENDER_DOCUMENT_TYPE = os.environ.get("BANK_TRANSFER_SENDER_DOCUMENT_TYPE", "")
+BANK_TRANSFER_SENDER_DOCUMENT_NUMBER = os.environ.get("BANK_TRANSFER_SENDER_DOCUMENT_NUMBER", "")
+BANK_TRANSFER_SENDER_COUNTRY_CODE = os.environ.get("BANK_TRANSFER_SENDER_COUNTRY_CODE", "KE")
+BANK_TRANSFER_SENDER_MOBILE_NUMBER = os.environ.get("BANK_TRANSFER_SENDER_MOBILE_NUMBER", "")
+BANK_TRANSFER_SENDER_EMAIL = os.environ.get("BANK_TRANSFER_SENDER_EMAIL", "")
+BANK_TRANSFER_SENDER_ADDRESS = os.environ.get("BANK_TRANSFER_SENDER_ADDRESS", "")
+BANK_TRANSFER_DESTINATION_DOCUMENT_TYPE = os.environ.get("BANK_TRANSFER_DESTINATION_DOCUMENT_TYPE", "")
+BANK_TRANSFER_DESTINATION_DOCUMENT_NUMBER = os.environ.get("BANK_TRANSFER_DESTINATION_DOCUMENT_NUMBER", "")
+BANK_TRANSFER_DESTINATION_MOBILE_NUMBER = os.environ.get("BANK_TRANSFER_DESTINATION_MOBILE_NUMBER", "")
+BANK_TRANSFER_DESTINATION_EMAIL = os.environ.get("BANK_TRANSFER_DESTINATION_EMAIL", "")
+BANK_TRANSFER_DESTINATION_ADDRESS = os.environ.get("BANK_TRANSFER_DESTINATION_ADDRESS", "")
+
+JENGA_MERCHANT_CODE = os.environ.get("JENGA_MERCHANT_CODE", "")
+JENGA_CONSUMER_SECRET = os.environ.get("JENGA_CONSUMER_SECRET", "")
+JENGA_API_KEY = os.environ.get("JENGA_API_KEY", "")
+JENGA_PUBLIC_KEY = os.environ.get("JENGA_PUBLIC_KEY", "")
+JENGA_CONSUMER_KEY = os.environ.get("JENGA_CONSUMER_KEY", JENGA_API_KEY)
 
 AIRTEL_MONEY_ENABLED = _env_bool("AIRTEL_MONEY_ENABLED", default=False)
 AIRTEL_MONEY_CLIENT_ID = os.environ.get("AIRTEL_MONEY_CLIENT_ID", "")
@@ -538,6 +561,7 @@ PLOT_CREATE_RATE_LIMIT = int(os.environ.get("PLOT_CREATE_RATE_LIMIT", "0"))
 
 # OTP / verification settings
 OTP_PROVIDER = os.environ.get("OTP_PROVIDER", "email")  # email | sms | both
+PHONE_OTP_VERIFICATION_ENABLED = _env_bool("PHONE_OTP_VERIFICATION_ENABLED", default=False)
 USE_SMS_MOCK = _env_bool("USE_SMS_MOCK", default=True)
 ENABLE_SMS_NOTIFICATIONS = _env_bool("ENABLE_SMS_NOTIFICATIONS", default=False)
 NOTIFICATION_DELAY_SECONDS = int(os.environ.get("NOTIFICATION_DELAY_SECONDS", "60"))
@@ -634,7 +658,7 @@ LOGGING = {
         # Root logger - captures everything
         "": {
             "handlers": ["console", "system_file", "error_file"],
-            "level": "INFO",
+            "level": "DEBUG" if DEBUG else "INFO",
             "propagate": True,
         },
 
@@ -717,15 +741,15 @@ LOGGING = {
 
         # Security App
         "security": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
+            "handlers": ["system_file", "error_file", "console"],
+            "level": "DEBUG" if DEBUG else "INFO",
             "propagate": False,
         },
 
         # Notifications App
         "notifications": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
+            "handlers": ["system_file", "error_file", "console"],
+            "level": "DEBUG" if DEBUG else "INFO",
             "propagate": False,
         },
 

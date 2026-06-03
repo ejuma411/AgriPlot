@@ -1,16 +1,16 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<h2>Hello {{ user|display_name }},</h2>
-        <p>Great news. Your email address on AgriPlot has been verified successfully.</p>
-        <p>You can now:</p>
-        <ul>
-            <li>✅ Continue using your account with full contact verification</li>
-            <li>✅ Access actions that require both phone and email confirmation</li>
-            <li>✅ Keep receiving AgriPlot updates on a verified email address</li>
-        </ul>
-        <div style="text-align: center;">
-            <a href="{{ login_url }}" class="button">Open AgriPlot</a>
-        </div>
-        <p>Thank you for joining AgriPlot Connect.</p>
+<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
+<p>Great news. Your email address on AgriPlot has been verified successfully.</p>
+<p>You can now:</p>
+<ul>
+    <li>✅ Continue using your account with full contact verification</li>
+    <li>✅ Access actions that require both phone and email confirmation</li>
+    <li>✅ Keep receiving AgriPlot updates on a verified email address</li>
+</ul>
+<div style="text-align: center;">
+    <a href="{{ login_url }}" class="button">Open AgriPlot</a>
+</div>
+<p>Thank you for joining AgriPlot Connect.</p>
 {% endblock %}

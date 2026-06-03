@@ -12,6 +12,17 @@
 <p class="auth-subtitle">Register as a buyer to explore verified farmland listings and later upgrade this same account to landowner, agent, extension officer, or land surveyor.</p>
 {% endif %}
 
+{% if requirements %}
+<div class="auth-note" style="margin-top: 16px;">
+    <strong>Identity details used later in verification:</strong>
+    <ul class="mb-0 mt-2 ps-3">
+        {% for item in requirements %}
+            <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <form method="POST" class="auth-form">
     {% csrf_token %}
 

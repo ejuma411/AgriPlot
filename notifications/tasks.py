@@ -10,6 +10,7 @@ clean, fast response.
 """
 
 import logging
+from html import escape
 
 from celery import shared_task
 from django.conf import settings
@@ -54,6 +55,42 @@ def _send_email_now(
     if not recipient:
         return False
 
+    def _fallback_html(subject_text: str, body_text: str, context_data: dict | None = None) -> str:
+        context_data = context_data or {}
+        otp = context_data.get("otp")
+        verification_url = context_data.get("verification_url") or context_data.get("reset_link")
+        cta_label = context_data.get("cta_label") or "Open AgriPlot"
+        extra_lines = []
+        if verification_url:
+            extra_lines.append(
+                f'<p style="text-align:center; margin: 24px 0;">'
+                f'<a href="{escape(str(verification_url))}" class="button">{escape(str(cta_label))}</a>'
+                f'</p>'
+            )
+        if otp:
+            extra_lines.append(
+                '<div class="highlight-box">'
+                f'{escape(str(otp))}'
+                '</div>'
+            )
+        if context_data.get("support_url"):
+            extra_lines.append(
+                '<p style="text-align:center; margin-top: 16px;">'
+                f'<a href="{escape(str(context_data["support_url"]))}">Contact Support</a>'
+                '</p>'
+            )
+        rendered_body = escape(body_text or subject_text or "AgriPlot notification")
+        return (
+            "<html><body style=\"font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto;\">"
+            '<div style="background: linear-gradient(135deg, #069132 0%, #047a29 100%); color: #fff; padding: 28px 24px; text-align: center;">'
+            "<h1 style=\"margin: 0; font-size: 24px;\">AgriPlot Connect</h1>"
+            "</div>"
+            '<div style="padding: 28px 24px;">'
+            f"<p>{rendered_body}</p>"
+            + "".join(extra_lines)
+            + "</div></body></html>"
+        )
+
     html_message = None
     plain_message = message
 
@@ -61,8 +98,16 @@ def _send_email_now(
         try:
             html_message = render_to_string(f"notifications/emails/{template}.html", context)
             plain_message = strip_tags(html_message)
-        except Exception:
-            logger.warning("Email template %s not found, falling back to plain text", template)
+        except Exception as exc:
+            logger.warning(
+                "Email template %s not found or failed to render, using fallback HTML: %s",
+                template,
+                exc,
+            )
+            html_message = _fallback_html(subject, message, context)
+            plain_message = message or subject or "AgriPlot notification"
+    elif not message:
+        plain_message = subject or "AgriPlot notification"
 
     log = None
     if email_log_id:
@@ -242,17 +287,22 @@ def queue_notification(
     Always call this AFTER the DB record has been saved.
     The task runs after `delay` seconds (default 30).
     """
-    dispatch_notification_channels.apply_async(
-        kwargs=dict(
-            user_id=user_id,
-            subject=subject,
-            message=message,
-            email_subject=email_subject,
-            template=template,
-            context=context,
-        ),
-        countdown=_notification_delay_seconds() if delay is None else delay,
-    )
+    try:
+        dispatch_notification_channels.apply_async(
+            kwargs=dict(
+                user_id=user_id,
+                subject=subject,
+                message=message,
+                email_subject=email_subject,
+                template=template,
+                context=context,
+            ),
+            countdown=_notification_delay_seconds() if delay is None else delay,
+        )
+        return True
+    except Exception as exc:
+        logger.warning("Notification queue unavailable for user %s: %s", user_id, exc)
+        return False
 
 
 def queue_email(
@@ -269,21 +319,31 @@ def queue_email(
     Queue a plain email to an address (no user object required).
     Used for admin alerts, support tickets, etc.
     """
-    dispatch_email_only.apply_async(
-        kwargs=dict(
-            recipient_email=recipient_email,
-            subject=subject,
-            message=message,
-            template=template,
-            context=context,
-            email_log_id=email_log_id,
-        ),
-        countdown=_notification_delay_seconds() if delay is None else delay,
-    )
+    try:
+        dispatch_email_only.apply_async(
+            kwargs=dict(
+                recipient_email=recipient_email,
+                subject=subject,
+                message=message,
+                template=template,
+                context=context,
+                email_log_id=email_log_id,
+            ),
+            countdown=_notification_delay_seconds() if delay is None else delay,
+        )
+        return True
+    except Exception as exc:
+        logger.warning("Email queue unavailable for %s: %s", recipient_email, exc)
+        return False
 
 
 def queue_sms(*, phone: str, message: str, delay: int | None = None):
-    dispatch_sms_only.apply_async(
-        kwargs={"phone": phone, "message": message},
-        countdown=_notification_delay_seconds() if delay is None else delay,
-    )
+    try:
+        dispatch_sms_only.apply_async(
+            kwargs={"phone": phone, "message": message},
+            countdown=_notification_delay_seconds() if delay is None else delay,
+        )
+        return True
+    except Exception as exc:
+        logger.warning("SMS queue unavailable for %s: %s", phone, exc)
+        return False

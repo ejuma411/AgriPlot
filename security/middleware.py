@@ -293,7 +293,9 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
     
     def process_response(self, request, response):
         response['X-Content-Type-Options'] = 'nosniff'
-        response['X-Frame-Options'] = 'DENY'
+        # Allow AgriPlot's own PDF/document viewers to embed same-origin media.
+        # Still prevents third-party sites from framing the app.
+        response['X-Frame-Options'] = 'SAMEORIGIN'
         response['X-XSS-Protection'] = '1; mode=block'
         response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         return response

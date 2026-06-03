@@ -14,8 +14,8 @@ recipient_list = ["ejuma411@gmail.com"]
 
 # We'll test with registration_received.html
 context = {
-    'user': 'Test User',
-    'display_name': 'Test User',
+    'user': 'testuser',
+    'username': 'testuser',
     'profile_url': f"{settings.SITE_URL}/profile"
 }
 html_content = render_to_string('notifications/emails/registration_received.html', context)

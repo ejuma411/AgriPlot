@@ -667,7 +667,7 @@ class AgentRegistrationForm(BaseUserRegistrationForm):
     id_number = forms.CharField(
         max_length=20,
         required=True,
-        help_text="National ID number",
+        help_text="National ID or passport number.",
         widget=forms.TextInput(attrs={'class': 'form-control'})
     )
     license_number = forms.CharField(

@@ -176,16 +176,14 @@ class NotificationService:
             from notifications.tasks import queue_notification
 
             def _queue_outbound():
-                try:
-                    queue_notification(
-                        user_id=user.pk,
-                        subject=title,
-                        message=message,
-                        email_subject=email_subject,
-                        delay=NotificationService.notification_delay_seconds(),
-                    )
-                except Exception as exc:
-                    logger.error("Queue notification failed for user %s: %s. Falling back to immediate send.", user.pk, exc)
+                queued = queue_notification(
+                    user_id=user.pk,
+                    subject=title,
+                    message=message,
+                    email_subject=email_subject,
+                    delay=NotificationService.notification_delay_seconds(),
+                )
+                if not queued:
                     NotificationService._dispatch_user_channels_immediately(
                         user,
                         subject=title,
@@ -257,23 +255,19 @@ class NotificationService:
             from notifications.tasks import queue_email
 
             def _queue_email():
-                try:
-                    queue_email(
-                        recipient_email=recipient,
-                        subject=subject,
-                        message=message_body,
-                        template=template_name,
-                        context=safe_context,
-                        delay=NotificationService.notification_delay_seconds(),
-                        email_log_id=log.pk if log else None,
-                    )
-                    queue_state["queued"] = True
-                except Exception as exc:
-                    logger.error(
-                        "Email queue failed for %s: %s. Falling back to immediate send.",
+                queue_state["queued"] = queue_email(
+                    recipient_email=recipient,
+                    subject=subject,
+                    message=message_body,
+                    template=template_name,
+                    context=safe_context,
+                    delay=NotificationService.notification_delay_seconds(),
+                    email_log_id=log.pk if log else None,
+                )
+                if not queue_state["queued"]:
+                    logger.warning(
+                        "Email queue unavailable for %s. Falling back to immediate send.",
                         recipient,
-                        exc,
-                        exc_info=True,
                     )
                     from notifications.tasks import _send_email_now
 
@@ -313,15 +307,13 @@ class NotificationService:
             sms_state = {"queued": False}
 
             def _queue_sms():
-                try:
-                    queue_sms(
-                        phone=phone_number,
-                        message=message,
-                        delay=NotificationService.notification_delay_seconds(),
-                    )
-                    sms_state["queued"] = True
-                except Exception as exc:
-                    logger.error("SMS queue failed for %s: %s. Falling back to immediate send.", phone_number, exc)
+                sms_state["queued"] = queue_sms(
+                    phone=phone_number,
+                    message=message,
+                    delay=NotificationService.notification_delay_seconds(),
+                )
+                if not sms_state["queued"]:
+                    logger.warning("SMS queue unavailable for %s. Falling back to immediate send.", phone_number)
                     from notifications.tasks import _send_sms_now
 
                     sms_state["queued"] = _send_sms_now(phone_number, message)
@@ -381,7 +373,7 @@ class NotificationService:
 
         # Notify assigner
         if assigned_by and assigned_by != task.assigned_to:
-            assignee_name = task.assigned_to.get_full_name() or task.assigned_to.username
+            assignee_name = task.assigned_to.username or "user"
             NotificationService.notify_user(
                 user=assigned_by,
                 notification_type="task_assigned",
@@ -398,7 +390,7 @@ class NotificationService:
         plot_owner = task.plot.agent.user if task.plot.agent else task.plot.landowner.user
         task_type = task.get_verification_type_display()
         title = f"Task Completed: {task_type}"
-        completed_by_name = completed_by.get_full_name() or completed_by.username
+        completed_by_name = completed_by.username or "user"
         message = f"Task completed by {completed_by_name} for plot '{task.plot.title}'"
 
         for admin in User.objects.filter(is_staff=True):
@@ -483,7 +475,7 @@ class NotificationService:
 
     @staticmethod
     def notify_payment_step_updated(payment, step, previous_status, actor=None):
-        actor_name = actor.get_full_name() or actor.username if actor else "AgriPlot"
+        actor_name = actor.username if actor else "AgriPlot"
         title = f"Transaction step updated: {step.display_title}"
         message = (
             f"{step.display_title} for '{payment.title}' moved from "
@@ -510,7 +502,7 @@ class NotificationService:
     def notify_plot_submitted(plot):
         submitted_by = plot.agent.user if plot.agent else plot.landowner.user
         title = f"New Plot Submitted: {plot.title}"
-        message = f"A new plot has been submitted for verification by {submitted_by.get_full_name() or submitted_by.username}"
+        message = f"A new plot has been submitted for verification by {submitted_by.username}"
 
         for admin in User.objects.filter(is_staff=True):
             NotificationService.create_notification(
@@ -526,6 +518,7 @@ class NotificationService:
                 template="new_plot_submitted",
                 context={
                     "user": admin,
+                    "user_username": admin.username,
                     "plot": plot,
                     "submitted_by": submitted_by,
                     "review_url": settings.SITE_URL + reverse("verification:review_plot", args=[plot.id]),
@@ -723,7 +716,7 @@ class NotificationService:
                 user=admin,
                 notification_type="role_request",
                 title=f"New Role Request: {role}",
-                message=f"{user.get_full_name() or user.username} submitted a {role} request.",
+                message=f"{user.username} submitted a {role} request.",
             )
             if admin.email:
                 NotificationService.send_email(
@@ -740,10 +733,49 @@ class NotificationService:
                 )
 
     @staticmethod
+    def notify_role_decision(user, role, approved, decided_by=None, reason="", details=None):
+        details = details or {}
+        if approved:
+            notification_type = "role_approved"
+            title = f"Role Approved: {role}"
+            message = f"Your {role.lower()} role request has been approved."
+            template = "role_approved"
+        else:
+            notification_type = "role_rejected"
+            title = f"Role Rejected: {role}"
+            message = f"Your {role.lower()} role request has been rejected."
+            if reason:
+                message = f"{message} {reason}".strip()
+            template = "role_rejected"
+
+        NotificationService.create_notification(
+            user=user,
+            notification_type=notification_type,
+            title=title,
+            message=message,
+        )
+        if user.email:
+            NotificationService.send_email(
+                recipient=user.email,
+                subject=title,
+                template=template,
+                context={
+                    "user": user,
+                    "role": role,
+                    "approved": approved,
+                    "decided_by": decided_by,
+                    "reason": reason,
+                    "details": details,
+                    "login_url": settings.SITE_URL + reverse("login"),
+                    "profile_url": settings.SITE_URL + reverse("listings:profile_management"),
+                },
+            )
+
+    @staticmethod
     def notify_account_verified(user, verified_by):
         title = "Account Verified! 🎉"
         message = (
-            f"Your account has been verified by {verified_by.get_full_name() or verified_by.username}. "
+            f"Your account has been verified by {verified_by.username}. "
             "You can now list plots."
         )
         NotificationService.notify_user(

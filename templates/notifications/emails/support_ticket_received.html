@@ -1,10 +1,10 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<p>Hello {{ ticket.name }},</p>
-        <p>We have received your support request and will get back to you shortly.</p>
-        <p><strong>Subject:</strong> {{ ticket.subject }}</p>
-        <p><strong>Your message:</strong></p>
-        <p>{{ ticket.message }}</p>
-        <p>Thank you for using AgriPlot Connect.</p>
+<p>Hello {{ ticket_username|default:ticket.name|default:"there" }},</p>
+<p>We have received your support request and will get back to you shortly.</p>
+<p><strong>Subject:</strong> {{ ticket.subject }}</p>
+<p><strong>Your message:</strong></p>
+<p>{{ ticket.message }}</p>
+<p>Thank you for using AgriPlot Connect.</p>
 {% endblock %}

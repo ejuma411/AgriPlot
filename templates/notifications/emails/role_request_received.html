@@ -1,14 +1,14 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<p>Hello {{ user|display_name }},</p>
-        <p>Your request for the <strong>{{ role }}</strong> role has been received and is under review.</p>
-        {% if details %}
-            <p><strong>Submitted details:</strong></p>
-            <pre style="white-space: pre-wrap;">{{ details }}</pre>
-        {% endif %}
-        <div style="text-align:center; margin-top: 16px;">
-            <a href="{{ profile_url }}" class="button">View Profile</a>
-        </div>
-        <p>We’ll notify you once a decision has been made.</p>
+<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
+<p>Your request for the <strong>{{ role }}</strong> role has been received and is under review.</p>
+{% if details %}
+    <p><strong>Submitted details:</strong></p>
+    <pre style="white-space: pre-wrap;">{{ details }}</pre>
+{% endif %}
+<div style="text-align:center; margin-top: 16px;">
+    <a href="{{ profile_url }}" class="button">View Profile</a>
+</div>
+<p>We’ll notify you once a decision has been made.</p>
 {% endblock %}

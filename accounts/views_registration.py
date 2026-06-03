@@ -15,6 +15,7 @@ from listings.forms import (
     BuyerRegistrationForm,
     LandownerUpgradeForm,
 )
+from verification.standards import get_role_requirements
 from .validators import email_validation_report
 
 from .models import Agent, LandownerProfile, Profile
@@ -102,6 +103,7 @@ def register_buyer(request):
             "form": form,
             "requested_role": requested_role,
             "email_check_url": resolve_url("listings:validate_email_input"),
+            "requirements": get_role_requirements("buyer"),
         },
     )
 
@@ -137,6 +139,7 @@ def register_landowner(request):
         {
             "form": form,
             "is_upgrade_flow": request.user.is_authenticated,
+            "requirements": get_role_requirements("landowner"),
         },
     )
 
@@ -184,6 +187,7 @@ def register_agent(request):
                 "form": form,
                 "is_upgrade_flow": False,
                 "email_check_url": resolve_url("listings:validate_email_input"),
+                "requirements": get_role_requirements("agent"),
             },
         )
 
@@ -218,6 +222,7 @@ def register_agent(request):
         {
             "form": form,
             "is_upgrade_flow": True,
+            "requirements": get_role_requirements("agent"),
         },
     )
 

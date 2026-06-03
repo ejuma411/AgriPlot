@@ -23,21 +23,12 @@ def title_with_spaces(value):
 
 
 @register.filter
-def display_name(value, fallback="Unknown"):
-    """Safely render a user-like object's full name or username."""
+def display_name(value, fallback="there"):
+    """Safely render a user-like object's username first, then email."""
     if value is None:
         return fallback
     if isinstance(value, str):
         return _string_or_none(value) or fallback
-
-    full_name = None
-    get_full_name = getattr(value, "get_full_name", None)
-    if callable(get_full_name):
-        full_name = _string_or_none(get_full_name())
-    else:
-        full_name = _string_or_none(get_full_name)
-    if full_name:
-        return full_name
 
     username = _string_or_none(getattr(value, "username", None))
     if username:

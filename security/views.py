@@ -6,6 +6,7 @@ Handles screenshot protection, audit logs, security monitoring, and compliance f
 
 import json
 import csv
+import logging
 from io import StringIO
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -36,6 +37,7 @@ from .models import (
     TwoFactorBackupCode
 )
 from accounts.models import Profile
+from verification.services.ocr_service import DocumentOCRService
 
 # Import WeasyPrint for PDF generation
 try:
@@ -44,6 +46,9 @@ try:
     WEASYPRINT_AVAILABLE = True
 except ImportError:
     WEASYPRINT_AVAILABLE = False
+
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -594,7 +599,20 @@ def verify_code(request):
 @staff_member_required
 def security_health_check(request):
     """Check system security health status"""
-    
+    ocr_health = DocumentOCRService.health_status()
+    if ocr_health.get('ready'):
+        logger.info(
+            "OCR ready: pytesseract=%s, tesseract=%s, pdftoppm=%s",
+            ocr_health.get('pytesseract_available'),
+            ocr_health.get('tesseract_version'),
+            ocr_health.get('pdftoppm_available'),
+        )
+    else:
+        logger.warning(
+            "OCR degraded: %s",
+            ocr_health.get('error') or 'unknown OCR readiness issue',
+        )
+
     health_status = {
         'audit_log_integrity': AuditLog.verify_chain()[0],
         'total_audit_logs': AuditLog.objects.count(),
@@ -609,6 +627,7 @@ def security_health_check(request):
             created_at__gte=timezone.now() - timedelta(days=7)
         ).count(),
         'two_factor_adoption': TwoFactorSettings.objects.filter(is_enabled=True).count(),
+        'ocr': ocr_health,
     }
     
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':

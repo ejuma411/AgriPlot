@@ -7,6 +7,7 @@ from django.shortcuts import redirect, render
 from notifications.notification_service import NotificationService
 from .forms import ExtensionOfficerProfileForm, LandSurveyorProfileForm
 from .models import ExtensionOfficer, LandSurveyor
+from .standards import get_role_requirements
 
 logger = logging.getLogger(__name__)
 
@@ -54,14 +55,7 @@ def request_extension_officer(request):
     context = {
         "form": form,
         "role_label": "Extension Officer",
-        "requirements": [
-            "Official employee ID",
-            "Designation and department",
-            "Station/assigned office",
-            "Qualifications and specializations",
-            "Phone and office address",
-            "Assigned counties and max daily tasks",
-        ],
+        "requirements": get_role_requirements("extension_officer"),
     }
     return render(request, "verification/request_role.html", context)
 
@@ -109,13 +103,7 @@ def request_land_surveyor(request):
     context = {
         "form": form,
         "role_label": "Land Surveyor",
-        "requirements": [
-            "Professional license number",
-            "Designation and station",
-            "Qualifications and experience",
-            "Phone and office address",
-            "Assigned counties and max daily tasks",
-        ],
+        "requirements": get_role_requirements("land_surveyor"),
     }
     return render(request, "verification/request_role.html", context)
 

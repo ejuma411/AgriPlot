@@ -594,13 +594,13 @@
                 <div class="workspace-card-body">
                     <div class="workspace-stat-icon mb-3"><i class="fa-solid fa-user-shield"></i></div>
                     <h4>{{ profile_type }}</h4>
-                    <p class="text-muted">Status: 
+                    {% comment %} <p class="text-muted">Status: 
                         {% if agent.verified or landowner.verified %}
                             <span class="text-success"><i class="fa-solid fa-check-circle"></i> Verified</span>
                         {% else %}
                             <span class="text-warning"><i class="fa-solid fa-clock"></i> Verification Pending</span>
                         {% endif %}
-                    </p>
+                    </p> {% endcomment %}
                     <hr>
                     <h5>Role Documents</h5>
                     {% if role_requests %}
@@ -617,6 +617,39 @@
                     {% else %}
                         <p class="text-muted">No specific role documents uploaded yet.</p>
                     {% endif %}
+
+                    <hr class="my-4">
+
+                    <h5 class="mb-2">Upgrade This Account</h5>
+                    <p class="text-muted mb-3">
+                        Reuse this same username, profile details, and password when you add another role.
+                    </p>
+
+                    <div class="d-grid gap-2">
+                        {% if not is_landowner %}
+                            <a href="{% url 'listings:register_landowner_upgrade' %}" class="ap-btn ap-btn-ghost w-100">
+                                Add Landowner Role
+                            </a>
+                        {% endif %}
+
+                        {% if not is_agent %}
+                            <a href="{% url 'listings:register_agent' %}" class="ap-btn ap-btn-ghost w-100">
+                                Add Agent Role
+                            </a>
+                        {% endif %}
+
+                        {% if not is_extension %}
+                            <a href="{% url 'verification:request_extension_officer' %}" class="ap-btn ap-btn-ghost w-100">
+                                Request Extension Officer Role
+                            </a>
+                        {% endif %}
+
+                        {% if not is_surveyor %}
+                            <a href="{% url 'verification:request_land_surveyor' %}" class="ap-btn ap-btn-ghost w-100">
+                                Request Land Surveyor Role
+                            </a>
+                        {% endif %}
+                    </div>
                 </div>
             </article>
         </section>

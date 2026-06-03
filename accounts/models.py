@@ -10,10 +10,10 @@ class Profile(models.Model):
     has_2fa_enabled = models.BooleanField(default=False)
     INTENT_CHOICES = [
         ("buy", "Buying Land"),
-        ("lease_in", "Leasing/Renting In"),
+        ("lease_in", "Leasing or Renting Land In"),
         ("sell", "Selling Land"),
-        ("lease_out", "Leasing/Renting Out"),
-        ("professional", "Providing Services (Agent/Surveyor)"),
+        ("lease_out", "Leasing or Renting Land Out"),
+        ("professional", "Providing Land Services"),
     ]
     intent = models.CharField(max_length=20, choices=INTENT_CHOICES, default="buy")
     address = models.TextField(blank=True, null=True)

@@ -334,54 +334,57 @@
                 <h2><i class="fa-solid fa-folder-open text-success me-2"></i> Legal Documents</h2>
                 <p>PDF, JPG, JPEG, or PNG files up to the configured upload limit.</p>
             </header>
+            <div class="alert alert-info border-0 bg-light-subtle mb-4">
+                <strong>Match rule:</strong> these uploads are checked against registry facts. For parcel <strong>NAIROBI/BLOCK101/45</strong>, the registry record must align on parcel number, registration section, owner name, owner ID or passport, KRA PIN, title type, acreage, and encumbrance status.
+            </div>
             <div class="workspace-fields documents-grid">
                 <div class="workspace-field">
-                    <label for="{{ form.title_deed.id_for_label }}"><i class="fa-solid fa-file-pdf me-1 opacity-50"></i> Title Deed</label>
+                    <label for="{{ form.title_deed.id_for_label }}"><i class="fa-solid fa-file-pdf me-1 opacity-50"></i> Title Deed (Registry Match)</label>
                     {{ form.title_deed }}
                     {% if form.title_deed.errors %}<span class="workspace-error">{{ form.title_deed.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.official_search.id_for_label }}"><i class="fa-solid fa-file-pdf me-1 opacity-50"></i> Official Search</label>
+                    <label for="{{ form.official_search.id_for_label }}"><i class="fa-solid fa-file-pdf me-1 opacity-50"></i> Official Search Certificate</label>
                     {{ form.official_search }}
                     {% if form.official_search.errors %}<span class="workspace-error">{{ form.official_search.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.landowner_id_doc.id_for_label }}"><i class="fa-solid fa-id-card me-1 opacity-50"></i> Owner ID Document</label>
+                    <label for="{{ form.landowner_id_doc.id_for_label }}"><i class="fa-solid fa-id-card me-1 opacity-50"></i> Registered Owner National ID / Passport</label>
                     {{ form.landowner_id_doc }}
                     {% if form.landowner_id_doc.errors %}<span class="workspace-error">{{ form.landowner_id_doc.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.kra_pin.id_for_label }}"><i class="fa-solid fa-file-invoice me-1 opacity-50"></i> KRA PIN Certificate</label>
+                    <label for="{{ form.kra_pin.id_for_label }}"><i class="fa-solid fa-file-invoice me-1 opacity-50"></i> Registered Owner KRA PIN Certificate</label>
                     {{ form.kra_pin }}
                     {% if form.kra_pin.errors %}<span class="workspace-error">{{ form.kra_pin.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.rates_clearance.id_for_label }}"><i class="fa-solid fa-file-circle-check me-1 opacity-50"></i> Rates Clearance</label>
+                    <label for="{{ form.rates_clearance.id_for_label }}"><i class="fa-solid fa-file-circle-check me-1 opacity-50"></i> County Rates Clearance Certificate</label>
                     {{ form.rates_clearance }}
                     {% if form.rates_clearance.errors %}<span class="workspace-error">{{ form.rates_clearance.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field" data-leasehold-field>
-                    <label for="{{ form.rent_clearance.id_for_label }}"><i class="fa-solid fa-file-circle-check me-1 opacity-50"></i> Rent Clearance</label>
+                    <label for="{{ form.rent_clearance.id_for_label }}"><i class="fa-solid fa-file-circle-check me-1 opacity-50"></i> Land Rent Clearance Certificate</label>
                     {{ form.rent_clearance }}
                     {% if form.rent_clearance.errors %}<span class="workspace-error">{{ form.rent_clearance.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.survey_map.id_for_label }}" data-subdivision-required><i class="fa-solid fa-map me-1 opacity-50"></i> Survey / Mutation Map</label>
+                    <label for="{{ form.survey_map.id_for_label }}" data-subdivision-required><i class="fa-solid fa-map me-1 opacity-50"></i> Survey Map / Mutation Form</label>
                     {{ form.survey_map }}
                     {% if form.survey_map.errors %}<span class="workspace-error">{{ form.survey_map.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.spousal_consent_doc.id_for_label }}"><i class="fa-solid fa-users-rectangle me-1 opacity-50"></i> Spousal Consent</label>
+                    <label for="{{ form.spousal_consent_doc.id_for_label }}"><i class="fa-solid fa-users-rectangle me-1 opacity-50"></i> Spousal Consent Form</label>
                     {{ form.spousal_consent_doc }}
                     {% if form.spousal_consent_doc.errors %}<span class="workspace-error">{{ form.spousal_consent_doc.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.lcb_consent_doc.id_for_label }}"><i class="fa-solid fa-landmark me-1 opacity-50"></i> LCB Consent</label>
+                    <label for="{{ form.lcb_consent_doc.id_for_label }}"><i class="fa-solid fa-landmark me-1 opacity-50"></i> Land Control Board (LCB) Consent</label>
                     {{ form.lcb_consent_doc }}
                     {% if form.lcb_consent_doc.errors %}<span class="workspace-error">{{ form.lcb_consent_doc.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.plupa1_form.id_for_label }}" data-subdivision-required><i class="fa-solid fa-file-lines me-1 opacity-50"></i> PLUPA / PPA Form</label>
+                    <label for="{{ form.plupa1_form.id_for_label }}" data-subdivision-required><i class="fa-solid fa-file-lines me-1 opacity-50"></i> PLUPA 1 / PPA 1 Form</label>
                     {{ form.plupa1_form }}
                     {% if form.plupa1_form.errors %}<span class="workspace-error">{{ form.plupa1_form.errors }}</span>{% endif %}
                 </div>
@@ -391,12 +394,12 @@
                     {% if form.consent_to_transfer.errors %}<span class="workspace-error">{{ form.consent_to_transfer.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.valuation_report.id_for_label }}"><i class="fa-solid fa-file-invoice-dollar me-1 opacity-50"></i> Valuation Report</label>
+                    <label for="{{ form.valuation_report.id_for_label }}"><i class="fa-solid fa-file-invoice-dollar me-1 opacity-50"></i> Valuation Report (if required by pricing)</label>
                     {{ form.valuation_report }}
                     {% if form.valuation_report.errors %}<span class="workspace-error">{{ form.valuation_report.errors }}</span>{% endif %}
                 </div>
                 <div class="workspace-field">
-                    <label for="{{ form.government_price_proof.id_for_label }}"><i class="fa-solid fa-stamp me-1 opacity-50"></i> Gov Price Proof</label>
+                    <label for="{{ form.government_price_proof.id_for_label }}"><i class="fa-solid fa-stamp me-1 opacity-50"></i> Government Price Proof (if required)</label>
                     {{ form.government_price_proof }}
                     {% if form.government_price_proof.errors %}<span class="workspace-error">{{ form.government_price_proof.errors }}</span>{% endif %}
                 </div>

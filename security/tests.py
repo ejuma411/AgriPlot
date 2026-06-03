@@ -11,10 +11,11 @@ from security.models import PhoneOTP
 
 
 class PhoneVerificationTests(TestCase):
-    @override_settings(OTP_PROVIDER="sms", USE_SMS_MOCK=False)
+    @override_settings(PHONE_OTP_VERIFICATION_ENABLED=False, OTP_PROVIDER="sms", USE_SMS_MOCK=False)
     @patch("security.views_otp.SMSService.send_otp")
-    def test_registration_otp_uses_sms_provider(self, mock_send_otp):
-        mock_send_otp.return_value = {"success": True}
+    @patch("security.views_otp.NotificationService.send_email")
+    def test_registration_otp_skips_sms_when_phone_verification_is_disabled(self, mock_send_email, mock_send_otp):
+        mock_send_email.return_value = True
         session = self.client.session
         session["reg_phone"] = "0718810503"
         session["reg_data"] = {
@@ -31,10 +32,11 @@ class PhoneVerificationTests(TestCase):
         response = self.client.get(reverse("security:send_otp"))
 
         self.assertRedirects(response, reverse("security:verify_otp"))
-        self.assertTrue(
+        self.assertFalse(
             PhoneOTP.objects.filter(phone="0718810503", purpose="registration").exists()
         )
-        mock_send_otp.assert_called_once()
+        mock_send_otp.assert_not_called()
+        mock_send_email.assert_called_once()
 
     @override_settings(REQUIRE_CONTACT_VERIFICATION=True, OTP_PROVIDER="sms")
     def test_sms_only_contact_verification_allows_listing_access(self):

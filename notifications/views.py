@@ -85,7 +85,7 @@ def _build_inbox_entries(user, active_filter):
             "can_mark_read": False,
             "plot_id": item.plot_id,
             "task_id": None,
-            "buyer_name": item.user.get_full_name() or item.user.username,
+            "buyer_name": item.user.username,
             "buyer_email": item.user.email or "",
             "status": item.status,
         }
@@ -170,10 +170,11 @@ def contact_support(request):
                         subject=f"New Support Ticket: {ticket.subject}",
                         template="support_ticket_admin",
                         context={
-                            "admin": str(admin),
+                            "admin": admin,
                             "ticket_subject": ticket.subject,
                             "ticket_message": ticket.message,
-                            "ticket_name": ticket.name,
+                            "ticket_name": ticket.user.username if ticket.user else ticket.name,
+                            "ticket_username": ticket.user.username if ticket.user else ticket.name,
                             "ticket_email": ticket.email,
                             "site_url": settings.SITE_URL,
                         },
@@ -188,7 +189,8 @@ def contact_support(request):
                     template="support_ticket_received",
                     context={
                         "ticket_subject": ticket.subject,
-                        "ticket_name": ticket.name,
+                        "ticket_name": ticket.user.username if ticket.user else ticket.name,
+                        "ticket_username": ticket.user.username if ticket.user else ticket.name,
                         "message": (
                             f"We received your support request: {ticket.subject}. "
                             "We will get back to you shortly."
@@ -207,7 +209,7 @@ def contact_support(request):
         initial = {}
         if request.user.is_authenticated:
             initial = {
-                "name": request.user.get_full_name() or request.user.username,
+                "name": request.user.username,
                 "email": request.user.email,
             }
         form = SupportTicketForm(initial=initial)

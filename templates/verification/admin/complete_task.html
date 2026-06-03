@@ -71,14 +71,14 @@
                     <div class="d-flex align-items-center gap-3">
                         <i class="fas {% if plot.official_search %}fa-check-circle text-success{% else %}fa-times-circle text-danger opacity-50{% endif %} fa-lg"></i>
                         <div class="flex-grow-1">
-                            <div class="fw-bold small">Official Search</div>
+                            <div class="fw-bold small">Official Search Certificate</div>
                             {% if not plot.official_search %}<div class="text-danger x-small">Missing required document</div>{% endif %}
                         </div>
                     </div>
                     <div class="d-flex align-items-center gap-3">
                         <i class="fas {% if plot.landowner_id_doc %}fa-check-circle text-success{% else %}fa-times-circle text-danger opacity-50{% endif %} fa-lg"></i>
                         <div class="flex-grow-1">
-                            <div class="fw-bold small">Landowner ID</div>
+                            <div class="fw-bold small">Registered Owner National ID / Passport</div>
                         </div>
                     </div>
                 </div>
@@ -107,11 +107,11 @@
                                 </button>
                                 <button type="button" class="doc-nav-item" data-target="search">
                                     <div class="doc-icon"><i class="fas fa-search"></i></div>
-                                    <div class="doc-label">Official Search</div>
+                                    <div class="doc-label">Official Search Certificate</div>
                                 </button>
                                 <button type="button" class="doc-nav-item" data-target="id_doc">
                                     <div class="doc-icon"><i class="fas fa-id-card"></i></div>
-                                    <div class="doc-label">ID Document</div>
+                                    <div class="doc-label">Registered Owner ID / Passport</div>
                                 </button>
                                 <button type="button" class="doc-nav-item" data-target="registry">
                                     <div class="doc-icon text-primary"><i class="fas fa-database"></i></div>
@@ -127,12 +127,12 @@
                                 <div id="doc-search" class="doc-content">
                                     {% if plot.official_search %}
                                         <iframe src="{{ plot.official_search.url }}" width="100%" height="500px" style="border: none;"></iframe>
-                                    {% else %}<div class="doc-placeholder text-center p-5"><i class="fas fa-search fa-3x mb-3 opacity-25"></i><p>Official Search missing.</p></div>{% endif %}
+                                    {% else %}<div class="doc-placeholder text-center p-5"><i class="fas fa-search fa-3x mb-3 opacity-25"></i><p>Official Search Certificate missing.</p></div>{% endif %}
                                 </div>
                                 <div id="doc-id_doc" class="doc-content">
                                     {% if plot.landowner_id_doc %}
                                         <iframe src="{{ plot.landowner_id_doc.url }}" width="100%" height="500px" style="border: none;"></iframe>
-                                    {% else %}<div class="doc-placeholder text-center p-5"><i class="fas fa-id-card fa-3x mb-3 opacity-25"></i><p>ID Document missing.</p></div>{% endif %}
+                                    {% else %}<div class="doc-placeholder text-center p-5"><i class="fas fa-id-card fa-3x mb-3 opacity-25"></i><p>Registered Owner ID / Passport missing.</p></div>{% endif %}
                                 </div>
                                 <div id="doc-registry" class="doc-content">
                                     <div class="p-4">
@@ -168,55 +168,55 @@
                                         <input type="checkbox" name="check_title" required>
                                         <div class="check-content">
                                             <div class="fw-bold">Title Deed Authenticity</div>
-                                            <div class="x-small text-muted">Seals and registrar signatures verified.</div>
+                                            <div class="x-small text-muted">Confirm deed number, parcel number, and registry parcel match.</div>
                                         </div>
                                     </label>
                                     <label class="check-item">
                                         <input type="checkbox" name="check_search" required>
                                         <div class="check-content">
                                             <div class="fw-bold">Official Search Validity</div>
-                                            <div class="x-small text-muted">Original document present and valid.</div>
+                                            <div class="x-small text-muted">Search certificate is present and current.</div>
                                         </div>
                                     </label>
                                     <label class="check-item">
                                         <input type="checkbox" name="check_search_recency" required>
                                         <div class="check-content">
                                             <div class="fw-bold">Search Recency</div>
-                                            <div class="x-small text-muted">Search conducted within last 30 days.</div>
+                                            <div class="x-small text-muted">Search conducted within the acceptable validity window.</div>
                                         </div>
                                     </label>
                                     <label class="check-item">
                                         <input type="checkbox" name="check_id" required>
                                         <div class="check-content">
                                             <div class="fw-bold">Identity Corroboration</div>
-                                            <div class="x-small text-muted">ID matches owner name on record.</div>
+                                            <div class="x-small text-muted">Owner name, ID/passport, and uploaded identity document match.</div>
                                         </div>
                                     </label>
                                     <label class="check-item">
                                         <input type="checkbox" name="check_kra" required>
                                         <div class="check-content">
                                             <div class="fw-bold">KRA PIN Verification</div>
-                                            <div class="x-small text-muted">PIN certificate matches owner.</div>
+                                            <div class="x-small text-muted">PIN certificate matches the registered owner.</div>
                                         </div>
                                     </label>
                                     <label class="check-item">
                                         <input type="checkbox" name="check_name_match" required>
                                         <div class="check-content">
                                             <div class="fw-bold">Full Name Integrity</div>
-                                            <div class="x-small text-muted">Exact match including middle names.</div>
+                                            <div class="x-small text-muted">Exact match including all middle names and spelling.</div>
                                         </div>
                                     </label>
                                     <label class="check-item">
                                         <input type="checkbox" name="check_seal_signature" required>
                                         <div class="check-content">
                                             <div class="fw-bold">Seal & Signature</div>
-                                            <div class="x-small text-muted">Registry stamps are legible and valid.</div>
+                                            <div class="x-small text-muted">Registry stamps and signatures are legible and valid.</div>
                                         </div>
                                     </label>
                                     <label class="check-item">
                                         <input type="checkbox" name="check_rates_clearance" required>
                                         <div class="check-content">
-                                            <div class="fw-bold">Rates Clearance</div>
+                                            <div class="fw-bold">County Rates Clearance</div>
                                             <div class="x-small text-muted">County rates fully paid and verified.</div>
                                         </div>
                                     </label>

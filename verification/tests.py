@@ -9,6 +9,7 @@ from django.urls import reverse
 from accounts.models import LandownerProfile, Profile
 from listings.models import Plot, PlotImage
 from verification.models import LandSurveyor, VerificationTask
+from verification.services.ocr_service import DocumentOCRService
 
 
 class VerificationNamespaceTests(TestCase):
@@ -92,3 +93,64 @@ class SurveyorUploadTests(TestCase):
 
             self.assertRedirects(response, reverse("listings:dashboard_router") + "?section=tasks")
             self.assertTrue(PlotImage.objects.filter(plot=plot, uploaded_by=user).exists())
+
+
+class OCRExtractionTests(TestCase):
+    def test_extract_fields_handles_fixture_layout(self):
+        title_deed_text = """
+        R E P U B L I C O F K E N YA
+
+        Title Deed
+        Ownership certificate for NAIROBI/BLOCK101/45
+
+        OWNER
+
+        KRA PIN
+
+        Registered proprietor
+
+        John Kamau
+
+        PARCEL
+
+        TITLE
+
+        NAIROBI/BLOCK101/45
+        """
+
+        official_search_text = """
+        R E P U B L I C O F K E N YA
+
+        Official Search Certificate
+        Land registry search results for NAIROBI/BLOCK101/45
+
+        OWNER
+
+        KRA PIN
+
+        Registered proprietor
+
+        John Kamau
+
+        PARCEL
+
+        TITLE
+
+        NAIROBI/BLOCK101/45
+
+        Search reference
+        number
+
+        SRCH/NAI/2026/0045
+        """
+
+        title_fields = DocumentOCRService.extract_fields(title_deed_text)
+        search_fields = DocumentOCRService.extract_fields(official_search_text)
+
+        self.assertEqual(title_fields["owner_name"], "John Kamau")
+        self.assertEqual(search_fields["owner_name"], "John Kamau")
+        self.assertEqual(title_fields["parcel_number"], "NAIROBI/BLOCK101/45")
+        self.assertEqual(search_fields["parcel_number"], "NAIROBI/BLOCK101/45")
+        self.assertEqual(title_fields["title_number"], "NAIROBI/BLOCK101/45")
+        self.assertEqual(search_fields["title_number"], "NAIROBI/BLOCK101/45")
+        self.assertEqual(search_fields["search_ref"], "SRCH/NAI/2026/0045")

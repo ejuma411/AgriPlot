@@ -1,16 +1,16 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<p>Hello {{ user|display_name }},</p>
-        <p>Your plot <strong>{{ plot.title }}</strong> has completed a verification step:</p>
-        <div class="status {% if status == 'approved' %}status-approved{% else %}status-rejected{% endif %}">
-            <strong>{{ task.get_verification_type_display }}</strong> — {{ status|title }}
-        </div>
-        {% if task.notes %}
-            <p><strong>Notes:</strong> {{ task.notes }}</p>
-        {% endif %}
-        <div style="text-align:center; margin-top: 16px;">
-            <a href="{{ plot_url }}" class="button">View Plot</a>
-        </div>
-        <p>We’ll notify you as the remaining steps are completed.</p>
+<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
+<p>Your plot <strong>{{ plot.title }}</strong> has completed a verification step:</p>
+<div class="status {% if status == 'approved' %}status-approved{% else %}status-rejected{% endif %}">
+    <strong>{{ task.get_verification_type_display }}</strong> — {{ status|title }}
+</div>
+{% if task.notes %}
+    <p><strong>Notes:</strong> {{ task.notes }}</p>
+{% endif %}
+<div style="text-align:center; margin-top: 16px;">
+    <a href="{{ plot_url }}" class="button">View Plot</a>
+</div>
+<p>We’ll notify you as the remaining steps are completed.</p>
 {% endblock %}

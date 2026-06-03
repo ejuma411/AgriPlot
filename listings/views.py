@@ -189,7 +189,7 @@ def home(request):
             active_filter["remove_url"] = build_remove_url(request, active_filter["params"])
             active_filters.append(active_filter)
 
-    paginator = Paginator(filtered_plots, 15)
+    paginator = Paginator(filtered_plots, 16)
     page_number = request.GET.get('page')
     featured_plots = paginator.get_page(page_number)
     saved_plot_ids = []
@@ -732,17 +732,21 @@ def add_plot(request):
         if contact_verification:
             phone_verified = phone_verified or contact_verification.phone_verified
             email_verified = email_verified or contact_verification.email_verified
-        otp_provider = getattr(settings, "OTP_PROVIDER", "email")
-        if otp_provider == "email" and not email_verified:
+        phone_otp_enabled = bool(getattr(settings, "PHONE_OTP_VERIFICATION_ENABLED", False))
+        if not phone_otp_enabled and not email_verified:
             messages.error(request, "Verify your email before listing a plot.")
             return redirect("listings:profile_management")
-        if otp_provider == "sms" and not phone_verified:
+        otp_provider = getattr(settings, "OTP_PROVIDER", "email")
+        if phone_otp_enabled and otp_provider == "email" and not email_verified:
+            messages.error(request, "Verify your email before listing a plot.")
+            return redirect("listings:profile_management")
+        if phone_otp_enabled and otp_provider == "sms" and not phone_verified:
             messages.error(request, "Verify your phone number before listing a plot.")
             return redirect("listings:profile_management")
-        if otp_provider == "sms" and not email_verified:
+        if phone_otp_enabled and otp_provider == "sms" and not email_verified:
             messages.error(request, "Verify your email before listing a plot. We sent you a verification link after phone confirmation.")
             return redirect("listings:profile_management")
-        if otp_provider == "both" and not (phone_verified and email_verified):
+        if phone_otp_enabled and otp_provider == "both" and not (phone_verified and email_verified):
             messages.error(request, "Verify your phone and email before listing a plot.")
             return redirect("listings:profile_management")
 
@@ -752,8 +756,16 @@ def add_plot(request):
             return redirect("listings:profile_management")
 
     if settings.REQUIRE_DOCUMENT_VERIFICATION and not is_superuser:
-        from .models import DocumentVerification
-        required_docs = {'national_id', 'kra_pin', 'title_deed'}
+        from verification.models import DocumentVerification
+        from verification.standards import get_listing_document_types
+
+        role = getattr(profile, "role", "buyer") if profile else "buyer"
+        if is_landowner:
+            role = "landowner"
+        elif is_agent:
+            role = "agent"
+
+        required_docs = set(get_listing_document_types(role))
         approved_docs = set(
             DocumentVerification.objects.filter(
                 user=request.user,
@@ -761,7 +773,7 @@ def add_plot(request):
             ).values_list('document_type', flat=True)
         )
         if not required_docs.issubset(approved_docs):
-            messages.error(request, "Your identity documents must be verified before listing.")
+            messages.error(request, "Verify your identity documents before listing a plot.")
             return redirect("listings:verification_progress")
 
     # Q8: rate limit plot creation (per-hour)
@@ -1762,7 +1774,7 @@ def contact_agent(request, plot_id):
 
             subject = f"New Inquiry about your plot: {plot.title}"
             body = f"""
-            Hi {recipient.get_full_name() or recipient.username},
+            Hi {recipient.username},
             
             You have a new inquiry about your plot listing:
             
@@ -1770,7 +1782,7 @@ def contact_agent(request, plot_id):
             Location: {plot.location}
             Price: KES {plot.price}
             
-            Message from {request.user.get_full_name() or request.user.username} ({request.user.email}):
+            Message from {request.user.username} ({request.user.email}):
             {message}
             
             Please respond to this inquiry within 24 hours.
@@ -1800,7 +1812,7 @@ def contact_agent(request, plot_id):
                     subject=f"Message sent to agent regarding: {plot.title}",
                     template="plain",
                     context={
-                        "message": f"Your message has been sent to {recipient.get_full_name() or recipient.username}. They will contact you soon.",
+                        "message": f"Your message has been sent to {recipient.username}. They will contact you soon.",
                         "contact_request_id": contact_request.pk,
                     },
                 )
@@ -1849,7 +1861,7 @@ def request_contact_details(request, plot_id):
         # Notify via email
         subject = f"Contact Request for your plot: {plot.title}"
         message = f"""
-        User {request.user.get_full_name() or request.user.username} ({request.user.email}) 
+        User {request.user.username} ({request.user.email}) 
         has requested your contact details for plot: {plot.title}
         
         Plot Details:
@@ -1962,13 +1974,146 @@ def info_page(request, slug, template_name):
 @login_required
 def verification_progress(request):
     """Show verification progress for landowners/agents"""
-    
+    from verification.forms import IdentityDocumentUploadForm
+    from verification.models import DocumentVerification
+    from verification.standards import (
+        get_document_label,
+        get_listing_document_types,
+        get_stage_label,
+        get_stage_summary,
+    )
+
+    profile = getattr(request.user, "profile", None)
+    role = getattr(profile, "role", "buyer") if profile else "buyer"
+    progress_document_types = get_listing_document_types(role)
+
     context = {
         'landowner_verification': None,
         'agent_verification': None,
-        'plot_verifications': []
+        'document_verifications': [],
+        'plot_verifications': [],
+        'document_upload_form': None,
+        'document_sections': [],
+        'verification_stage_guide': [],
+        'document_notice': "",
     }
-    
+
+    if request.method == "POST":
+        upload_form = IdentityDocumentUploadForm(
+            request.POST,
+            request.FILES,
+            document_types=progress_document_types,
+        )
+        if upload_form.is_valid():
+            uploaded_doc = upload_form.save(commit=False)
+            uploaded_doc.user = request.user
+            uploaded_doc.plot = None
+            uploaded_doc.task = None
+            uploaded_doc.verified_by = None
+            uploaded_doc.verified_at = None
+            uploaded_doc.approved = None
+            uploaded_doc.save()
+            messages.success(
+                request,
+                f"{uploaded_doc.get_document_type_display()} uploaded. It is now pending review.",
+            )
+            return redirect("listings:verification_progress")
+        context["document_upload_form"] = upload_form
+    else:
+        context["document_upload_form"] = IdentityDocumentUploadForm(
+            document_types=progress_document_types,
+        )
+
+    latest_documents = {}
+    document_qs = DocumentVerification.objects.filter(
+        user=request.user,
+        document_type__in=progress_document_types,
+    ).order_by('document_type', '-updated_at', '-id')
+    for document in document_qs:
+        latest_documents.setdefault(document.document_type, document)
+
+    approved_document_count = 0
+    document_sections = [
+        {
+            "title": "Identity checks",
+            "description": "These are the identity documents we confirm before any listing can go public.",
+            "documents": [],
+        }
+    ]
+    if role == "landowner":
+        document_sections.append(
+            {
+                "title": "Listing support docs",
+                "description": "These help us confirm ownership and public listing eligibility.",
+                "documents": [],
+            }
+        )
+        context["document_notice"] = (
+            "Identity checks come first. Title deed and official search documents are added here for landowners."
+        )
+    else:
+        context["document_notice"] = (
+            "Only your identity documents are needed here for now."
+        )
+
+    for doc_type in progress_document_types:
+        label = get_document_label(doc_type)
+        document = latest_documents.get(doc_type)
+        if document is None:
+            status = "Missing"
+            status_class = "text-bg-light border"
+        elif document.approved is True:
+            status = "Verified"
+            status_class = "text-bg-success"
+            approved_document_count += 1
+        elif document.approved is False:
+            status = "Rejected"
+            status_class = "text-bg-danger"
+        else:
+            status = "Pending review"
+            status_class = "text-bg-warning"
+
+        document_entry = {
+            'type': doc_type,
+            'label': label,
+            'status': status,
+            'status_class': status_class,
+            'verified_at': document.verified_at if document else None,
+            'notes': document.verification_notes if document else "",
+        }
+        context['document_verifications'].append(document_entry)
+
+        if doc_type in ('national_id', 'kra_pin'):
+            document_sections[0]["documents"].append(document_entry)
+        elif role == "landowner" and len(document_sections) > 1:
+            document_sections[1]["documents"].append(document_entry)
+
+    total_required_docs = len(progress_document_types)
+    context['document_verification_progress'] = int(
+        (approved_document_count / total_required_docs) * 100
+    ) if total_required_docs else 0
+    context['documents_complete'] = approved_document_count == total_required_docs
+    context['documents_missing_count'] = total_required_docs - approved_document_count
+    context['document_sections'] = document_sections
+    context['verification_stage_guide'] = [
+        {
+            'stage': stage,
+            'label': get_stage_label(stage),
+            'summary': get_stage_summary(stage),
+        }
+        for stage in (
+            "document_uploaded",
+            "api_verification_started",
+            "title_search_completed",
+            "owner_verified",
+            "encumbrance_check",
+            "physical_location_verified",
+            "admin_review",
+            "approved",
+            "rejected",
+        )
+    ]
+
     # Get landowner verification if exists
     if hasattr(request.user, 'landownerprofile'):
         landowner = request.user.landownerprofile
@@ -1980,7 +2125,7 @@ def verification_progress(request):
         
         if verification:
             context['landowner_verification'] = {
-                'current_stage': verification.get_current_stage_display(),
+                'current_stage': get_stage_label(verification.current_stage),
                 'stage_progress': verification.progress_percentage,
                 'details': verification.stage_details,
                 'search_reference': verification.search_reference,
@@ -1999,7 +2144,7 @@ def verification_progress(request):
         
         if verification:
             context['agent_verification'] = {
-                'current_stage': verification.get_current_stage_display(),
+                'current_stage': get_stage_label(verification.current_stage),
                 'stage_progress': verification.progress_percentage,
                 'details': verification.stage_details,
                 'search_reference': verification.search_reference,
@@ -2032,7 +2177,7 @@ def verification_progress(request):
             if verification:
                 context['plot_verifications'].append({
                     'plot': plot,
-                    'stage': verification.get_current_stage_display(),
+                    'stage': get_stage_label(verification.current_stage),
                     'progress': verification.progress_percentage,
                     'submitted_at': verification.document_uploaded_at
                 })

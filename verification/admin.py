@@ -260,7 +260,7 @@ class ExtensionOfficerAdmin(admin.ModelAdmin):
 
     status_display.short_description = "Status"
 
-    actions = ["verify_officers", "activate_officers", "deactivate_officers"]
+    actions = ["verify_officers", "reject_officers", "activate_officers", "deactivate_officers"]
 
     def verify_officers(self, request, queryset):
         count = 0
@@ -272,26 +272,36 @@ class ExtensionOfficerAdmin(admin.ModelAdmin):
             obj.save()
             count += 1
 
-            if obj.user.email:
-                NotificationService.send_email(
-                    recipient=obj.user.email,
-                    subject="Role Approved: Extension Officer",
-                    template="role_approved",
-                    context={
-                        "user": obj.user,
-                        "role": "Extension Officer",
-                        "login_url": settings.SITE_URL + "/login/",
-                    },
-                )
-            NotificationService.create_notification(
+            NotificationService.notify_role_decision(
                 user=obj.user,
-                notification_type="role_approved",
-                title="Role Approved: Extension Officer",
-                message="Your extension officer role has been approved.",
+                role="Extension Officer",
+                approved=True,
+                decided_by=request.user,
             )
         self.message_user(request, f"{count} officer(s) verified.")
 
     verify_officers.short_description = "Verify selected officers"
+
+    def reject_officers(self, request, queryset):
+        count = 0
+        for obj in queryset:
+            obj.verified = False
+            obj.verified_by = request.user
+            obj.verified_at = timezone.now()
+            obj.is_active = False
+            obj.save()
+            count += 1
+
+            NotificationService.notify_role_decision(
+                user=obj.user,
+                role="Extension Officer",
+                approved=False,
+                decided_by=request.user,
+                reason="Your extension officer role request was not approved. Please review your documents and try again.",
+            )
+        self.message_user(request, f"{count} officer(s) rejected.")
+
+    reject_officers.short_description = "Reject selected officers"
 
     def activate_officers(self, request, queryset):
         queryset.update(is_active=True)
@@ -371,7 +381,7 @@ class LandSurveyorAdmin(admin.ModelAdmin):
 
     status_display.short_description = "Status"
 
-    actions = ["verify_surveyors", "activate_surveyors", "deactivate_surveyors"]
+    actions = ["verify_surveyors", "reject_surveyors", "activate_surveyors", "deactivate_surveyors"]
 
     def verify_surveyors(self, request, queryset):
         count = 0
@@ -383,26 +393,36 @@ class LandSurveyorAdmin(admin.ModelAdmin):
             obj.save()
             count += 1
 
-            if obj.user.email:
-                NotificationService.send_email(
-                    recipient=obj.user.email,
-                    subject="Role Approved: Land Surveyor",
-                    template="role_approved",
-                    context={
-                        "user": obj.user,
-                        "role": "Land Surveyor",
-                        "login_url": settings.SITE_URL + "/login/",
-                    },
-                )
-            NotificationService.create_notification(
+            NotificationService.notify_role_decision(
                 user=obj.user,
-                notification_type="role_approved",
-                title="Role Approved: Land Surveyor",
-                message="Your land surveyor role has been approved.",
+                role="Land Surveyor",
+                approved=True,
+                decided_by=request.user,
             )
         self.message_user(request, f"{count} surveyor(s) verified.")
 
     verify_surveyors.short_description = "Verify selected surveyors"
+
+    def reject_surveyors(self, request, queryset):
+        count = 0
+        for obj in queryset:
+            obj.verified = False
+            obj.verified_by = request.user
+            obj.verified_at = timezone.now()
+            obj.is_active = False
+            obj.save()
+            count += 1
+
+            NotificationService.notify_role_decision(
+                user=obj.user,
+                role="Land Surveyor",
+                approved=False,
+                decided_by=request.user,
+                reason="Your land surveyor role request was not approved. Please review your documents and try again.",
+            )
+        self.message_user(request, f"{count} surveyor(s) rejected.")
+
+    reject_surveyors.short_description = "Reject selected surveyors"
 
     def activate_surveyors(self, request, queryset):
         queryset.update(is_active=True)

@@ -3036,6 +3036,7 @@ class Wallet(models.Model):
         on_delete=models.PROTECT,
         related_name='wallet'
     )
+    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
     account_number = models.CharField(
         max_length=30, 
         unique=True, 
@@ -3058,13 +3059,15 @@ class Wallet(models.Model):
         return f"{self.account_number} - {self.user.username}"
     
     def save(self, *args, **kwargs):
+        if self.balance is None:
+            self.balance = Decimal("0.00")
         if not self.account_number:
             unique_id = str(uuid.uuid4().int)[:10]
             self.account_number = f"AGP-WLT-{unique_id}"
         super().save(*args, **kwargs)
-    
+
     @property
-    def balance(self):
+    def ledger_balance(self):
         from django.db.models import Sum
         credits = self.transactions.filter(
             type=WalletTransaction.TYPE_CREDIT,

@@ -11,7 +11,7 @@
             <i class="fas fa-list"></i> <span>All</span>
         </a>
         <a href="?filter=pending" class="{% if current_filter == 'pending' %}is-active{% endif %}">
-            <i class="fas fa-clock"></i> <span>Document Review</span>
+            <i class="fas fa-clock"></i> <span>Documents Uploaded</span>
             {% if stats.pending_review %}<span class="badge bg-danger ms-2">{{ stats.pending_review }}</span>{% endif %}
         </a>
         <a href="?filter=in_progress" class="{% if current_filter == 'in_progress' %}is-active{% endif %}">
@@ -31,7 +31,7 @@
     <div class="admin-card-header">
         <h2 class="admin-card-title">
             {% if current_filter == 'all' %}All Plots
-            {% elif current_filter == 'pending' %}Document Review Pending
+            {% elif current_filter == 'pending' %}Documents Uploaded
             {% elif current_filter == 'in_progress' %}In Progress
             {% elif current_filter == 'approved' %}Approved Plots
             {% elif current_filter == 'rejected' %}Rejected Plots

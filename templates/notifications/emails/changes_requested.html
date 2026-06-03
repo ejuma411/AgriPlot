@@ -1,23 +1,22 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<h2>Hello {{ user|display_name }},</h2>
-        
-        <p>The verification team has reviewed your plot "{{ plot.title }}" and is requesting some changes before it can be approved.</p>
-        
-        <div class="feedback">
-            <h3>📝 Feedback from Reviewer:</h3>
-            <p>{{ notes }}</p>
-            <p><small>- {{ requested_by|display_name }}, Verification Team</small></p>
-        </div>
-        
-        <p>Please make the requested changes and resubmit your plot for verification.</p>
-        
-        <div style="text-align: center;">
-            <a href="{{ edit_url }}" class="button">Edit Your Plot</a>
-        </div>
-        
-        <p>If you have any questions, please don't hesitate to contact our support team.</p>
-        
-        <p>Best regards,<br>AgriPlot Team</p>
+<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
+<p>The verification team has reviewed your plot "{{ plot.title }}" and is requesting some changes before it can be approved.</p>
+
+<div class="feedback">
+    <h3>📝 Feedback from Reviewer:</h3>
+    <p>{{ notes }}</p>
+    <p><small>- {{ requested_by.username|default:requested_by.email|default:"Verification Team" }}, Verification Team</small></p>
+</div>
+
+<p>Please make the requested changes and resubmit your plot for verification.</p>
+
+<div style="text-align: center;">
+    <a href="{{ edit_url }}" class="button">Edit Your Plot</a>
+</div>
+
+<p>If you have any questions, please don't hesitate to contact our support team.</p>
+
+<p>Best regards,<br>AgriPlot Team</p>
 {% endblock %}

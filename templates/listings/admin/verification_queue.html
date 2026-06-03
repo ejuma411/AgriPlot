@@ -31,7 +31,7 @@
             </li>
             <li class="nav-item">
                 <a href="?filter=pending" class="nav-link {% if current_filter == 'pending' %}active{% endif %}" data-analytics="queue_filter_pending">
-                    <i class="fas fa-clock"></i> <span>Document Pending</span>
+                    <i class="fas fa-clock"></i> <span>Documents Uploaded</span>
                     {% if stats.pending_review %}<span class="badge bg-danger">{{ stats.pending_review }}</span>{% endif %}
                 </a>
             </li>
@@ -60,7 +60,7 @@
         <h5 class="admin-card-title">
             <i class="fas fa-tasks me-2"></i>
             {% if current_filter == 'all' %}All Plots
-            {% elif current_filter == 'pending' %}Document Review Pending
+            {% elif current_filter == 'pending' %}Documents Uploaded
             {% elif current_filter == 'in_progress' %}In Progress
             {% elif current_filter == 'approved' %}Approved Plots
             {% elif current_filter == 'rejected' %}Rejected Plots

@@ -6,15 +6,22 @@ from crops.models import CropProfile
 from verification.models import (
     ExtensionOfficer,
     ExtensionReport,
+    DocumentVerification,
     LandSurveyor,
     SurveyorReport,
 )
+from .standards import get_document_label
 
 
 MAX_UPLOAD_MB = 20
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 ALLOWED_DOC_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
 ALLOWED_BOUNDARY_EXTENSIONS = {".geojson", ".kml", ".shp"}
+ALLOWED_ID_DOC_TYPES = [
+    ("national_id", "National ID"),
+    ("kra_pin", "KRA PIN"),
+    ("title_deed", "Title Deed"),
+]
 
 
 def _validate_uploaded_file(field_name, file_obj, allowed_extensions, max_upload_mb=MAX_UPLOAD_MB):
@@ -37,6 +44,39 @@ def _validate_uploaded_file(field_name, file_obj, allowed_extensions, max_upload
 def _validate_multiple_files(field_name, files, allowed_extensions, max_upload_mb=MAX_UPLOAD_MB):
     for file_obj in files or []:
         _validate_uploaded_file(field_name, file_obj, allowed_extensions, max_upload_mb=max_upload_mb)
+
+
+class IdentityDocumentUploadForm(forms.ModelForm):
+    """Upload a user identity document used to unlock listing."""
+
+    class Meta:
+        model = DocumentVerification
+        fields = ["document_type", "document_file"]
+        widgets = {
+            "document_type": forms.Select(attrs={"class": "form-select"}),
+            "document_file": forms.FileInput(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.document_types = kwargs.pop("document_types", None)
+        super().__init__(*args, **kwargs)
+        allowed_types = self.document_types or [choice[0] for choice in ALLOWED_ID_DOC_TYPES]
+        self.fields["document_type"].choices = [
+            (doc_type, get_document_label(doc_type)) for doc_type in allowed_types
+        ]
+        self.fields["document_file"].help_text = "PDF, JPG, or PNG up to 20MB."
+
+    def clean_document_type(self):
+        document_type = self.cleaned_data.get("document_type")
+        allowed = set(self.document_types or [choice[0] for choice in ALLOWED_ID_DOC_TYPES])
+        if document_type not in allowed:
+            raise forms.ValidationError("Choose a valid identity document type.")
+        return document_type
+
+    def clean_document_file(self):
+        file_obj = self.cleaned_data.get("document_file")
+        _validate_uploaded_file("Document file", file_obj, ALLOWED_DOC_EXTENSIONS)
+        return file_obj
 
 
 class AccountLinkedRoleRequestForm(forms.ModelForm):

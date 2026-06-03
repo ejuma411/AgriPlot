@@ -1,69 +1,857 @@
 {% extends "base.html" %}
 
 {% block title %}Verification Progress - AgriPlot{% endblock %}
+{% block meta_description %}Track your identity and plot verification progress in AgriPlot Connect.{% endblock %}
 
-{% block content %}
-<div class="container py-4">
-    <h2 class="mb-4">Verification Progress</h2>
+{% block extra_css %}
+<style>
+    .verification-progress-page {
+        width: var(--ap-page-width);
+        margin: 0 auto;
+        padding: 28px 0 56px;
+    }
 
-    <div class="row g-4">
-        {% if landowner_verification %}
-        <div class="col-12 col-lg-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Landowner Verification</h5>
-                    <p class="mb-1"><strong>Stage:</strong> {{ landowner_verification.current_stage }}</p>
-                    <p class="mb-1"><strong>Progress:</strong> {{ landowner_verification.stage_progress }}%</p>
-                    <p class="mb-0 text-muted">{{ landowner_verification.estimated_completion }}</p>
-                </div>
+    .verification-hero {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 26px;
+        border: 1px solid var(--ap-border);
+        border-radius: var(--ap-radius);
+        background:
+            radial-gradient(circle at top right, rgba(47, 133, 90, 0.08), transparent 34%),
+            linear-gradient(180deg, #fff, #fbfdfb);
+        box-shadow: var(--ap-shadow);
+        margin-bottom: 22px;
+    }
+
+    .verification-kicker {
+        margin: 0 0 8px;
+        color: var(--ap-green);
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+    }
+
+    .verification-title {
+        margin: 0;
+        font-size: clamp(28px, 4vw, 40px);
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .verification-subtitle {
+        max-width: 720px;
+        margin: 10px 0 0;
+        color: var(--ap-muted);
+        font-size: 16px;
+    }
+
+    .verification-hero-stats {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 12px;
+        min-width: min(100%, 420px);
+    }
+
+    .verification-stat {
+        padding: 14px 16px;
+        border: 1px solid var(--ap-border);
+        border-radius: var(--ap-radius);
+        background: rgba(255, 255, 255, .88);
+    }
+
+    .verification-stat-label {
+        margin: 0 0 6px;
+        color: var(--ap-muted);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .verification-stat-value {
+        margin: 0;
+        color: var(--ap-text);
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.1;
+    }
+
+    .verification-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+        gap: 18px;
+    }
+
+    .verification-card {
+        border: 1px solid var(--ap-border);
+        border-radius: var(--ap-radius);
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(26, 32, 44, 0.06);
+        overflow: hidden;
+    }
+
+    .verification-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 18px 20px;
+        border-bottom: 1px solid var(--ap-border);
+    }
+
+    .verification-card-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .verification-card-meta {
+        margin: 4px 0 0;
+        color: var(--ap-muted);
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    .verification-card-body {
+        padding: 20px;
+    }
+
+    .verification-section {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+    }
+
+    .verification-record {
+        display: grid;
+        gap: 16px;
+        padding: 18px;
+        border: 1px solid var(--ap-border);
+        border-radius: var(--ap-radius);
+        background: linear-gradient(180deg, #fff, #fcfdfc);
+    }
+
+    .verification-record-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+    }
+
+    .verification-record-title {
+        margin: 0;
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .verification-badge {
+        border-radius: 999px;
+        padding: .45rem .75rem;
+        font-weight: 700;
+    }
+
+    .verification-progress-wrap {
+        display: grid;
+        gap: 8px;
+    }
+
+    .verification-progress-label {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--ap-text);
+    }
+
+    .verification-progress {
+        height: 12px;
+        border-radius: 999px;
+        background: rgba(47, 133, 90, 0.1);
+        overflow: hidden;
+    }
+
+    .verification-progress .progress-bar {
+        border-radius: inherit;
+        background: linear-gradient(90deg, var(--ap-green), #5fa46f);
+    }
+
+    .verification-detail-list {
+        display: grid;
+        gap: 10px;
+        margin: 0;
+    }
+
+    .verification-detail {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 11px 12px;
+        border-radius: 10px;
+        background: var(--ap-surface-muted);
+    }
+
+    .verification-detail dt,
+    .verification-detail dd {
+        margin: 0;
+        font-size: 14px;
+    }
+
+    .verification-detail dt {
+        color: var(--ap-muted);
+        font-weight: 700;
+    }
+
+    .verification-detail dd {
+        color: var(--ap-text);
+        font-weight: 700;
+        text-align: right;
+    }
+
+    .verification-side-stack {
+        display: grid;
+        gap: 18px;
+    }
+
+    .verification-docs {
+        display: grid;
+        gap: 12px;
+    }
+
+    .verification-doc-groups {
+        display: grid;
+        gap: 18px;
+        margin-top: 6px;
+    }
+
+    .verification-doc-group {
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--ap-border);
+        border-radius: var(--ap-radius);
+        background: rgba(247, 250, 247, 0.72);
+    }
+
+    .verification-doc-item {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 14px;
+        border: 1px solid var(--ap-border);
+        border-radius: 12px;
+        background: var(--ap-surface-muted);
+    }
+
+    .verification-doc-item strong,
+    .verification-doc-item span {
+        display: block;
+    }
+
+    .verification-doc-item strong {
+        color: var(--ap-text);
+        font-size: 14px;
+        font-weight: 800;
+    }
+
+    .verification-doc-item span {
+        color: var(--ap-muted);
+        font-size: 13px;
+    }
+
+    .verification-upload-box {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 16px;
+        padding: 16px;
+        border: 1px solid var(--ap-border);
+        border-radius: 14px;
+        background: linear-gradient(180deg, #fff, var(--ap-surface-muted));
+    }
+
+    .verification-upload-title {
+        margin: 0;
+        color: var(--ap-text);
+        font-size: 15px;
+        font-weight: 800;
+    }
+
+    .verification-upload-note {
+        margin: 0;
+        color: var(--ap-muted);
+        font-size: 13px;
+    }
+
+    .verification-upload-grid {
+        display: grid;
+        gap: 12px;
+    }
+
+    .verification-upload-grid label {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--ap-text);
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .verification-upload-grid .form-control,
+    .verification-upload-grid .form-select {
+        min-height: 44px;
+    }
+
+    .verification-upload-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .verification-upload-help {
+        color: var(--ap-muted);
+        font-size: 12px;
+    }
+
+    .verification-stage-guide {
+        display: grid;
+        gap: 12px;
+        padding: 16px;
+        border: 1px solid var(--ap-border);
+        border-radius: var(--ap-radius);
+        background: #fff;
+    }
+
+    .verification-stage-list {
+        display: grid;
+        gap: 10px;
+    }
+
+    .verification-stage-row {
+        display: grid;
+        gap: 4px;
+        padding: 10px 12px;
+        border-radius: 10px;
+        background: var(--ap-surface-muted);
+    }
+
+    .verification-stage-row strong {
+        font-size: 14px;
+    }
+
+    .verification-stage-row span {
+        color: var(--ap-muted);
+        font-size: 13px;
+    }
+
+    .verification-empty {
+        display: grid;
+        place-items: center;
+        gap: 12px;
+        padding: 28px 18px;
+        border: 1px dashed var(--ap-border);
+        border-radius: var(--ap-radius);
+        background: linear-gradient(180deg, #fff, #fbfdfb);
+        text-align: center;
+    }
+
+    .verification-empty-icon {
+        width: 54px;
+        height: 54px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: rgba(47, 133, 90, 0.1);
+        color: var(--ap-green);
+        font-size: 20px;
+    }
+
+    .verification-empty-title {
+        margin: 0;
+        font-size: 18px;
+        font-weight: 800;
+    }
+
+    .verification-empty-text {
+        margin: 0;
+        color: var(--ap-muted);
+    }
+
+    .verification-table thead th {
+        border-bottom: 1px solid var(--ap-border);
+        color: var(--ap-green-dark);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: .05em;
+        text-transform: uppercase;
+    }
+
+    .verification-table tbody td {
+        vertical-align: middle;
+    }
+
+    .verification-table .plot-name {
+        font-weight: 700;
+    }
+
+    .verification-help {
+        display: grid;
+        gap: 12px;
+    }
+
+    .verification-help-step {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 12px 14px;
+        border: 1px solid var(--ap-border);
+        border-radius: var(--ap-radius);
+        background: var(--ap-surface-muted);
+    }
+
+    .verification-help-step-number {
+        width: 28px;
+        height: 28px;
+        display: grid;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--ap-green);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 800;
+        flex: 0 0 auto;
+    }
+
+    .verification-help-step h3 {
+        margin: 0 0 2px;
+        font-size: 15px;
+        font-weight: 800;
+    }
+
+    .verification-help-step p {
+        margin: 0;
+        color: var(--ap-muted);
+        font-size: 14px;
+    }
+
+    @media (max-width: 992px) {
+        .verification-hero,
+        .verification-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .verification-hero {
+            display: grid;
+            align-items: stretch;
+        }
+
+        .verification-hero-stats {
+            min-width: 0;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .verification-progress-page {
+            padding-top: 18px;
+        }
+
+        .verification-hero,
+        .verification-card-header,
+        .verification-card-body {
+            padding-left: 16px;
+            padding-right: 16px;
+        }
+
+        .verification-hero-stats {
+            grid-template-columns: 1fr;
+        }
+
+        .verification-record-top,
+        .verification-detail {
+            flex-direction: column;
+        }
+
+        .verification-detail dd {
+            text-align: left;
+        }
+
+        .verification-upload-actions .btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block full_width_content %}
+<main class="verification-progress-page">
+    <section class="verification-hero">
+        <div>
+            <p class="verification-kicker">Verification Center</p>
+            <h1 class="verification-title">Verification Progress</h1>
+            <p class="verification-subtitle">
+                Track identity checks and plot reviews in one place so you always know what is complete and what still needs attention.
+            </p>
+        </div>
+
+        <div class="verification-hero-stats" aria-label="Verification summary">
+            <div class="verification-stat">
+                <p class="verification-stat-label">Account</p>
+                <p class="verification-stat-value">
+                    {% if landowner_verification or agent_verification %}
+                        Active
+                    {% else %}
+                        Pending
+                    {% endif %}
+                </p>
+            </div>
+            <div class="verification-stat">
+                <p class="verification-stat-label">Documents</p>
+                <p class="verification-stat-value">
+                    {% if documents_complete %}
+                        Ready
+                    {% else %}
+                        {{ document_verification_progress }}%
+                    {% endif %}
+                </p>
+            </div>
+            <div class="verification-stat">
+                <p class="verification-stat-label">Plots</p>
+                <p class="verification-stat-value">{{ plot_verifications|length }}</p>
             </div>
         </div>
-        {% endif %}
+    </section>
 
-        {% if agent_verification %}
-        <div class="col-12 col-lg-6">
-            <div class="card h-100">
-                <div class="card-body">
-                    <h5 class="card-title">Agent Verification</h5>
-                    <p class="mb-1"><strong>Stage:</strong> {{ agent_verification.current_stage }}</p>
-                    <p class="mb-1"><strong>Progress:</strong> {{ agent_verification.stage_progress }}%</p>
-                    <p class="mb-0 text-muted">{{ agent_verification.estimated_completion }}</p>
+    <div class="verification-grid">
+        <section class="verification-section" aria-label="Identity verification progress">
+            {% if landowner_verification %}
+            <article class="verification-card">
+                <div class="verification-card-header">
+                    <div>
+                        <h2 class="verification-card-title">Landowner Verification</h2>
+                        <p class="verification-card-meta">Identity documents and ownership checks for your landowner profile.</p>
+                    </div>
+                    <span class="badge text-bg-light border verification-badge">Landowner</span>
                 </div>
-            </div>
-        </div>
-        {% endif %}
-    </div>
+                <div class="verification-card-body">
+                    <div class="verification-record">
+                        <div class="verification-record-top">
+                            <div>
+                                <h3 class="verification-record-title">{{ landowner_verification.current_stage }}</h3>
+                                <p class="verification-card-meta mb-0">
+                                    Submitted {% if landowner_verification.submitted_at %}{{ landowner_verification.submitted_at|date:"M d, Y" }}{% else %}recently{% endif %}
+                                </p>
+                            </div>
+                            <span class="badge {% if landowner_verification.stage_progress >= 100 %}text-bg-success{% else %}text-bg-warning{% endif %} verification-badge">
+                                {{ landowner_verification.stage_progress }}%
+                            </span>
+                        </div>
 
-    <div class="card mt-4">
-        <div class="card-body">
-            <h5 class="card-title">Plot Verifications</h5>
-            {% if plot_verifications %}
-            <div class="table-responsive">
-                <table class="table align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Plot</th>
-                            <th>Stage</th>
-                            <th>Progress</th>
-                            <th>Submitted</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in plot_verifications %}
-                        <tr>
-                            <td>{{ item.plot.title }}</td>
-                            <td>{{ item.stage }}</td>
-                            <td>{{ item.progress }}%</td>
-                            <td>{{ item.submitted_at|date:"Y-m-d H:i"|default:"-" }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% else %}
-            <p class="mb-0 text-muted">No plot verification records yet.</p>
+                        <div class="verification-progress-wrap">
+                            <div class="verification-progress-label">
+                                <span>Progress</span>
+                                <span>{{ landowner_verification.stage_progress }}%</span>
+                            </div>
+                            <div class="progress verification-progress" role="progressbar"
+                                 aria-valuenow="{{ landowner_verification.stage_progress }}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                                <div class="progress-bar" style="width: {{ landowner_verification.stage_progress }}%;"></div>
+                            </div>
+                        </div>
+
+                        <dl class="verification-detail-list">
+                            <div class="verification-detail">
+                                <dt>Current Stage</dt>
+                                <dd>{{ landowner_verification.current_stage }}</dd>
+                            </div>
+                            <div class="verification-detail">
+                                <dt>Estimated Completion</dt>
+                                <dd>{{ landowner_verification.estimated_completion|default:"To be confirmed" }}</dd>
+                            </div>
+                            <div class="verification-detail">
+                                <dt>Reference</dt>
+                                <dd>{{ landowner_verification.search_reference|default:"Unavailable" }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </article>
             {% endif %}
-        </div>
+
+            {% if agent_verification %}
+            <article class="verification-card">
+                <div class="verification-card-header">
+                    <div>
+                        <h2 class="verification-card-title">Agent Verification</h2>
+                        <p class="verification-card-meta">Professional verification for your agent profile and related credentials.</p>
+                    </div>
+                    <span class="badge text-bg-light border verification-badge">Agent</span>
+                </div>
+                <div class="verification-card-body">
+                    <div class="verification-record">
+                        <div class="verification-record-top">
+                            <div>
+                                <h3 class="verification-record-title">{{ agent_verification.current_stage }}</h3>
+                                <p class="verification-card-meta mb-0">
+                                    Submitted {% if agent_verification.submitted_at %}{{ agent_verification.submitted_at|date:"M d, Y" }}{% else %}recently{% endif %}
+                                </p>
+                            </div>
+                            <span class="badge {% if agent_verification.stage_progress >= 100 %}text-bg-success{% else %}text-bg-warning{% endif %} verification-badge">
+                                {{ agent_verification.stage_progress }}%
+                            </span>
+                        </div>
+
+                        <div class="verification-progress-wrap">
+                            <div class="verification-progress-label">
+                                <span>Progress</span>
+                                <span>{{ agent_verification.stage_progress }}%</span>
+                            </div>
+                            <div class="progress verification-progress" role="progressbar"
+                                 aria-valuenow="{{ agent_verification.stage_progress }}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100">
+                                <div class="progress-bar" style="width: {{ agent_verification.stage_progress }}%;"></div>
+                            </div>
+                        </div>
+
+                        <dl class="verification-detail-list">
+                            <div class="verification-detail">
+                                <dt>Current Stage</dt>
+                                <dd>{{ agent_verification.current_stage }}</dd>
+                            </div>
+                            <div class="verification-detail">
+                                <dt>Estimated Completion</dt>
+                                <dd>{{ agent_verification.estimated_completion|default:"To be confirmed" }}</dd>
+                            </div>
+                            <div class="verification-detail">
+                                <dt>Reference</dt>
+                                <dd>{{ agent_verification.search_reference|default:"Unavailable" }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+                </div>
+            </article>
+            {% endif %}
+        </section>
+
+        <aside class="verification-side-stack" aria-label="Plot verification and guidance">
+            <section class="verification-card">
+                <div class="verification-card-header">
+                    <div>
+                        <h2 class="verification-card-title">Listing Readiness</h2>
+                        <p class="verification-card-meta">
+                            {{ document_notice }}
+                        </p>
+                    </div>
+                    <span class="badge {% if documents_complete %}text-bg-success{% else %}text-bg-warning{% endif %} verification-badge">
+                        {{ document_verification_progress }}%
+                    </span>
+                </div>
+                <div class="verification-card-body">
+                    <form method="post" enctype="multipart/form-data" class="verification-upload-box">
+                        {% csrf_token %}
+                        <div>
+                            <h3 class="verification-upload-title">Upload a required document</h3>
+                            <p class="verification-upload-note">
+                                Upload one file at a time. Only the document types needed for your current role appear in the selector.
+                            </p>
+                        </div>
+
+                        {% if document_upload_form.non_field_errors %}
+                            <div class="alert alert-danger mb-0">{{ document_upload_form.non_field_errors }}</div>
+                        {% endif %}
+
+                        <div class="verification-upload-grid">
+                            <div>
+                                <label for="{{ document_upload_form.document_type.id_for_label }}">Document type</label>
+                                {{ document_upload_form.document_type }}
+                                {% if document_upload_form.document_type.errors %}
+                                    <div class="text-danger small mt-1">{{ document_upload_form.document_type.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <label for="{{ document_upload_form.document_file.id_for_label }}">Document file</label>
+                                {{ document_upload_form.document_file }}
+                                {% if document_upload_form.document_file.help_text %}
+                                    <div class="verification-upload-help mt-1">{{ document_upload_form.document_file.help_text }}</div>
+                                {% endif %}
+                                {% if document_upload_form.document_file.errors %}
+                                    <div class="text-danger small mt-1">{{ document_upload_form.document_file.errors|striptags }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="verification-upload-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-cloud-arrow-up me-1"></i> Upload document
+                            </button>
+                        </div>
+                    </form>
+
+                    <div class="verification-progress-wrap mb-3">
+                        <div class="verification-progress-label">
+                            <span>Verified documents</span>
+                            <span>{{ documents_missing_count|default:0 }} remaining</span>
+                        </div>
+                        <div class="progress verification-progress" role="progressbar"
+                             aria-valuenow="{{ document_verification_progress }}"
+                             aria-valuemin="0"
+                             aria-valuemax="100">
+                            <div class="progress-bar" style="width: {{ document_verification_progress }}%;"></div>
+                        </div>
+                    </div>
+
+                    {% if document_sections %}
+                    <div class="verification-doc-groups">
+                        {% for section in document_sections %}
+                        <div class="verification-doc-group">
+                            <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+                                <div>
+                                    <h3 class="verification-upload-title mb-1">{{ section.title }}</h3>
+                                    <p class="verification-upload-note mb-0">{{ section.description }}</p>
+                                </div>
+                                <span class="badge text-bg-light border">{{ section.documents|length }} item{% if section.documents|length != 1 %}s{% endif %}</span>
+                            </div>
+
+                            {% if section.documents %}
+                            <div class="verification-docs">
+                                {% for document in section.documents %}
+                                <div class="verification-doc-item">
+                                    <div>
+                                        <strong>{{ document.label }}</strong>
+                                        <span>
+                                            {% if document.verified_at %}
+                                                Updated {{ document.verified_at|date:"M d, Y" }}
+                                            {% else %}
+                                                No verification record yet
+                                            {% endif %}
+                                        </span>
+                                    </div>
+                                    <span class="badge {{ document.status_class }}">{{ document.status }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="verification-empty">
+                                <div class="verification-empty-icon">
+                                    <i class="fa-solid fa-folder-open"></i>
+                                </div>
+                                <div>
+                                    <h3 class="verification-empty-title">Nothing required here yet</h3>
+                                    <p class="verification-empty-text">
+                                        This section will fill in as your account moves into the next verification stage.
+                                    </p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if verification_stage_guide %}
+                    <div class="verification-stage-guide mt-4">
+                        <h3 class="verification-upload-title">How the stages read</h3>
+                        <div class="verification-stage-list">
+                            {% for stage in verification_stage_guide %}
+                            <div class="verification-stage-row">
+                                <strong>{{ stage.label }}</strong>
+                                <span>{{ stage.summary }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="verification-card">
+                <div class="verification-card-header">
+                    <div>
+                        <h2 class="verification-card-title">Plot Verifications</h2>
+                        <p class="verification-card-meta">Latest review records for the plots attached to your account.</p>
+                    </div>
+                </div>
+                <div class="verification-card-body">
+                    {% if plot_verifications %}
+                    <div class="table-responsive">
+                        <table class="table align-middle verification-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Plot</th>
+                                    <th>Stage</th>
+                                    <th>Progress</th>
+                                    <th>Submitted</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in plot_verifications %}
+                                <tr>
+                                    <td class="plot-name">{{ item.plot.title|default:"Untitled plot" }}</td>
+                                    <td>{{ item.stage }}</td>
+                                    <td>
+                                        <span class="badge {% if item.progress >= 100 %}text-bg-success{% elif item.progress >= 50 %}text-bg-warning{% else %}text-bg-light border{% endif %}">
+                                            {{ item.progress }}%
+                                        </span>
+                                    </td>
+                                    <td>{{ item.submitted_at|date:"M d, Y H:i"|default:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="verification-empty">
+                        <div class="verification-empty-icon">
+                            <i class="fa-solid fa-clipboard-check"></i>
+                        </div>
+                        <div>
+                            <h3 class="verification-empty-title">No plot verification records yet</h3>
+                            <p class="verification-empty-text">
+                                Once you submit a plot for review, the status and progress will appear here.
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="verification-card">
+                <div class="verification-card-header">
+                    <div>
+                        <h2 class="verification-card-title">What Happens Next</h2>
+                        <p class="verification-card-meta">A quick guide to the usual verification flow.</p>
+                    </div>
+                </div>
+                <div class="verification-card-body">
+                    <div class="verification-help">
+                        <div class="verification-help-step">
+                            <div class="verification-help-step-number">1</div>
+                            <div>
+                                <h3>Review documents</h3>
+                                <p>We check the submitted identity and ownership records for completeness.</p>
+                            </div>
+                        </div>
+                        <div class="verification-help-step">
+                            <div class="verification-help-step-number">2</div>
+                            <div>
+                                <h3>Validate plot records</h3>
+                                <p>Registered plots move through the verification queue and appear in the table above.</p>
+                            </div>
+                        </div>
+                        <div class="verification-help-step">
+                            <div class="verification-help-step-number">3</div>
+                            <div>
+                                <h3>Receive approval</h3>
+                                <p>When all checks are complete, your listing actions unlock automatically.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </aside>
     </div>
-</div>
+</main>
 {% endblock %}

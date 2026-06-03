@@ -1,14 +1,14 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<p>Hello {{ admin|display_name }},</p>
-        <p>A new support ticket has been submitted.</p>
-        <div class="meta">
-            <p><strong>Subject:</strong> {{ ticket.subject }}</p>
-            <p><strong>Name:</strong> {{ ticket.name }}</p>
-            <p><strong>Email:</strong> {{ ticket.email }}</p>
-            <p><strong>Status:</strong> {{ ticket.status }}</p>
-        </div>
-        <p style="margin-top: 16px;"><strong>Message:</strong></p>
-        <p>{{ ticket.message }}</p>
+<p>Hello {{ admin.username|default:admin.email|default:"there" }},</p>
+<p>A new support ticket has been submitted.</p>
+<div class="meta">
+    <p><strong>Subject:</strong> {{ ticket.subject }}</p>
+    <p><strong>Name:</strong> {{ ticket_username|default:ticket.name }}</p>
+    <p><strong>Email:</strong> {{ ticket.email }}</p>
+    <p><strong>Status:</strong> {{ ticket.status }}</p>
+</div>
+<p style="margin-top: 16px;"><strong>Message:</strong></p>
+<p>{{ ticket.message }}</p>
 {% endblock %}

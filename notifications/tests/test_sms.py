@@ -1,11 +1,10 @@
 # listings/tests/test_sms.py
-from django.test import TestCase, override_settings
-from django.conf import settings
+from django.test import SimpleTestCase, override_settings
 from unittest.mock import patch, MagicMock
 from notifications.services.sms_service import SMSService
 
 @override_settings(USE_SMS_MOCK=False)
-class SMSServiceTestCase(TestCase):
+class SMSServiceTestCase(SimpleTestCase):
     """Test cases for SMS service"""
     
     def setUp(self):
@@ -64,6 +63,31 @@ class SMSServiceTestCase(TestCase):
         self.assertEqual(kwargs['headers']['Authorization'], 'Bearer test-token')
         self.assertEqual(kwargs['json']['phone'], '254718810503')
         self.assertEqual(kwargs['json']['message'], 'Test message')
+
+    @override_settings(
+        USE_SMS_MOCK=False,
+        SMS_PROVIDER=' opensms ',
+        OPENSMS_API_URL=' https://www.opensms.co.ke/api/v3/ ',
+        OPENSMS_API_TOKEN=' test-token ',
+        OPENSMS_SENDER_ID=' AgriPlot ',
+    )
+    @patch('requests.Session.post')
+    def test_sms_settings_are_trimmed_before_use(self, mock_post):
+        sms = SMSService()
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {'message_id': 'abc123', 'status': 'success'}
+        mock_post.return_value = mock_response
+
+        result = sms.send_sms(self.test_phone, "Test message")
+
+        self.assertTrue(result['success'])
+        _, kwargs = mock_post.call_args
+        self.assertEqual(kwargs['headers']['Authorization'], 'Bearer test-token')
+        self.assertEqual(kwargs['json']['sender_id'], 'AgriPlot')
+        self.assertEqual(kwargs['json']['phone'], '254718810503')
+        self.assertEqual(mock_post.call_args.args[0], 'https://www.opensms.co.ke/api/v3/sms/send')
 
     @override_settings(
         USE_SMS_MOCK=False,

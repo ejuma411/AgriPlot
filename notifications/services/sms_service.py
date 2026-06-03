@@ -1,6 +1,7 @@
 # listings/services/sms_service.py
 
 import logging
+import time
 
 import requests
 from django.conf import settings
@@ -20,15 +21,15 @@ class SMSService:
             if retries is None
             else retries
         )
-        self.provider = getattr(settings, "SMS_PROVIDER", "opensms").lower()
+        self.provider = getattr(settings, "SMS_PROVIDER", "opensms").strip().lower()
         self.request_timeout = (
             float(getattr(settings, "SMS_REQUEST_TIMEOUT", 8)),
             float(getattr(settings, "SMS_READ_TIMEOUT", 8)),
         )
 
-        self.opensms_url = settings.OPENSMS_API_URL
-        self.opensms_token = settings.OPENSMS_API_TOKEN
-        self.opensms_sender_id = settings.OPENSMS_SENDER_ID
+        self.opensms_url = (getattr(settings, "OPENSMS_API_URL", "") or "").strip()
+        self.opensms_token = (getattr(settings, "OPENSMS_API_TOKEN", "") or "").strip()
+        self.opensms_sender_id = (getattr(settings, "OPENSMS_SENDER_ID", "") or "").strip()
 
         self.session = requests.Session()
         retry_strategy = Retry(
@@ -45,6 +46,47 @@ class SMSService:
             self.provider,
             self.retries,
             self.request_timeout,
+        )
+
+    @staticmethod
+    def _mask_value(value, *, keep=4):
+        value = "" if value is None else str(value).strip()
+        if not value:
+            return ""
+        if len(value) <= keep:
+            return "*" * len(value)
+        return f"{'*' * max(len(value) - keep, 0)}{value[-keep:]}"
+
+    @staticmethod
+    def _shorten(value, limit=220):
+        text = "" if value is None else str(value)
+        if len(text) <= limit:
+            return text
+        return f"{text[:limit]}…"
+
+    def _debug_request(self, *, mobile, message, include_sender_id):
+        logger.debug(
+            "OpenSMS request debug | url=%s | phone=%s | provider=%s | sender_id_present=%s | sender_id=%s | token_present=%s | token_tail=%s | message_len=%s | message_preview=%s",
+            self._resolve_opensms_url(),
+            mobile,
+            self.provider,
+            bool(self.opensms_sender_id) if include_sender_id else False,
+            self._mask_value(self.opensms_sender_id) if include_sender_id else "",
+            bool(self.opensms_token),
+            self._mask_value(self.opensms_token, keep=6),
+            len(message or ""),
+            self._shorten(message, 120),
+        )
+
+    def _debug_response(self, *, mobile, response, result, elapsed_seconds, include_sender_id):
+        logger.debug(
+            "OpenSMS response debug | phone=%s | status=%s | elapsed=%.3fs | include_sender_id=%s | response_headers=%s | response_body=%s",
+            mobile,
+            getattr(response, "status_code", None),
+            elapsed_seconds,
+            include_sender_id,
+            self._shorten(dict(getattr(response, "headers", {}) or {}), 300),
+            self._shorten(result, 500),
         )
 
     @staticmethod
@@ -85,7 +127,7 @@ class SMSService:
                 response_body=response_body,
             )
         except Exception:
-            logger.exception("Could not persist SMS log")
+            logger.debug("Could not persist SMS log")
 
     @staticmethod
     def _extract_provider_error(result, default_status):
@@ -112,13 +154,27 @@ class SMSService:
         if include_sender_id and self.opensms_sender_id:
             payload["sender_id"] = self.opensms_sender_id
 
+        self._debug_request(
+            mobile=mobile,
+            message=message,
+            include_sender_id=include_sender_id,
+        )
+        started_at = time.monotonic()
         response = self.session.post(
             self._resolve_opensms_url(),
             headers=headers,
             json=payload,
             timeout=self.request_timeout,
         )
+        elapsed_seconds = time.monotonic() - started_at
         result = self._safe_json(response)
+        self._debug_response(
+            mobile=mobile,
+            response=response,
+            result=result,
+            elapsed_seconds=elapsed_seconds,
+            include_sender_id=include_sender_id,
+        )
         if response.status_code in (200, 201) and not (
             isinstance(result, dict) and result.get("status") == "error"
         ):
@@ -162,6 +218,12 @@ class SMSService:
             status_code=response.status_code,
             success=False,
             response_body=result,
+        )
+        logger.error(
+            "OpenSMS delivery failed for %s with status=%s response=%s",
+            mobile,
+            response.status_code,
+            result,
         )
         return {
             "success": False,

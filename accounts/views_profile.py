@@ -170,7 +170,11 @@ def _build_profile_context(user):
 
 @login_required
 def profile_management(request):
-    return redirect(f"{reverse('listings:dashboard_router')}?section=profile")
+    from .views_dashboard import staff_dashboard
+
+    request.GET = request.GET.copy()
+    request.GET["section"] = "profile"
+    return staff_dashboard(request)
 
 
 @login_required

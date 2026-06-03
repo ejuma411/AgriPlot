@@ -1,11 +1,11 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<p>Hello {{ user|display_name }},</p>
-        <p>Your registration was successful.</p>
-        <p>If you want to Request To Change Your Role (Landowner, Agent, Extension Officer, or Land Surveyor), you can apply directly from your profile page. An admin will review your documents and approve your request.</p>
-        <div style="text-align: center; margin: 24px 0;">
-            <a href="{{ profile_url }}" class="button">Go to Profile</a>
-        </div>
-        <p>Thank you for joining AgriPlot.</p>
+<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
+<p>Your registration was successful.</p>
+<p>If you want to request a role change such as Landowner, Agent, Extension Officer, or Land Surveyor, you can apply directly from your profile page.</p>
+<div style="text-align: center; margin: 24px 0;">
+    <a href="{{ profile_url }}" class="button">Go to Profile</a>
+</div>
+<p>Thank you for joining AgriPlot.</p>
 {% endblock %}

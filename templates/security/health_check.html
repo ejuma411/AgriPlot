@@ -62,6 +62,43 @@
         </div>
       </div>
     </div>
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <h6 class="fw-semibold text-uppercase text-muted mb-3 small">OCR Readiness</h6>
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <i class="fas fa-{% if health.ocr.ready %}check-circle text-success{% else %}exclamation-triangle text-warning{% endif %} fa-2x"></i>
+            <div>
+              <div class="fw-semibold">{% if health.ocr.ready %}Ready{% else %}Degraded{% endif %}</div>
+              <small class="text-muted">
+                {% if health.ocr.tesseract_version %}
+                  Tesseract {{ health.ocr.tesseract_version }}
+                {% else %}
+                  Tesseract unavailable
+                {% endif %}
+              </small>
+            </div>
+          </div>
+          <div class="small text-muted">
+            <div class="d-flex justify-content-between">
+              <span>pytesseract</span>
+              <strong class="{% if health.ocr.pytesseract_available %}text-success{% else %}text-danger{% endif %}">
+                {% if health.ocr.pytesseract_available %}Installed{% else %}Missing{% endif %}
+              </strong>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span>pdftoppm</span>
+              <strong class="{% if health.ocr.pdftoppm_available %}text-success{% else %}text-danger{% endif %}">
+                {% if health.ocr.pdftoppm_available %}Installed{% else %}Missing{% endif %}
+              </strong>
+            </div>
+            {% if health.ocr.error %}
+              <div class="mt-2 text-warning">{{ health.ocr.error }}</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="mt-4 d-flex gap-2">

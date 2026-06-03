@@ -842,7 +842,13 @@ from django.http import JsonResponse
 @staff_member_required
 def task_assignment(request):
     """View for managing task assignments"""
-    if not request.user.is_superuser:
+    access_profile = resolve_access_profile(request.user)
+    can_manage_task_queue = (
+        request.user.is_superuser
+        or access_profile.can("tasks.assign")
+        or access_profile.can("verification.review")
+    )
+    if not can_manage_task_queue:
         messages.error(request, "You do not have permission to assign tasks.")
         return redirect('listings:dashboard_router')
     
@@ -866,7 +872,12 @@ def task_assignment(request):
         is_active=True,
         verified=True
     ).select_related('user')
-    staff_users = User.objects.filter(is_staff=True)
+    staff_users = User.objects.filter(is_staff=True, is_superuser=False)
+    superusers = User.objects.filter(is_staff=True, is_superuser=True)
+    focus_task_id = request.GET.get("task_id")
+    focus_task = None
+    if focus_task_id:
+        focus_task = pending_tasks.filter(id=focus_task_id).first() or in_progress_tasks.filter(id=focus_task_id).first()
 
     # Add unassigned reasons for pending tasks
     for task in pending_tasks:
@@ -925,10 +936,14 @@ def task_assignment(request):
         'extension_officers': extension_officers,  # Pass only extension officers
         'surveyors': surveyors,
         'staff_users': staff_users,
+        'superusers': superusers,
         'workload': workload,
         'task_stats': task_stats,
+        'focus_task_id': focus_task.id if focus_task else None,
         'page_title': 'Task Assignment'
     }
+    if focus_task_id and not focus_task:
+        messages.info(request, "The requested task is no longer pending, so the queue is shown instead.")
     
     return render(request, 'verification/admin/task_assignment.html', context)
 
@@ -941,8 +956,13 @@ def ajax_assign_task(request):
             data = json.loads(request.body)
             task_id = data.get('task_id')
             user_id = data.get('user_id')
+            access_profile = resolve_access_profile(request.user)
 
-            if not request.user.is_superuser:
+            if not (
+                request.user.is_superuser
+                or access_profile.can("tasks.assign")
+                or access_profile.can("verification.review")
+            ):
                 return JsonResponse({
                     'success': False,
                     'message': 'You do not have permission to assign tasks'
@@ -1352,6 +1372,18 @@ def complete_task_view(request, task_id):
                 notes,
                 review_metadata=review_metadata if task.review_metadata else None
             )
+
+            if approved:
+                survey_task = VerificationTask.objects.filter(
+                    plot=task.plot,
+                    verification_type='surveyor_inspection'
+                ).order_by('-assigned_at').first()
+                if survey_task and survey_task.status == 'pending' and survey_task.assigned_to is None:
+                    messages.warning(
+                        request,
+                        "No available surveyor was found automatically. Please assign the pending surveyor task manually."
+                    )
+                    return redirect(f"{reverse('verification:task_assignment')}?task_id={survey_task.id}")
         else:
             task = VerificationService.complete_task(task_id, request.user, notes, approved)
         

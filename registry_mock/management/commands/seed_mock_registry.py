@@ -3,6 +3,7 @@ from registry_mock.models import MockLandRegistry
 from listings.kenya_data import KENYA_COUNTIES
 import random
 from decimal import Decimal, ROUND_HALF_UP
+from datetime import date
 
 
 class Command(BaseCommand):
@@ -33,6 +34,7 @@ class Command(BaseCommand):
         preset = options["preset"]
 
         created = 0
+        processed = 0
         if preset:
             dummy_plots = [
                 {
@@ -40,6 +42,11 @@ class Command(BaseCommand):
                     "registered_owner_name": "John Kamau",
                     "owner_id_number": "12345678",
                     "owner_kra_pin": "A001234567Z",
+                    "county": "Nairobi",
+                    "subcounty": "Starehe",
+                    "registration_section": "Nairobi Block 101",
+                    "search_reference_number": "SRCH/NAI/2026/0045",
+                    "search_certificate_date": date(2026, 5, 29),
                     "acreage_ha": Decimal("0.5000"),
                     "land_type": "FREEHOLD",
                     "is_charged": False,
@@ -50,6 +57,11 @@ class Command(BaseCommand):
                     "registered_owner_name": "Mary Wanjiku",
                     "owner_id_number": "87654321",
                     "owner_kra_pin": "A008765432X",
+                    "county": "Kiambu",
+                    "subcounty": "Kikuyu",
+                    "registration_section": "Kiambu / Kikuyu Block 9",
+                    "search_reference_number": "SRCH/KIA/2026/0999",
+                    "search_certificate_date": date(2026, 5, 30),
                     "acreage_ha": Decimal("1.2000"),
                     "land_type": "LEASEHOLD",
                     "is_charged": True,
@@ -60,6 +72,11 @@ class Command(BaseCommand):
                     "registered_owner_name": "Peter Omondi",
                     "owner_id_number": "11223344",
                     "owner_kra_pin": "A001122334P",
+                    "county": "Nairobi",
+                    "subcounty": "Westlands",
+                    "registration_section": "L.R. 1870/1",
+                    "search_reference_number": "SRCH/NAI/2026/0218",
+                    "search_certificate_date": date(2026, 5, 31),
                     "acreage_ha": Decimal("2.5000"),
                     "land_type": "FREEHOLD",
                     "is_charged": False,
@@ -67,14 +84,17 @@ class Command(BaseCommand):
                 },
             ]
             for data in dummy_plots:
-                obj, was_created = MockLandRegistry.objects.get_or_create(
+                obj, was_created = MockLandRegistry.objects.update_or_create(
                     parcel_number=data["parcel_number"],
                     defaults=data,
                 )
                 if was_created:
                     created += 1
                     self.stdout.write(self.style.SUCCESS(f"Created preset registry record: {obj.parcel_number}"))
-            self.stdout.write(self.style.SUCCESS(f"Done. Created {created} preset registry record(s)."))
+                else:
+                    self.stdout.write(self.style.SUCCESS(f"Updated preset registry record: {obj.parcel_number}"))
+                processed += 1
+            self.stdout.write(self.style.SUCCESS(f"Done. Processed {processed} preset registry record(s); created {created}."))
             return
 
         attempts = 0

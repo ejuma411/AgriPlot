@@ -1,22 +1,21 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<h2>Hello {{ user|display_name }},</h2>
+<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
+<p>Your task assignment has been sent successfully.</p>
 
-        <p>Your task assignment has been sent successfully.</p>
+<div class="details">
+    <h3>{{ task.get_verification_type_display }}</h3>
+    <p><strong>Plot:</strong> {{ plot.title }}</p>
+    <p><strong>Assignee:</strong> {{ assignee.username|default:assignee.email|default:"there" }}</p>
+    <p><strong>Assigned at:</strong> {{ task.assigned_at|date:"F j, Y H:i" }}</p>
+</div>
 
-        <div class="details">
-            <h3>{{ task.get_verification_type_display }}</h3>
-            <p><strong>Plot:</strong> {{ plot.title }}</p>
-            <p><strong>Assignee:</strong> {{ assignee|display_name }}</p>
-            <p><strong>Assigned at:</strong> {{ task.assigned_at|date:"F j, Y H:i" }}</p>
-        </div>
+<p>You can track progress from the task dashboard.</p>
 
-        <p>You can track progress from the task dashboard.</p>
+<div style="text-align: center;">
+    <a href="{{ login_url }}" class="button">View Task Dashboard</a>
+</div>
 
-        <div style="text-align: center;">
-            <a href="{{ login_url }}" class="button">View Task Dashboard</a>
-        </div>
-
-        <p>Best regards,<br>AgriPlot Team</p>
+<p>Best regards,<br>AgriPlot Team</p>
 {% endblock %}

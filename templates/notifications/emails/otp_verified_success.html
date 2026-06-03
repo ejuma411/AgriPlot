@@ -1,15 +1,17 @@
 {% extends 'notifications/emails/base_email.html' %}
 
 {% block content %}
-<p>Hello {{ user|display_name }},</p>
-        <p>Your account has been successfully verified. You can now log in and start using AgriPlot Connect.</p>
-        <p>If you want to Request To Change Your Role (Landowner, Agent, Extension Officer, or Land Surveyor), you can apply from the <strong>Profile</strong> section after logging in. An admin will review your documents and approve your request.</p>
-        <div style="text-align: center; margin: 24px 0;">
-            <a href="{{ login_url }}" class="button">Log In</a>
-        </div>
-        <div style="text-align: center; margin: 8px 0;">
-            <a href="{{ profile_url }}">Go to Profile</a>
-        </div>
-        <p>If you did not create this account, please ignore this email.</p>
-        <p>Thank you for joining AgriPlot.</p>
+<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
+<p>Your account has been successfully verified. You can now log in and start using AgriPlot Connect.</p>
+<p>If you want to request a role change such as Landowner, Agent, Extension Officer, or Land Surveyor, you can apply from the <strong>Profile</strong> section after logging in.</p>
+<div style="text-align: center; margin: 24px 0;">
+    <a href="{{ login_url }}" class="button">Log In</a>
+</div>
+{% if profile_url %}
+<div style="text-align: center; margin: 8px 0;">
+    <a href="{{ profile_url }}">Go to Profile</a>
+</div>
+{% endif %}
+<p>If you did not create this account, please ignore this email.</p>
+<p>Thank you for joining AgriPlot.</p>
 {% endblock %}

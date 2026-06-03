@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}{% if report.surveyor %}Surveyor Report{% else %}Extension Report{% endif %} - {{ plot.title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4 py-lg-5">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+        <div>
+            <p class="text-uppercase small fw-bold text-muted mb-1">Surveyor Record</p>
+            <h1 class="h3 mb-2">{% if report.surveyor %}Surveyor Report{% else %}Extension Report{% endif %}</h1>
+            <p class="text-muted mb-0">{{ plot.title }} · {{ plot.county|default:plot.location }}</p>
+        </div>
+        <a href="{% url 'verification:surveyor_dashboard' %}" class="btn btn-outline-secondary">Back to Tasks</a>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-xl-4">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <div class="badge text-bg-warning mb-3">{% if report.surveyor %}Surveyor{% else %}Extension{% endif %}</div>
+                    <h4 class="mb-1">{{ plot.title }}</h4>
+                    <p class="text-muted mb-0">{{ plot.parcel_number|default:"Pending parcel number" }}</p>
+                </div>
+            </div>
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">Summary</div>
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Officer</span>
+                        <span class="fw-semibold">{% if report.officer %}{{ report.officer.user|display_name }}{% else %}{{ report.surveyor.user|display_name }}{% endif %}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Visit Date</span>
+                        <span class="fw-semibold">{{ report.visit_date|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">Recommendation</span>
+                        <span class="badge text-bg-light border">{{ report.get_recommendation_display }}</span>
+                    </div>
+                    {% if report.lsb_license_number %}
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span class="text-muted">LSB License</span>
+                        <span class="fw-semibold">{{ report.lsb_license_number }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white fw-bold">Verified Findings</div>
+                <div class="card-body p-4 p-lg-5">
+                    {% if report.surveyor %}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 bg-light h-100">
+                                    <div class="text-muted small text-uppercase fw-bold mb-2">Boundary Status</div>
+                                    <div class="fw-semibold">{{ report.beacon_status_display|default:"-" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 bg-light h-100">
+                                    <div class="text-muted small text-uppercase fw-bold mb-2">Area</div>
+                                    <div class="fw-semibold">{{ report.ground_acreage|default:"-" }} / {{ report.deed_area|default:"-" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-3 border rounded-3 bg-light">
+                                    <div class="text-muted small text-uppercase fw-bold mb-2">Boundary Markers</div>
+                                    <div style="white-space: pre-line;">{{ report.boundary_markers|default:"No boundary notes provided." }}</div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-3 border rounded-3 bg-light">
+                                    <div class="text-muted small text-uppercase fw-bold mb-2">Notes</div>
+                                    <div style="white-space: pre-line;">{{ report.notes|default:"No notes provided." }}</div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="d-flex flex-wrap gap-2">
+                                    {% if report.beacon_certificate %}<a href="{{ report.beacon_certificate.url }}" target="_blank" class="btn btn-outline-primary">Beacon Certificate</a>{% endif %}
+                                    {% if report.mutation_form %}<a href="{{ report.mutation_form.url }}" target="_blank" class="btn btn-outline-primary">Mutation Form</a>{% endif %}
+                                    {% if report.boundary_report %}<a href="{{ report.boundary_report.url }}" target="_blank" class="btn btn-outline-primary">Boundary Report</a>{% endif %}
+                                    {% if report.signed_survey_plan %}<a href="{{ report.signed_survey_plan.url }}" target="_blank" class="btn btn-outline-primary">Signed Survey Plan</a>{% endif %}
+                                    {% if report.boundary_data_file %}<a href="{{ report.boundary_data_file.url }}" target="_blank" class="btn btn-outline-primary">Boundary Data</a>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 bg-light h-100">
+                                    <div class="text-muted small text-uppercase fw-bold mb-2">Coordinates</div>
+                                    <div class="fw-semibold">{{ report.gps_latitude|default:"-" }}, {{ report.gps_longitude|default:"-" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="p-3 border rounded-3 bg-light h-100">
+                                    <div class="text-muted small text-uppercase fw-bold mb-2">Encumbrances</div>
+                                    <div class="fw-semibold">{{ report.encumbrances_found|yesno:"Found,None" }}</div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-3 border rounded-3 bg-light">
+                                    <div class="text-muted small text-uppercase fw-bold mb-2">Comments</div>
+                                    <div style="white-space: pre-line;">{{ report.comments|default:report.notes|default:"No additional comments provided." }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

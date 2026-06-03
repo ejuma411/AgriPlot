@@ -31,7 +31,10 @@ class WalletService:
     
     @staticmethod
     def get_or_create_wallet(user):
-        wallet, _created = Wallet.objects.get_or_create(user=user)
+        wallet, _created = Wallet.objects.get_or_create(user=user, defaults={"balance": Decimal("0.00")})
+        if wallet.balance is None:
+            wallet.balance = Decimal("0.00")
+            wallet.save(update_fields=["balance", "updated_at"])
         return wallet
 
     @staticmethod

@@ -17,6 +17,17 @@
 </div>
 {% endif %}
 
+{% if requirements %}
+<div class="auth-note" style="margin-top: 16px;">
+    <strong>Documents reviewed for this role:</strong>
+    <ul class="mb-0 mt-2 ps-3">
+        {% for item in requirements %}
+            <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
 <form method="POST" enctype="multipart/form-data" class="auth-form">
     {% csrf_token %}
 

@@ -20,6 +20,10 @@
                 <i class="fa-solid fa-clipboard-check"></i>
                 <span>My Tasks</span>
             </a>
+            <a href="{% url 'verification:task_assignment' %}" class="{% if request.path == '/verify/tasks/' %}is-active{% endif %}">
+                <i class="fa-solid fa-user-plus"></i>
+                <span>Task Assignment</span>
+            </a>
             <a href="{% url 'verification:registry_mismatches' %}" class="{% if request.path == '/verify/registry/mismatches/' %}is-active{% endif %}">
                 <i class="fa-solid fa-triangle-exclamation"></i>
                 <span>Mismatches</span>

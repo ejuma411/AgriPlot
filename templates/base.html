@@ -1142,9 +1142,17 @@
                         <a class="ap-nav-link" href="{% url 'listings:notifications_inbox' %}">
                             <i class="fa-regular fa-bell"></i> Inbox
                         </a>
-                        <a class="ap-btn ap-btn-ghost" href="{% url 'listings:add_plot' %}">
-                            <i class="fa-solid fa-plus"></i> Add Plot
+                        <a class="ap-nav-link" href="{% url 'listings:profile_management' %}">
+                            <i class="fa-solid fa-user-circle"></i> Profile
                         </a>
+                        <a class="ap-nav-link" href="{% url 'listings:account_settings' %}">
+                            <i class="fa-solid fa-gears"></i> Settings
+                        </a>
+                        {% if user.agent or user.is_staff or user.landownerprofile %}
+                            <a class="ap-btn ap-btn-ghost" href="{% url 'listings:add_plot' %}">
+                                <i class="fa-solid fa-plus"></i> Add Plot
+                            </a>
+                        {% endif %}
                         <form class="ap-logout-form" method="post" action="{% url 'listings:logout' %}">
                             {% csrf_token %}
                             <button class="ap-btn ap-btn-primary" type="submit">

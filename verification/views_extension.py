@@ -161,6 +161,10 @@ def conduct_extension_review(request, task_id):
         form = ExtensionReportForm()
 
     system_crop_suggestions = _extension_crop_suggestions(form, plot)
+    if not form.is_bound and system_crop_suggestions and not form.initial.get("recommended_crops"):
+        form.initial["recommended_crops"] = [
+            item["crop"].name for item in system_crop_suggestions[:3]
+        ]
     
     return render(request, 'verification/extension/conduct_review.html', {
         'task': task,
@@ -390,7 +394,7 @@ def conduct_surveyor_inspection(request, task_id):
     else:
         form = SurveyorReportForm()
 
-    return render(request, 'verification/extension/conduct_review.html', {
+    return render(request, 'verification/surveyor/conduct_review.html', {
         'task': task,
         'plot': plot,
         'form': form,
@@ -407,7 +411,7 @@ def view_surveyor_report(request, report_id):
         messages.error(request, "You don't have permission to view this report.")
         return redirect('listings:home')
 
-    return render(request, 'verification/extension/view_report.html', {
+    return render(request, 'verification/surveyor/view_report.html', {
         'report': report,
         'plot': report.plot,
         'page_title': f'Surveyor Report: {report.plot.title}'

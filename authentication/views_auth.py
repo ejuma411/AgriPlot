@@ -108,7 +108,7 @@ def _issue_login_otp(user, method):
             template="otp_verification",
             context={
                 "user": user,
-                "display_name": user.get_full_name() or user.username,
+                "username": user.username or "there",
                 "otp": otp_code,
                 "expiry_minutes": 10,
                 "support_url": settings.SITE_URL + "/contact-support/"
@@ -352,7 +352,7 @@ class CustomPasswordResetView(PasswordResetView):
     template_name = 'authentication/password_reset.html'
     email_template_name = 'notifications/emails/password_reset_email.html'
     html_email_template_name = 'notifications/emails/password_reset_email.html'
-    subject_template_name = 'authentication/password_reset_subject.txt'
+    subject_template_name = 'notifications/emails/password_reset_subject.txt'
     success_url = reverse_lazy('authentication:password_reset_done')
     
     def get_context_data(self, **kwargs):
@@ -420,6 +420,7 @@ def password_reset_confirm_request(request):
                         # Create email context
                         context = {
                             'user': user,
+                            'username': user.username or 'there',
                             'reset_link': reset_link,
                             'protocol': request.scheme,
                             'domain': request.get_host(),

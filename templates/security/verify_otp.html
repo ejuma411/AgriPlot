@@ -25,11 +25,51 @@
     <button type="submit" class="auth-btn">Verify & Complete Registration</button>
 </form>
 
-<div class="portal-links">
+<div class="otp-actions">
     <form method="post" action="{% url 'security:resend_otp' %}">
         {% csrf_token %}
         <input type="hidden" name="phone" value="{{ phone }}">
         <button type="submit" class="auth-btn auth-btn--muted">Resend Code</button>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .otp-actions {
+        margin-top: 14px;
+        display: grid;
+        gap: 12px;
+    }
+
+    .otp-actions form {
+        width: 100%;
+        margin: 0;
+    }
+
+    .otp-actions .auth-btn {
+        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-shadow: none;
+    }
+
+    .otp-actions .auth-btn--muted {
+        background: #eef4ef;
+        color: var(--ap-green-dark);
+        border: 1px solid var(--ap-border);
+    }
+
+    .otp-actions .auth-btn--muted:hover {
+        background: #e4eee7;
+        color: var(--ap-green-dark);
+    }
+
+    .auth-form .auth-btn {
+        margin-top: 4px;
+    }
+</style>
 {% endblock %}

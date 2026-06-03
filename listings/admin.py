@@ -713,13 +713,19 @@ class MarketPriceBandAdmin(admin.ModelAdmin):
     list_filter = ("county", "market_zone", "land_type", "listing_type", "area_unit", "is_active")
     search_fields = ("county", "subcounty", "source")
     ordering = ("county", "subcounty", "market_zone", "land_type", "listing_type")
-    actions = ["seed_default_bands"]
+    actions = ["seed_default_bands", "seed_registry_bands"]
 
     def seed_default_bands(self, request, queryset):
         call_command("seed_price_bands")
         self.message_user(request, "Seeded default MarketPriceBand entries.")
 
     seed_default_bands.short_description = "Seed default price bands"
+
+    def seed_registry_bands(self, request, queryset):
+        call_command("seed_registry_price_bands")
+        self.message_user(request, "Seeded registry-derived price bands.")
+
+    seed_registry_bands.short_description = "Seed registry price bands"
 
 
 @admin.register(ComparableSale)
