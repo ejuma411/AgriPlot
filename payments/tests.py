@@ -27,7 +27,7 @@ from .models import (
     PaymentDisbursement,
     PaymentRequest,
 )
-from .forms import PaymentRequestForm
+from .forms import PaymentClosingStepForm, PaymentRequestForm
 from .permissions import FINANCE_ADMIN_GROUP
 
 
@@ -283,6 +283,88 @@ class PaymentRequestModelTests(TestCase):
         self.assertFalse(agreement_step.can_mark_complete_with_current_evidence())
         agreement_step.seller_confirmed_at = timezone.now()
         agreement_step.save(update_fields=["seller_confirmed_at", "updated_at"])
+        self.assertTrue(agreement_step.can_mark_complete_with_current_evidence())
+
+    def test_purchase_agreement_form_exposes_role_specific_fields(self):
+        buyer = get_user_model().objects.create_user(username="purchase_buyer", password="secret123")
+        seller = get_user_model().objects.create_user(username="purchase_seller", password="secret123")
+        landowner = self._create_landowner_for_plot("purchase_owner")
+        landowner.user = seller
+        landowner.save(update_fields=["user"])
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Purchase Agreement Plot",
+            location="Nakuru",
+            area=4.0,
+            price="750000.00",
+            sale_price="750000.00",
+            listing_type="sale",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=buyer,
+            seller=seller,
+            plot=plot,
+            title="Purchase request",
+            amount="10000.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.AGREEMENT_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.PAID,
+            phone_number="254700000888",
+        )
+        payment.ensure_closing_steps()
+        agreement_step = payment.closing_steps.get(code="agreement")
+
+        buyer_form = PaymentClosingStepForm(instance=agreement_step, user=buyer)
+        seller_form = PaymentClosingStepForm(instance=agreement_step, user=seller)
+
+        self.assertIn("buyer_accepts_agreement", buyer_form.fields)
+        self.assertNotIn("seller_accepts_agreement", buyer_form.fields)
+        self.assertNotIn("seller_advocate_name", buyer_form.fields)
+        self.assertNotIn("seller_advocate_phone", buyer_form.fields)
+        self.assertNotIn("document", buyer_form.fields)
+
+        self.assertIn("seller_accepts_agreement", seller_form.fields)
+        self.assertIn("seller_advocate_name", seller_form.fields)
+        self.assertIn("seller_advocate_phone", seller_form.fields)
+        self.assertIn("document", seller_form.fields)
+        self.assertNotIn("buyer_accepts_agreement", seller_form.fields)
+
+    def test_purchase_agreement_requires_document_and_both_confirmations(self):
+        buyer = get_user_model().objects.create_user(username="purchase_buyer2", password="secret123")
+        seller = get_user_model().objects.create_user(username="purchase_seller2", password="secret123")
+        landowner = self._create_landowner_for_plot("purchase_owner2")
+        landowner.user = seller
+        landowner.save(update_fields=["user"])
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Purchase Agreement Plot 2",
+            location="Kisumu",
+            area=3.5,
+            price="900000.00",
+            sale_price="900000.00",
+            listing_type="sale",
+        )
+        payment = PaymentRequest.objects.create(
+            buyer=buyer,
+            seller=seller,
+            plot=plot,
+            title="Purchase request",
+            amount="15000.00",
+            method=PaymentRequest.Method.MPESA_STK,
+            category=PaymentRequest.Category.AGREEMENT_DEPOSIT,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
+            status=PaymentRequest.Status.PAID,
+            phone_number="254700000889",
+        )
+        payment.ensure_closing_steps()
+        agreement_step = payment.closing_steps.get(code="agreement")
+
+        self.assertFalse(agreement_step.can_mark_complete_with_current_evidence())
+        agreement_step.document = SimpleUploadedFile("agreement.pdf", b"pdf")
+        agreement_step.buyer_confirmed_at = timezone.now()
+        self.assertFalse(agreement_step.can_mark_complete_with_current_evidence())
+        agreement_step.seller_confirmed_at = timezone.now()
         self.assertTrue(agreement_step.can_mark_complete_with_current_evidence())
 
     def test_form_forces_mpesa_checkout_and_generates_title(self):

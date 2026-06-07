@@ -87,14 +87,14 @@ PAYMENT_METHOD_CARDS = [
         "priority": 2,
     },
     {
-        "name": "M-Pesa (Test Mode)",
+        "name": "M-Pesa STK",
         "slug": PaymentRequest.Method.MPESA_STK,
         "description": (
-            "M-Pesa STK push for testing purposes. "
-            "Transactions are simulated and marked successful instantly — no real money moves."
+            "M-Pesa STK push for live checkout in the Safaricom sandbox or production environment. "
+            "The payment stays pending until Daraja confirms the callback."
         ),
         "tone": "green",
-        "badge": "Testing Only",
+        "badge": "Live Flow",
         "icon": "fa-mobile-screen-button",
         "priority": 3,
     },
@@ -128,8 +128,7 @@ def _payment_method_backend_enabled(method):
     if method == PaymentRequest.Method.WALLET:
         return getattr(settings, "WALLET_ENABLED", True)
     if method == PaymentRequest.Method.MPESA_STK:
-        # Always treat as available in test mode; real mode requires Daraja credentials.
-        return getattr(settings, "WALLET_TEST_MODE", False) or daraja_ready()
+        return _gateway_ready()
     if method == PaymentRequest.Method.CARD:
         return getattr(settings, "CARD_PAYMENTS_ENABLED", False)
     if method == PaymentRequest.Method.AIRTEL_MONEY:
@@ -143,7 +142,7 @@ def _payment_method_unavailable_message(method):
     messages_map = {
         PaymentRequest.Method.BANK_TRANSFER: "Bank transfer is not yet configured. Contact support to add your settlement account details.",
         PaymentRequest.Method.WALLET: "The AgriPlot Wallet is currently disabled in backend settings.",
-        PaymentRequest.Method.MPESA_STK: "M-Pesa (test mode) is not available right now.",
+        PaymentRequest.Method.MPESA_STK: "M-Pesa STK is not available right now.",
         PaymentRequest.Method.CARD: "Card payments are not yet configured.",
         PaymentRequest.Method.AIRTEL_MONEY: "Airtel Money is not yet configured.",
     }
@@ -479,7 +478,7 @@ def _ensure_payment_workflow_seeded(payment):
 
 
 def _maybe_auto_complete_test_deal(payment):
-    if not getattr(settings, "WALLET_TEST_MODE", False):
+    if not getattr(settings, "MPESA_TEST_MODE", False):
         return
     if payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
         payment.add_event(
@@ -1173,8 +1172,7 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                     return redirect("payments:detail", pk=payment.pk)
 
                 if payment.method == PaymentRequest.Method.MPESA_STK:
-                    # Test mode: auto-mark payment as successful without real STK push
-                    if getattr(settings, "WALLET_TEST_MODE", False):
+                    if getattr(settings, "MPESA_TEST_MODE", False):
                         test_verification = {
                             "test_mode": True,
                             "auto_completed_at": timezone.now().isoformat(),
@@ -1672,6 +1670,29 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
                 "value": "Can confirm now" if step_update_decision.allowed else "Read-only until ownership reaches your role",
             },
         ]
+        agreement_role_hint = ""
+        agreement_field_hint = ""
+        if step.code == "agreement":
+            if payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+                if actor_is_seller:
+                    agreement_role_hint = "You are on the seller side. Upload the executed agreement, add the seller advocate details, and confirm your side once everything is ready."
+                    agreement_field_hint = "Visible fields: executed agreement upload, seller advocate details, and seller confirmation."
+                elif actor_is_buyer:
+                    agreement_role_hint = "You are on the buyer side. Review the executed agreement and confirm your side after checking the terms."
+                    agreement_field_hint = "Visible fields: buyer confirmation only."
+                else:
+                    agreement_role_hint = "This agreement step is reserved for the buyer and seller. An AgriPlot admin can view the full record."
+                    agreement_field_hint = "Visible fields depend on the active party."
+            else:
+                if actor_is_buyer:
+                    agreement_role_hint = "You are the tenant. Review the lease and confirm your side."
+                    agreement_field_hint = "Visible fields: tenant confirmation only."
+                elif actor_is_seller:
+                    agreement_role_hint = "You are the landowner. Review the lease and confirm your side."
+                    agreement_field_hint = "Visible fields: landowner confirmation only."
+                else:
+                    agreement_role_hint = "This lease agreement step is a two-party confirmation record. An AgriPlot admin can view the full record."
+                    agreement_field_hint = "Visible fields depend on the active party."
         completed_count = len(completed_stages)
         total_steps = len(closing_steps)
 
@@ -1702,6 +1723,8 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, TemplateView):
             "primary_task_label": primary_task_label,
             "primary_task_description": primary_task_description,
             "actor_access_summary": actor_access_summary,
+            "agreement_role_hint": agreement_role_hint,
+            "agreement_field_hint": agreement_field_hint,
             "completed_step_count": completed_count,
             "total_step_count": total_steps,
             "step_payment_category": payment_category,

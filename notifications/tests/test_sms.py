@@ -43,7 +43,7 @@ class SMSServiceTestCase(SimpleTestCase):
     @override_settings(
         USE_SMS_MOCK=False,
         SMS_PROVIDER='opensms',
-        OPENSMS_API_URL='https://www.opensms.co.ke/api/v3/',
+        OPENSMS_API_URL='https://api.opensms.co.ke/v3/',
         OPENSMS_API_TOKEN='test-token',
         OPENSMS_SENDER_ID='AgriPlot',
     )
@@ -87,34 +87,28 @@ class SMSServiceTestCase(SimpleTestCase):
         self.assertEqual(kwargs['headers']['Authorization'], 'Bearer test-token')
         self.assertEqual(kwargs['json']['sender_id'], 'AgriPlot')
         self.assertEqual(kwargs['json']['phone'], '254718810503')
-        self.assertEqual(mock_post.call_args.args[0], 'https://www.opensms.co.ke/api/v3/sms/send')
+        self.assertEqual(mock_post.call_args.args[0], 'https://api.opensms.co.ke/v3/sms/send')
 
     @override_settings(
         USE_SMS_MOCK=False,
         SMS_PROVIDER='opensms',
-        OPENSMS_API_URL='https://www.opensms.co.ke/api/v3/',
+        OPENSMS_API_URL='https://api.opensms.co.ke/v3/',
         OPENSMS_API_TOKEN='test-token',
         OPENSMS_SENDER_ID='BlockedSender',
     )
     @patch('requests.Session.post')
-    def test_send_sms_retries_without_sender_id_after_403(self, mock_post):
+    def test_send_sms_fails_without_retry_when_sender_id_rejected(self, mock_post):
         sms = SMSService()
 
         forbidden_response = MagicMock()
         forbidden_response.status_code = 403
         forbidden_response.json.return_value = {'message': 'Sender ID not approved'}
 
-        success_response = MagicMock()
-        success_response.status_code = 200
-        success_response.json.return_value = {'message_id': 'abc123', 'status': 'success'}
-
-        mock_post.side_effect = [forbidden_response, success_response]
+        mock_post.return_value = forbidden_response
 
         result = sms.send_sms(self.test_phone, "Test message")
 
-        self.assertTrue(result['success'])
-        self.assertEqual(mock_post.call_count, 2)
-        first_payload = mock_post.call_args_list[0].kwargs['json']
-        second_payload = mock_post.call_args_list[1].kwargs['json']
+        self.assertFalse(result['success'])
+        self.assertEqual(mock_post.call_count, 1)
+        first_payload = mock_post.call_args.kwargs['json']
         self.assertEqual(first_payload['sender_id'], 'BlockedSender')
-        self.assertNotIn('sender_id', second_payload)

@@ -41,9 +41,9 @@
                 </div>
                 <div class="d-flex flex-wrap gap-2 mb-2">
                     <span class="badge rounded-pill text-bg-light border">{{ plot.get_listing_type_display }}</span>
-                    <span class="badge rounded-pill {% if plot.pricing_review_badge.tone == 'success' %}text-bg-success{% elif plot.pricing_review_badge.tone == 'warning' %}text-bg-warning{% elif plot.pricing_review_badge.tone == 'danger' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
+                    {% comment %} <span class="badge rounded-pill {% if plot.pricing_review_badge.tone == 'success' %}text-bg-success{% elif plot.pricing_review_badge.tone == 'warning' %}text-bg-warning{% elif plot.pricing_review_badge.tone == 'danger' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
                         {{ plot.pricing_review_badge.label }}
-                    </span>
+                    </span> {% endcomment %}
                     {% if request.user.is_authenticated %}
                         {% if request.user.profile.intent == 'tenant' and plot.listing_type == 'lease' or request.user.profile.intent == 'tenant' and plot.listing_type == 'both' %}
                         <span class="badge rounded-pill text-bg-info">Fits tenant intent</span>

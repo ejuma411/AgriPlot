@@ -101,10 +101,18 @@ class SMSService:
         return number
 
     def _resolve_opensms_url(self):
-        base_url = (self.opensms_url or "").rstrip("/")
+        base_url = (self.opensms_url or "").strip().rstrip("/")
+        if not base_url:
+            return "https://api.opensms.co.ke/v3/sms/send"
+
+        base_url = base_url.replace("://www.opensms.co.ke/", "://api.opensms.co.ke/")
+        base_url = base_url.replace("://www.opensms.co.ke", "://api.opensms.co.ke")
+
+        if base_url.endswith("/api/v3/sms/send") or base_url.endswith("/v3/sms/send"):
+            return base_url
         if base_url.endswith("/api/v3") or base_url.endswith("/v3"):
             return f"{base_url}/sms/send"
-        return base_url
+        return f"{base_url}/sms/send"
 
     @staticmethod
     def _safe_json(response):
@@ -141,6 +149,14 @@ class SMSService:
         return f"API returned {default_status}"
 
     def _send_via_opensms(self, mobile, message, include_sender_id=True):
+        if not self.opensms_token:
+            error = "OpenSMS API token is not configured."
+            logger.error(error)
+            return {"success": False, "error": error, "data": {"error": error}}
+        if not self.opensms_sender_id:
+            error = "OpenSMS sender ID is not configured."
+            logger.error(error)
+            return {"success": False, "error": error, "data": {"error": error}}
         headers = {
             "Accept": "application/json",
             "Authorization": f"Bearer {self.opensms_token}",
@@ -201,16 +217,6 @@ class SMSService:
                 "message": "SMS sent successfully",
             }
 
-        if response.status_code == 403 and include_sender_id and self.opensms_sender_id:
-            logger.warning(
-                "OpenSMS rejected sender_id=%s for %s with 403. Retrying without sender_id.",
-                self.opensms_sender_id,
-                mobile,
-            )
-            retry_result = self._send_via_opensms(mobile, message, include_sender_id=False)
-            if retry_result.get("success"):
-                return retry_result
-
         self._log_sms(
             provider="opensms",
             phone=mobile,
@@ -219,6 +225,12 @@ class SMSService:
             success=False,
             response_body=result,
         )
+        if response.status_code == 403:
+            logger.error(
+                "OpenSMS rejected sender_id=%s for %s. Use an approved originator in OPENSMS_SENDER_ID.",
+                self.opensms_sender_id,
+                mobile,
+            )
         logger.error(
             "OpenSMS delivery failed for %s with status=%s response=%s",
             mobile,

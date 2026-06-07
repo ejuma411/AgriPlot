@@ -662,6 +662,7 @@ class PaymentClosingStepForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["notes"].required = False
         self.can_set_status = user_is_finance_admin(self.user)
+        self.agreement_role = None
         step = self.instance if getattr(self.instance, "pk", None) else None
         allowed_field_map = {
             "offer": {"status", "notes", "document"},
@@ -730,11 +731,20 @@ class PaymentClosingStepForm(forms.ModelForm):
             metadata = dict(step.payment.metadata or {})
             actor_is_buyer = self.user and self.user == step.payment.buyer
             actor_is_seller = self.user and self.user == step.payment.seller
+            if actor_is_buyer:
+                self.agreement_role = "buyer"
+            elif actor_is_seller:
+                self.agreement_role = "seller"
+            elif self.can_set_status:
+                self.agreement_role = "admin"
+            else:
+                self.agreement_role = "viewer"
+
             for field_name in {
-                    "buyer_advocate_name",
-                    "buyer_advocate_phone",
-                    "seller_advocate_name",
-                    "seller_advocate_phone",
+                "buyer_advocate_name",
+                "buyer_advocate_phone",
+                "seller_advocate_name",
+                "seller_advocate_phone",
             }:
                 self.fields[field_name].initial = metadata.get(field_name, "")
             submitter_details = (metadata.get("step_submitters") or {}).get(step.code, {})
@@ -750,13 +760,59 @@ class PaymentClosingStepForm(forms.ModelForm):
                 self.fields["status"].widget = forms.HiddenInput()
                 self.fields["status"].required = False
                 allowed_fields.add("status")
-            if step.code == "agreement" and step.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
+            if step.code == "agreement":
                 self.fields["buyer_accepts_agreement"].initial = bool(step.buyer_confirmed_at)
                 self.fields["seller_accepts_agreement"].initial = bool(step.seller_confirmed_at)
-                if not actor_is_buyer and not self.can_set_status:
-                    allowed_fields.discard("buyer_accepts_agreement")
-                if not actor_is_seller and not self.can_set_status:
-                    allowed_fields.discard("seller_accepts_agreement")
+
+                if step.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+                    if self.can_set_status:
+                        allowed_fields.update(
+                            {
+                                "document",
+                                "submitter_name",
+                                "submitter_phone",
+                                "submitter_role",
+                                "submitter_organisation",
+                                "buyer_accepts_agreement",
+                                "seller_accepts_agreement",
+                                "seller_advocate_name",
+                                "seller_advocate_phone",
+                            }
+                        )
+                    elif actor_is_seller:
+                        allowed_fields.update(
+                            {
+                                "document",
+                                "submitter_name",
+                                "submitter_phone",
+                                "submitter_role",
+                                "submitter_organisation",
+                                "seller_advocate_name",
+                                "seller_advocate_phone",
+                                "seller_accepts_agreement",
+                            }
+                        )
+                    elif actor_is_buyer:
+                        allowed_fields.update({"buyer_accepts_agreement"})
+                else:
+                    if self.can_set_status:
+                        allowed_fields.update(
+                            {
+                                "document",
+                                "submitter_name",
+                                "submitter_phone",
+                                "submitter_role",
+                                "submitter_organisation",
+                                "buyer_accepts_agreement",
+                                "seller_accepts_agreement",
+                                "seller_advocate_name",
+                                "seller_advocate_phone",
+                            }
+                        )
+                    elif actor_is_buyer:
+                        allowed_fields.update({"buyer_accepts_agreement"})
+                    elif actor_is_seller:
+                        allowed_fields.update({"seller_accepts_agreement"})
             for name in list(self.fields.keys()):
                 if name not in allowed_fields:
                     self.fields.pop(name)
@@ -808,24 +864,24 @@ class PaymentClosingStepForm(forms.ModelForm):
             self.add_error("document", "Upload the supporting document before marking this step complete.")
 
         if step.code == "agreement":
-            if step.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
+            if step.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+                if not (step.document or cleaned_data.get("document")):
+                    self.add_error("document", "Upload the executed sale agreement before completing this step.")
+                if not (step.buyer_confirmed_at or cleaned_data.get("buyer_accepts_agreement")):
+                    self.add_error("buyer_accepts_agreement", "The buyer must digitally confirm the sale agreement.")
+                if not (step.seller_confirmed_at or cleaned_data.get("seller_accepts_agreement")):
+                    self.add_error("seller_accepts_agreement", "The seller must digitally confirm the sale agreement.")
+                for field_name, label in [
+                    ("seller_advocate_name", "seller advocate name"),
+                    ("seller_advocate_phone", "seller advocate phone"),
+                ]:
+                    if field_name in self.fields and not cleaned_data.get(field_name):
+                        self.add_error(field_name, f"Enter the {label} before completing this step.")
+            else:
                 if not (step.buyer_confirmed_at or cleaned_data.get("buyer_accepts_agreement")):
                     self.add_error("buyer_accepts_agreement", "The tenant must digitally confirm the lease agreement.")
                 if not (step.seller_confirmed_at or cleaned_data.get("seller_accepts_agreement")):
                     self.add_error("seller_accepts_agreement", "The landowner must digitally confirm the lease agreement.")
-            else:
-                for field_name, label in [
-                    ("submitter_name", "submitter name"),
-                    ("submitter_phone", "submitter phone"),
-                    ("submitter_role", "submitter role"),
-                    ("submitter_organisation", "submitter organisation"),
-                    ("buyer_advocate_name", "buyer's advocate name"),
-                    ("buyer_advocate_phone", "buyer's advocate phone"),
-                    ("seller_advocate_name", "seller's advocate name"),
-                    ("seller_advocate_phone", "seller's advocate phone"),
-                ]:
-                    if not cleaned_data.get(field_name):
-                        self.add_error(field_name, f"Enter the {label} before completing this step.")
 
         if step.code == "lcb_consent":
             for field_name, label in [
@@ -912,16 +968,28 @@ class PaymentClosingStepForm(forms.ModelForm):
             if field_name in self.cleaned_data and self.cleaned_data.get(field_name)
         }
         metadata["step_submitters"] = step_submitters
-        if instance.code == "agreement" and payment.transaction_type == PaymentRequest.TransactionType.LEASE:
-            agreement_acceptance = dict(metadata.get("lease_agreement_acceptance") or {})
+        if instance.code == "agreement":
+            agreement_acceptance = dict(metadata.get("agreement_acceptance") or {})
             if self.cleaned_data.get("buyer_accepts_agreement") and self.user == payment.buyer and not instance.buyer_confirmed_at:
                 instance.buyer_confirmed_at = timezone.now()
-                agreement_acceptance["buyer_confirmed_at"] = instance.buyer_confirmed_at.isoformat()
             if self.cleaned_data.get("seller_accepts_agreement") and self.user == payment.seller and not instance.seller_confirmed_at:
                 instance.seller_confirmed_at = timezone.now()
+            if instance.buyer_confirmed_at:
+                agreement_acceptance["buyer_confirmed_at"] = instance.buyer_confirmed_at.isoformat()
+            if instance.seller_confirmed_at:
                 agreement_acceptance["seller_confirmed_at"] = instance.seller_confirmed_at.isoformat()
-            if agreement_acceptance:
-                metadata["lease_agreement_acceptance"] = agreement_acceptance
+            agreement_participants = dict(metadata.get("agreement_participants") or {})
+            agreement_participants[instance.code] = {
+                "buyer_advocate_name": self.cleaned_data.get("buyer_advocate_name", metadata.get("buyer_advocate_name", "")),
+                "buyer_advocate_phone": self.cleaned_data.get("buyer_advocate_phone", metadata.get("buyer_advocate_phone", "")),
+                "seller_advocate_name": self.cleaned_data.get("seller_advocate_name", metadata.get("seller_advocate_name", "")),
+                "seller_advocate_phone": self.cleaned_data.get("seller_advocate_phone", metadata.get("seller_advocate_phone", "")),
+                "buyer_confirmed_at": agreement_acceptance.get("buyer_confirmed_at", ""),
+                "seller_confirmed_at": agreement_acceptance.get("seller_confirmed_at", ""),
+                "transaction_type": payment.transaction_type,
+            }
+            metadata["agreement_acceptance"] = agreement_acceptance
+            metadata["agreement_participants"] = agreement_participants
         payment.metadata = metadata
         if commit:
             payment.save(update_fields=["metadata", "updated_at"])

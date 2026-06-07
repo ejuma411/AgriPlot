@@ -232,6 +232,8 @@ LOGOUT_REDIRECT_URL = '/'
 # =============================================================================
 
 INSTALLED_APPS = [
+    # Third Party Admin Theme - MUST BE FIRST
+    'jazzmin',  # Correct app name for django-jazzmin
     # Django Core Apps
     "django.contrib.admin",
     "django.contrib.auth",
@@ -259,7 +261,6 @@ INSTALLED_APPS = [
 ]
 
 OPTIONAL_APPS = [
-    "jazzmin",
     "django_extensions",
     "formtools",
 ]
@@ -460,6 +461,7 @@ MPESA_TRANSACTION_TYPE = os.environ.get(
     "CustomerPayBillOnline",
 )
 MPESA_CALLBACK_URL = os.environ.get("MPESA_CALLBACK_URL", "")
+MPESA_TEST_MODE = _env_bool("MPESA_TEST_MODE", default=False)
 
 CARD_PAYMENTS_ENABLED = _env_bool("CARD_PAYMENTS_ENABLED", default=False)
 CARD_PROVIDER = os.environ.get("CARD_PROVIDER", "")
@@ -521,8 +523,8 @@ AIRTEL_MONEY_CALLBACK_URL = os.environ.get("AIRTEL_MONEY_CALLBACK_URL", "")
 WALLET_ENABLED = _env_bool("WALLET_ENABLED", default=True)
 WALLET_MPESA_CALLBACK_URL = os.environ.get("WALLET_MPESA_CALLBACK_URL", "")
 
-# Enable test mode for wallet deposits (bypass M-Pesa for testing)
-WALLET_TEST_MODE = _env_bool("WALLET_TEST_MODE", default=True)
+# Enable test mode for wallet deposits only.
+WALLET_TEST_MODE = _env_bool("WALLET_TEST_MODE", default=False)
 
 # =============================================================================
 # CELERY CONFIGURATION
@@ -787,7 +789,7 @@ reports_logger = logging.getLogger('reports')
 
 
 # =============================================================================
-# JAZZMIN ADMIN CUSTOMIZATION
+# JAZZMIN ADMIN THEME CONFIGURATION
 # =============================================================================
 
 JAZZMIN_SETTINGS = {
@@ -815,37 +817,46 @@ JAZZMIN_SETTINGS = {
     # Side menu
     "navigation_expanded": True,
     
-    # Custom icons per app/model
+    # Custom icons per app/model (adjust app names as needed)
     "icons": {
         "auth": "fas fa-users-cog",
         "auth.user": "fas fa-user",
         "auth.group": "fas fa-users",
-        "listings.Profile": "fas fa-id-card",
-        "listings.LandownerProfile": "fas fa-user-tie",
-        "listings.Agent": "fas fa-handshake",
-        "listings.ExtensionOfficer": "fas fa-leaf",
-        "listings.LandSurveyor": "fas fa-ruler-combined",
+        "accounts.Profile": "fas fa-id-card",
+        "accounts.LandownerProfile": "fas fa-user-tie",
+        "accounts.Agent": "fas fa-handshake",
+        "verification.ExtensionOfficer": "fas fa-leaf",
+        "verification.LandSurveyor": "fas fa-ruler-combined",
         "listings.Plot": "fas fa-map-marked-alt",
-        "listings.SurveyorReport": "fas fa-file-signature",
-        "listings.ExtensionReport": "fas fa-file-alt",
+        "verification.SurveyorReport": "fas fa-file-signature",
+        "verification.ExtensionReport": "fas fa-file-alt",
         "listings.MarketPriceBand": "fas fa-chart-line",
         "listings.ComparableSale": "fas fa-balance-scale",
         "listings.ContactRequest": "fas fa-envelope",
         "listings.UserInterest": "fas fa-heart",
-        "listings.AuditLog": "fas fa-shield-alt",
-        "listings.DocumentVerification": "fas fa-file-contract",
-        "listings.ImpersonationDetection": "fas fa-user-secret",
-        "listings.PhoneEmailVerification": "fas fa-key",
-        "listings.DocumentHash": "fas fa-fingerprint",
-        "listings.EmailOTP": "fas fa-lock",
-        "listings.VerificationStatus": "fas fa-check-circle",
-        "listings.VerificationTask": "fas fa-tasks",
-        "listings.VerificationLog": "fas fa-clipboard-list",
+        "security.AuditLog": "fas fa-shield-alt",
+        "verification.DocumentVerification": "fas fa-file-contract",
+        "security.ImpersonationDetection": "fas fa-user-secret",
+        "security.PhoneEmailVerification": "fas fa-key",
+        "security.DocumentHash": "fas fa-fingerprint",
+        "security.EmailOTP": "fas fa-lock",
+        "verification.VerificationStatus": "fas fa-check-circle",
+        "verification.VerificationTask": "fas fa-tasks",
+        "verification.VerificationLog": "fas fa-clipboard-list",
         "listings.PriceComparable": "fas fa-chart-bar",
         "listings.PricingSuggestion": "fas fa-tag",
-        "listings.PlotReaction": "fas fa-thumbs-up",
-        "listings.TitleSearchResult": "fas fa-search",
-        "listings.VerificationDocument": "fas fa-file-pdf",
+        "verification.TitleSearchResult": "fas fa-search",
+        "verification.VerificationDocument": "fas fa-file-pdf",
+        # Payments
+        "payments.Wallet": "fas fa-wallet",
+        "payments.WalletTransaction": "fas fa-exchange-alt",
+        "payments.PaymentRequest": "fas fa-credit-card",
+        "payments.BankTransferRequest": "fas fa-university",
+        # Transactions
+        "transactions.Transaction": "fas fa-file-contract",
+        "transactions.TransactionMilestone": "fas fa-flag-checkered",
+        # Crops
+        "crops.CropProfile": "fas fa-seedling",
     },
     
     "default_icon_parents": "fas fa-chevron-circle-right",
@@ -864,98 +875,69 @@ JAZZMIN_SETTINGS = {
     
     "order_with_respect_to": [
         "auth",
-        "listings.Profile",
-        "listings.LandownerProfile",
-        "listings.LandSurveyor",
-        "listings.SurveyorReport",
-        "listings.Agent",
-        "listings.PhoneEmailVerification",
-        "listings.EmailOTP",
+        "accounts.Profile",
+        "accounts.LandownerProfile",
+        "verification.LandSurveyor",
+        "verification.SurveyorReport",
+        "accounts.Agent",
+        "security.PhoneEmailVerification",
+        "security.EmailOTP",
         "listings.Plot",
-        "listings.ExtensionOfficer",
-        "listings.ExtensionReport",
+        "verification.ExtensionOfficer",
+        "verification.ExtensionReport",
         "listings.MarketPriceBand",
         "listings.ComparableSale",
         "listings.ContactRequest",
         "listings.UserInterest",
-        "listings.AuditLog",
-        "listings.DocumentVerification",
-        "listings.DocumentHash",
-        "listings.ImpersonationDetection",
-        "listings.VerificationStatus",
-        "listings.VerificationTask",
-        "listings.VerificationLog",
-    ],
-    
-    "menu": [
-        {"app": "auth", "label": "Users & Groups", "icon": "fas fa-users-cog"},
-        {
-            "label": "User Profiles",
-            "icon": "fas fa-id-card",
-            "models": [
-                "listings.Profile",
-                "listings.LandownerProfile",
-                "listings.Agent",
-                "listings.ExtensionOfficer",
-                "listings.LandSurveyor",
-            ],
-        },
-        {
-            "label": "Land Management",
-            "icon": "fas fa-map-marked-alt",
-            "models": [
-                "listings.Plot",
-                "listings.VerificationDocument",
-                "listings.TitleSearchResult",
-            ],
-        },
-        {
-            "label": "Verification & Reports",
-            "icon": "fas fa-clipboard-check",
-            "models": [
-                "listings.VerificationStatus",
-                "listings.VerificationTask",
-                "listings.VerificationLog",
-                "listings.ExtensionReport",
-                "listings.SurveyorReport",
-            ],
-        },
-        {
-            "label": "Market Analysis",
-            "icon": "fas fa-chart-line",
-            "models": [
-                "listings.MarketPriceBand",
-                "listings.ComparableSale",
-                "listings.PriceComparable",
-                "listings.PricingSuggestion",
-            ],
-        },
-        {
-            "label": "Engagement",
-            "icon": "fas fa-comments",
-            "models": [
-                "listings.ContactRequest",
-                "listings.UserInterest",
-                "listings.PlotReaction",
-            ],
-        },
-        {
-            "label": "Security & Compliance",
-            "icon": "fas fa-shield-alt",
-            "models": [
-                "listings.AuditLog",
-                "listings.DocumentVerification",
-                "listings.ImpersonationDetection",
-                "listings.PhoneEmailVerification",
-                "listings.DocumentHash",
-                "listings.EmailOTP",
-            ],
-        },
+        "security.AuditLog",
+        "verification.DocumentVerification",
+        "security.DocumentHash",
+        "security.ImpersonationDetection",
+        "verification.VerificationStatus",
+        "verification.VerificationTask",
+        "verification.VerificationLog",
+        "payments",
+        "transactions",
+        "crops",
     ],
     
     "show_ui_builder": DEBUG,
     "changeform_format": "horizontal_tabs",
     "language_chooser": False,
+}
+
+# Jazzmin UI tweaks
+JAZZMIN_UI_TWEAKS = {
+    "navbar_small_text": False,
+    "footer_small_text": False,
+    "body_small_text": False,
+    "brand_small_text": False,
+    "brand_colour": "navbar-primary",
+    "accent": "accent-primary",
+    "navbar": "navbar-white navbar-light",
+    "no_navbar_border": False,
+    "navbar_fixed": True,
+    "layout_boxed": False,
+    "footer_fixed": False,
+    "sidebar_fixed": True,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": False,
+    "sidebar_nav_compact_style": False,
+    "sidebar_nav_legacy_style": False,
+    "sidebar_nav_flat_style": False,
+    "theme": "default",
+    "dark_mode_theme": None,
+    "button_classes": {
+        "primary": "btn-primary",
+        "secondary": "btn-secondary",
+        "info": "btn-info",
+        "warning": "btn-warning",
+        "danger": "btn-danger",
+        "success": "btn-success",
+    },
+    "actions_sticky_top": True,
 }
 
 # =============================================================================

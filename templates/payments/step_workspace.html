@@ -111,6 +111,41 @@
     .workspace-form-grid .field-block.full {
         grid-column: 1 / -1;
     }
+    .agreement-sections {
+        display: grid;
+        gap: 18px;
+    }
+    .agreement-section {
+        border: 1px solid rgba(15, 23, 42, 0.08);
+        border-radius: 18px;
+        background: #fbfcfe;
+        padding: 18px;
+    }
+    .agreement-section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 14px;
+    }
+    .agreement-section-header h4 {
+        margin: 0;
+        color: #173017;
+        font-size: 1rem;
+    }
+    .agreement-section-header p {
+        margin: 4px 0 0;
+        color: #54616f;
+        font-size: 0.92rem;
+    }
+    .agreement-field-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    }
+    .agreement-field-grid .field-block.full {
+        grid-column: 1 / -1;
+    }
     .workspace-nav {
         display: flex;
         gap: 12px;
@@ -415,13 +450,21 @@
                         <strong>Digital lease agreement</strong>
                         <pre style="white-space: pre-wrap; margin: 12px 0 0;">{{ payment.generated_lease_agreement_text }}</pre>
                     </div>
+                    {% endif %}
+
+                    {% if step.code == "agreement" %}
+                    <div class="workspace-note info">
+                        <strong>Who edits this step</strong>
+                        <div style="margin-top: 8px;">{{ agreement_role_hint }}</div>
+                        <div style="margin-top: 8px; font-size: 0.95rem;">{{ agreement_field_hint }}</div>
+                    </div>
                     <div class="workspace-task-grid">
                         <div class="workspace-task-pill">
-                            <small>Tenant confirmation</small>
+                            <small>{% if payment.transaction_type == 'lease' %}Tenant confirmation{% else %}Buyer confirmation{% endif %}</small>
                             <strong>{% if step.buyer_confirmed_at %}Confirmed{% else %}Pending{% endif %}</strong>
                         </div>
                         <div class="workspace-task-pill">
-                            <small>Landowner confirmation</small>
+                            <small>{% if payment.transaction_type == 'lease' %}Landowner confirmation{% else %}Seller confirmation{% endif %}</small>
                             <strong>{% if step.seller_confirmed_at %}Confirmed{% else %}Pending{% endif %}</strong>
                         </div>
                     </div>
@@ -465,6 +508,162 @@
                     {% elif can_update_closing_steps and step_is_current %}
                     <form method="post" action="{% url 'payments:update_closing_step' payment.pk step.pk %}" enctype="multipart/form-data" class="payments-form compact-form">
                         {% csrf_token %}
+                        {% if step.code == "agreement" %}
+                        <div class="agreement-sections">
+                            <div class="agreement-section">
+                                <div class="agreement-section-header">
+                                    <div>
+                                        <h4>1. Agreement note</h4>
+                                        <p>Add a short note or blocker if this signature set needs context.</p>
+                                    </div>
+                                </div>
+                                <div class="agreement-field-grid">
+                                    {% for field in closing_step_form %}
+                                    {% if field.name == "notes" %}
+                                    <div class="field-block full">
+                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                        {{ field }}
+                                        {% if field.help_text %}
+                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
+                                        {% endif %}
+                                        {% for error in field.errors %}
+                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+
+                            {% if payment.transaction_type == 'purchase' %}
+                            {% if is_payment_seller or is_finance_admin %}
+                            <div class="agreement-section">
+                                <div class="agreement-section-header">
+                                    <div>
+                                        <h4>2. Submitter details</h4>
+                                        <p>Record the advocate or handler submitting the executed sale agreement.</p>
+                                    </div>
+                                </div>
+                                <div class="agreement-field-grid">
+                                    {% for field in closing_step_form %}
+                                    {% if field.name == "submitter_name" or field.name == "submitter_phone" or field.name == "submitter_role" or field.name == "submitter_organisation" %}
+                                    <div class="field-block">
+                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                        {{ field }}
+                                        {% if field.help_text %}
+                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
+                                        {% endif %}
+                                        {% for error in field.errors %}
+                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            <div class="agreement-section">
+                                <div class="agreement-section-header">
+                                    <div>
+                                        <h4>3. Seller-side legal file</h4>
+                                        <p>Upload the executed agreement and the seller advocate details.</p>
+                                    </div>
+                                </div>
+                                <div class="agreement-field-grid">
+                                    {% for field in closing_step_form %}
+                                    {% if field.name == "document" or field.name == "seller_advocate_name" or field.name == "seller_advocate_phone" %}
+                                    <div class="field-block {% if field.name == 'document' %}full{% endif %}">
+                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                        {{ field }}
+                                        {% if field.help_text %}
+                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
+                                        {% endif %}
+                                        {% for error in field.errors %}
+                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            <div class="agreement-section">
+                                <div class="agreement-section-header">
+                                    <div>
+                                        <h4>{% if is_payment_buyer %}2{% elif is_payment_seller or is_finance_admin %}4{% else %}2{% endif %}. Buyer confirmation</h4>
+                                        <p>The buyer confirms they have reviewed the executed agreement.</p>
+                                    </div>
+                                </div>
+                                <div class="agreement-field-grid">
+                                    {% for field in closing_step_form %}
+                                    {% if field.name == "buyer_accepts_agreement" %}
+                                    <div class="field-block full">
+                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                        <div class="mt-2">{{ field }}</div>
+                                        {% if field.help_text %}
+                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
+                                        {% endif %}
+                                        {% for error in field.errors %}
+                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% if is_payment_seller or is_finance_admin %}
+                            <div class="agreement-section">
+                                <div class="agreement-section-header">
+                                    <div>
+                                        <h4>5. Seller confirmation</h4>
+                                        <p>The seller confirms the agreement reflects the final executed terms.</p>
+                                    </div>
+                                </div>
+                                <div class="agreement-field-grid">
+                                    {% for field in closing_step_form %}
+                                    {% if field.name == "seller_accepts_agreement" %}
+                                    <div class="field-block full">
+                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                        <div class="mt-2">{{ field }}</div>
+                                        {% if field.help_text %}
+                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
+                                        {% endif %}
+                                        {% for error in field.errors %}
+                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <div class="agreement-section">
+                                <div class="agreement-section-header">
+                                    <div>
+                                        <h4>2. Two-party confirmation</h4>
+                                        <p>Each side confirms the lease agreement from their own account.</p>
+                                    </div>
+                                </div>
+                                <div class="agreement-field-grid">
+                                    {% for field in closing_step_form %}
+                                    {% if field.name == "buyer_accepts_agreement" or field.name == "seller_accepts_agreement" %}
+                                    <div class="field-block full">
+                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                        <div class="mt-2">{{ field }}</div>
+                                        {% if field.help_text %}
+                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
+                                        {% endif %}
+                                        {% for error in field.errors %}
+                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% else %}
                         <div class="workspace-form-grid">
                             {% for field in closing_step_form %}
                             <div class="field-block {% if field.name == 'notes' %}full{% endif %}">
@@ -479,6 +678,7 @@
                             </div>
                             {% endfor %}
                         </div>
+                        {% endif %}
                         <div class="workspace-nav">
                             <button type="submit" class="hero-btn-primary">Confirm this task</button>
                             <a href="{% url 'payments:detail' payment.pk %}" class="hero-btn-secondary">Open full tracker</a>

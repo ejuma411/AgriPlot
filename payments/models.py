@@ -132,6 +132,7 @@ class PaymentRequest(models.Model):
     released_at = models.DateTimeField(null=True, blank=True)
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         ordering = ["-created_at"]
@@ -2599,7 +2600,7 @@ class PaymentClosingStep(models.Model):
     def buyer_instruction(self):
         purchase_map = {
             "due_diligence": "Review the verified search, survey, and registry pack on AgriPlot before moving into the sale agreement stage.",
-            "agreement": "Review the sale agreement with your advocate and be ready to sign once the seller's advocate shares it.",
+            "agreement": "Review the sale agreement with your advocate and confirm once the seller-side upload is ready.",
             "lcb_consent": "Coordinate with the seller for the Land Control Board meeting and carry your ID documents.",
             "stamp_duty": "Follow up on the government valuation, pay stamp duty through KRA/eCitizen, and upload the proof here.",
             "completion_docs": "Wait for the seller's advocate to hand over the completion documents, then confirm they are complete before the balance is released.",
@@ -2627,7 +2628,7 @@ class PaymentClosingStep(models.Model):
     def stakeholder_update_label(self):
         purchase_map = {
             "due_diligence": "Buyer review confirmation",
-            "agreement": "Seller-side legal upload",
+            "agreement": "Seller-side legal upload and buyer confirmation",
             "lcb_consent": "Admin / lawyer evidence upload",
             "stamp_duty": "Buyer and admin tax evidence upload",
             "completion_docs": "Buyer-side completion checklist",
@@ -2675,9 +2676,9 @@ class PaymentClosingStep(models.Model):
         if self.code == "due_diligence":
             return True
         if self.code == "agreement":
-            if self.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
-                return bool(self.buyer_confirmed_at and self.seller_confirmed_at)
-            return bool(self.document)
+            if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+                return bool(self.document and self.buyer_confirmed_at and self.seller_confirmed_at)
+            return bool(self.buyer_confirmed_at and self.seller_confirmed_at)
         if self.code == "registration":
             return bool(self.document)
         if self.code == "lcb_consent":
@@ -2709,7 +2710,9 @@ class PaymentClosingStep(models.Model):
     def evidence_blocking_reason(self):
         if self.can_mark_complete_with_current_evidence():
             return ""
-        if self.code == "agreement" and self.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
+        if self.code == "agreement":
+            if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+                return "The executed sale agreement must be uploaded and both the buyer and seller must digitally confirm it before this step can be completed."
             return "Both the tenant and the landlord must digitally confirm the generated lease agreement before this step can be completed."
         requirement_text = ", ".join(self.completion_requirements)
         return f"This step needs more evidence before it can be completed: {requirement_text}."
