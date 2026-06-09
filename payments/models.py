@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils import timezone
+from dateutil.relativedelta import relativedelta
 
 
 class PaymentRequest(models.Model):
@@ -18,6 +19,7 @@ class PaymentRequest(models.Model):
     DEFAULT_PLATFORM_ESCROW_RATE = Decimal("0.0075")
     DEFAULT_AGENT_COMMISSION_RATE = Decimal("0.03")
     DEFAULT_VERIFICATION_MARKUP_RATE = Decimal("0.20")
+    DEFAULT_RESERVATION_DEPOSIT_RATE = Decimal("0.05")
 
     class TransactionType(models.TextChoices):
         PURCHASE = "purchase", "Purchase"
@@ -26,7 +28,6 @@ class PaymentRequest(models.Model):
 
     class Category(models.TextChoices):
         COMMITMENT_FEE = "commitment_fee", "Commitment / Verification Fee"
-        VIEWING_FEE = "viewing_fee", "Viewing Fee"
         RESERVATION_DEPOSIT = "reservation_deposit", "Reservation Deposit"
         AGREEMENT_DEPOSIT = "agreement_deposit", "Agreement Deposit"
         VERIFICATION_PACKAGE = "verification_package", "Verification Package"
@@ -107,7 +108,7 @@ class PaymentRequest(models.Model):
         max_length=20, choices=TransactionType.choices, default=TransactionType.SERVICE
     )
     category = models.CharField(
-        max_length=40, choices=Category.choices, default=Category.VIEWING_FEE
+        max_length=40, choices=Category.choices, default=Category.COMMITMENT_FEE
     )
     method = models.CharField(
         max_length=40, choices=Method.choices, default=Method.MPESA_STK
@@ -256,9 +257,14 @@ class PaymentRequest(models.Model):
         return related
 
     @property
-    def workflow_total_requested_amount(self):
-        return sum((payment.amount for payment in self.workflow_related_payments), start=0)
-
+    def workflow_total_paid_amount(self):
+        paid_statuses = {PAID, IN_ESCROW, PARTIALLY_RELEASED, RELEASED}
+        excluded_statuses = {CANCELLED, REFUNDED, FAILED}
+        return sum(
+            payment.amount for payment in self.workflow_related_payments
+            if payment.status in paid_statuses and payment.status not in excluded_statuses
+        )
+    
     @property
     def workflow_total_paid_amount(self):
         paid_statuses = {
@@ -287,8 +293,8 @@ class PaymentRequest(models.Model):
         if self.transaction_type != self.TransactionType.LEASE:
             return Decimal("0.00")
         if self.lease_start_date and self.lease_end_date:
-            duration_days = max((self.lease_end_date - self.lease_start_date).days, 0)
-            duration_months = max(1, (duration_days // 30) or 1)
+            delta = relativedelta(self.lease_end_date, self.lease_start_date)
+            duration_months = max(1, delta.years * 12 + delta.months + (1 if delta.days > 0 else 0))
         else:
             duration_months = 12
         if self.plot and self.plot.lease_price_monthly:
@@ -297,6 +303,14 @@ class PaymentRequest(models.Model):
             yearly = self._money(self.plot.lease_price_yearly)
             return (yearly / Decimal("12.00") * Decimal(str(duration_months))).quantize(Decimal("0.01"))
         return self._money(self.amount)
+
+    @property
+    def lease_base_amount(self):
+        if self.plot and self.plot.lease_price_monthly:
+            return self._money(self.plot.lease_price_monthly)
+        if self.plot and self.plot.lease_price_yearly:
+            return (self._money(self.plot.lease_price_yearly) / Decimal("12.00")).quantize(Decimal("0.01"))
+        return None
 
     @property
     def agent_commission_rate(self):
@@ -357,7 +371,8 @@ class PaymentRequest(models.Model):
             return self._money(related.amount)
         if self.transaction_type == self.TransactionType.PURCHASE:
             return (self.sale_price_value * Decimal("0.10")).quantize(Decimal("0.01"))
-        return self._money(self.amount)
+        lease_base = self.lease_base_amount
+        return lease_base if lease_base is not None else self._money(self.amount)
 
     @property
     def completion_balance_amount(self):
@@ -366,7 +381,8 @@ class PaymentRequest(models.Model):
             return self._money(related.amount)
         if self.transaction_type == self.TransactionType.PURCHASE:
             return max(self.sale_price_value - self.agreement_deposit_amount, Decimal("0.00"))
-        return self._money(self.amount)
+        lease_base = self.lease_base_amount
+        return lease_base if lease_base is not None else self._money(self.amount)
 
     @property
     def seller_total_payout_amount(self):
@@ -396,6 +412,117 @@ class PaymentRequest(models.Model):
     def verification_markup_amount(self):
         base = self.official_search_fee + self.survey_search_fee
         return (base * self.verification_markup_rate).quantize(Decimal("0.01"))
+
+    @property
+    def due_diligence_pack_amount(self):
+        base = self.official_search_fee + self.survey_search_fee
+        if self.plot and self.plot.land_type == "agricultural":
+            base += self.soil_baseline_fee_amount
+        return (base + self.verification_markup_amount).quantize(Decimal("0.01"))
+
+    @property
+    def commitment_fee_amount(self):
+        if self.transaction_type in {self.TransactionType.PURCHASE, self.TransactionType.LEASE}:
+            return self.due_diligence_pack_amount
+        return self._money(self.amount)
+
+    @property
+    def verification_package_amount(self):
+        return self.due_diligence_pack_amount
+
+    @property
+    def reservation_deposit_amount(self):
+        if self.transaction_type == self.TransactionType.LEASE:
+            lease_base = self.lease_base_amount
+            return lease_base if lease_base is not None else self._money(self.amount)
+        return (self.sale_price_value * self.DEFAULT_RESERVATION_DEPOSIT_RATE).quantize(Decimal("0.01"))
+
+    @classmethod
+    def calculate_stage_amount(cls, plot, transaction_type, category):
+        if category in cls.PLOT_REQUIRED_CATEGORIES and not plot:
+            return None
+        if category == cls.Category.COMMITMENT_FEE:
+            return cls._calculate_due_diligence_pack_amount(plot)
+        if category == cls.Category.VERIFICATION_PACKAGE:
+            return cls._calculate_due_diligence_pack_amount(plot)
+        if category == cls.Category.RESERVATION_DEPOSIT:
+            if transaction_type == cls.TransactionType.PURCHASE:
+                sale_price = cls._sale_price_value(plot)
+                if sale_price is None:
+                    return None
+                return (sale_price * cls.DEFAULT_RESERVATION_DEPOSIT_RATE).quantize(Decimal("0.01"))
+            return cls._lease_base_amount(plot)
+        if category == cls.Category.AGREEMENT_DEPOSIT:
+            if transaction_type == cls.TransactionType.PURCHASE:
+                sale_price = cls._sale_price_value(plot)
+                if sale_price is None:
+                    return None
+                return (sale_price * Decimal("0.10")).quantize(Decimal("0.01"))
+            return cls._lease_base_amount(plot)
+        if category == cls.Category.ESCROW_DEPOSIT:
+            if transaction_type == cls.TransactionType.PURCHASE:
+                sale_price = cls._sale_price_value(plot)
+                if sale_price is None:
+                    return None
+                return sale_price
+            return cls._lease_base_amount(plot)
+        if category == cls.Category.STAMP_DUTY:
+            if transaction_type == cls.TransactionType.PURCHASE:
+                sale_price = cls._sale_price_value(plot)
+                if sale_price is None:
+                    return None
+                market_zone = getattr(plot, "market_zone", "")
+                rate = Decimal("0.02") if market_zone == "rural" else Decimal("0.04")
+                return (sale_price * rate).quantize(Decimal("0.01"))
+            return None
+        if category == cls.Category.COMPLETION_BALANCE:
+            if transaction_type == cls.TransactionType.PURCHASE:
+                sale_price = cls._sale_price_value(plot)
+                if sale_price is None:
+                    return None
+                agreement_deposit = (sale_price * Decimal("0.10")).quantize(Decimal("0.01"))
+                return max(sale_price - agreement_deposit, Decimal("0.00"))
+            return cls._lease_base_amount(plot)
+        if category == cls.Category.SERVICE_FEE:
+            return None
+        return None
+
+    @classmethod
+    def _sale_price_value(cls, plot):
+        if not plot:
+            return None
+        raw_price = getattr(plot, "sale_price", None) or getattr(plot, "price", None)
+        if raw_price in {None, ""}:
+            return None
+        return cls._money_static(raw_price)
+
+    @classmethod
+    def _lease_base_amount(cls, plot):
+        if not plot:
+            return None
+        if plot.lease_price_monthly:
+            return cls.normalize_amount(plot.lease_price_monthly)
+        if plot.lease_price_yearly:
+            return cls.normalize_amount(Decimal(str(plot.lease_price_yearly)) / Decimal("12"))
+        return None
+
+    @classmethod
+    def _calculate_due_diligence_pack_amount(cls, plot):
+        if not plot:
+            return None
+        base = cls._money_static(cls.DEFAULT_OFFICIAL_SEARCH_FEE) + cls._money_static(cls.DEFAULT_SURVEY_SEARCH_FEE)
+        if plot.land_type == "agricultural":
+            base += cls._money_static(cls.DEFAULT_SOIL_BASELINE_FEE)
+        markup = (base * cls.DEFAULT_VERIFICATION_MARKUP_RATE).quantize(Decimal("0.01"))
+        return (base + markup).quantize(Decimal("0.01"))
+
+    @staticmethod
+    def _money_static(value):
+        if value in (None, ""):
+            return Decimal("0.00")
+        if isinstance(value, Decimal):
+            return value.quantize(Decimal("0.01"))
+        return Decimal(str(value)).quantize(Decimal("0.01"))
 
     def _certificate_statuses(self):
         active_payment_statuses = {
@@ -919,51 +1046,93 @@ class PaymentRequest(models.Model):
         ),
     ]
 
-    LEASE_LEGAL_STEPS = [
+    # Agricultural land leases
+    LEASE_LEGAL_STEPS_AGRICULTURAL = [
         (
             "offer",
-            "Lease Offer & Terms",
-            "Lease offer / intent record",
-            "Confirm the proposed lease term, use, and key expectations before drafting the agreement.",
+            "Letter of Offer",
+            "Issue and accept lease offer."
         ),
         (
             "lcb_consent",
             "Land Control Board & Family Consents",
-            "LCB consent and family approval pack",
-            "Capture any agricultural lease approvals and family consents before the tenant takes possession.",
+            "Obtain Land Control Board consent and any required family/spousal consents."
         ),
         (
             "agreement",
             "Lease Agreement",
-            "Signed lease agreement",
-            "Upload the final lease agreement and make sure both parties digitally confirm it in AgriPlot.",
+            "Prepare and execute lease agreement."
         ),
         (
-            "payment_security",
-            "Security Deposit",
-            "Escrow payment confirmation",
-            "Record the agreed security deposit payment in escrow before handover or occupation.",
-        ),
-        (
-            "lease_registration",
-            "Lease Registration",
-            "Lease registry filing proof",
-            "For long leases, upload registry protection or filing evidence once the advocate completes it.",
-        ),
-        (
-            "soil_health_baseline",
-            "Soil & Land Baseline",
-            "Soil baseline / entry inspection report",
-            "Capture the starting land condition and soil baseline before possession to support exit checks later.",
+            "registration",
+            "Registration",
+            "Register lease where applicable."
         ),
         (
             "handover",
-            "Possession Handover",
-            "Signed handover note",
-            "Document boundaries, access, and possession details before the lease is treated as active.",
+            "Possession & Handover",
+            "Grant possession and complete handover."
         ),
     ]
-
+       
+    # Leasehold non-agricultural land
+    LEASE_LEGAL_STEPS_LEASEHOLD_NON_AG = [
+        (
+            "offer",
+            "Letter of Offer",
+            "Issue and accept lease offer."
+        ),
+        (
+            "consents_clearances",
+            "Head Lessor & Spousal Consents",
+            "Sublease consent from head lessor, county government, NLC or other superior interest holder where applicable. Obtain spousal consent if matrimonial property."
+        ),
+        (
+            "agreement",
+            "Lease Agreement",
+            "Prepare and execute lease agreement."
+        ),
+        (
+            "registration",
+            "Registration",
+            "Register lease where applicable."
+        ),
+        (
+            "handover",
+            "Possession & Handover",
+            "Grant possession and complete handover."
+        ),
+    ] 
+     
+    # Freehold non-agricultural land
+    LEASE_LEGAL_STEPS_FREEHOLD_NON_AG = [
+        (
+            "offer",
+            "Letter of Offer",
+            "Issue and accept lease offer."
+        ),
+        (
+            "consents_clearances",
+            "Spousal & Estate Consents",
+            "Record spousal consent under the Matrimonial Property Act where applicable, or estate approvals if the owner is deceased. Mark N/A if not required."
+        ),
+        (
+            "agreement",
+            "Lease Agreement",
+            "Prepare and execute lease agreement."
+        ),
+        (
+            "registration",
+            "Registration",
+            "Register lease where applicable."
+        ),
+        (
+            "handover",
+            "Possession & Handover",
+            "Grant possession and complete handover."
+        ),
+    ]
+       
     @classmethod
     def closing_step_templates(cls, transaction_type):
         if transaction_type == cls.TransactionType.PURCHASE:
@@ -987,6 +1156,7 @@ class PaymentRequest(models.Model):
                 "lcb_consent",
                 "stamp_duty",
                 "completion_docs",
+                "registration",
             }
             completed_codes = set(
                 self.closing_steps.filter(status=PaymentClosingStep.Status.COMPLETED).values_list("code", flat=True)
@@ -999,6 +1169,21 @@ class PaymentRequest(models.Model):
                 blocking_steps = ", ".join(titles) if titles else ", ".join(sorted(missing))
                 return (
                     "Purchase funds cannot be released yet. Complete these legal steps first: "
+                    f"{blocking_steps}."
+                )
+        if self.transaction_type == self.TransactionType.LEASE:
+            required_codes = {"agreement", "handover"}
+            completed_codes = set(
+                self.closing_steps.filter(status=PaymentClosingStep.Status.COMPLETED).values_list("code", flat=True)
+            )
+            missing = required_codes - completed_codes
+            if missing:
+                titles = list(
+                    self.closing_steps.filter(code__in=missing).order_by("sequence").values_list("title", flat=True)
+                )
+                blocking_steps = ", ".join(titles) if titles else ", ".join(sorted(missing))
+                return (
+                    "Lease funds cannot be released yet. Complete these steps first: "
                     f"{blocking_steps}."
                 )
         return ""
@@ -1784,6 +1969,11 @@ class PaymentRequest(models.Model):
             ]
         return []
 
+    def _validate_market_state_transition(self, status, start=None, end=None):
+        valid_statuses = {choice[0] for choice in self.plot._meta.get_field("market_status").choices}
+        if status not in valid_statuses:
+            raise ValidationError(f"Invalid market_status '{status}'. Must be one of: {', '.join(sorted(valid_statuses))}")
+
     def sync_plot_market_state(self):
         if self.workflow_anchor_payment.pk != self.pk:
             return
@@ -1809,7 +1999,9 @@ class PaymentRequest(models.Model):
                     f"{timezone.localtime(self.due_diligence_lock_expires_at):%b %d, %Y %I:%M %p}."
                 )
             if self.status == self.Status.RELEASED:
-                self.plot.market_status = "sold" if self.purchase_registration_complete else "reserved"
+                new_status = "sold" if self.purchase_registration_complete else "reserved"
+                self._validate_market_state_transition(new_status)
+                self.plot.market_status = new_status
                 self.plot.lease_start_date = None
                 self.plot.lease_end_date = None
                 self.plot.availability_notes = (
@@ -1821,6 +2013,7 @@ class PaymentRequest(models.Model):
                     )
                 )
             elif self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED}:
+                self._validate_market_state_transition("reserved")
                 self.plot.market_status = "reserved"
                 self.plot.lease_start_date = None
                 self.plot.lease_end_date = None
@@ -1828,6 +2021,7 @@ class PaymentRequest(models.Model):
                     f"Reserved under active purchase transaction {self.internal_reference}.{lock_message}"
                 )
             elif settled_related_payments:
+                self._validate_market_state_transition("reserved")
                 self.plot.market_status = "reserved"
                 self.plot.lease_start_date = None
                 self.plot.lease_end_date = None
@@ -1836,6 +2030,7 @@ class PaymentRequest(models.Model):
                     f"{lock_message}"
                 )
             elif self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
+                self._validate_market_state_transition("available")
                 self.plot.market_status = "available"
                 self.plot.lease_start_date = None
                 self.plot.lease_end_date = None
@@ -1869,6 +2064,7 @@ class PaymentRequest(models.Model):
             latest_settled_payment = settled_related_payments[-1] if settled_related_payments else None
 
             if self.lease_currently_active:
+                self._validate_market_state_transition("leased")
                 self.plot.market_status = "leased"
                 self.plot.lease_start_date = self.lease_start_date
                 self.plot.lease_end_date = self.lease_end_date
@@ -1882,6 +2078,7 @@ class PaymentRequest(models.Model):
                         f"Lease activated via payment {self.internal_reference} after handover completion."
                     )
             elif self.lease_ready_for_use:
+                self._validate_market_state_transition("reserved")
                 self.plot.market_status = "reserved"
                 self.plot.lease_start_date = self.lease_start_date
                 self.plot.lease_end_date = self.lease_end_date
@@ -1890,6 +2087,7 @@ class PaymentRequest(models.Model):
                     f"Tenant occupation may begin on {self.lease_start_date:%b %d, %Y} and ends on {self.lease_end_date:%b %d, %Y}."
                 )
             elif settled_related_payments:
+                self._validate_market_state_transition("reserved")
                 self.plot.market_status = "reserved"
                 self.plot.lease_start_date = self.lease_start_date
                 self.plot.lease_end_date = self.lease_end_date
@@ -1898,6 +2096,7 @@ class PaymentRequest(models.Model):
                     "The commitment has been paid and the land is no longer open for a competing tenant while handover is pending."
                 )
             elif self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
+                self._validate_market_state_transition("available")
                 self.plot.market_status = "available"
                 self.plot.lease_start_date = None
                 self.plot.lease_end_date = None

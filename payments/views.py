@@ -394,11 +394,6 @@ def _build_default_milestones(payment):
             "Due diligence lock activated",
             "Search and survey pack delivered",
         ],
-        PaymentRequest.Category.VIEWING_FEE: [
-            "Buyer payment confirmed",
-            "Seller viewing slot scheduled",
-            "Viewing completed and recorded",
-        ],
         PaymentRequest.Category.RESERVATION_DEPOSIT: [
             "Reservation acknowledged",
             "Seller uploads title and supporting documents",
@@ -435,7 +430,7 @@ def _build_default_milestones(payment):
             "Receipt and closure",
         ],
     }
-    titles = milestone_templates.get(payment.category, milestone_templates[PaymentRequest.Category.VIEWING_FEE])
+    titles = milestone_templates.get(payment.category, milestone_templates[PaymentRequest.Category.COMMITMENT_FEE])
     milestones = []
     for index, title in enumerate(titles, start=1):
         milestones.append(
@@ -521,13 +516,25 @@ def _resolve_workspace_payment(pk):
         return payment
     return PaymentRequest.objects.select_related("plot", "buyer", "seller").prefetch_related("closing_steps").get(pk=anchor.pk)
 
-
 def _create_workspace_stage_payment(payment, step, phone_number, actor):
     anchor = payment.workflow_anchor_payment
+
     payment_category = STEP_PAYMENT_CATEGORY_MAP.get(step.code)
     if not payment_category:
         raise ValidationError("This stage does not support direct checkout.")
 
+    # -----------------------------
+    # 1. VALIDATE PHONE NUMBER
+    # -----------------------------
+    checkout_phone = str(phone_number or "").strip()
+    if not checkout_phone:
+        raise ValidationError("Enter the M-Pesa number that should receive the STK push.")
+
+    checkout_phone = validate_kenyan_phone(checkout_phone)
+
+    # -----------------------------
+    # 2. CALCULATE AMOUNT
+    # -----------------------------
     if (
         anchor.transaction_type == PaymentRequest.TransactionType.LEASE
         and step.code == "payment_security"
@@ -539,26 +546,36 @@ def _create_workspace_stage_payment(payment, step, phone_number, actor):
             anchor.transaction_type,
             payment_category,
         )
+
     if not stage_amount:
-        raise ValidationError("AgriPlot could not calculate the amount for this stage.")
+        raise ValidationError("Unable to calculate the amount for this stage.")
 
-    checkout_phone = str(phone_number or "").strip()
-    if not checkout_phone:
-        raise ValidationError("Enter the M-Pesa number that should receive the STK push.")
-    checkout_phone = validate_kenyan_phone(checkout_phone)
-
+    # -----------------------------
+    # 3. CREATE CHILD PAYMENT
+    # -----------------------------
     child_payment = PaymentRequest(
         buyer=anchor.buyer,
         seller=anchor.seller,
         plot=anchor.plot,
-        title=PaymentRequestForm.build_title(anchor.plot, anchor.transaction_type, payment_category),
-        description=f"M-Pesa checkout for {dict(PaymentRequest.Category.choices).get(payment_category, 'payment').lower()}.",
+
+        title=PaymentRequestForm.build_title(
+            anchor.plot,
+            anchor.transaction_type,
+            payment_category
+        ),
+
+        description=(
+            f"M-Pesa checkout for "
+            f"{dict(PaymentRequest.Category.choices).get(payment_category, 'payment').lower()}."
+        ),
+
         amount=stage_amount,
         category=payment_category,
         method=PaymentRequest.Method.MPESA_STK,
         transaction_type=anchor.transaction_type,
         status=PaymentRequest.Status.PENDING,
         phone_number=checkout_phone,
+
         lease_start_date=anchor.lease_start_date,
         lease_end_date=anchor.lease_end_date,
         intended_use=anchor.intended_use,
@@ -567,51 +584,71 @@ def _create_workspace_stage_payment(payment, step, phone_number, actor):
         good_husbandry_required=anchor.good_husbandry_required,
         soil_exit_test_required=anchor.soil_exit_test_required,
         subject_to_sale=anchor.subject_to_sale,
+
         escrow_enabled=True,
+
         due_at=PaymentRequestForm.calculate_due_at(
             anchor.transaction_type,
             payment_category,
             anchor.lease_start_date,
         ),
+
         metadata={
             "workflow_root_id": anchor.pk,
             "workspace_step_code": step.code,
             "workspace_step_id": step.pk,
         },
     )
+
     child_payment.full_clean()
     child_payment.save()
+
     child_payment.add_event(
         "created",
         "Workspace checkout created for the active step.",
         actor=actor,
     )
+
+    # Ensure workflow is properly initialized
     _ensure_payment_workflow_seeded(child_payment)
+
+    # -----------------------------
+    # 4. INITIATE STK PUSH
+    # -----------------------------
     callback_url = settings.MPESA_CALLBACK_URL or (
         f"{settings.SITE_URL.rstrip('/')}{reverse('payments:daraja_callback')}"
     )
+
     try:
         stk_data = initiate_stk_push(child_payment, callback_url)
+
     except DarajaError as exc:
         if not _is_provider_timeout_error(exc):
             raise
+
         _mark_payment_provider_confirmation_pending(
             child_payment,
             "daraja",
             actor=actor,
             context="workspace_step_checkout",
         )
+
         return child_payment, {
             "CustomerMessage": (
                 "Checkout was created, but Safaricom has not confirmed the STK push yet. "
-                "AgriPlot saved the payment as pending for follow-up."
+                "Payment is marked as pending for follow-up."
             )
         }
+
+    # -----------------------------
+    # 5. STORE PROVIDER RESPONSE
+    # -----------------------------
     child_payment.provider_reference = (
         stk_data.get("CheckoutRequestID")
         or stk_data.get("MerchantRequestID")
         or child_payment.internal_reference
     )
+
     metadata = dict(child_payment.metadata or {})
     metadata.update(
         {
@@ -621,16 +658,19 @@ def _create_workspace_stage_payment(payment, step, phone_number, actor):
             "daraja_response_description": stk_data.get("ResponseDescription", ""),
         }
     )
+
     child_payment.metadata = metadata
     child_payment.save(update_fields=["provider_reference", "metadata", "updated_at"])
+
     child_payment.add_event(
         "daraja_stk_initialized",
-        "Safaricom Daraja STK push sent from the step workspace.",
+        "Safaricom Daraja STK push sent from workspace step.",
         actor=actor,
     )
-    _notify_payment_activity(child_payment, "initiated")
-    return child_payment, stk_data
 
+    _notify_payment_activity(child_payment, "initiated")
+
+    return child_payment, stk_data
 
 def _active_deal_for_buyer_plot(user, plot, transaction_type):
     if not getattr(user, "is_authenticated", False) or not plot:
@@ -704,14 +744,61 @@ class PaymentFlowOverviewView(TemplateView):
         context.update(_journey_context())
         context["method_cards"] = PAYMENT_METHOD_CARDS
         context["dashboard_url"] = reverse("payments:dashboard")
+        
         plot = None
         plot_id = self.request.GET.get("plot")
+        payment_amount = None
+        current_stage = None
+        current_stage_label = None
+        current_stage_message = None
+        
         if plot_id:
             try:
                 plot = Plot.objects.select_related("landowner__user", "agent__user").get(pk=plot_id)
+                
+                # Get the current payment stage based on existing payments
+                from payments.models import PaymentRequest
+                
+                # Check existing payments for this plot and user
+                existing_payments = PaymentRequest.objects.filter(
+                    plot=plot,
+                    user=self.request.user
+                ).order_by('-created_at')
+                
+                # Determine which stage is next
+                if not existing_payments.filter(category=PaymentRequest.Category.RESERVATION_DEPOSIT).exists():
+                    current_stage = 'reservation_deposit'
+                    current_stage_label = 'Reservation Deposit'
+                    current_stage_message = 'Pay the reservation fee to secure this plot for due diligence.'
+                    payment_amount = PaymentRequestForm.calculate_amount(plot, 'purchase', PaymentRequest.Category.RESERVATION_DEPOSIT)
+                    
+                elif not existing_payments.filter(category=PaymentRequest.Category.AGREEMENT_DEPOSIT).exists():
+                    current_stage = 'agreement_deposit'
+                    current_stage_label = 'Agreement Deposit (10%)'
+                    current_stage_message = 'Pay 10% deposit to proceed with the sale agreement.'
+                    payment_amount = PaymentRequestForm.calculate_amount(plot, 'purchase', PaymentRequest.Category.AGREEMENT_DEPOSIT)
+                    
+                elif not existing_payments.filter(category=PaymentRequest.Category.COMPLETION_BALANCE).exists():
+                    current_stage = 'completion_balance'
+                    current_stage_label = 'Completion Balance'
+                    current_stage_message = 'Final payment before transfer of ownership.'
+                    payment_amount = PaymentRequestForm.calculate_amount(plot, 'purchase', PaymentRequest.Category.COMPLETION_BALANCE)
+                    
+                else:
+                    # All payments completed
+                    current_stage_label = 'Completed'
+                    current_stage_message = 'All payments for this transaction have been completed.'
+                    payment_amount = Decimal('0.00')
+                    
             except (Plot.DoesNotExist, ValueError, TypeError):
                 plot = None
+                payment_amount = None
+        
         context["selected_plot"] = plot
+        context["payment_amount"] = payment_amount
+        context["current_stage"] = current_stage
+        context["current_payment_stage_label"] = current_stage_label
+        context["current_payment_stage_message"] = current_stage_message
         context["workflow_start_url"] = (
             f"{reverse('payments:create_request')}?plot={plot.pk}" if plot else reverse("payments:create_request")
         )
@@ -818,16 +905,20 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
 
     def get_selected_transaction_type(self):
         selected_plot = self.get_selected_plot()
-        requested_type = self.request.GET.get("transaction_type") or self.request.POST.get("transaction_type")
+        requested_type = self.request.GET.get("transaction_type") or ""
+        
         if selected_plot:
             if selected_plot.listing_type == "sale":
                 return PaymentRequest.TransactionType.PURCHASE
             if selected_plot.listing_type == "lease":
                 return PaymentRequest.TransactionType.LEASE
-        if requested_type in {
-            PaymentRequest.TransactionType.PURCHASE,
-            PaymentRequest.TransactionType.LEASE,
-        }:
+            if selected_plot.listing_type == "both":
+                # Respect what the user chose; fall back to PURCHASE only if not specified
+                if requested_type == PaymentRequest.TransactionType.LEASE:
+                    return PaymentRequest.TransactionType.LEASE
+                return PaymentRequest.TransactionType.PURCHASE
+        
+        if requested_type in {PaymentRequest.TransactionType.PURCHASE, PaymentRequest.TransactionType.LEASE}:
             return requested_type
         return PaymentRequest.TransactionType.PURCHASE
 
@@ -940,6 +1031,7 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         context["stage_gate"] = stage_gate
         context["forced_category"] = stage_gate["forced_category"]
         context["forced_amount"] = stage_gate["forced_amount"]
+        context["current_stage"] = stage_gate["forced_category"]
         context["current_payment_stage_label"] = stage_gate["stage_title"]
         context["current_payment_stage_message"] = stage_gate["stage_message"]
         
@@ -967,6 +1059,10 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             if context["selected_plot"]
             else ""
         )
+        form_amount = context["form"].fields["amount"].initial
+        context["mpesa_allowed"] = PaymentRequestForm.mpesa_allowed_for_amount(form_amount)
+        context["allowed_method_slugs"] = PaymentRequestForm.allowed_methods_for_amount(form_amount)
+        context["default_method_slug"] = PaymentRequestForm.preferred_method_for_amount(form_amount)
         selected_plot = context["selected_plot"]
         context["checkout_amounts"] = {
             "purchase": {
@@ -1037,7 +1133,9 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                 or bound_form.data.get("payment_method")
                 or ""
             )
-        context["selected_method_slug"] = selected_method
+        context["selected_method_slug"] = (
+            selected_method if selected_method in context["allowed_method_slugs"] else context["default_method_slug"]
+        )
         return context
     
     

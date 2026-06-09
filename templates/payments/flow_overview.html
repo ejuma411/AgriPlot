@@ -4,9 +4,6 @@
 {% block title %}AgriPlot Legal Escrow Workflow{% endblock %}
 
 {% block extra_css %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
     /* Reset & Base */
     * {
@@ -15,16 +12,9 @@
         box-sizing: border-box;
     }
     
-    body {
-        font-family: 'Inter', sans-serif;
-        background: #fafbf8;
-        color: #1a2e1a;
-        line-height: 1.5;
-    }
-    
     /* Hero Section - Improved for mobile */
     .legal-hero {
-        background: var(--ap-green-dark);
+        background: linear-gradient(135deg, var(--ap-green-dark), #0d3d22);
         padding: 3rem 0 2rem;
         position: relative;
     }
@@ -58,7 +48,7 @@
     }
     
     .hero-content {
-        color: #f5f7f2;
+        color: rgba(255, 255, 255, 0.92);
     }
     
     .hero-badge {
@@ -102,7 +92,7 @@
         align-items: center;
         gap: 0.5rem;
         padding: 0.875rem 2rem;
-        border-radius: 40px;
+        border-radius: 12px;
         font-weight: 600;
         text-decoration: none;
         transition: all 0.3s ease;
@@ -113,19 +103,19 @@
     
     .btn-primary {
         background: var(--ap-gold);
-        color: #0a2a1a;
+        color: var(--ap-text);
         box-shadow: 0 4px 15px rgba(212, 160, 23, 0.3);
     }
     
     .btn-primary:hover {
-        background: #b88a14;
+        background: #b98a14;
         transform: translateY(-2px);
         box-shadow: 0 6px 20px rgba(212, 160, 23, 0.4);
     }
     
     .btn-secondary {
         background: rgba(255,255,255,0.1);
-        color: #f5f7f2;
+        color: rgba(255, 255, 255, 0.92);
         border: 1px solid rgba(255,255,255,0.2);
     }
     
@@ -137,9 +127,10 @@
     /* Hero Panel */
     .hero-panel {
         background: white;
-        border-radius: 24px;
+        border-radius: 16px;
         padding: 1.5rem;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        box-shadow: var(--ap-shadow);
+        border: 1px solid var(--ap-border);
     }
     
     .hero-panel-card {
@@ -154,7 +145,7 @@
         font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 1px;
-        color: #f0b429;
+        color: var(--ap-gold);
         font-weight: 600;
         display: block;
         margin-bottom: 0.5rem;
@@ -162,13 +153,13 @@
     
     .hero-panel-card strong {
         font-size: 1.1rem;
-        color: #0a2a1a;
+        color: var(--ap-text);
         display: block;
         margin-bottom: 0.5rem;
     }
     
     .hero-panel-card p {
-        color: #4a5b4a;
+        color: var(--ap-muted);
         font-size: 0.9rem;
         line-height: 1.5;
     }
@@ -180,7 +171,7 @@
     
     .hero-list li {
         padding: 0.5rem 0;
-        color: #4a5b4a;
+        color: var(--ap-muted);
         font-size: 0.9rem;
         display: flex;
         align-items: center;
@@ -189,7 +180,7 @@
     
     .hero-list li::before {
         content: '✓';
-        color: #1f8b4c;
+        color: var(--ap-green);
         font-weight: bold;
     }
     
@@ -203,7 +194,7 @@
     }
     
     .section-accent {
-        background: #f8faf5;
+        background: var(--ap-surface-muted);
     }
     
     .section-header {
@@ -226,16 +217,15 @@
     }
     
     .section-header h2 {
-        font-family: 'Space Grotesk', sans-serif;
         font-size: 2.5rem;
         font-weight: 700;
-        color: #0a2a1a;
+        color: var(--ap-text);
         margin-bottom: 1rem;
         letter-spacing: -0.01em;
     }
     
     .section-header p {
-        color: #4a5b4a;
+        color: var(--ap-muted);
         font-size: 1.1rem;
     }
     
@@ -248,17 +238,17 @@
     
     .journey-card {
         background: white;
-        border-radius: 20px;
+        border-radius: 16px;
         padding: 1.75rem;
         transition: all 0.3s ease;
-        border: 1px solid #e8ece5;
+        border: 1px solid var(--ap-border);
         position: relative;
     }
     
     .journey-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.08);
-        border-color: #1f8b4c;
+        box-shadow: var(--ap-shadow);
+        border-color: var(--ap-green);
     }
     
     .step-number {
@@ -276,15 +266,14 @@
     }
     
     .journey-card h3 {
-        font-family: 'Space Grotesk', sans-serif;
         font-size: 1.25rem;
         font-weight: 600;
-        color: #0a2a1a;
+        color: var(--ap-text);
         margin-bottom: 0.75rem;
     }
     
     .journey-card p {
-        color: #5a6e5a;
+        color: var(--ap-muted);
         font-size: 0.9rem;
         line-height: 1.5;
     }
@@ -298,16 +287,15 @@
     
     .info-card {
         background: white;
-        border-radius: 20px;
+        border-radius: 16px;
         padding: 2rem;
-        border: 1px solid #e8ece5;
+        border: 1px solid var(--ap-border);
     }
     
     .info-card h3 {
-        font-family: 'Space Grotesk', sans-serif;
         font-size: 1.3rem;
         font-weight: 600;
-        color: #0a2a1a;
+        color: var(--ap-text);
         margin-bottom: 1.5rem;
     }
     
@@ -318,13 +306,13 @@
     }
     
     .info-chip {
-        background: #f8faf5;
+        background: var(--ap-surface-muted);
         padding: 1rem 1.25rem;
         border-radius: 12px;
-        color: #2a4a2a;
+        color: var(--ap-text);
         font-weight: 500;
         font-size: 0.9rem;
-        border-left: 3px solid #1f8b4c;
+        border-left: 3px solid var(--ap-green);
     }
     
     .rule-list {
@@ -338,7 +326,7 @@
         gap: 1rem;
         align-items: flex-start;
         padding: 1rem;
-        background: #f8faf5;
+        background: var(--ap-surface-muted);
         border-radius: 12px;
     }
     
@@ -348,8 +336,8 @@
         justify-content: center;
         width: 32px;
         height: 32px;
-        background: #0a2a1a;
-        color: #f0b429;
+        background: var(--ap-green-dark);
+        color: var(--ap-gold);
         border-radius: 10px;
         font-weight: 700;
         font-size: 0.9rem;
@@ -357,7 +345,7 @@
     }
     
     .rule-card p {
-        color: #3a5a3a;
+        color: var(--ap-muted);
         font-size: 0.9rem;
         line-height: 1.5;
         margin: 0;
@@ -365,29 +353,28 @@
     
     /* CTA Section */
     .cta-section {
-        background: linear-gradient(135deg, #0a2a1a 0%, #0d3d22 100%);
+        background: linear-gradient(135deg, var(--ap-green-dark), #0d3d22);
         padding: 4rem 0;
         text-align: center;
         border-radius: 0;
     }
     
     .cta-content h2 {
-        font-family: 'Space Grotesk', sans-serif;
         font-size: 2.2rem;
         font-weight: 700;
-        color: white;
+        color: #fff;
         margin-bottom: 1rem;
     }
     
     .cta-content p {
-        color: rgba(255,255,255,0.8);
+        color: rgba(255,255,255,0.82);
         margin-bottom: 2rem;
         font-size: 1.1rem;
     }
     
     .cta-content .btn-primary {
-        background: #f0b429;
-        color: #0a2a1a;
+        background: var(--ap-gold);
+        color: var(--ap-text);
         font-size: 1.1rem;
         padding: 1rem 2.5rem;
     }

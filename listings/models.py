@@ -524,8 +524,6 @@ class Plot(models.Model):
         ]
         if self.spousal_consent:
             required_docs.append("spousal_consent_doc")
-        if self.land_type == "agricultural":
-            required_docs.append("lcb_consent_doc")
         if self.is_subdivision:
             required_docs.extend(["survey_map", "plupa1_form"])
         if self.ownership_type == "leasehold":
@@ -798,15 +796,12 @@ class Plot(models.Model):
                 raise ValidationError("Sold plots cannot keep lease date windows.")
 
     def save(self, *args, **kwargs):
-        # Auto-set is_registry_record based on registry data
-        if not self.pk:  # Only on creation
-            self.is_registry_record = bool(
-                self.registry_owner_name or 
-                self.registry_owner_id_number or 
-                self.registry_owner_kra_pin or
-                self.search_reference_number
-            )
-        
+        self.is_registry_record = bool(
+            self.registry_owner_name or
+            self.registry_owner_id_number or
+            self.registry_owner_kra_pin or
+            self.search_reference_number
+        )
         self.full_clean()
         super().save(*args, **kwargs)
 

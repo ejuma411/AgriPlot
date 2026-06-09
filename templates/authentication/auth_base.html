@@ -36,7 +36,15 @@
 
 {% block extra_css %}
 {{ block.super }}
+<link rel="stylesheet" href="{% static 'css/auth.css' %}">
 <style>
+    :root {
+        --auth-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        --auth-muted: #718096;
+        --auth-olive: #355c43;
+        --auth-forest: #0e2d23;
+        --auth-line: rgba(14, 45, 35, 0.15);
+    }
     .auth-page-shell {
         min-height: calc(100vh - var(--ap-header-height));
         background: linear-gradient(180deg, #F7FAF8 0%, #FFFFFF 100%);
@@ -116,7 +124,7 @@
         margin-left: auto;
         padding: 34px;
         border: 1px solid var(--ap-border);
-        border-radius: 8px;
+        border-radius: 16px;
         background: #fff;
         box-shadow: var(--ap-shadow);
     }
@@ -185,11 +193,35 @@
     .auth-btn {
         min-height: 46px;
         border: 0;
-        border-radius: 8px;
+        border-radius: 12px;
         background: var(--ap-green);
         color: #fff;
         font-size: 16px;
         font-weight: 800;
+    }
+
+    .auth-btn:hover {
+        background: var(--ap-green-dark);
+    }
+
+    .auth-btn--accent {
+        background: rgba(47, 133, 90, 0.1);
+        color: var(--ap-green);
+        border: 1px solid rgba(47, 133, 90, 0.2);
+    }
+
+    .auth-btn--accent:hover {
+        background: rgba(47, 133, 90, 0.14);
+        color: var(--ap-green-dark);
+    }
+
+    .auth-btn--danger {
+        background: var(--ap-danger);
+        color: #fff;
+    }
+
+    .auth-btn--danger:hover {
+        background: #9b2c2c;
     }
 
     .auth-row,
@@ -215,9 +247,91 @@
         font-weight: 700;
     }
 
+    .auth-panel-card {
+        border-radius: 16px;
+        border: 1px solid var(--ap-border);
+        padding: 18px 20px;
+        background: rgba(255, 255, 255, 0.82);
+        box-shadow: var(--ap-shadow);
+    }
+
+    .auth-panel-title {
+        margin: 0 0 10px;
+        font-size: 1rem;
+        color: var(--ap-text);
+        font-weight: 700;
+    }
+
+    .auth-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin: 16px 0;
+    }
+
+    .auth-qr-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px;
+        border-radius: 16px;
+        border: 1px solid var(--ap-border);
+        background: #fff;
+        margin-bottom: 12px;
+    }
+
+    .auth-code-list {
+        font-family: var(--auth-font-sans);
+        font-size: 0.95rem;
+        letter-spacing: 0.08em;
+        background: #f7f1e7;
+        border: 1px solid rgba(14, 45, 35, 0.15);
+        border-radius: 12px;
+        padding: 12px;
+        line-height: 1.6;
+    }
+
+    .auth-note {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border-radius: 14px;
+        border: 1px dashed var(--ap-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.85rem;
+        background: rgba(255, 255, 255, 0.8);
+    }
+
+    .auth-link-btn {
+        background: var(--ap-green);
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 999px;
+        text-decoration: none;
+        font-size: 0.8rem;
+    }
+
+    .auth-chip-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
     .auth-alert {
         padding: 12px;
-        border-radius: 8px;
+        border-radius: 12px;
+        background: #FFF5F5;
+        color: #9B2C2C;
+        border: 1px solid #FED7D7;
+    }
+
+    .portal-alert {
+        padding: 12px;
+        border-radius: 12px;
         background: #FFF5F5;
         color: #9B2C2C;
         border: 1px solid #FED7D7;
@@ -252,7 +366,7 @@
         justify-content: center;
         transition: all 0.2s ease;
         z-index: 2;
-        border-radius: 0 8px 8px 0;
+        border-radius: 0 12px 12px 0;
         user-select: none;
     }
 
@@ -274,6 +388,12 @@
 
         .auth-side-content {
             padding: 28px;
+        }
+
+        .auth-card {
+            margin: 0;
+            width: 100%;
+            padding: 24px;
         }
 
         .auth-card {

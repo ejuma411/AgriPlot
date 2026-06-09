@@ -3,8 +3,68 @@
 
 {% block title %}Wallet Transactions - AgriPlot{% endblock %}
 
+{% block extra_css %}
+<style>
+    .wallet-page {
+        width: var(--ap-page-width);
+        margin: 0 auto;
+    }
+
+    .wallet-card {
+        border-radius: 16px;
+        border: 1px solid var(--ap-border);
+        box-shadow: var(--ap-shadow);
+        overflow: hidden;
+    }
+
+    .wallet-table thead {
+        background: var(--ap-surface-muted);
+    }
+
+    .wallet-table thead th {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--ap-muted);
+        border-bottom: 1px solid var(--ap-border);
+    }
+
+    .wallet-table tbody td {
+        vertical-align: middle;
+        font-size: 0.92rem;
+        border-color: rgba(221, 231, 223, 0.65);
+    }
+
+    .wallet-page h2 {
+        color: var(--ap-text);
+        font-weight: 800;
+    }
+
+    .wallet-page .text-muted {
+        color: var(--ap-muted) !important;
+    }
+
+    .wallet-page .btn-outline-primary {
+        border-color: var(--ap-border);
+        color: var(--ap-green-dark);
+        background: #fff;
+    }
+
+    .wallet-page .btn-outline-primary:hover {
+        border-color: var(--ap-green);
+        background: rgba(47, 133, 90, 0.08);
+        color: var(--ap-green-dark);
+    }
+
+    .wallet-page .table-light {
+        --bs-table-bg: var(--ap-surface-muted);
+        --bs-table-border-color: var(--ap-border);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container py-4">
+<div class="wallet-page py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-0">Wallet Transactions</h2>
@@ -15,10 +75,10 @@
         </a>
     </div>
     
-    <div class="card shadow-sm">
+    <div class="card wallet-card">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0" id="transactionsTable">
+                <table class="table table-hover mb-0 wallet-table" id="transactionsTable">
                     <thead class="table-light">
                         <tr>
                             <th>Date & Time</th>
@@ -33,7 +93,7 @@
                     <tbody id="transactionsBody">
                         <tr>
                             <td colspan="7" class="text-center py-5">
-                                <div class="spinner-border text-primary" role="status">
+                                <div class="spinner-border" style="color: var(--ap-green);" role="status">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
                                 <p class="mt-2 text-muted">Loading transactions...</p>
@@ -211,7 +271,7 @@ loadTransactions();
 
 code {
     font-size: 0.8rem;
-    background: #f8f9fa;
+    background: var(--ap-surface-muted);
     padding: 2px 6px;
     border-radius: 4px;
 }

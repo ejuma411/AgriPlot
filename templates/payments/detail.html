@@ -4,9 +4,6 @@
 {% block title %}{{ payment.internal_reference }} - Payment Details{% endblock %}
 
 {% block extra_css %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
     /* ============================================
        PAYMENT DETAIL PAGE - COMPLETE REDESIGN
@@ -74,7 +71,7 @@
         align-items: center;
         gap: 0.5rem;
         padding: 0.5rem 1.25rem;
-        border-radius: 40px;
+        border-radius: 12px;
         font-weight: 600;
         font-size: 0.85rem;
     }
@@ -139,7 +136,7 @@
     .progress-label {
         font-size: 0.85rem;
         font-weight: 600;
-        color: #4a5568;
+        color: var(--ap-muted);
     }
     
     .progress-percent {
@@ -158,7 +155,7 @@
     .progress-fill {
         display: block;
         height: 100%;
-        background: linear-gradient(90deg, var(--ap-green), #34ce57);
+        background: linear-gradient(90deg, var(--ap-green), var(--ap-green-dark));
         border-radius: 20px;
         transition: width 0.3s ease;
     }
@@ -206,21 +203,21 @@
     
     .summary-item {
         padding: 0.75rem;
-        background: #f8f9fa;
+        background: var(--ap-surface-muted);
         border-radius: 12px;
     }
     
     .summary-label {
         font-size: 0.7rem;
         text-transform: uppercase;
-        color: #6c757d;
+        color: var(--ap-muted);
         letter-spacing: 0.5px;
         margin-bottom: 0.25rem;
     }
     
     .summary-value {
         font-weight: 600;
-        color: #2c3e2f;
+        color: var(--ap-text);
         font-size: 0.9rem;
     }
     
@@ -235,21 +232,21 @@
         display: flex;
         gap: 1rem;
         padding: 1rem;
-        background: #f8f9fa;
+        background: var(--ap-surface-muted);
         border-radius: 16px;
         transition: all 0.2s ease;
     }
     
     .milestone-item:hover {
-        background: #f0f4ef;
+        background: #ecf4ef;
         transform: translateX(4px);
     }
     
     .milestone-number {
         width: 36px;
         height: 36px;
-        background: linear-gradient(135deg, #1f8b4c, #0a5c30);
-        color: white;
+        background: linear-gradient(135deg, var(--ap-green), var(--ap-green-dark));
+        color: #fff;
         border-radius: 12px;
         display: flex;
         align-items: center;
@@ -266,26 +263,26 @@
     .milestone-title {
         font-weight: 700;
         font-size: 1rem;
-        color: #0a2a1a;
+        color: var(--ap-text);
         margin-bottom: 0.25rem;
     }
     
     .milestone-status {
         font-size: 0.75rem;
-        color: #6c757d;
+        color: var(--ap-muted);
         margin-bottom: 0.5rem;
     }
     
     .milestone-desc {
         font-size: 0.85rem;
-        color: #4a5568;
+        color: var(--ap-muted);
         line-height: 1.5;
     }
     
     .milestone-meta {
         margin-top: 0.5rem;
         font-size: 0.75rem;
-        color: #1f8b4c;
+        color: var(--ap-green);
     }
     
     /* Payment List */
@@ -300,7 +297,7 @@
         justify-content: space-between;
         align-items: center;
         padding: 1rem;
-        background: #f8f9fa;
+        background: var(--ap-surface-muted);
         border-radius: 16px;
         flex-wrap: wrap;
         gap: 0.75rem;
@@ -314,12 +311,12 @@
     
     .payment-meta {
         font-size: 0.7rem;
-        color: #6c757d;
+        color: var(--ap-muted);
     }
     
     .payment-amount {
         font-weight: 700;
-        color: #1f8b4c;
+        color: var(--ap-green);
         font-size: 1.1rem;
     }
     
@@ -334,7 +331,7 @@
         display: flex;
         gap: 1rem;
         padding-bottom: 1rem;
-        border-bottom: 1px solid #e9ecef;
+        border-bottom: 1px solid var(--ap-border);
     }
     
     .timeline-dot {
@@ -388,7 +385,7 @@
         justify-content: center;
         gap: 0.5rem;
         padding: 0.75rem 1.25rem;
-        border-radius: 8px;
+        border-radius: 12px;
         font-weight: 600;
         text-decoration: none;
         transition: all 0.3s ease;
@@ -434,7 +431,7 @@
     }
     
     .btn-warning {
-        background: #ffc107;
+        background: var(--ap-gold);
         color: #2c3e2f;
     }
     
@@ -459,12 +456,12 @@
     .form-label {
         font-size: 0.85rem;
         font-weight: 600;
-        color: #2c3e2f;
+        color: var(--ap-text);
     }
     
     .form-control {
         padding: 0.75rem 1rem;
-        border: 1px solid #e0e5e0;
+        border: 1px solid var(--ap-border);
         border-radius: 12px;
         font-size: 0.9rem;
         transition: all 0.3s ease;
@@ -472,8 +469,8 @@
     
     .form-control:focus {
         outline: none;
-        border-color: #1f8b4c;
-        box-shadow: 0 0 0 3px rgba(31,139,76,0.1);
+        border-color: var(--ap-green);
+        box-shadow: 0 0 0 3px rgba(47, 133, 90, 0.1);
     }
     
     select.form-control {
@@ -487,8 +484,8 @@
     
     /* Notice Box */
     .notice-box {
-        background: #e8f5e9;
-        border-left: 4px solid #1f8b4c;
+        background: #eef8f1;
+        border-left: 4px solid var(--ap-green);
         padding: 1rem;
         border-radius: 12px;
         margin-bottom: 1rem;
@@ -501,12 +498,12 @@
     
     .notice-text {
         font-size: 0.85rem;
-        color: #4a5568;
+        color: var(--ap-muted);
     }
     
     .warning-box {
-        background: #fff3cd;
-        border-left: 4px solid #ffc107;
+        background: #fff7e1;
+        border-left: 4px solid var(--ap-gold);
         padding: 1rem;
         border-radius: 12px;
         margin-bottom: 1rem;
@@ -514,7 +511,7 @@
 
     .waiting-box {
         background: #eef8f1;
-        border: 1px solid rgba(31, 139, 76, 0.18);
+        border: 1px solid rgba(47, 133, 90, 0.18);
         border-radius: 16px;
         padding: 1rem 1.1rem;
         margin-bottom: 1rem;
@@ -522,12 +519,12 @@
 
     .waiting-box strong {
         display: block;
-        color: #0a2a1a;
+        color: var(--ap-text);
         margin-bottom: 0.35rem;
     }
 
     .waiting-box .muted {
-        color: #5a6e5a;
+        color: var(--ap-muted);
         font-size: 0.85rem;
     }
 
@@ -536,7 +533,7 @@
         width: 10px;
         height: 10px;
         border-radius: 50%;
-        background: #1f8b4c;
+        background: var(--ap-green);
         margin-right: 0.45rem;
         animation: pulse 1.4s infinite ease-in-out;
     }
@@ -551,7 +548,7 @@
     .empty-state {
         text-align: center;
         padding: 2rem;
-        color: #6c757d;
+        color: var(--ap-muted);
     }
     
     /* Responsive */
@@ -1011,7 +1008,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 ? "The payment has not been confirmed yet. Please retry if the prompt expired."
                 : "This page will update automatically as soon as Safaricom confirms the payment.";
         }
-        waitBox.style.borderColor = isError ? "rgba(220,53,69,0.35)" : "rgba(31, 139, 76, 0.18)";
+        waitBox.style.borderColor = isError ? "rgba(220,53,69,0.35)" : "rgba(47, 133, 90, 0.18)";
         waitBox.style.background = isError ? "#fff4f4" : "#eef8f1";
     }
 

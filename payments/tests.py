@@ -65,7 +65,7 @@ class PaymentRequestModelTests(TestCase):
             title="Viewing fee",
             amount="2500.00",
             method=PaymentRequest.Method.CARD,
-            category=PaymentRequest.Category.VIEWING_FEE,
+            category=PaymentRequest.Category.COMMITMENT_FEE,
         )
 
         self.assertTrue(payment.internal_reference.startswith("AGP-"))
@@ -209,7 +209,7 @@ class PaymentRequestModelTests(TestCase):
         plot.refresh_from_db()
         self.assertEqual(plot.market_status, "sold")
 
-    def test_form_accepts_manual_test_amount(self):
+    def test_form_calculates_purchase_reservation_amount_from_backend(self):
         landowner = self._create_landowner_for_plot("amount_owner")
         plot = Plot.objects.create(
             landowner=landowner,
@@ -241,7 +241,89 @@ class PaymentRequestModelTests(TestCase):
         )
 
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.cleaned_data["amount"], PaymentRequestForm.normalize_amount("1.00"))
+        self.assertEqual(
+            form.cleaned_data["amount"],
+            PaymentRequestForm.calculate_amount(
+                plot,
+                PaymentRequest.TransactionType.PURCHASE,
+                PaymentRequest.Category.RESERVATION_DEPOSIT,
+            ),
+        )
+
+    def test_commitment_fee_is_calculated_from_backend_due_diligence_costs(self):
+        landowner = self._create_landowner_for_plot("commitment_owner")
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Commitment Plot",
+            location="Kisumu",
+            area=2.0,
+            price="850000.00",
+            sale_price="850000.00",
+            listing_type="sale",
+            land_type="agricultural",
+        )
+
+        amount = PaymentRequestForm.calculate_amount(
+            plot,
+            PaymentRequest.TransactionType.PURCHASE,
+            PaymentRequest.Category.COMMITMENT_FEE,
+        )
+
+        self.assertEqual(amount, Decimal("4300.00"))
+
+    def test_mpesa_is_blocked_above_fifty_thousand_but_wallet_remains_available(self):
+        landowner = self._create_landowner_for_plot("large_payment_owner")
+        plot = Plot.objects.create(
+            landowner=landowner,
+            title="Large Payment Plot",
+            location="Nakuru",
+            area=4.0,
+            price="1200000.00",
+            sale_price="1200000.00",
+            listing_type="sale",
+        )
+
+        mpesa_form = PaymentRequestForm(
+            user=None,
+            selected_plot=plot,
+            data={
+                "plot": plot.pk,
+                "transaction_type": PaymentRequest.TransactionType.PURCHASE,
+                "title": "Agreement deposit",
+                "description": "Large transaction",
+                "amount": "1.00",
+                "category": PaymentRequest.Category.AGREEMENT_DEPOSIT,
+                "method": PaymentRequest.Method.MPESA_STK,
+                "phone_number": "254700123456",
+                "lease_start_date": "",
+                "lease_end_date": "",
+                "escrow_enabled": "on",
+                "due_at": "",
+            },
+        )
+        self.assertFalse(mpesa_form.is_valid())
+        self.assertIn("method", mpesa_form.errors)
+        self.assertIn("bank transfer, card, or wallet", str(mpesa_form.errors["method"]))
+
+        wallet_form = PaymentRequestForm(
+            user=None,
+            selected_plot=plot,
+            data={
+                "plot": plot.pk,
+                "transaction_type": PaymentRequest.TransactionType.PURCHASE,
+                "title": "Agreement deposit",
+                "description": "Large transaction",
+                "amount": "1.00",
+                "category": PaymentRequest.Category.AGREEMENT_DEPOSIT,
+                "method": PaymentRequest.Method.WALLET,
+                "phone_number": "",
+                "lease_start_date": "",
+                "lease_end_date": "",
+                "escrow_enabled": "on",
+                "due_at": "",
+            },
+        )
+        self.assertTrue(wallet_form.is_valid(), wallet_form.errors)
 
     def test_lease_agreement_requires_both_digital_confirmations(self):
         user = get_user_model().objects.create_user(username="lease_buyer", password="secret123")

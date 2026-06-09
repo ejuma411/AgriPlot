@@ -19,16 +19,16 @@
     }
 
     .auth-panel-card {
-        border-radius: 18px;
-        border: 1px solid var(--auth-line);
+        border-radius: 16px;
+        border: 1px solid var(--ap-border);
         padding: 20px;
-        background: rgba(255, 255, 255, 0.82);
-        box-shadow: 0 12px 28px rgba(14, 45, 35, 0.06);
+        background: rgba(255, 255, 255, 0.9);
+        box-shadow: var(--ap-shadow);
     }
 
     .auth-panel-title {
         margin: 0 0 8px;
-        color: var(--auth-forest);
+        color: var(--ap-green);
         font-size: 1rem;
         font-weight: 700;
     }
@@ -39,7 +39,7 @@
         gap: 12px;
         padding-bottom: 16px;
         margin-bottom: 18px;
-        border-bottom: 1px solid var(--auth-line);
+        border-bottom: 1px solid var(--ap-border);
     }
 
     .twofa-method-icon {
@@ -47,9 +47,9 @@
         height: 48px;
         display: grid;
         place-items: center;
-        border-radius: 14px;
+        border-radius: 12px;
         background: rgba(47, 133, 90, 0.12);
-        color: var(--auth-olive);
+        color: var(--ap-green);
         flex: 0 0 auto;
     }
 
@@ -59,14 +59,14 @@
 
     .twofa-method-meta h3 {
         margin: 0 0 4px;
-        color: var(--auth-forest);
+        color: var(--ap-text);
         font-size: 1.05rem;
         font-weight: 700;
     }
 
     .twofa-method-meta p {
         margin: 0;
-        color: var(--auth-muted);
+        color: var(--ap-muted);
         font-size: 0.9rem;
     }
 
@@ -78,7 +78,7 @@
 
     .twofa-alert {
         padding: 12px 14px;
-        border-radius: 14px;
+        border-radius: 12px;
         border: 1px solid transparent;
         font-size: 0.9rem;
         line-height: 1.5;
@@ -93,7 +93,7 @@
     .twofa-alert.is-success {
         background: #e8f5ec;
         border-color: rgba(47, 133, 90, 0.25);
-        color: var(--auth-olive);
+        color: var(--ap-green);
     }
 
     .twofa-form {
@@ -104,7 +104,7 @@
     .twofa-field label {
         display: block;
         margin-bottom: 8px;
-        color: var(--auth-forest);
+        color: var(--ap-text);
         font-size: 0.95rem;
         font-weight: 700;
     }
@@ -113,9 +113,9 @@
         width: 100%;
         min-height: 48px;
         padding: 12px 14px;
-        border: 1px solid var(--auth-line);
+        border: 1px solid var(--ap-border);
         border-radius: 12px;
-        color: var(--auth-forest);
+        color: var(--ap-text);
         background: #fff;
         font-size: 1rem;
         font-family: monospace;
@@ -124,7 +124,7 @@
 
     .twofa-code:focus {
         outline: none;
-        border-color: var(--auth-olive);
+        border-color: var(--ap-green);
         box-shadow: 0 0 0 3px rgba(47, 133, 90, 0.12);
     }
 
@@ -144,7 +144,7 @@
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        color: var(--auth-olive);
+        color: var(--ap-green);
         text-decoration: none;
         font-size: 0.92rem;
         font-weight: 700;
@@ -169,8 +169,8 @@
         align-items: flex-start;
         gap: 12px;
         padding: 12px;
-        border-radius: 14px;
-        border: 1px solid var(--auth-line);
+        border-radius: 12px;
+        border: 1px solid var(--ap-border);
         background: rgba(255, 255, 255, 0.75);
         cursor: pointer;
         transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
@@ -188,21 +188,21 @@
     }
 
     .twofa-method-option i {
-        color: var(--auth-olive);
+        color: var(--ap-green);
         font-size: 1rem;
         margin-top: 2px;
     }
 
     .twofa-method-option h4 {
         margin: 0 0 3px;
-        color: var(--auth-forest);
+        color: var(--ap-text);
         font-size: 0.92rem;
         font-weight: 700;
     }
 
     .twofa-method-option p {
         margin: 0;
-        color: var(--auth-muted);
+        color: var(--ap-muted);
         font-size: 0.83rem;
         line-height: 1.45;
     }
@@ -210,13 +210,13 @@
     .twofa-method-option small {
         display: block;
         margin-top: 4px;
-        color: var(--auth-muted);
+        color: var(--ap-muted);
         font-size: 0.8rem;
     }
 
     .twofa-resend {
         padding-top: 14px;
-        border-top: 1px solid var(--auth-line);
+        border-top: 1px solid var(--ap-border);
         display: grid;
         gap: 8px;
         text-align: center;
@@ -226,7 +226,7 @@
         width: 100%;
         border: 1px solid rgba(47, 133, 90, 0.25);
         background: rgba(47, 133, 90, 0.08);
-        color: var(--auth-olive);
+        color: var(--ap-green);
         min-height: 44px;
         border-radius: 12px;
         font-weight: 700;
@@ -245,7 +245,7 @@
     }
 
     .twofa-resend-note {
-        color: var(--auth-muted);
+        color: var(--ap-muted);
         font-size: 0.82rem;
     }
 
@@ -426,12 +426,15 @@
 
         const needsResend = method === 'email' || method === 'sms';
         resendSection.style.display = needsResend ? 'grid' : 'none';
-        if (needsResend) {
-            startResendCooldown();
-        } else if (countdownTimer) {
+
+        if (countdownTimer) {
             clearInterval(countdownTimer);
-            resendCooldown = 0;
-            resendTimer.textContent = '';
+        }
+        resendCooldown = 0;
+        resendTimer.textContent = '';
+
+        if (needsResend) {
+            resendBtn.disabled = false;
         }
 
         document.querySelectorAll('.twofa-method-option').forEach(option => {
@@ -596,7 +599,12 @@
 
     document.querySelectorAll('.twofa-method-option').forEach(option => {
         option.addEventListener('click', () => {
-            updateMethodUI(option.dataset.method);
+            const method = option.dataset.method;
+            updateMethodUI(method);
+            const needsResend = method === 'email' || method === 'sms';
+            if (needsResend) {
+                resendCode();
+            }
         });
     });
 

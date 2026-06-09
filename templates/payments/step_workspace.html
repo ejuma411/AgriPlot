@@ -4,23 +4,20 @@
 {% block title %}{{ step.display_title }} - AgriPlot{% endblock %}
 
 {% block extra_css %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'css/payments.css' %}">
 <style>
     .workspace-hero {
-        background: linear-gradient(135deg, #f7fbf6 0%, #ecf4ea 100%);
-        border: 1px solid rgba(46, 125, 50, 0.12);
-        border-radius: 24px;
+        background: linear-gradient(135deg, #f7fbf6 0%, #edf5ee 100%);
+        border: 1px solid var(--ap-border);
+        border-radius: 16px;
         padding: 28px;
         margin-bottom: 24px;
     }
     .workspace-hero.lease {
-        background: linear-gradient(135deg, #f4fbf5 0%, #e3f2df 100%);
+        background: linear-gradient(135deg, #f4fbf5 0%, #e7f1e4 100%);
     }
     .workspace-hero.purchase {
-        background: linear-gradient(135deg, #fcfaf3 0%, #f8edd2 100%);
+        background: linear-gradient(135deg, #fcfaf3 0%, #f7ecd8 100%);
     }
     .workspace-stat-grid {
         display: grid;
@@ -30,19 +27,19 @@
     }
     .workspace-stat {
         background: rgba(255, 255, 255, 0.92);
-        border-radius: 18px;
+        border-radius: 16px;
         padding: 16px;
-        border: 1px solid rgba(15, 23, 42, 0.06);
+        border: 1px solid var(--ap-border);
     }
     .workspace-stat small {
         display: block;
-        color: #4a5568;
+        color: var(--ap-muted);
         margin-bottom: 8px;
         font-size: 11px;
     }
     .workspace-stat strong {
         font-size: 1.2rem;
-        color: #1a3a1a;
+        color: var(--ap-text);
     }
     .workspace-panels {
         display: grid;
@@ -55,46 +52,46 @@
     }
     .workspace-card {
         background: #fff;
-        border-radius: 22px;
+        border-radius: 16px;
         padding: 24px;
-        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
-        border: 1px solid rgba(15, 23, 42, 0.05);
+        box-shadow: var(--ap-shadow);
+        border: 1px solid var(--ap-border);
     }
     .workspace-card h2,
     .workspace-card h3 {
         margin-top: 0;
-        color: #1a2e1a;
+        color: var(--ap-text);
     }
     .workspace-label {
         display: inline-flex;
         align-items: center;
         padding: 6px 12px;
         border-radius: 999px;
-        background: #edf7ee;
-        color: #1b5e20;
+        background: rgba(47, 133, 90, 0.1);
+        color: var(--ap-green-dark);
         font-size: 0.85rem;
         font-weight: 600;
     }
     .workspace-note {
-        background: #f8faf8;
-        border-left: 4px solid #2e7d32;
+        background: var(--ap-surface-muted);
+        border-left: 4px solid var(--ap-green);
         border-radius: 14px;
         padding: 16px;
         margin: 16px 0;
-        color: #1a2e1a;
+        color: var(--ap-text);
     }
     .workspace-note strong {
-        color: #1B5E20;
+        color: var(--ap-green-dark);
     }
     .workspace-note.warning {
-        border-left-color: #ef6c00;
-        background: #fff6e9;
+        border-left-color: var(--ap-gold);
+        background: #fff7e1;
         color: #4a3000;
     }
     .workspace-note.info {
-        border-left-color: #1565c0;
+        border-left-color: #4c8bf5;
         background: #eef6ff;
-        color: #1a2e1a;
+        color: var(--ap-text);
     }
     .workspace-checklist {
         margin: 0;
@@ -116,8 +113,8 @@
         gap: 18px;
     }
     .agreement-section {
-        border: 1px solid rgba(15, 23, 42, 0.08);
-        border-radius: 18px;
+        border: 1px solid var(--ap-border);
+        border-radius: 16px;
         background: #fbfcfe;
         padding: 18px;
     }
@@ -130,12 +127,12 @@
     }
     .agreement-section-header h4 {
         margin: 0;
-        color: #173017;
+        color: var(--ap-text);
         font-size: 1rem;
     }
     .agreement-section-header p {
         margin: 4px 0 0;
-        color: #54616f;
+        color: var(--ap-muted);
         font-size: 0.92rem;
     }
     .agreement-field-grid {
@@ -157,19 +154,19 @@
         text-decoration: none;
     }
     .hero-btn-primary {
-        background: #2E7D32;
-        color: white;
+        background: var(--ap-green);
+        color: #fff;
         padding: 10px 20px;
-        border-radius: 30px;
+        border-radius: 12px;
         border: none;
         cursor: pointer;
         font-weight: 600;
     }
     .hero-btn-secondary {
-        background: #f0b429;
+        background: var(--ap-gold);
         color: #0c3322;
         padding: 10px 20px;
-        border-radius: 30px;
+        border-radius: 12px;
         border: none;
         cursor: pointer;
         font-weight: 600;
@@ -177,11 +174,11 @@
         display: inline-block;
     }
     .workspace-payment-callout {
-        background: linear-gradient(135deg, #0f3d28 0%, #1f6b43 100%);
+        background: linear-gradient(135deg, var(--ap-green-dark), #1f6b43);
         color: #f7f7f2;
-        border-radius: 22px;
+        border-radius: 16px;
         padding: 22px;
-        box-shadow: 0 18px 42px rgba(15, 61, 40, 0.22);
+        box-shadow: var(--ap-shadow);
     }
     .workspace-payment-callout p,
     .workspace-payment-callout strong,
@@ -223,11 +220,11 @@
         font-weight: 600;
     }
     .workspace-days-safe {
-        color: #2E7D32;
+        color: var(--ap-green);
         font-weight: 600;
     }
     .workspace-task-card {
-        border: 1px solid rgba(46, 125, 50, 0.16);
+        border: 1px solid var(--ap-border);
         background: linear-gradient(180deg, #ffffff 0%, #fbfdf9 100%);
     }
     .workspace-task-grid {
@@ -237,44 +234,44 @@
         margin-top: 18px;
     }
     .workspace-task-pill {
-        border-radius: 16px;
+        border-radius: 14px;
         background: #ffffff;
-        border: 1px solid #e0e5e0;
+        border: 1px solid var(--ap-border);
         padding: 14px 16px;
     }
     .workspace-task-pill small {
         display: block;
-        color: #6b7c6b;
+        color: var(--ap-muted);
         margin-bottom: 6px;
         font-size: 11px;
     }
     .workspace-task-pill strong {
-        color: #1a3a1a;
+        color: var(--ap-text);
     }
     .workspace-progress-list {
         display: grid;
         gap: 10px;
     }
     .workspace-progress-item {
-        border: 1px solid rgba(15, 23, 42, 0.08);
+        border: 1px solid var(--ap-border);
         border-radius: 16px;
         padding: 14px 16px;
         background: #fff;
-        color: #1a2e1a;
+        color: var(--ap-text);
     }
     .workspace-progress-item.current {
-        border-color: rgba(46, 125, 50, 0.28);
+        border-color: rgba(47, 133, 90, 0.28);
         background: #f0f7f0;
     }
     .workspace-progress-item.done {
-        background: #f8faf8;
+        background: var(--ap-surface-muted);
     }
     .text-link {
-        color: #2E7D32;
+        color: var(--ap-green);
         text-decoration: none;
     }
     .text-link:hover {
-        color: #1B5E20;
+        color: var(--ap-green-dark);
         text-decoration: underline;
     }
     @media (max-width: 960px) {

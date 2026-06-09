@@ -295,12 +295,81 @@ WSGI_APPLICATION = "agriplot.wsgi.application"
 
 
 # =============================================================================
-# DATABASE CONFIGURATION
+# DATABASE CONFIGURATION - LOCAL POSTGRESQL
 # =============================================================================
 
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.contrib.gis.db.backends.postgis',
+#         'NAME': os.environ.get('DB_NAME', 'agriplot_db'),
+#         'USER': os.environ.get('DB_USER', 'createch'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD', '6HrnAQmk/%?HMP6'),
+#         'HOST': os.environ.get('DB_HOST', 'localhost'),
+#         'PORT': os.environ.get('DB_PORT', '5432'),
+#         'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '600')),
+#         'OPTIONS': {
+#             'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', '10')),
+#         },
+#     }
+# }
+
+# =============================================================================
+# DATABASE CONFIGURATION-- SUPABASE
+# =============================================================================
+    
+# DATABASES = {
+#     "default": _database_config()
+# }
+
+
+# =============================================================================
+# DATABASE CONFIGURATION - MULTIPLE DATABASES
+# =============================================================================
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Database settings with clear separation
 DATABASES = {
-    "default": _database_config()
+    # Local PostgreSQL Database
+    'default': {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': os.getenv('LOCAL_DB_NAME', os.getenv('DB_NAME', 'agriplot_db')),
+        'USER': os.getenv('LOCAL_DB_USER', os.getenv('DB_USER', 'createch')),
+        'PASSWORD': os.getenv('LOCAL_DB_PASSWORD', os.getenv('DB_PASSWORD')),
+        'HOST': os.getenv('LOCAL_DB_HOST', os.getenv('DB_HOST', 'localhost')),
+        'PORT': os.getenv('LOCAL_DB_PORT', os.getenv('DB_PORT', '5432')),
+        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '600')),
+        'OPTIONS': {
+            'connect_timeout': int(os.getenv('DB_CONNECT_TIMEOUT', '10')),
+            'sslmode': os.getenv('DB_SSL_MODE', os.getenv('DB_SSLMODE', 'disable')),
+        } if os.getenv('DB_SSL', 'False').lower() == 'true' else {},
+    },
+    
+    # Supabase Database (for data migration or backup)
+    'supabase': {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': os.getenv('SUPABASE_DB_NAME', 'postgres'),
+        'USER': os.getenv('SUPABASE_DB_USER', 'postgres.lejqavtyzqaumiboelgv'),
+        'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD'),
+        'HOST': os.getenv('SUPABASE_DB_HOST', 'aws-0-eu-west-1.pooler.supabase.com'),
+        'PORT': os.getenv('SUPABASE_DB_PORT', '5432'),
+        'CONN_MAX_AGE': int(os.getenv('SUPABASE_DB_CONN_MAX_AGE', '300')),
+        'OPTIONS': {
+            'sslmode': os.getenv('SUPABASE_DB_SSLMODE', 'require'),
+            'connect_timeout': int(os.getenv('SUPABASE_DB_CONNECT_TIMEOUT', '10')),
+        },
+    }
 }
+
+# Validate required credentials
+if not DATABASES['default']['PASSWORD']:
+    raise ValueError("Database password is required! Set DB_PASSWORD or LOCAL_DB_PASSWORD in .env")
+
+# For migration scripts, you can switch default database
+# DATABASE_ROUTERS = []  # Use this if you need to route queries
 
 
 # =============================================================================

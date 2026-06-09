@@ -31,12 +31,12 @@
     .section-heading h2 {
         font-size: 1.5rem;
         font-weight: 700;
-        color: #1a472a;
+        color: var(--ap-green-dark);
         margin-bottom: 0.5rem;
     }
     
     .section-heading p {
-        color: var(--ag-text-secondary);
+        color: var(--ap-muted);
         font-size: 0.9rem;
         line-height: 1.5;
     }
@@ -51,7 +51,7 @@
     
     .payment-method-card {
         background: white;
-        border: 1px solid #e9ecef;
+        border: 1px solid var(--ap-border);
         border-radius: 16px;
         padding: 1rem;
         cursor: pointer;
@@ -87,6 +87,20 @@
         font-size: 11px;
         font-weight: bold;
     }
+
+    .payment-method-card.disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+        border-style: dashed;
+    }
+
+    .payment-method-card.disabled:hover {
+        transform: none;
+        box-shadow: none;
+        border-color: var(--ap-border);
+    }
     
     .method-icon {
         font-size: 1.8rem;
@@ -96,18 +110,18 @@
     .method-name {
         font-weight: 600;
         font-size: 1rem;
-        color: #1a472a;
+        color: var(--ap-green-dark);
         margin-bottom: 0.25rem;
     }
     
     .method-description {
         font-size: 0.75rem;
-        color: var(--ag-text-secondary);
+        color: var(--ap-muted);
     }
     
     /* Payment detail sections */
     .payment-detail-section {
-        background: #f8faf5;
+        background: var(--ap-surface-muted);
         border-radius: 16px;
         padding: 1.25rem;
         margin-top: 1rem;
@@ -133,7 +147,7 @@
         display: block;
         font-size: 0.85rem;
         font-weight: 600;
-        color: #1a472a;
+        color: var(--ap-green-dark);
         margin-bottom: 0.5rem;
     }
     
@@ -141,7 +155,7 @@
     .form-group select {
         width: 100%;
         padding: 0.7rem 1rem;
-        border: 1px solid #dee2e6;
+        border: 1px solid var(--ap-border);
         border-radius: 12px;
         font-size: 0.9rem;
         transition: all 0.2s;
@@ -163,7 +177,7 @@
     
     .help-copy {
         font-size: 0.7rem;
-        color: var(--ag-text-secondary);
+        color: var(--ap-muted);
         margin-top: 0.25rem;
         display: block;
     }
@@ -192,8 +206,8 @@
     
     /* Workspace notice (info box) */
     .workspace-notice {
-        background: #f8f9fa;
-        border-left: 4px solid var(--ag-green-700);
+        background: #f8faf5;
+        border-left: 4px solid var(--ap-green-dark);
         padding: 1rem;
         border-radius: 12px;
         font-size: 0.85rem;
@@ -208,7 +222,7 @@
     /* Buttons */
     .hero-btn {
         padding: 0.7rem 1.5rem;
-        border-radius: 40px;
+        border-radius: 12px;
         font-weight: 600;
         text-decoration: none;
         transition: all 0.2s;
@@ -232,13 +246,13 @@
     
     .hero-btn-secondary {
         background: white;
-        border: 1px solid #dee2e6;
-        color: var(--ag-text-secondary);
+        border: 1px solid var(--ap-border);
+        color: var(--ap-muted);
     }
     
     .hero-btn-secondary:hover {
-        border-color: var(--ag-green-700);
-        color: var(--ag-green-700);
+        border-color: var(--ap-green-dark);
+        color: var(--ap-green-dark);
     }
     
     .form-actions {
@@ -246,15 +260,15 @@
         gap: 1rem;
         margin-top: 2rem;
         padding-top: 1rem;
-        border-top: 1px solid #e9ecef;
+        border-top: 1px solid var(--ap-border);
     }
     
     /* Side panel cards */
     .hero-panel-card {
         background: white;
-        border-radius: 20px;
+        border-radius: 16px;
         padding: 1.25rem;
-        border: 1px solid #e9ecef;
+        border: 1px solid var(--ap-border);
         margin-bottom: 1rem;
     }
     
@@ -354,16 +368,57 @@
             </div>
             {% endif %}
             
+            <!-- Keep this styled amount display -->
             <div class="amount-display">
-                <div class="amount-label">Total Amount to Pay</div>
-                <div class="amount-value" id="amountDisplay">
-                    KES {{ form.amount.value|default:"0"|floatformat:2|intcomma }}
+                <div class="amount-label">
+                    {% if current_payment_stage_label %}
+                        {{ current_payment_stage_label }}
+                    {% else %}
+                        Commitment / Verification Fee
+                    {% endif %}
                 </div>
-                <div class="amount-label" style="font-size: 0.7rem; margin-top: 0.5rem;" id="amountHint">
-                    {% if current_payment_stage_label %}{{ current_payment_stage_label }}{% elif selected_plot and selected_plot.listing_type == 'lease' %}Commitment fee for lease agreement{% else %}Transaction amount{% endif %}
+                <div class="amount-value" id="amountDisplay">
+                    KES {{ form.amount.initial|default:form.amount.value|default:"0"|floatformat:2|intcomma }}
+                </div>
+                <div class="amount-label" style="font-size: 0.7rem; margin-top: 0.5rem;">
+                    {% if current_payment_stage_message %}
+                        {{ current_payment_stage_message }}
+                    {% else %}
+                        Required to initiate the legal escrow workflow
+                    {% endif %}
                 </div>
             </div>
-            
+
+            {% if not mpesa_allowed %}
+            <div class="workspace-notice" style="margin-bottom: 1rem; border-left-color: var(--ap-gold);">
+                <strong>M-Pesa unavailable for this amount.</strong>
+                <div style="margin-top: 0.25rem;">
+                    Payments above KES 50,000 should use bank transfer, card, or wallet. Wallet remains available for all transactions.
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Show stage progress -->
+            <div class="workspace-notice" style="margin-bottom: 1rem;">
+                <strong>Payment Progress:</strong>
+                <div style="margin-top: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                        <span style="{% if current_stage == 'reservation_deposit' %}color: var(--ap-green); font-weight: 600;{% endif %}">
+                            ✓ Reservation Deposit
+                        </span>
+                        <span style="{% if current_stage == 'agreement_deposit' %}color: var(--ap-green); font-weight: 600;{% endif %}">
+                            Agreement Deposit
+                        </span>
+                        <span style="{% if current_stage == 'completion_balance' %}color: var(--ap-green); font-weight: 600;{% endif %}">
+                            Completion Balance
+                        </span>
+                    </div>
+                    <div style="height: 4px; background: var(--ap-border); border-radius: 2px; overflow: hidden;">
+                        <div style="width: {% if current_stage == 'reservation_deposit' %}33%{% elif current_stage == 'agreement_deposit' %}66%{% elif current_stage == 'completion_balance' %}100%{% else %}0%{% endif %}; height: 100%; background: var(--ap-green);"></div>
+                    </div>
+                </div>
+            </div>
+
             <form method="post" id="paymentForm">
                 {% csrf_token %}
                 
@@ -492,27 +547,33 @@
                 <!-- Payment Method Selection -->
                 <h3 class="form-label" style="font-size: 1rem; font-weight: 600; margin: 1.5rem 0 1rem;">Select Payment Method</h3>
                 <div class="payment-methods-grid">
-                    <div class="payment-method-card" data-method="mpesa_stk">
+                    <div class="payment-method-card{% if not mpesa_allowed %} disabled{% endif %}" data-method="mpesa_stk" data-available="{% if mpesa_allowed %}true{% else %}false{% endif %}">
                         <div class="method-icon">📱</div>
                         <div class="method-name">M-Pesa</div>
-                        <div class="method-description">Pay using Safaricom M-Pesa</div>
+                        <div class="method-description">
+                            {% if mpesa_allowed %}
+                                Pay using Safaricom M-Pesa
+                            {% else %}
+                                Unavailable above KES 50,000
+                            {% endif %}
+                        </div>
                     </div>
-                    <div class="payment-method-card" data-method="card">
+                    <div class="payment-method-card" data-method="card" data-available="true">
                         <div class="method-icon">💳</div>
                         <div class="method-name">Card Payment</div>
                         <div class="method-description">Visa, Mastercard, American Express</div>
                     </div>
-                    <div class="payment-method-card" data-method="bank_transfer">
+                    <div class="payment-method-card" data-method="bank_transfer" data-available="true">
                         <div class="method-icon">🏦</div>
                         <div class="method-name">Bank Transfer</div>
                         <div class="method-description">Direct bank transfer / RTGS</div>
                     </div>
-                    <div class="payment-method-card" data-method="airtel_money">
+                    <div class="payment-method-card" data-method="airtel_money" data-available="true">
                         <div class="method-icon">📞</div>
                         <div class="method-name">Airtel Money</div>
                         <div class="method-description">Pay using Airtel Money</div>
                     </div>
-                    <div class="payment-method-card" data-method="wallet">
+                    <div class="payment-method-card" data-method="wallet" data-available="true">
                         <div class="method-icon">👛</div>
                         <div class="method-name">AgriPlot Wallet</div>
                         <div class="method-description">Use your AgriPlot wallet balance</div>
@@ -614,7 +675,7 @@
                     <p><strong>Transaction Type:</strong> <span id="summaryType">
                         {% if selected_plot and selected_plot.listing_type == 'lease' %}Lease{% elif selected_plot and selected_plot.listing_type == 'sale' %}Purchase{% else %}Service{% endif %}
                     </span></p>
-                    <p><strong>Amount:</strong> <span id="summaryAmount">KES {{ form.amount.value|default:"0"|floatformat:2|intcomma }}</span></p>
+                    <p><strong>Amount:</strong> <span id="summaryAmount">KES {{ form.amount.initial|default:form.amount.value|default:"0"|floatformat:2|intcomma }}</span></p>
                     <p><strong>Payment Method:</strong> <span id="summaryMethod">Not selected</span></p>
                 </div>
             </div>
@@ -628,7 +689,6 @@
         </aside>
     </div>
 </div>
-
 <script>
     document.addEventListener("DOMContentLoaded", function() {
         // DOM Elements
@@ -652,16 +712,8 @@
             return parseFloat(normalized || '0');
         }
 
-        const amountDisplay = document.getElementById('amountDisplay');
         const amountField = document.getElementById('id_amount');
-        const totalAmount = amountDisplay ? parseKesAmount(amountDisplay.textContent) : 0;
-
-        function syncAmountField() {
-            if (!amountField || !amountDisplay) return;
-            if (!amountField.value || parseKesAmount(amountField.value) === 0) {
-                amountField.value = totalAmount ? totalAmount.toFixed(2) : '';
-            }
-        }
+        const totalAmount = parseKesAmount(amountField ? amountField.value : '0');
 
         function showWalletError(message) {
             if (!walletError) return;
@@ -672,6 +724,10 @@
         // Method selection handler
         methodCards.forEach(card => {
             card.addEventListener('click', function(e) {
+                if (this.dataset.available === 'false') {
+                    e.preventDefault();
+                    return;
+                }
                 e.preventDefault();
                 const method = this.dataset.method;
                 
@@ -702,10 +758,8 @@
         
         // Form submission
         if (form) {
-            syncAmountField();
             form.addEventListener('submit', function(e) {
                 const method = selectedMethodInput ? selectedMethodInput.value : '';
-                syncAmountField();
                 
                 if (!method) {
                     e.preventDefault();
@@ -825,7 +879,6 @@
 
         const defaultMethodCard = document.querySelector(`.payment-method-card[data-method="${initiallySelectedMethod || 'mpesa_stk'}"]`);
         if (defaultMethodCard) defaultMethodCard.click();
-        syncAmountField();
 
         {% if form.errors %}
         const errorNotice = document.querySelector('.workspace-notice.error');

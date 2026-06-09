@@ -17,6 +17,7 @@ class DateTimePickerInput(forms.DateTimeInput):
 
 
 class PaymentRequestForm(forms.ModelForm):
+    MPESA_MAX_AMOUNT = Decimal("50000.00")
     DIRECT_TRANSACTION_CHOICES = [
         (PaymentRequest.TransactionType.PURCHASE, "Purchase"),
         (PaymentRequest.TransactionType.LEASE, "Lease"),
@@ -31,7 +32,6 @@ class PaymentRequestForm(forms.ModelForm):
     ]
     DEFAULT_DUE_WINDOWS = {
         PaymentRequest.Category.COMMITMENT_FEE: timedelta(hours=24),
-        PaymentRequest.Category.VIEWING_FEE: timedelta(hours=24),
         PaymentRequest.Category.RESERVATION_DEPOSIT: timedelta(hours=48),
         PaymentRequest.Category.AGREEMENT_DEPOSIT: timedelta(hours=72),
         PaymentRequest.Category.VERIFICATION_PACKAGE: timedelta(hours=72),
@@ -39,20 +39,6 @@ class PaymentRequestForm(forms.ModelForm):
         PaymentRequest.Category.STAMP_DUTY: timedelta(days=7),
         PaymentRequest.Category.COMPLETION_BALANCE: timedelta(days=14),
         PaymentRequest.Category.SERVICE_FEE: timedelta(hours=48),
-    }
-    FIXED_CATEGORY_AMOUNTS = {
-        PaymentRequest.Category.COMMITMENT_FEE: Decimal("50.00"),
-        PaymentRequest.Category.VIEWING_FEE: Decimal("2500.00"),
-        PaymentRequest.Category.VERIFICATION_PACKAGE: Decimal("5000.00"),
-        PaymentRequest.Category.SERVICE_FEE: Decimal("3000.00"),
-    }
-    PURCHASE_STAGE_TEST_AMOUNTS = {
-        PaymentRequest.Category.COMMITMENT_FEE: Decimal("50.00"),
-        PaymentRequest.Category.RESERVATION_DEPOSIT: Decimal("100.00"),
-        PaymentRequest.Category.AGREEMENT_DEPOSIT: Decimal("100.00"),
-        PaymentRequest.Category.ESCROW_DEPOSIT: Decimal("150.00"),
-        PaymentRequest.Category.STAMP_DUTY: Decimal("200.00"),
-        PaymentRequest.Category.COMPLETION_BALANCE: Decimal("500.00"),
     }
     METHOD_DETAIL_FIELDS = [
         "mpesa_reference",
@@ -364,25 +350,46 @@ class PaymentRequestForm(forms.ModelForm):
 
     @classmethod
     def calculate_amount(cls, plot, transaction_type, category):
-        if category in cls.FIXED_CATEGORY_AMOUNTS:
-            return cls.FIXED_CATEGORY_AMOUNTS[category]
-        if not plot:
-            return None
-        if transaction_type == PaymentRequest.TransactionType.PURCHASE:
-            test_amount = cls.PURCHASE_STAGE_TEST_AMOUNTS.get(category)
-            if test_amount is not None:
-                return test_amount
-        if transaction_type == PaymentRequest.TransactionType.LEASE:
-            lease_base = cls.lease_base_amount(plot)
-            if lease_base and category in {
-                PaymentRequest.Category.AGREEMENT_DEPOSIT,
-                PaymentRequest.Category.RESERVATION_DEPOSIT,
-                PaymentRequest.Category.ESCROW_DEPOSIT,
-                PaymentRequest.Category.COMPLETION_BALANCE,
-            }:
-                return lease_base
-        return None
+        """
+        Calculate payment amount based on backend business rules stored on the model.
+        """
+        amount = PaymentRequest.calculate_stage_amount(plot, transaction_type, category)
+        return cls.normalize_amount(amount) if amount not in {None, ""} else None
 
+    @classmethod
+    def mpesa_allowed_for_amount(cls, amount):
+        normalized_amount = cls.normalize_amount(amount)
+        if normalized_amount is None:
+            return True
+        return normalized_amount <= cls.MPESA_MAX_AMOUNT
+
+    @classmethod
+    def allowed_methods_for_amount(cls, amount):
+        allowed = [
+            PaymentRequest.Method.BANK_TRANSFER,
+            PaymentRequest.Method.CARD,
+            PaymentRequest.Method.WALLET,
+            PaymentRequest.Method.AIRTEL_MONEY,
+        ]
+        if cls.mpesa_allowed_for_amount(amount):
+            allowed.insert(0, PaymentRequest.Method.MPESA_STK)
+        return allowed
+
+    @classmethod
+    def preferred_method_for_amount(cls, amount):
+        allowed = set(cls.allowed_methods_for_amount(amount))
+        preference_order = [
+            PaymentRequest.Method.MPESA_STK,
+            PaymentRequest.Method.BANK_TRANSFER,
+            PaymentRequest.Method.CARD,
+            PaymentRequest.Method.WALLET,
+            PaymentRequest.Method.AIRTEL_MONEY,
+        ]
+        for method in preference_order:
+            if method in allowed:
+                return method
+        return PaymentRequest.Method.WALLET
+    
     def clean(self):
         cleaned_data = super().clean()
         plot = cleaned_data.get("plot") or self.selected_plot
@@ -396,6 +403,16 @@ class PaymentRequestForm(forms.ModelForm):
             or self.fields["method"].initial
             or PaymentRequest.Method.MPESA_STK
         )
+        notice_days = cleaned_data.get("notice_period_days")
+        plot = cleaned_data.get("plot")
+        if notice_days is not None and plot:
+            min_days = 90 if plot.land_type == "agricultural" else 30
+            if notice_days < min_days:
+                self.add_error(
+                    "notice_period_days",
+                    f"Notice period must be at least {min_days} days for {plot.get_land_type_display()} land."
+                )
+        
         method = self.METHOD_SLUG_MAP.get(selected_method, selected_method)
         valid_methods = {choice[0] for choice in PaymentRequest.Method.choices}
         if method not in valid_methods:
@@ -427,6 +444,14 @@ class PaymentRequestForm(forms.ModelForm):
                     self.add_error("amount", "Amount must be greater than zero.")
                 cleaned_data["amount"] = normalized_amount
                 self.instance.amount = normalized_amount
+
+        payment_amount = cleaned_data.get("amount")
+        if method in {PaymentRequest.Method.MPESA_STK, PaymentRequest.Method.MPESA_PAYBILL}:
+            if not self.mpesa_allowed_for_amount(payment_amount):
+                self.add_error(
+                    "method",
+                    "M-Pesa is only available for payments up to KES 50,000. Please use bank transfer, card, or wallet.",
+                )
 
         method_requirements = {
             PaymentRequest.Method.MPESA_STK: ["phone_number"],
@@ -626,6 +651,14 @@ class PaymentClosingStepForm(forms.ModelForm):
         label="Seller / landowner digitally confirms this agreement",
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
     )
+    
+    not_applicable = forms.BooleanField(
+        required=False,
+        label="Not Applicable",
+        widget=forms.CheckboxInput(
+            attrs={"class": "form-check-input"}
+        ),
+    )
 
     class Meta:
         model = PaymentClosingStep
@@ -693,6 +726,18 @@ class PaymentClosingStepForm(forms.ModelForm):
                 "submitter_role",
                 "submitter_organisation",
             },
+            
+            "consents_clearances": {
+                "status",
+                "notes",
+                "document",
+                "consent_reference_number",
+                "submitter_name",
+                "submitter_phone",
+                "submitter_role",
+                "submitter_organisation",
+            },
+            
             "stamp_duty": {
                 "status",
                 "notes",
@@ -727,6 +772,7 @@ class PaymentClosingStepForm(forms.ModelForm):
             "payment_security": {"status", "notes", "document"},
             "handover": {"status", "notes", "document"},
         }
+        
         if step:
             metadata = dict(step.payment.metadata or {})
             actor_is_buyer = self.user and self.user == step.payment.buyer
@@ -816,6 +862,16 @@ class PaymentClosingStepForm(forms.ModelForm):
             for name in list(self.fields.keys()):
                 if name not in allowed_fields:
                     self.fields.pop(name)
+            
+            consent_metadata = (
+                metadata.get("consent_clearances") or {}
+            )
+
+            if step.code == "consents_clearances":
+                self.fields["not_applicable"].initial = (
+                    consent_metadata.get(step.code, {})
+                    .get("not_applicable", False)
+                )
 
     def clean(self):
         cleaned_data = super().clean()
@@ -884,21 +940,111 @@ class PaymentClosingStepForm(forms.ModelForm):
                     self.add_error("seller_accepts_agreement", "The landowner must digitally confirm the lease agreement.")
 
         if step.code == "lcb_consent":
+            required_fields = [
+                ("submitter_name", "lawyer / officer name"),
+                ("submitter_phone", "lawyer / officer phone"),
+                ("submitter_role", "lawyer / officer role"),
+                ("submitter_organisation", "law firm / office"),
+                ("meeting_date", "LCB meeting date"),
+                ("consent_reference_number", "LCB consent reference number"),
+                ("document", "LCB consent document"),
+            ]
+
+            for field_name, label in required_fields:
+                if not cleaned_data.get(field_name):
+                    self.add_error(field_name, f"Enter the {label} before completing this step.")
+
+            if not (cleaned_data.get("document") or step.document):
+                self.add_error("document", "Upload the LCB consent documents before completing this step.")
+
+            if not cleaned_data.get("meeting_date"):
+                self.add_error("meeting_date", "Enter the Land Control Board meeting date.")
+
+            if not cleaned_data.get("consent_reference_number"):
+                self.add_error("consent_reference_number", "Enter the Land Control Board consent number.")
+
+
+        if step.code == "consents_clearances":
+            transaction_type = getattr(step.payment, "transaction_type", None)
+            is_leasehold = transaction_type == PaymentRequest.TransactionType.LEASE
+
+            required_submitter_fields = [
+                ("submitter_name", "lawyer / officer name"),
+                ("submitter_phone", "lawyer / officer phone"),
+                ("submitter_role", "lawyer / officer role"),
+                ("submitter_organisation", "law firm / office"),
+            ]
+
+            for field_name, label in required_submitter_fields:
+                if not cleaned_data.get(field_name):
+                    self.add_error(field_name, f"Enter the {label} before completing this step.")
+
+            # document requirement (conditional for freehold non-agricultural)
+            document = cleaned_data.get("document") or step.document
+            notes = cleaned_data.get("notes")
+
+            if is_leasehold:
+                # leasehold MUST have consent reference number
+                if not cleaned_data.get("consent_reference_number"):
+                    self.add_error(
+                        "consent_reference_number",
+                        "Enter the consent reference number for leasehold clearance."
+                    )
+
+                if not document:
+                    self.add_error(
+                        "document",
+                        "Upload the consent or clearance document for leasehold transactions."
+                    )
+
+            else:
+                # freehold non-agricultural:
+                # document OR notes == "N/A"
+                if not document and notes != "N/A":
+                    self.add_error(
+                        "document",
+                        "Upload a clearance document or set notes to 'N/A' if not applicable."
+                    )
+
+            # notes always required
+            if not notes:
+                self.add_error(
+                    "notes",
+                    "Provide clearance details or mark as 'N/A' if not applicable."
+                )
+        
+               
+        if step.code == "consents_clearances":
             for field_name, label in [
                 ("submitter_name", "lawyer / officer name"),
                 ("submitter_phone", "lawyer / officer phone"),
                 ("submitter_role", "lawyer / officer role"),
                 ("submitter_organisation", "law firm / office"),
+                ("consent_reference_number", "consent or clearance reference number"),
+                ("document", "consent or clearance document"),
+                ("notes", "consent details"),
             ]:
                 if not cleaned_data.get(field_name):
-                    self.add_error(field_name, f"Enter the {label} before completing this step.")
-            if not (cleaned_data.get("document") or step.document):
-                self.add_error("document", "Upload the LCB / spousal consent pack before completing this step.")
-            if not cleaned_data.get("consent_reference_number"):
-                self.add_error("consent_reference_number", "Enter the consent number before completing this step.")
-            if not cleaned_data.get("meeting_date"):
-                self.add_error("meeting_date", "Enter the LCB meeting date before completing this step.")
+                    self.add_error(
+                        field_name,
+                        f"Enter the {label} before completing this step."
+                    )
 
+            na_selected = cleaned_data.get("not_applicable", False)
+
+            if not na_selected:
+                if not (cleaned_data.get("document") or step.document):
+                    self.add_error(
+                        "document",
+                        "Upload the consent or clearance document before completing this step."
+                    )
+
+            if not cleaned_data.get("notes"):
+                self.add_error(
+                    "notes",
+                    "Provide consent details or explain why the step is not applicable."
+                )
+        
         if step.code == "stamp_duty":
             for field_name, label in [
                 ("submitter_name", "valuer / tax handler name"),
@@ -990,6 +1136,21 @@ class PaymentClosingStepForm(forms.ModelForm):
             }
             metadata["agreement_acceptance"] = agreement_acceptance
             metadata["agreement_participants"] = agreement_participants
+        
+        consent_metadata = dict(
+            metadata.get("consent_clearances") or {}
+        )
+
+        if "not_applicable" in self.cleaned_data:
+            consent_metadata[instance.code] = {
+                "not_applicable": self.cleaned_data.get(
+                    "not_applicable",
+                    False
+                )
+            }
+
+        metadata["consent_clearances"] = consent_metadata
+        
         payment.metadata = metadata
         if commit:
             payment.save(update_fields=["metadata", "updated_at"])
