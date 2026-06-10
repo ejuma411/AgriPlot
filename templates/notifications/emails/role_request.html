@@ -1,0 +1,45 @@
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ admin.get_full_name|default:admin.username|default:"Support Administrator" }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>A new <strong>{{ role }}</strong> role request has been submitted and requires review.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong>📋 Request Summary:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>User:</strong> {{ user.get_full_name|default:user.username|default:user.email|default:"Unknown" }}</li>
+        <li><strong>Email:</strong> {{ user.email|default:"Not provided" }}</li>
+        <li><strong>Requested role:</strong> {{ role }}</li>
+    </ul>
+</div>
+
+{% if details %}
+<div class="action-list">
+    <strong>📝 Submitted Details:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        {% for key, value in details.items %}
+        <li><strong>{{ key|title }}:</strong> {{ value }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ review_url }}" class="button">🛠 Review Request</a>
+</div>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+{% block feature_grid %}{% endblock %}
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Admin Review:</strong> Please process role requests through the admin workflow.
+</div>
+{% endblock %}

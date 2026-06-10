@@ -397,7 +397,7 @@ def staff_dashboard(request):
                 "subtitle": interest.activity_label,
                 "meta": interest.buyer_name,
                 "status": interest.get_status_display(),
-                "url": None,
+                "url": reverse("listings:plot_detail", args=[interest.plot.id]),
             }
             for interest in recent_interests[:5]
         ]

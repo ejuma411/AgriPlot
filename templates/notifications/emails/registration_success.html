@@ -1,0 +1,48 @@
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Welcome to <strong>AgriPlot Connect</strong>. Your registration was successful.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong>🎉 Account Ready</strong>
+    <p style="margin-top: 8px; margin-bottom: 0;">Your profile has been created and you can now begin using the platform.</p>
+</div>
+
+<div class="action-list">
+    <strong>📌 Next steps:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>Complete your profile details</li>
+        <li>Verify your email and phone number if prompted</li>
+        <li>Browse plots or prepare your own listing</li>
+        <li>Reach out to support if you need help getting started</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ profile_url }}" class="button">👤 Complete Profile</a>
+</div>
+
+{% if browse_url %}
+<div class="button-container" style="margin-top: 8px;">
+    <a href="{{ browse_url }}" class="button" style="background: #6c757d;">🔍 Browse Plots</a>
+</div>
+{% endif %}
+
+<p>Thanks for joining us.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+{% block feature_grid %}{% endblock %}
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Welcome Aboard:</strong> Your AgriPlot account is ready for use.
+</div>
+{% endblock %}

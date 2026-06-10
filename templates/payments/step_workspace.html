@@ -637,8 +637,25 @@
                             <div class="agreement-section">
                                 <div class="agreement-section-header">
                                     <div>
-                                        <h4>2. Two-party confirmation</h4>
-                                        <p>Each side confirms the lease agreement from their own account.</p>
+                                        <h4>
+                                            2.
+                                            {% if closing_step_form.agreement_role == "seller" %}
+                                                Landowner confirmation
+                                            {% elif closing_step_form.agreement_role == "buyer" %}
+                                                Tenant confirmation
+                                            {% else %}
+                                                Two-party confirmation
+                                            {% endif %}
+                                        </h4>
+                                        <p>
+                                            {% if closing_step_form.agreement_role == "seller" %}
+                                                The landowner confirms the lease agreement from their own account.
+                                            {% elif closing_step_form.agreement_role == "buyer" %}
+                                                The tenant confirms the lease agreement from their own account.
+                                            {% else %}
+                                                Each side confirms the lease agreement from their own account.
+                                            {% endif %}
+                                        </p>
                                     </div>
                                 </div>
                                 <div class="agreement-field-grid">

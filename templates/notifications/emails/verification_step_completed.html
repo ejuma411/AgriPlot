@@ -1,0 +1,51 @@
+{% extends 'notifications/emails/base_email.html' %}
+{% load humanize %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if status == 'approved' %}
+<p>Your plot verification step has been completed successfully.</p>
+{% else %}
+<p>Your plot verification step has been updated and needs your attention.</p>
+{% endif %}
+
+<div class="{% if status == 'approved' %}info-box{% else %}warning-box{% endif %}" style="{% if status == 'approved' %}background: #e8f5e9; border-left-color: #069132;{% endif %}">
+    <strong style="font-size: 16px;">📋 {{ task.get_verification_type_display|default:task.verification_type|default:"Verification Step" }}</strong>
+    <ul style="margin-top: 12px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Plot:</strong> {{ plot.title }}</li>
+        <li><strong>Location:</strong> {{ plot.county|default:plot.location|default:"Not specified" }}</li>
+        <li><strong>Status:</strong> {{ status|default:"updated"|title }}</li>
+        <li><strong>Reviewed by:</strong> {{ completed_by.get_full_name|default:completed_by.username|default:"AgriPlot" }}</li>
+    </ul>
+</div>
+
+{% if task and task.notes %}
+<div class="action-list">
+    <strong>📝 Reviewer Notes:</strong>
+    <div style="background: #f9f9f9; padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 14px; line-height: 1.5;">
+        {{ task.notes|linebreaks }}
+    </div>
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ plot_url }}" class="button">📊 View Plot</a>
+</div>
+
+<p>Thank you for keeping the AgriPlot verification workflow moving.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+{% block feature_grid %}{% endblock %}
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Verification Tracking:</strong> Open your dashboard to review the full verification timeline and any next actions.
+</div>
+{% endblock %}

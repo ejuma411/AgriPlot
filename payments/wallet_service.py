@@ -221,7 +221,7 @@ class WalletService:
             phone_number=checkout_phone,
             title=f"Wallet Deposit - {user.username}",
             description=f"Deposit KES {amount:,.2f} into the AgriPlot Wallet",
-            transaction_type=PaymentRequest.TransactionType.SERVICE,
+            transaction_type=PaymentRequest.TransactionType.PURCHASE,
             category=PaymentRequest.Category.SERVICE_FEE,
             method=PaymentRequest.Method.MPESA_STK,
             status=PaymentRequest.Status.PENDING,

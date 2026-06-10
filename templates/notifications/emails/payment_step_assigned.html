@@ -1,0 +1,59 @@
+{% extends 'notifications/emails/base_email.html' %}
+{% load custom_filters %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user|display_name:"there" }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>The transaction for <strong>"{{ payment.title }}"</strong> has progressed to the next stage.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong style="font-size: 16px;">📋 Current Step: {{ step.display_title }}</strong>
+    <ul style="margin-top: 12px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Plot:</strong> {{ payment.plot.title }}</li>
+        <li><strong>Transaction Reference:</strong> {{ payment.internal_reference }}</li>
+        <li><strong>Responsible Party:</strong> {{ step.responsible_party_label }}</li>
+        <li><strong>Status:</strong> Active - Requires action</li>
+    </ul>
+</div>
+
+<div class="action-list">
+    <strong>📌 What You Need to Do:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>Review the requirements for this step</li>
+        <li>Upload any required documentation</li>
+        <li>Confirm completion when ready</li>
+        <li>Contact the other party if you have questions</li>
+    </ul>
+</div>
+
+{% if step.action_where %}
+<div class="info-box" style="background: #e2e3e5; border-left-color: #6c757d;">
+    <strong>ℹ️ Step Guidance:</strong>
+    <p style="margin-top: 8px; margin-bottom: 0;">{{ step.action_where }}</p>
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ payment_url }}" class="button">📊 View Transaction Workspace</a>
+</div>
+
+<p>You can track the progress of this transaction from your dashboard. All steps must be completed before the transaction can be finalized.</p>
+
+<p>Thank you for using <strong>AgriPlot Connect</strong> — Kenya's trusted agricultural land marketplace.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Transaction Timeline:</strong> Please complete this step promptly to avoid delays in the transaction process.
+</div>
+{% endblock %}

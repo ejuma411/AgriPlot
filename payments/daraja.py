@@ -91,12 +91,13 @@ def _access_token():
     if cached_token:
         return cached_token
 
+    base_url = _base_url()
     auth = base64.b64encode(
         f"{settings.MPESA_CONSUMER_KEY}:{settings.MPESA_CONSUMER_SECRET}".encode("utf-8")
     ).decode("utf-8")
     response = _request_with_retry(
         "get",
-        f"{_base_url()}/oauth/v1/generate?grant_type=client_credentials",
+        f"{base_url}/oauth/v1/generate?grant_type=client_credentials",
         headers={"Authorization": f"Basic {auth}"},
         timeout=(5, 12),
     )
@@ -109,7 +110,21 @@ def _access_token():
             or data.get("raw")
             or "Unable to authenticate with Daraja."
         )
-        logger.error("Daraja auth failed: %s", message)
+        if response.status_code in {401, 403} and message == "Unable to authenticate with Daraja.":
+            env_hint = (
+                "sandbox" if settings.MPESA_ENVIRONMENT != "production" else "production"
+            )
+            message = (
+                f"Daraja rejected the {env_hint} access token request (HTTP {response.status_code}). "
+                "Check that the M-Pesa consumer key and secret match the selected Daraja environment."
+            )
+        logger.error(
+            "Daraja auth failed (env=%s, url=%s, status=%s): %s",
+            settings.MPESA_ENVIRONMENT,
+            base_url,
+            response.status_code,
+            message,
+        )
         raise DarajaError(message)
     cache.set(TOKEN_CACHE_KEY, token, TOKEN_TTL_SECONDS)
     return token

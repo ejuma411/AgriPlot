@@ -417,13 +417,15 @@ def plot_detail(request, id):
     user_waitlist_entry = None
     lease_waitlist = []
     visible_transfer_agreements = []
-    if request.user.is_authenticated and not is_owner:
-        UserPlotView.record_view(request.user, plot)
+    if request.user.is_authenticated:
+        if not is_owner:
+            UserPlotView.record_view(request.user, plot)
+
         from payments.models import PaymentRequest
 
-        current_buyer_deal = (
+        active_payment_deal = (
             PaymentRequest.objects.filter(
-                buyer=request.user,
+                Q(buyer=request.user) | Q(seller=request.user),
                 plot=plot,
                 transaction_type__in=[
                     PaymentRequest.TransactionType.PURCHASE,
@@ -441,8 +443,9 @@ def plot_detail(request, id):
             .order_by("-created_at")
             .first()
         )
-        if current_buyer_deal:
-            current_buyer_deal.ensure_closing_steps()
+        if active_payment_deal:
+            active_payment_deal.ensure_closing_steps()
+            current_buyer_deal = active_payment_deal
 
     from payments.models import LeaseWaitlistEntry, PaymentRequest
 

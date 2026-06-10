@@ -739,6 +739,21 @@ STEP_PAYMENT_CATEGORY_MAP = {
 class PaymentFlowOverviewView(TemplateView):
     template_name = "payments/flow_overview.html"
 
+    def get_selected_transaction_type(self, plot):
+        """Get transaction type based on plot listing type"""
+        if not plot:
+            return 'lease'  # Default
+        
+        if plot.listing_type == "sale":
+            return 'purchase'
+        if plot.listing_type == "lease":
+            return 'lease'
+        if plot.listing_type == "both":
+            # Default to lease for 'both' plots
+            return 'lease'
+        
+        return 'lease'
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context.update(_journey_context())
@@ -751,10 +766,14 @@ class PaymentFlowOverviewView(TemplateView):
         current_stage = None
         current_stage_label = None
         current_stage_message = None
+        selected_transaction_type = 'lease'  # Default
         
         if plot_id:
             try:
                 plot = Plot.objects.select_related("landowner__user", "agent__user").get(pk=plot_id)
+                
+                # Get the transaction type based on plot
+                selected_transaction_type = self.get_selected_transaction_type(plot)
                 
                 # Get the current payment stage based on existing payments
                 from payments.models import PaymentRequest
@@ -762,39 +781,60 @@ class PaymentFlowOverviewView(TemplateView):
                 # Check existing payments for this plot and user
                 existing_payments = PaymentRequest.objects.filter(
                     plot=plot,
-                    user=self.request.user
+                    buyer=self.request.user
                 ).order_by('-created_at')
                 
                 # Determine which stage is next
-                if not existing_payments.filter(category=PaymentRequest.Category.RESERVATION_DEPOSIT).exists():
-                    current_stage = 'reservation_deposit'
-                    current_stage_label = 'Reservation Deposit'
-                    current_stage_message = 'Pay the reservation fee to secure this plot for due diligence.'
-                    payment_amount = PaymentRequestForm.calculate_amount(plot, 'purchase', PaymentRequest.Category.RESERVATION_DEPOSIT)
+                if not existing_payments.filter(category=PaymentRequest.Category.COMMITMENT_FEE).exists():
+                    current_stage = 'commitment_fee'
+                    current_stage_label = 'Commitment / Verification Fee'
+                    current_stage_message = 'Pay the commitment fee to lock the plot and start due diligence.'
+                    payment_amount = PaymentRequestForm.calculate_amount(
+                        plot, 
+                        selected_transaction_type, 
+                        PaymentRequest.Category.COMMITMENT_FEE
+                    )
                     
                 elif not existing_payments.filter(category=PaymentRequest.Category.AGREEMENT_DEPOSIT).exists():
                     current_stage = 'agreement_deposit'
                     current_stage_label = 'Agreement Deposit (10%)'
                     current_stage_message = 'Pay 10% deposit to proceed with the sale agreement.'
-                    payment_amount = PaymentRequestForm.calculate_amount(plot, 'purchase', PaymentRequest.Category.AGREEMENT_DEPOSIT)
+                    payment_amount = PaymentRequestForm.calculate_amount(
+                        plot, 
+                        selected_transaction_type, 
+                        PaymentRequest.Category.AGREEMENT_DEPOSIT
+                    )
                     
                 elif not existing_payments.filter(category=PaymentRequest.Category.COMPLETION_BALANCE).exists():
                     current_stage = 'completion_balance'
                     current_stage_label = 'Completion Balance'
                     current_stage_message = 'Final payment before transfer of ownership.'
-                    payment_amount = PaymentRequestForm.calculate_amount(plot, 'purchase', PaymentRequest.Category.COMPLETION_BALANCE)
+                    payment_amount = PaymentRequestForm.calculate_amount(
+                        plot, 
+                        selected_transaction_type, 
+                        PaymentRequest.Category.COMPLETION_BALANCE
+                    )
                     
                 else:
-                    # All payments completed
                     current_stage_label = 'Completed'
                     current_stage_message = 'All payments for this transaction have been completed.'
                     payment_amount = Decimal('0.00')
                     
-            except (Plot.DoesNotExist, ValueError, TypeError):
+            except (Plot.DoesNotExist, ValueError, TypeError) as e:
                 plot = None
                 payment_amount = None
         
+        # Flag to indicate if plot is available for both
+        if plot:
+            context["is_both_listing"] = plot.listing_type == "both"
+            context["transaction_type_display"] = (
+                "Lease (Purchase option also available)" 
+                if plot.listing_type == "both" 
+                else ("Purchase" if plot.listing_type == "sale" else "Lease")
+            )
+            
         context["selected_plot"] = plot
+        context["selected_transaction_type"] = selected_transaction_type  # ADD THIS LINE
         context["payment_amount"] = payment_amount
         context["current_stage"] = current_stage
         context["current_payment_stage_label"] = current_stage_label
@@ -803,8 +843,7 @@ class PaymentFlowOverviewView(TemplateView):
             f"{reverse('payments:create_request')}?plot={plot.pk}" if plot else reverse("payments:create_request")
         )
         return context
-
-
+    
 class PaymentDashboardView(ListView):
     template_name = "accounts/dashboard/dashboard.html"
     model = PaymentRequest
@@ -913,15 +952,17 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             if selected_plot.listing_type == "lease":
                 return PaymentRequest.TransactionType.LEASE
             if selected_plot.listing_type == "both":
-                # Respect what the user chose; fall back to PURCHASE only if not specified
-                if requested_type == PaymentRequest.TransactionType.LEASE:
-                    return PaymentRequest.TransactionType.LEASE
-                return PaymentRequest.TransactionType.PURCHASE
+                # For 'both' plots, default to LEASE (tenant-first approach)
+                if requested_type == PaymentRequest.TransactionType.PURCHASE:
+                    return PaymentRequest.TransactionType.PURCHASE
+                # Default to LEASE for 'both' plots
+                return PaymentRequest.TransactionType.LEASE
         
+        # Fallback
         if requested_type in {PaymentRequest.TransactionType.PURCHASE, PaymentRequest.TransactionType.LEASE}:
             return requested_type
-        return PaymentRequest.TransactionType.PURCHASE
-
+        return PaymentRequest.TransactionType.LEASE  # Change default from PURCHASE to LEASE
+        
     def get_requested_workflow_root(self):
         workflow_root_id = self.request.GET.get("workflow_root_id") or self.request.POST.get("workflow_root_id")
         if not workflow_root_id:
@@ -940,6 +981,32 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         ):
             return active_deal.lease_security_deposit or active_deal.amount
         return None
+
+    def build_payment_stage_cards(self, transaction_type, checkout_amounts):
+        amount_bucket = checkout_amounts.get(transaction_type, {})
+        return [
+            {
+                "code": "commitment_fee",
+                "step": "1",
+                "title": "Commitment",
+                "subtitle": "Fee",
+                "amount": amount_bucket.get("commitment_fee", ""),
+            },
+            {
+                "code": "agreement_deposit",
+                "step": "2",
+                "title": "Agreement",
+                "subtitle": "Deposit",
+                "amount": amount_bucket.get("agreement_deposit", ""),
+            },
+            {
+                "code": "completion_balance",
+                "step": "3",
+                "title": "Completion",
+                "subtitle": "Balance",
+                "amount": amount_bucket.get("completion_balance", ""),
+            },
+        ]
 
     def get_payment_method_from_request(self):
         """Get payment method from POST data"""
@@ -1017,6 +1084,8 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         kwargs = super().get_form_kwargs()
         kwargs["user"] = self.request.user
         kwargs["selected_plot"] = self.get_selected_plot()
+        kwargs.setdefault("initial", {})
+        kwargs["initial"]["transaction_type"] = self.get_selected_transaction_type()
         stage_gate = self.get_stage_gate()
         kwargs["forced_category"] = stage_gate["forced_category"]
         kwargs["active_deal"] = stage_gate["active_deal"]
@@ -1027,6 +1096,8 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context["method_cards"] = PAYMENT_METHOD_CARDS
         context["selected_plot"] = self.get_selected_plot()
+        context["selected_transaction_type"] = self.get_selected_transaction_type()
+        context["can_set_lease_terms"] = getattr(context["form"], "allow_lease_term_entry", False)
         stage_gate = self.get_stage_gate()
         context["stage_gate"] = stage_gate
         context["forced_category"] = stage_gate["forced_category"]
@@ -1125,6 +1196,10 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                 ) or ""),
             },
         }
+        context["payment_stage_cards"] = self.build_payment_stage_cards(
+            context["selected_transaction_type"],
+            context["checkout_amounts"],
+        )
         bound_form = context.get("form")
         selected_method = ""
         if bound_form and getattr(bound_form, "is_bound", False):

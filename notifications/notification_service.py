@@ -125,17 +125,33 @@ class NotificationService:
             from notifications.tasks import _resolve_phone, _send_email_now, _send_sms_now
 
             if getattr(user, "email", ""):
-                _send_email_now(
-                    recipient=user.email,
-                    subject=email_subject or subject,
-                    message=message,
-                    template=template,
-                    context=context,
-                )
+                try:
+                    _send_email_now(
+                        recipient=user.email,
+                        subject=email_subject or subject,
+                        message=message,
+                        template=template,
+                        context=context,
+                    )
+                except Exception as exc:
+                    logger.error(
+                        "Immediate email fallback failed for user %s: %s",
+                        getattr(user, "pk", None),
+                        exc,
+                        exc_info=True,
+                    )
 
             phone = _resolve_phone(user)
             if phone:
-                _send_sms_now(phone, message)
+                try:
+                    _send_sms_now(phone, message)
+                except Exception as exc:
+                    logger.error(
+                        "Immediate SMS fallback failed for user %s: %s",
+                        getattr(user, "pk", None),
+                        exc,
+                        exc_info=True,
+                    )
         except Exception as exc:
             logger.error("Immediate notification fallback failed for user %s: %s", getattr(user, "pk", None), exc)
 
@@ -328,7 +344,7 @@ class NotificationService:
             return {"success": False, "error": str(exc)}
 
     # ------------------------------------------------------------------
-    # Domain-specific notification methods
+    # Domain-specific notification methods (UPDATED with templates)
     # ------------------------------------------------------------------
 
     @staticmethod
@@ -351,23 +367,24 @@ class NotificationService:
             task=task,
         )
 
-        # Deferred email with full template context
+        # Deferred email with full template context - UPDATED TEMPLATE
         if task.assigned_to.email:
             NotificationService.send_email(
                 recipient=task.assigned_to.email,
                 subject=title,
-                template="task_assigned",
+                template="notifications/emails/task_assigned",
                 context={
                     "user": task.assigned_to,
                     "task": task,
                     "plot": task.plot,
                     "assigned_by": assigned_by,
-                    "login_url": settings.SITE_URL + reverse("verification:my_tasks"),
+                    "task_url": settings.SITE_URL + reverse("verification:my_tasks"),
+                    "login_url": settings.SITE_URL + reverse("login"),
                     "site_name": "AgriPlot Connect",
                     "task_type": task_type,
-                    "assigned_at": timezone.now().strftime("%Y-%m-%d %H:%M"),
-                    "confirm_by": task.confirm_by,
-                    "deadline_at": task.deadline_at,
+                    "assigned_at": timezone.now(),
+                    "confirm_by": getattr(task, "confirm_by", None),
+                    "deadline_at": getattr(task, "deadline_at", None),
                 },
             )
 
@@ -420,7 +437,7 @@ class NotificationService:
             NotificationService.send_email(
                 recipient=plot_owner.email,
                 subject=step_title,
-                template="verification_step_update",
+                template="notifications/emails/verification_step_completed",
                 context={
                     "user": plot_owner,
                     "plot": task.plot,
@@ -469,10 +486,15 @@ class NotificationService:
                 NotificationService.send_email(
                     recipient=recipient.email,
                     subject=title,
-                    template="plain",
-                    context={"message": message},
+                    template="notifications/emails/payment_step_assigned",
+                    context={
+                        "user": recipient,
+                        "payment": payment,
+                        "step": step,
+                        "payment_url": settings.SITE_URL + reverse("payments:detail", args=[payment.pk]),
+                    },
                 )
-
+                
     @staticmethod
     def notify_payment_step_updated(payment, step, previous_status, actor=None):
         actor_name = actor.username if actor else "AgriPlot"
@@ -494,9 +516,18 @@ class NotificationService:
                 NotificationService.send_email(
                     recipient=recipient.email,
                     subject=title,
-                    template="plain",
-                    context={"message": message},
+                    template="notifications/emails/payment_step_updated",
+                    context={
+                        "user": recipient,
+                        "payment": payment,
+                        "step": step,
+                        "previous_status": previous_status.replace('_', ' ').title(),
+                        "actor_name": actor_name,
+                        "updated_at": timezone.now(),
+                        "payment_url": settings.SITE_URL + reverse("payments:detail", args=[payment.pk]),
+                    },
                 )
+
 
     @staticmethod
     def notify_plot_submitted(plot):
@@ -515,7 +546,7 @@ class NotificationService:
             NotificationService.send_email(
                 recipient=admin.email,
                 subject=title,
-                template="new_plot_submitted",
+                template="notifications/emails/new_plot_submitted",
                 context={
                     "user": admin,
                     "user_username": admin.username,
@@ -535,7 +566,7 @@ class NotificationService:
         NotificationService.send_email(
             recipient=submitted_by.email,
             subject=f"Plot Submitted: {plot.title}",
-            template="plot_status_update",
+            template="notifications/emails/plot_submitted_confirmation",
             context={
                 "user": submitted_by,
                 "plot": plot,
@@ -549,7 +580,7 @@ class NotificationService:
     def notify_changes_requested(plot, requested_by, notes):
         plot_owner = plot.agent.user if plot.agent else plot.landowner.user
         title = f"Changes Requested: {plot.title}"
-        message = f"The verification team has requested changes for your plot. Notes: {notes}"
+        message = f"The verification team has requested changes for your plot."
 
         NotificationService.notify_user(
             user=plot_owner,
@@ -561,13 +592,14 @@ class NotificationService:
         NotificationService.send_email(
             recipient=plot_owner.email,
             subject=title,
-            template="changes_requested",
+            template="notifications/emails/plot_revision_request",
             context={
                 "user": plot_owner,
                 "plot": plot,
                 "requested_by": requested_by,
                 "notes": notes,
                 "edit_url": settings.SITE_URL + reverse("listings:edit_plot", args=[plot.id]),
+                "support_url": settings.SITE_URL + reverse("listings:contact_support"),
             },
         )
 
@@ -595,7 +627,7 @@ class NotificationService:
             NotificationService.send_email(
                 recipient=plot_owner.email,
                 subject=title,
-                template="plot_status_update",
+                template="notifications/emails/plot_verification_status",
                 context={
                     "user": plot_owner,
                     "plot": plot,
@@ -632,7 +664,7 @@ class NotificationService:
         NotificationService.send_email(
             recipient=plot_owner.email,
             subject=title,
-            template="plot_verification_status",
+            template="notifications/emails/plot_verification_complete",
             context=context,
         )
 
@@ -653,8 +685,9 @@ class NotificationService:
                 NotificationService.send_email(
                     recipient=admin.email,
                     subject=f"No {role_label} Available for {county}",
-                    template="no_officer_available",
+                    template="notifications/emails/no_officer_available",
                     context={
+                        "admin_name": admin.get_full_name() or admin.username,
                         "admin": admin,
                         "plot": plot,
                         "role_label": role_label,
@@ -681,7 +714,7 @@ class NotificationService:
                 NotificationService.send_email(
                     recipient=admin.email,
                     subject="Task Confirmation Expired",
-                    template="task_unconfirmed_escalation",
+                    template="notifications/emails/task_confirmation_expired",
                     context={
                         "admin": admin,
                         "task": task,
@@ -703,7 +736,7 @@ class NotificationService:
         NotificationService.send_email(
             recipient=user.email,
             subject=user_title,
-            template="role_request_received",
+            template="notifications/emails/role_request_submitted",
             context={
                 "user": user,
                 "role": role,
@@ -722,7 +755,7 @@ class NotificationService:
                 NotificationService.send_email(
                     recipient=admin.email,
                     subject=f"New Role Request: {role}",
-                    template="role_request_admin",
+                    template="notifications/emails/role_request",
                     context={
                         "admin": admin,
                         "user": user,
@@ -738,15 +771,15 @@ class NotificationService:
         if approved:
             notification_type = "role_approved"
             title = f"Role Approved: {role}"
-            message = f"Your {role.lower()} role request has been approved."
-            template = "role_approved"
+            message = f"Congratulations! Your {role.lower()} role request has been approved."
+            template = "notifications/emails/role_approved"
         else:
             notification_type = "role_rejected"
             title = f"Role Rejected: {role}"
-            message = f"Your {role.lower()} role request has been rejected."
+            message = f"Your {role.lower()} role request has been reviewed and was not approved at this time."
             if reason:
-                message = f"{message} {reason}".strip()
-            template = "role_rejected"
+                message = f"{message} Reason: {reason}"
+            template = "notifications/emails/role_rejected"
 
         NotificationService.create_notification(
             user=user,
@@ -768,6 +801,7 @@ class NotificationService:
                     "details": details,
                     "login_url": settings.SITE_URL + reverse("login"),
                     "profile_url": settings.SITE_URL + reverse("listings:profile_management"),
+                    "support_url": settings.SITE_URL + reverse("listings:contact_support"),
                 },
             )
 
@@ -787,16 +821,86 @@ class NotificationService:
         NotificationService.send_email(
             recipient=user.email,
             subject=title,
-            template="account_verified",
+            template="notifications/emails/verification_success",
             context={
                 "user": user,
                 "verified_by": verified_by,
-                "login_url": settings.SITE_URL + reverse("listings:staff_dashboard"),
+                "login_url": settings.SITE_URL + reverse("login"),
+                "profile_url": settings.SITE_URL + reverse("listings:profile_management"),
+                "browse_url": settings.SITE_URL + reverse("listings:plot_list"),
+            },
+        )
+
+    @staticmethod
+    def send_otp_email(user, otp, purpose="login", expiry_minutes=10):
+        """Send OTP verification email."""
+        title = f"Your AgriPlot Verification Code"
+        NotificationService.send_email(
+            recipient=user.email,
+            subject=title,
+            template="notifications/emails/otp_verification",
+            context={
+                "user": user,
+                "display_name": user.get_full_name() or user.username,
+                "username": user.username,
+                "otp": otp,
+                "expiry_minutes": expiry_minutes,
+                "support_url": settings.SITE_URL + reverse("listings:contact_support"),
+            },
+        )
+
+    @staticmethod
+    def send_email_verification(user, verification_url, expiry_hours=24):
+        """Send email verification link."""
+        title = "Verify Your Email Address"
+        NotificationService.send_email(
+            recipient=user.email,
+            subject=title,
+            template="notifications/emails/email_verification_link",
+            context={
+                "user": user,
+                "username": user.username,
+                "verification_url": verification_url,
+                "expiry_hours": expiry_hours,
+                "dashboard_url": settings.SITE_URL + reverse("listings:dashboard_router"),
+                "browse_url": settings.SITE_URL + reverse("listings:plot_list"),
+                "support_url": settings.SITE_URL + reverse("listings:contact_support"),
+            },
+        )
+
+    @staticmethod
+    def send_welcome_email(user):
+        """Send welcome email after successful registration."""
+        title = "Welcome to AgriPlot Connect!"
+        NotificationService.send_email(
+            recipient=user.email,
+            subject=title,
+            template="notifications/emails/registration_success",
+            context={
+                "user": user,
+                "profile_url": settings.SITE_URL + reverse("listings:profile_management"),
+                "browse_url": settings.SITE_URL + reverse("listings:plot_list"),
+            },
+        )
+
+    @staticmethod
+    def send_password_reset_email(user, reset_link):
+        """Send password reset email."""
+        title = "Password Reset Request"
+        NotificationService.send_email(
+            recipient=user.email,
+            subject=title,
+            template="notifications/emails/password_reset_email",
+            context={
+                "user": user,
+                "reset_link": reset_link,
+                "protocol": settings.SITE_URL.split("://")[0] if "://" in settings.SITE_URL else "https",
+                "domain": settings.SITE_URL.split("://")[-1] if "://" in settings.SITE_URL else settings.SITE_URL,
             },
         )
 
     # ------------------------------------------------------------------
-    # Read helpers (unchanged)
+    # Read helpers
     # ------------------------------------------------------------------
 
     @staticmethod

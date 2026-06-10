@@ -1,0 +1,48 @@
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+{% if status == 'approved' %}
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132; text-align: center;">
+    <strong style="font-size: 20px;">✅ Plot Approved</strong>
+</div>
+<p>Your plot <strong>"{{ plot.title }}"</strong> has been approved and is now live on the marketplace.</p>
+{% else %}
+<div class="warning-box" style="text-align: center;">
+    <strong style="font-size: 20px;">❌ Plot Verification Closed</strong>
+</div>
+<p>Your plot <strong>"{{ plot.title }}"</strong> has been closed out of the verification workflow.</p>
+{% endif %}
+
+<div class="action-list">
+    <strong>📋 Summary:</strong>
+    <ul style="margin-top: 10px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Plot:</strong> {{ plot.title }}</li>
+        <li><strong>Location:</strong> {{ plot.county|default:plot.location|default:"Not specified" }}</li>
+        <li><strong>Completed by:</strong> {{ completed_by.get_full_name|default:completed_by.username|default:"AgriPlot" }}</li>
+        <li><strong>Status:</strong> {{ status|default:"completed"|title }}</li>
+        {% if notes %}
+        <li><strong>Notes:</strong> {{ notes }}</li>
+        {% endif %}
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ plot_url }}" class="button">👁️ View Plot</a>
+</div>
+
+<p>Thank you for using <strong>AgriPlot Connect</strong>.</p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+{% block feature_grid %}{% endblock %}
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Marketplace Update:</strong> You can monitor inquiries and activity from your dashboard.
+</div>
+{% endblock %}

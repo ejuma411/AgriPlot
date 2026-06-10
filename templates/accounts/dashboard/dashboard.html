@@ -3,6 +3,34 @@
 {% block title %}Dashboard - AgriPlot Connect{% endblock %}
 {% block meta_description %}AgriPlot Connect dashboard for listings, verification tasks, wallet activity, buyer interest, and admin operations.{% endblock %}
 
+{% block extra_css %}
+<style>
+    .workspace-status-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 84px;
+        padding: 0.35rem 0.8rem;
+        border-radius: 999px;
+        border: 1px solid rgba(47, 133, 90, 0.28);
+        background: #f4fbf7;
+        color: var(--ap-green-dark);
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+        text-decoration: none;
+        transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+    .workspace-status-button:hover,
+    .workspace-status-button:focus {
+        background: #e7f4ec;
+        color: var(--ap-green-dark);
+        box-shadow: 0 8px 18px rgba(47, 133, 90, 0.14);
+        transform: translateY(-1px);
+    }
+</style>
+{% endblock %}
+
 {% block full_width_content %}
 <main class="workspace-page">
     <section class="workspace-hero">
@@ -229,13 +257,15 @@
                     <div class="workspace-list">
                         {% for item in primary_queue %}
                             {% if item.url %}
-                                <a class="workspace-list-item" href="{{ item.url }}">
+                                <div class="workspace-list-item">
                                     <span>
                                         <strong>{{ item.title }}</strong>
                                         <span>{{ item.subtitle }}{% if item.meta %} · {{ item.meta }}{% endif %}</span>
                                     </span>
-                                    <span class="badge text-bg-light border">{{ item.status }}</span>
-                                </a>
+                                    <a class="workspace-status-button" href="{{ item.url }}" title="Open follow-up for {{ item.title }}">
+                                        {{ item.status }}
+                                    </a>
+                                </div>
                             {% else %}
                                 <div class="workspace-list-item">
                                     <span>

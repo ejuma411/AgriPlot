@@ -190,13 +190,23 @@ class PaymentRequestForm(forms.ModelForm):
         self.forced_amount = self.normalize_amount(forced_amount) if forced_amount not in {None, ""} else None
         self.allow_amount_override = False
         self.allow_due_at_override = user_is_finance_admin(user)
+        self.allow_lease_term_entry = bool(
+            user_is_finance_admin(user)
+            or hasattr(user, "agent")
+            or hasattr(user, "landownerprofile")
+        )
+        if not self.allow_lease_term_entry:
+            for field_name in ("lease_start_date", "lease_end_date"):
+                self.fields.pop(field_name, None)
         self.simple_mpesa_checkout = True
         self.fields["plot"].queryset = Plot.objects.order_by("title")
         self.fields["plot"].required = False
         self.fields["due_at"].required = False
         self.fields["phone_number"].required = False
-        self.fields["lease_start_date"].required = False
-        self.fields["lease_end_date"].required = False
+        if "lease_start_date" in self.fields:
+            self.fields["lease_start_date"].required = False
+        if "lease_end_date" in self.fields:
+            self.fields["lease_end_date"].required = False
         self.fields["intended_use"].required = False
         self.fields["lease_security_deposit"].required = False
         self.fields["notice_period_days"].required = False
@@ -252,7 +262,7 @@ class PaymentRequestForm(forms.ModelForm):
                 "subject_to_sale": self.active_deal.subject_to_sale,
             }
             for field_name, value in lease_initials.items():
-                if value not in {None, ""}:
+                if field_name in self.fields and value not in {None, ""}:
                     self.fields[field_name].initial = value
         if selected_plot is not None:
             self.fields["plot"].initial = selected_plot
@@ -482,6 +492,10 @@ class PaymentRequestForm(forms.ModelForm):
             cleaned_data["phone_number"] = validate_kenyan_phone(cleaned_data["phone_number"])
             self.instance.phone_number = cleaned_data["phone_number"]
 
+        metadata = dict(self.instance.metadata or {})
+        metadata["lease_terms_required"] = self.allow_lease_term_entry
+        self.instance.metadata = metadata
+
         computed_due_at = self.calculate_due_at(
             transaction_type,
             category,
@@ -515,16 +529,30 @@ class PaymentRequestForm(forms.ModelForm):
                     if cleaned_data.get(field_name) in {None, ""} and value not in {None, ""}:
                         cleaned_data[field_name] = value
                         setattr(self.instance, field_name, value)
-            if not cleaned_data.get("intended_use"):
-                self.add_error("intended_use", "Tell AgriPlot how the tenant will use the land.")
-            if not cleaned_data.get("lease_security_deposit") and plot:
-                lease_base = self.lease_base_amount(plot)
-                if lease_base:
-                    cleaned_data["lease_security_deposit"] = lease_base
-                    self.instance.lease_security_deposit = lease_base
-            if plot and plot.listing_type == "both":
-                cleaned_data["subject_to_sale"] = True
-                self.instance.subject_to_sale = True
+            if self.allow_lease_term_entry:
+                if not cleaned_data.get("lease_start_date"):
+                    self.add_error("lease_start_date", "Lease start date is required for this lease checkout.")
+                if not cleaned_data.get("lease_end_date"):
+                    self.add_error("lease_end_date", "Lease end date is required for this lease checkout.")
+                if cleaned_data.get("lease_start_date") and cleaned_data.get("lease_end_date"):
+                    if cleaned_data["lease_end_date"] <= cleaned_data["lease_start_date"]:
+                        self.add_error(
+                            "lease_end_date",
+                            "Lease end date must be after the lease start date.",
+                        )
+                if not cleaned_data.get("intended_use"):
+                    self.add_error("intended_use", "Tell AgriPlot how the tenant will use the land.")
+                if not cleaned_data.get("lease_security_deposit") and plot:
+                    lease_base = self.lease_base_amount(plot)
+                    if lease_base:
+                        cleaned_data["lease_security_deposit"] = lease_base
+                        self.instance.lease_security_deposit = lease_base
+                if plot and plot.listing_type == "both":
+                    cleaned_data["subject_to_sale"] = True
+                    self.instance.subject_to_sale = True
+            else:
+                cleaned_data["lease_start_date"] = None
+                cleaned_data["lease_end_date"] = None
         self.instance.title = cleaned_data["title"]
         self.instance.description = cleaned_data["description"]
         self.instance.escrow_enabled = cleaned_data["escrow_enabled"]
@@ -732,6 +760,7 @@ class PaymentClosingStepForm(forms.ModelForm):
                 "notes",
                 "document",
                 "consent_reference_number",
+                "not_applicable",
                 "submitter_name",
                 "submitter_phone",
                 "submitter_role",
@@ -867,7 +896,7 @@ class PaymentClosingStepForm(forms.ModelForm):
                 metadata.get("consent_clearances") or {}
             )
 
-            if step.code == "consents_clearances":
+            if step.code == "consents_clearances" and "not_applicable" in self.fields:
                 self.fields["not_applicable"].initial = (
                     consent_metadata.get(step.code, {})
                     .get("not_applicable", False)

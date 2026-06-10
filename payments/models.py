@@ -24,7 +24,7 @@ class PaymentRequest(models.Model):
     class TransactionType(models.TextChoices):
         PURCHASE = "purchase", "Purchase"
         LEASE = "lease", "Lease"
-        SERVICE = "service", "Service"
+        BOTH = 'both', 'Purchase & Lease'
 
     class Category(models.TextChoices):
         COMMITMENT_FEE = "commitment_fee", "Commitment / Verification Fee"
@@ -105,7 +105,7 @@ class PaymentRequest(models.Model):
     amount = models.DecimalField(max_digits=12, decimal_places=2)
     currency = models.CharField(max_length=10, default="KES")
     transaction_type = models.CharField(
-        max_length=20, choices=TransactionType.choices, default=TransactionType.SERVICE
+        max_length=20, choices=TransactionType.choices, default=TransactionType.PURCHASE
     )
     category = models.CharField(
         max_length=40, choices=Category.choices, default=Category.COMMITMENT_FEE
@@ -152,16 +152,26 @@ class PaymentRequest(models.Model):
                 {"phone_number": "A phone number is required for mobile money payments."}
             )
         if self.transaction_type == self.TransactionType.LEASE:
-            if not self.lease_start_date or not self.lease_end_date:
+            lease_terms_required = bool((self.metadata or {}).get("lease_terms_required"))
+            if self.lease_start_date or self.lease_end_date:
+                if not self.lease_start_date:
+                    raise ValidationError(
+                        {"lease_start_date": "Lease start date is required when setting lease terms."}
+                    )
+                if not self.lease_end_date:
+                    raise ValidationError(
+                        {"lease_end_date": "Lease end date is required when setting lease terms."}
+                    )
+                if self.lease_end_date <= self.lease_start_date:
+                    raise ValidationError(
+                        {"lease_end_date": "Lease end date must be after the lease start date."}
+                    )
+            elif lease_terms_required:
                 raise ValidationError(
                     {
-                        "lease_start_date": "Lease start date is required for lease checkout.",
-                        "lease_end_date": "Lease end date is required for lease checkout.",
+                        "lease_start_date": "Lease start date is required for this lease checkout.",
+                        "lease_end_date": "Lease end date is required for this lease checkout.",
                     }
-                )
-            if self.lease_end_date <= self.lease_start_date:
-                raise ValidationError(
-                    {"lease_end_date": "Lease end date must be after the lease start date."}
                 )
             if self.notice_period_days < 30:
                 raise ValidationError(
@@ -191,8 +201,8 @@ class PaymentRequest(models.Model):
                         raise ValidationError(
                             (
                                 "This land is already leased from "
-                                f"{self.plot.lease_start_date:%b %d, %Y} to "
-                                f"{self.plot.lease_end_date:%b %d, %Y}."
+                                f"{self._format_lease_date(self.plot.lease_start_date)} to "
+                                f"{self._format_lease_date(self.plot.lease_end_date)}."
                             )
                         )
                 if self.plot.land_type == "agricultural" and self.notice_period_days < 90:
@@ -217,6 +227,11 @@ class PaymentRequest(models.Model):
     def _money_display(self, value):
         amount = self._money(value)
         return f"KSh {amount:,.2f}"
+
+    def _format_lease_date(self, value, fallback="to be confirmed"):
+        if not value:
+            return fallback
+        return value.strftime("%b %d, %Y")
 
     def _metadata_decimal(self, key, default):
         metadata = self.metadata or {}
@@ -505,6 +520,16 @@ class PaymentRequest(models.Model):
         if plot.lease_price_yearly:
             return cls.normalize_amount(Decimal(str(plot.lease_price_yearly)) / Decimal("12"))
         return None
+
+    @classmethod
+    def normalize_amount(cls, value):
+        """
+        Normalize a decimal amount to 2 decimal places.
+        """
+        from decimal import Decimal, ROUND_HALF_UP
+        if value is None:
+            return Decimal('0.00')
+        return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
     @classmethod
     def _calculate_due_diligence_pack_amount(cls, plot):
@@ -1134,11 +1159,15 @@ class PaymentRequest(models.Model):
     ]
        
     @classmethod
-    def closing_step_templates(cls, transaction_type):
+    def closing_step_templates(cls, transaction_type, plot=None):
         if transaction_type == cls.TransactionType.PURCHASE:
             return cls.PURCHASE_LEGAL_STEPS
         if transaction_type == cls.TransactionType.LEASE:
-            return cls.LEASE_LEGAL_STEPS
+            if plot and getattr(plot, "land_type", "") == "agricultural":
+                return cls.LEASE_LEGAL_STEPS_AGRICULTURAL
+            if plot and getattr(plot, "ownership_type", "") == "leasehold":
+                return cls.LEASE_LEGAL_STEPS_LEASEHOLD_NON_AG
+            return cls.LEASE_LEGAL_STEPS_FREEHOLD_NON_AG
         return []
 
     def add_event(self, event_type, message, actor=None):
@@ -1258,13 +1287,22 @@ class PaymentRequest(models.Model):
         anchor = self.workflow_anchor_payment
         if anchor.pk != self.pk:
             return anchor.ensure_closing_steps()
-        templates = self.closing_step_templates(self.transaction_type)
+        templates = self.closing_step_templates(self.transaction_type, self.plot)
         if not templates:
             return
 
         existing_codes = set(self.closing_steps.values_list("code", flat=True))
         to_create = []
-        for sequence, (code, title, document_name, guidance) in enumerate(templates, start=1):
+        for sequence, template in enumerate(templates, start=1):
+            if len(template) == 4:
+                code, title, document_name, guidance = template
+            elif len(template) == 3:
+                code, title, guidance = template
+                document_name = title
+            else:
+                raise ValueError(
+                    "Closing step templates must define either 3 or 4 values per step."
+                )
             if code in existing_codes:
                 continue
             to_create.append(
@@ -1347,7 +1385,7 @@ class PaymentRequest(models.Model):
             if self.lease_ready_for_use:
                 return (
                     f"All lease approvals are complete and the tenant may occupy the land from "
-                    f"{self.lease_start_date:%b %d, %Y} until {self.lease_end_date:%b %d, %Y}."
+                    f"{self._format_lease_date(self.lease_start_date)} until {self._format_lease_date(self.lease_end_date)}."
                 )
             if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED}:
                 return "Lease payment is underway and the plot is being held for this lease flow."
@@ -2084,7 +2122,7 @@ class PaymentRequest(models.Model):
                 self.plot.lease_end_date = self.lease_end_date
                 self.plot.availability_notes = (
                     f"Lease approved via payment {self.internal_reference}. "
-                    f"Tenant occupation may begin on {self.lease_start_date:%b %d, %Y} and ends on {self.lease_end_date:%b %d, %Y}."
+                    f"Tenant occupation may begin on {self._format_lease_date(self.lease_start_date)} and ends on {self._format_lease_date(self.lease_end_date)}."
                 )
             elif settled_related_payments:
                 self._validate_market_state_transition("reserved")
@@ -2137,8 +2175,8 @@ class PaymentRequest(models.Model):
         if self.transaction_type != self.TransactionType.LEASE or not self.lease_start_date or not self.lease_end_date:
             return ""
         summary = (
-            f"Occupied from {self.lease_start_date:%b %d, %Y} to {self.lease_end_date:%b %d, %Y}. "
-            f"Vacation notice window starts on {self.vacation_notice_date:%b %d, %Y}."
+            f"Occupied from {self._format_lease_date(self.lease_start_date)} to {self._format_lease_date(self.lease_end_date)}. "
+            f"Vacation notice window starts on {self._format_lease_date(self.vacation_notice_date)}."
         )
         if self.subject_to_sale:
             summary += " This lease is subject to sale, so a buyer may inherit the tenancy or trigger the contractual notice process."
@@ -2152,7 +2190,7 @@ class PaymentRequest(models.Model):
         terms = [
             f"Parties: tenant {self.buyer.get_full_name() or self.buyer.username if self.buyer else 'to be confirmed'} and landlord {self.counterparty_label}.",
             f"Premises: {self.plot.title} in {self.plot.location}.",
-            f"Term: {self.lease_start_date:%b %d, %Y} to {self.lease_end_date:%b %d, %Y}.",
+            f"Term: {self._format_lease_date(self.lease_start_date)} to {self._format_lease_date(self.lease_end_date)}.",
             f"Intended use: {self.intended_use or 'Agricultural use as agreed by the parties'}.",
             f"Security deposit: KES {self.lease_security_deposit or 0:,.2f}.",
             f"Vacation notice: {self.notice_period_days} days before the lease end date.",

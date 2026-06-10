@@ -1,0 +1,43 @@
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Your plot submission has been received and is now in the verification workflow.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong style="font-size: 16px;">✅ {{ status_title|default:"Submission Received" }}</strong>
+    <ul style="margin-top: 12px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Plot:</strong> {{ plot.title }}</li>
+        <li><strong>Current stage:</strong> {{ stage|default:"document_uploaded"|title }}</li>
+        <li><strong>Status:</strong> Under review</li>
+    </ul>
+</div>
+
+<div class="action-list">
+    <strong>📌 What happens next:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>Our verification team reviews your submission</li>
+        <li>Additional documents may be requested if needed</li>
+        <li>You will receive an update when the next step is ready</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ plot_url }}" class="button">📊 View Plot</a>
+</div>
+
+<p>Thank you for listing with <strong>AgriPlot Connect</strong>.</p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+{% block feature_grid %}{% endblock %}
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Submission Tracking:</strong> Keep an eye on your dashboard for updates on your plot verification.
+</div>
+{% endblock %}

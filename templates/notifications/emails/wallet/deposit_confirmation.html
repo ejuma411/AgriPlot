@@ -1,0 +1,42 @@
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Your AgriPlot Wallet deposit has been received successfully.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong>💳 Deposit Confirmed</strong>
+    <ul style="margin-top: 12px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Amount:</strong> KES {{ amount|floatformat:2 }}</li>
+        <li><strong>Reference:</strong> {{ reference|default:"Not provided" }}</li>
+    </ul>
+</div>
+
+<div class="action-list">
+    <strong>📌 What happens next:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>Your wallet balance has been updated</li>
+        <li>You can use it for eligible AgriPlot payments</li>
+        <li>Check your wallet history for the full transaction record</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ wallet_url|default:'/wallet/' }}" class="button">👛 View Wallet</a>
+</div>
+
+<p>Thank you for using <strong>AgriPlot Connect</strong>.</p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+{% block feature_grid %}{% endblock %}
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Wallet Update:</strong> Your wallet deposit is now available for platform use.
+</div>
+{% endblock %}

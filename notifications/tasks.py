@@ -96,7 +96,7 @@ def _send_email_now(
 
     if template and template != "plain" and context:
         try:
-            html_message = render_to_string(f"notifications/emails/{template}.html", context)
+            html_message = render_to_string(f"{template}.html", context)
             plain_message = strip_tags(html_message)
         except Exception as exc:
             logger.warning(
@@ -205,18 +205,24 @@ def dispatch_notification_channels(
 
     # --- Email ---
     if getattr(user, "email", ""):
-        _send_email_now(
-            recipient=user.email,
-            subject=email_subject or subject,
-            message=message,
-            template=template,
-            context=context,
-        )
+        try:
+            _send_email_now(
+                recipient=user.email,
+                subject=email_subject or subject,
+                message=message,
+                template=template,
+                context=context,
+            )
+        except Exception as exc:
+            logger.error("dispatch_notification_channels email failed for user %s: %s", user_id, exc, exc_info=True)
 
     # --- SMS ---
     phone = _resolve_phone(user)
     if phone:
-        _send_sms_now(phone, message)
+        try:
+            _send_sms_now(phone, message)
+        except Exception as exc:
+            logger.error("dispatch_notification_channels SMS failed for user %s: %s", user_id, exc, exc_info=True)
 
 
 @shared_task(

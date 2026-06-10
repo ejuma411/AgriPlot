@@ -398,24 +398,50 @@
             </div>
             {% endif %}
 
-            <!-- Show stage progress -->
+            <!-- Payment Progress Section -->
             <div class="workspace-notice" style="margin-bottom: 1rem;">
                 <strong>Payment Progress:</strong>
-                <div style="margin-top: 0.5rem;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-                        <span style="{% if current_stage == 'reservation_deposit' %}color: var(--ap-green); font-weight: 600;{% endif %}">
-                            ✓ Reservation Deposit
-                        </span>
-                        <span style="{% if current_stage == 'agreement_deposit' %}color: var(--ap-green); font-weight: 600;{% endif %}">
-                            Agreement Deposit
-                        </span>
-                        <span style="{% if current_stage == 'completion_balance' %}color: var(--ap-green); font-weight: 600;{% endif %}">
-                            Completion Balance
-                        </span>
+                <div style="margin-top: 1rem;">
+                    <div style="display: flex; justify-content: space-between; gap: 1rem;">
+                        {% for stage in payment_stage_cards %}
+                            <div style="flex: 1; text-align: center;">
+                                <div style="width: 40px; height: 40px; margin: 0 auto 0.5rem; border-radius: 50%; background: {% if current_stage == stage.code %}#0f5c3f{% else %}#e5e7eb{% endif %}; display: flex; align-items: center; justify-content: center;">
+                                    {% if current_stage == stage.code %}
+                                        <i class="fas fa-check" style="color: white; font-size: 16px;"></i>
+                                    {% else %}
+                                        <span style="color: #6b7280; font-weight: 600;">{{ stage.step }}</span>
+                                    {% endif %}
+                                </div>
+                                <div style="font-weight: 600; font-size: 0.875rem;">{{ stage.title }}</div>
+                                <div style="font-size: 0.75rem; color: #6b7280;">{{ stage.subtitle }} KES {{ stage.amount|default:"0"|floatformat:2|intcomma }}</div>
+                                {% if current_stage == stage.code %}
+                                    <div style="font-size: 0.7rem; color: #0f5c3f; margin-top: 0.25rem;">Current</div>
+                                {% endif %}
+                            </div>
+                            {% if not forloop.last %}
+                                <div style="display: flex; align-items: center; color: #d1d5db;">
+                                    <i class="fas fa-arrow-right"></i>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
                     </div>
-                    <div style="height: 4px; background: var(--ap-border); border-radius: 2px; overflow: hidden;">
-                        <div style="width: {% if current_stage == 'reservation_deposit' %}33%{% elif current_stage == 'agreement_deposit' %}66%{% elif current_stage == 'completion_balance' %}100%{% else %}0%{% endif %}; height: 100%; background: var(--ap-green);"></div>
+                </div>
+                
+                <!-- Progress Bar -->
+                <div style="margin-top: 1rem; background: #e5e7eb; border-radius: 10px; height: 6px; overflow: hidden;">
+                    <div style="width: 
+                        {% if current_stage == 'commitment_fee' %}33%
+                        {% elif current_stage == 'agreement_deposit' %}66%
+                        {% elif current_stage == 'completion_balance' %}100%
+                        {% else %}0%{% endif %}; 
+                        background: #0f5c3f; height: 100%; border-radius: 10px;">
                     </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.7rem; color: #6b7280;">
+                    <span>{% if current_stage == 'commitment_fee' %}✓{% endif %} Commitment Fee</span>
+                    <span>{% if current_stage == 'agreement_deposit' %}✓{% endif %} Agreement Deposit</span>
+                    <span>{% if current_stage == 'completion_balance' %}✓{% endif %} Completion Balance</span>
                 </div>
             </div>
 
@@ -468,17 +494,30 @@
                         </div>
                         <div class="form-group">
                             <label for="id_transaction_type_display">Deal type</label>
-                            <input type="text" id="id_transaction_type_display" class="form-control" value="{% if selected_plot and selected_plot.listing_type == 'lease' %}Lease{% elif selected_plot and selected_plot.listing_type == 'sale' %}Purchase{% else %}Service{% endif %}" readonly>
-                            <small class="help-copy">AgriPlot has already locked this checkout to the right transaction type for this plot.</small>
+                            <input type="text" id="id_transaction_type_display" class="form-control" 
+                                value="{% if selected_transaction_type == 'purchase' %}Purchase{% else %}Lease{% endif %}" 
+                                readonly>
+                            <small class="help-copy">
+                                {% if selected_plot and selected_plot.listing_type == 'both' %}
+                                    This plot is available for both lease and purchase. The checkout is locked to the selected deal type.
+                                {% else %}
+                                    AgriPlot has already locked this checkout to the right transaction type for this plot.
+                                {% endif %}
+                            </small>
                         </div>
                     </div>
 
-                    {% if selected_plot and selected_plot.listing_type == 'lease' %}
+                    {% if selected_transaction_type == 'lease' %}
                     <div class="workspace-notice" style="margin-bottom:1rem;">
-                        <strong>Lease information required before payment</strong><br>
-                        Tell AgriPlot when the lease should start, when it should end, and how the land will be used so the workflow, agreement, and handover stages reflect the real lease.
+                        <strong>Lease information</strong><br>
+                        {% if can_set_lease_terms %}
+                            Tell AgriPlot when the lease should start, when it should end, and how the land will be used so the workflow, agreement, and handover stages reflect the real lease.
+                        {% else %}
+                            The lease start and end dates are locked for this account. They will be set by the landowner or agent, while you continue with the tenant-side details now.
+                        {% endif %}
                     </div>
 
+                    {% if can_set_lease_terms %}
                     <div class="form-row">
                         <div class="form-group">
                             <label for="{{ form.lease_start_date.id_for_label }}">{{ form.lease_start_date.label }}</label>
@@ -497,6 +536,12 @@
                             {% endfor %}
                         </div>
                     </div>
+                    {% else %}
+                    <div class="workspace-notice" style="margin-bottom:1rem;">
+                        <strong>Lease dates hidden</strong><br>
+                        These dates are intentionally not editable here. AgriPlot will capture them from the owner or agent side so the lease record stays consistent.
+                    </div>
+                    {% endif %}
 
                     <div class="form-group">
                         <label for="{{ form.intended_use.id_for_label }}">{{ form.intended_use.label }}</label>
@@ -581,7 +626,8 @@
                 </div>
                 
                 <input type="hidden" name="method" id="selectedMethod" value="">
-                <input type="hidden" name="transaction_type" id="id_transaction_type" value="{% if selected_plot and selected_plot.listing_type == 'lease' %}lease{% elif selected_plot and selected_plot.listing_type == 'sale' %}purchase{% else %}service{% endif %}">
+                <input type="hidden" name="transaction_type" id="id_transaction_type" 
+                    value="{{ selected_transaction_type|default:'lease' }}">
                 
                 <!-- M-Pesa Section -->
                 <div class="payment-detail-section" id="mpesaSection">
@@ -673,9 +719,13 @@
                 <span class="panel-label">Payment Summary</span>
                 <div id="paymentSummary">
                     <p><strong>Transaction Type:</strong> <span id="summaryType">
-                        {% if selected_plot and selected_plot.listing_type == 'lease' %}Lease{% elif selected_plot and selected_plot.listing_type == 'sale' %}Purchase{% else %}Service{% endif %}
+                        {% if selected_transaction_type == 'purchase' %}
+                            Purchase
+                        {% else %}
+                            Lease
+                        {% endif %}
                     </span></p>
-                    <p><strong>Amount:</strong> <span id="summaryAmount">KES {{ form.amount.initial|default:form.amount.value|default:"0"|floatformat:2|intcomma }}</span></p>
+                    <p><strong>Amount:</strong> KES {{ payment_amount|default:form.amount.initial|default:"0"|floatformat:2|intcomma }}</p>
                     <p><strong>Payment Method:</strong> <span id="summaryMethod">Not selected</span></p>
                 </div>
             </div>

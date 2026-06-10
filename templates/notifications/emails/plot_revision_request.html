@@ -1,0 +1,45 @@
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>The verification team has reviewed your plot and requested changes before approval.</p>
+
+<div class="warning-box">
+    <strong>📝 Requested Changes:</strong>
+    <p style="margin-top: 12px; margin-bottom: 8px;">{{ notes|linebreaksbr }}</p>
+    <p><small>Requested by {{ requested_by.get_full_name|default:requested_by.username|default:"Verification Team" }}</small></p>
+</div>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong>📋 Plot Details:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Plot:</strong> {{ plot.title }}</li>
+        <li><strong>Location:</strong> {{ plot.county|default:plot.location|default:"Not specified" }}</li>
+    </ul>
+</div>
+
+<p>Please make the requested updates and resubmit your plot for review.</p>
+
+<div class="button-container">
+    <a href="{{ edit_url }}" class="button">✏️ Edit Plot</a>
+</div>
+
+{% if support_url %}
+<p>If you need help, please <a href="{{ support_url }}" style="color: #069132;">contact support</a>.</p>
+{% endif %}
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+{% block feature_grid %}{% endblock %}
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Revision Request:</strong> Your plot remains under review until the requested changes are made and submitted.
+</div>
+{% endblock %}

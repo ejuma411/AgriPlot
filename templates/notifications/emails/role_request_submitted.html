@@ -1,0 +1,44 @@
+{% extends 'notifications/emails/base_email.html' %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Your request for the <strong>{{ role }}</strong> role has been submitted and is now under review.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong>📋 Request Details:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Requested role:</strong> {{ role }}</li>
+        <li><strong>Status:</strong> Under review</li>
+    </ul>
+</div>
+
+{% if details %}
+<div class="action-list">
+    <strong>📝 Submitted Details:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        {% for key, value in details.items %}
+        <li><strong>{{ key|title }}:</strong> {{ value }}</li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ profile_url }}" class="button">👤 View Profile</a>
+</div>
+
+<p>We’ll notify you as soon as the review is complete.</p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+{% block feature_grid %}{% endblock %}
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Review Process:</strong> Requests are reviewed by the AgriPlot team as soon as possible.
+</div>
+{% endblock %}
