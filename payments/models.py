@@ -271,14 +271,6 @@ class PaymentRequest(models.Model):
                 related.append(candidate)
         return related
 
-    @property
-    def workflow_total_paid_amount(self):
-        paid_statuses = {PAID, IN_ESCROW, PARTIALLY_RELEASED, RELEASED}
-        excluded_statuses = {CANCELLED, REFUNDED, FAILED}
-        return sum(
-            payment.amount for payment in self.workflow_related_payments
-            if payment.status in paid_statuses and payment.status not in excluded_statuses
-        )
     
     @property
     def workflow_total_paid_amount(self):
