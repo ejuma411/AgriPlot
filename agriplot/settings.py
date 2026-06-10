@@ -303,7 +303,7 @@ WSGI_APPLICATION = "agriplot.wsgi.application"
 #         'ENGINE': 'django.contrib.gis.db.backends.postgis',
 #         'NAME': os.environ.get('DB_NAME', 'agriplot_db'),
 #         'USER': os.environ.get('DB_USER', 'createch'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', '6HrnAQmk/%?HMP6'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD', 'password'),
 #         'HOST': os.environ.get('DB_HOST', 'localhost'),
 #         'PORT': os.environ.get('DB_PORT', '5432'),
 #         'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '600')),
