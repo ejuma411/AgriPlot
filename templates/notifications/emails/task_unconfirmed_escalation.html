@@ -1,29 +1,60 @@
 {% extends 'notifications/emails/base_email.html' %}
 
-{% block content %}
-<h2 style="color: #0f5132;">Task Confirmation Expired</h2>
-<p>Hello {{ admin|display_name }},</p>
-<p>
-    The assigned verification task below was not confirmed within 12 hours and has been
-    automatically unassigned.
-</p>
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ admin|display_name }},</strong>
+</div>
+{% endblock %}
 
-<div class="info-box">
-    <p style="margin: 0;"><strong>Plot:</strong> {{ plot.title }}</p>
-    <p style="margin: 5px 0 0;"><strong>Task:</strong> {{ task.get_verification_type_display }}</p>
-    <p style="margin: 5px 0 0;"><strong>County:</strong> {{ plot.county|default:"N/A" }}</p>
-    <p style="margin: 5px 0 0;"><strong>Confirm by:</strong> {{ task.confirm_by|date:"F j, Y H:i" }}</p>
+{% block content %}
+<div class="warning-box" style="background: #dc2626; color: white; border-left-color: #991b1b; text-align: center;">
+    <strong style="font-size: 18px;">⚠️ Task Confirmation Expired</strong>
 </div>
 
-<p style="margin-top: 16px;">
-    Please review and reassign the task.
+<p>The assigned verification task below was not confirmed within <strong>12 hours</strong> and has been automatically unassigned.</p>
+
+<div class="info-box" style="background: #fff3cd; border-left-color: #ffc107;">
+    <strong>📋 Task Details:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Plot:</strong> {{ plot.title }}</li>
+        <li><strong>Task:</strong> {{ task.get_verification_type_display|default:task.verification_type|default:"Verification" }}</li>
+        <li><strong>County:</strong> {{ plot.county|default:"Not specified" }}</li>
+        <li><strong>Previously assigned to:</strong> {{ task.assignee.get_full_name|default:task.assignee.username|default:"Unknown" }}</li>
+        <li><strong>Confirmation deadline:</strong> {{ task.confirm_by|date:"F j, Y H:i"|default:"Expired" }}</li>
+    </ul>
+</div>
+
+<div class="action-list">
+    <strong>📌 Next Steps:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>Review the task requirements and plot details</li>
+        <li>Reassign the task to another available officer</li>
+        <li>Consider adjusting the confirmation window if this is a recurring issue</li>
+        <li>Update the plot verification status if the task cannot be completed</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ review_url }}" class="button">🔄 Review & Reassign Task</a>
+</div>
+
+<div class="warning-box" style="margin-top: 20px;">
+    <strong>ℹ️ Why This Happened:</strong> The assigned officer did not confirm receipt of this task within the 12-hour confirmation window. The task has been automatically unassigned to prevent verification delays.
+</div>
+
+<p class="small-text" style="color: #6b7280; font-size: 13px; margin-top: 16px;">
+    If this assignment should not be reissued, please update the plot verification status accordingly or mark the task as complete if it was already done offline.
 </p>
 
-<p style="text-align: center; margin: 28px 0;">
-    <a href="{{ review_url }}" class="button">Review Task Assignment</a>
-</p>
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
 
-<p style="color: #6b7280; font-size: 13px;">
-    If this assignment should not be reissued, update the plot verification status accordingly.
-</p>
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Tip:</strong> You can adjust the confirmation window duration in the verification settings if 12 hours is consistently insufficient for your team.
+</div>
 {% endblock %}

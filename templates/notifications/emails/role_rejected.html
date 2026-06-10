@@ -1,18 +1,57 @@
 {% extends 'notifications/emails/base_email.html' %}
 
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user|display_name }},</strong>
+</div>
+{% endblock %}
+
 {% block content %}
-    <p>Your request for the <strong>{{ role }}</strong> role has been reviewed and was not approved at this time.</p>
-    {% if reason %}
-    <div class="warning-box">
-        <strong>Review note:</strong> {{ reason }}
-    </div>
-    {% endif %}
-    {% if details %}
-        <p><strong>Submitted details:</strong></p>
-        <pre style="white-space: pre-wrap;">{{ details }}</pre>
-    {% endif %}
-    <div style="text-align: center; margin: 24px 0;">
-        <a href="{{ profile_url }}" class="button">View Profile</a>
-    </div>
-    <p>If you believe this was a mistake, please update your documents and resubmit or contact support.</p>
+<p>Your request for the <strong>{{ role }}</strong> role has been reviewed and was not approved at this time.</p>
+
+<div class="warning-box">
+    <strong>📝 Review Feedback:</strong>
+    <p style="margin-top: 8px; margin-bottom: 0;">{{ reason|default:"The submitted documentation did not meet the verification requirements for this role." }}</p>
+</div>
+
+{% if details %}
+<div class="action-list">
+    <strong>📋 Submitted Details for Reference:</strong>
+    <pre style="white-space: pre-wrap; background: #f9f9f9; padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 13px;">{{ details }}</pre>
+</div>
+{% endif %}
+
+<div class="info-box" style="background: #e2e3e5; border-left-color: #6c757d;">
+    <strong>📌 Next Steps:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>Review the feedback provided above</li>
+        <li>Update your documents or information as needed</li>
+        <li>Submit a new role upgrade request from your profile</li>
+        <li>Contact support if you need clarification</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ profile_url }}" class="button">👤 View Profile & Resubmit</a>
+</div>
+
+<div class="button-container" style="margin-top: 8px;">
+    <a href="{{ support_url|default:'/support/' }}" class="button" style="background: #6c757d;">📧 Contact Support</a>
+</div>
+
+<p>If you believe this decision was made in error, please update your documentation and resubmit your request. Our team will be happy to review your updated application.</p>
+
+<p>Thank you for your interest in becoming a verified <strong>{{ role }}</strong> on <strong>AgriPlot Connect</strong>.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Need Help?</strong> Our support team is available to help you understand the requirements and improve your application.
+</div>
 {% endblock %}

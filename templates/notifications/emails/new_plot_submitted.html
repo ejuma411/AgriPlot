@@ -1,30 +1,48 @@
 {% load humanize %}
 {% extends 'notifications/emails/base_email.html' %}
 
-{% block content %}
-<p>Hello {{ user_username|default:user.username|default:"there" }},</p>
-<p>A new plot has been submitted for verification:</p>
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user_username|default:user.username|default:"Verification Team" }},</strong>
+</div>
+{% endblock %}
 
-<div class="details">
-    <h3>{{ plot.title }}</h3>
-    <p><strong>Location:</strong> {{ plot.county|default:plot.location }}</p>
-    <p><strong>Area:</strong> {{ plot.area }} acres</p>
-    <p><strong>Price:</strong> KES {{ plot.price|floatformat:0|intcomma }}</p>
-    <p><strong>Submitted by:</strong>
+{% block content %}
+<p>A new plot has been submitted for verification and requires your attention.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <h3 style="margin-top: 0; margin-bottom: 12px; color: #069132;">{{ plot.title }}</h3>
+    
+    <p><strong>📍 Location:</strong> {{ plot.county|default:plot.location }}</p>
+    <p><strong>📐 Area:</strong> {{ plot.area }} {{ plot.area_unit|default:"acres" }}</p>
+    <p><strong>💰 Price:</strong> KES {{ plot.price|floatformat:0|intcomma }}</p>
+    <p><strong>👤 Submitted by:</strong>
         {% if plot.agent %}
-            {{ plot.agent.user.username|default:plot.agent.user.email|default:"there" }} (Agent)
+            {{ plot.agent.user.get_full_name|default:plot.agent.user.username }} (Agent)
         {% else %}
-            {{ plot.landowner.user.username|default:plot.landowner.user.email|default:"there" }} (Landowner)
+            {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }} (Landowner)
         {% endif %}
     </p>
-    <p><strong>Submitted at:</strong> {{ plot.created_at|date:"F j, Y H:i" }}</p>
+    <p><strong>📅 Submitted at:</strong> {{ plot.created_at|date:"F j, Y H:i" }}</p>
 </div>
 
-<p>Please review this plot and assign verification tasks.</p>
+<p>Please review this plot and assign the appropriate verification tasks to the verification team.</p>
 
-<div style="text-align: center;">
-    <a href="{{ review_url }}" class="button">Review Plot</a>
+<div class="button-container">
+    <a href="{{ review_url }}" class="button">🔍 Review Plot</a>
 </div>
 
-<p>Best regards,<br>AgriPlot Team</p>
+<p>Once verified, this plot will become visible to potential buyers and lessees on the platform.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Action Required:</strong> This plot requires your review and task assignment before it can proceed through the verification workflow.
+</div>
 {% endblock %}

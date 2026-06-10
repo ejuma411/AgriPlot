@@ -1,14 +1,53 @@
 {% extends 'notifications/emails/base_email.html' %}
 
-{% block content %}
-<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
-<p>Your request for the <strong>{{ role }}</strong> role has been received and is under review.</p>
-{% if details %}
-    <p><strong>Submitted details:</strong></p>
-    <pre style="white-space: pre-wrap;">{{ details }}</pre>
-{% endif %}
-<div style="text-align:center; margin-top: 16px;">
-    <a href="{{ profile_url }}" class="button">View Profile</a>
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
 </div>
-<p>We’ll notify you once a decision has been made.</p>
+{% endblock %}
+
+{% block content %}
+<p>Thank you for your interest in becoming a verified <strong>{{ role }}</strong> on AgriPlot Connect.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong>✅ Request Received</strong>
+    <p style="margin-top: 8px; margin-bottom: 0;">Your request for the <strong>{{ role }}</strong> role has been received and is currently under review by our verification team.</p>
+</div>
+
+{% if details %}
+<div class="action-list">
+    <strong>📝 Details You Submitted:</strong>
+    <pre style="white-space: pre-wrap; background: #f9f9f9; padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 13px;">{{ details }}</pre>
+</div>
+{% endif %}
+
+<div class="info-box" style="background: #e2e3e5; border-left-color: #6c757d;">
+    <strong>⏰ What Happens Next:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>Our team will review your application and submitted documents</li>
+        <li>You will receive a notification once a decision has been made</li>
+        <li>This process typically takes 1-3 business days</li>
+        <li>We may contact you if additional information is needed</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ profile_url }}" class="button">👤 View Your Profile</a>
+</div>
+
+<p>We appreciate your patience while our team reviews your application. You can check the status of your request anytime from your profile page.</p>
+
+<p>Thank you for choosing <strong>AgriPlot Connect</strong> — Kenya's trusted agricultural land marketplace.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Status Check:</strong> You can track the progress of your role request from your profile dashboard at any time.
+</div>
 {% endblock %}

@@ -1,17 +1,42 @@
 {% extends 'notifications/emails/base_email.html' %}
 
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user|display_name }},</strong>
+</div>
+{% endblock %}
+
 {% block content %}
-<p>Hello {{ user|display_name }},</p>
-        <p>Your plot <strong>{{ plot.title }}</strong> has moved to the next step:</p>
-        <div class="status">
-            <strong>{{ status_title }}</strong>
-        </div>
-        {% if details %}
-            <p><strong>Details:</strong></p>
-            <pre style="white-space: pre-wrap;">{{ details }}</pre>
-        {% endif %}
-        <div style="text-align:center; margin-top: 16px;">
-            <a href="{{ plot_url }}" class="button">View Plot</a>
-        </div>
-        <p>We’ll keep you updated as verification progresses.</p>
+<p>Your plot <strong>"{{ plot.title }}"</strong> has moved to the next stage in the verification workflow.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132; text-align: center;">
+    <strong style="font-size: 18px;">✅ {{ status_title }}</strong>
+</div>
+
+{% if details %}
+<div class="action-list">
+    <strong>📋 Details:</strong>
+    <p style="margin-top: 8px; color: #555;">{{ details }}</p>
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ plot_url }}" class="button">🔍 View Plot Status</a>
+</div>
+
+<p>We'll keep you updated as verification progresses. You can track the real-time status of your plot from your dashboard.</p>
+
+<p>Thank you for choosing <strong>AgriPlot Connect</strong> — Kenya's trusted agricultural land marketplace.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Status Update:</strong> This is an automated notification about your plot's verification progress. No action is required unless specified.
+</div>
 {% endblock %}

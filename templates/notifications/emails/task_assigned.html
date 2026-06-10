@@ -1,31 +1,61 @@
 {% extends 'notifications/emails/base_email.html' %}
 
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user|display_name }},</strong>
+</div>
+{% endblock %}
+
 {% block content %}
-<h2>Hello {{ user|display_name }},</h2>
-        
-        <p>You have been assigned a new verification task:</p>
-        
-        <div class="details">
-            <h3>{{ task.get_verification_type_display }}</h3>
-            <p><strong>Plot:</strong> {{ plot.title }}</p>
-            <p><strong>Location:</strong> {{ plot.county|default:plot.location }}</p>
-            <p><strong>Assigned by:</strong> {{ assigned_by|display_name }}</p>
-            <p><strong>Assigned at:</strong> {{ task.assigned_at|date:"F j, Y H:i" }}</p>
-            {% if confirm_by %}
-            <p><strong>Confirm by:</strong> {{ confirm_by|date:"F j, Y H:i" }}</p>
-            {% endif %}
-            {% if deadline_at %}
-            <p><strong>Submission deadline:</strong> {{ deadline_at|date:"F j, Y H:i" }}</p>
-            {% endif %}
-        </div>
-        
-        <p>Please log in to review and complete this task.</p>
-        
-        <div style="text-align: center;">
-            <a href="{{ login_url }}" class="button">View My Tasks</a>
-        </div>
-        
-        <p>Thank you for your contribution to keeping our platform trustworthy!</p>
-        
-        <p>Best regards,<br>AgriPlot Team</p>
+<p>You have been assigned a new verification task that requires your attention.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong style="font-size: 16px;">📋 {{ task.get_verification_type_display|default:task.verification_type|default:"Verification Task" }}</strong>
+    <ul style="margin-top: 12px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Plot:</strong> {{ plot.title }}</li>
+        <li><strong>Location:</strong> {{ plot.county|default:plot.location|default:"Not specified" }}</li>
+        <li><strong>Assigned by:</strong> {{ assigned_by|display_name }}</li>
+        <li><strong>Assigned at:</strong> {{ task.assigned_at|date:"F j, Y H:i"|default:"Recently" }}</li>
+        {% if confirm_by %}
+        <li><strong>Confirm by:</strong> {{ confirm_by|date:"F j, Y H:i" }}</li>
+        {% endif %}
+        {% if deadline_at %}
+        <li><strong>Submission deadline:</strong> {{ deadline_at|date:"F j, Y H:i" }}</li>
+        {% endif %}
+    </ul>
+</div>
+
+<div class="action-list">
+    <strong>📌 Task Instructions:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>Review the plot details and verification requirements</li>
+        <li>Conduct the necessary inspection or document verification</li>
+        <li>Complete the verification checklist</li>
+        <li>Submit your findings and verification report before the deadline</li>
+    </ul>
+</div>
+
+{% if deadline_at %}
+<div class="warning-box">
+    <strong>⏰ Deadline Notice:</strong> Please complete and submit this task by the deadline shown above. Late submissions may affect the verification timeline.
+</div>
+{% endif %}
+
+<div class="button-container">
+    <a href="{{ task_url|default:login_url }}" class="button">✅ View My Tasks</a>
+</div>
+
+<p>Thank you for your contribution to keeping our platform trustworthy and ensuring that every plot meets our verification standards.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Need Help?</strong> If you cannot complete this task, please contact your supervisor to reassign it as soon as possible.
+</div>
 {% endblock %}

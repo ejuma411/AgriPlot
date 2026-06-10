@@ -1,22 +1,35 @@
 {% extends 'notifications/emails/base_email.html' %}
 
-{% block content %}
-<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
-<p>The verification team has reviewed your plot "{{ plot.title }}" and is requesting some changes before it can be approved.</p>
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:"there" }},</strong>
+</div>
+{% endblock %}
 
-<div class="feedback">
-    <h3>📝 Feedback from Reviewer:</h3>
-    <p>{{ notes }}</p>
-    <p><small>- {{ requested_by.username|default:requested_by.email|default:"Verification Team" }}, Verification Team</small></p>
+{% block content %}
+<p>The verification team has reviewed your plot <strong>"{{ plot.title }}"</strong> and is requesting some changes before it can be approved.</p>
+
+<div class="info-box" style="background: #fff3cd; border-left-color: #ffc107;">
+    <strong>📝 Feedback from Reviewer:</strong>
+    <p style="margin-top: 12px; margin-bottom: 8px;">{{ notes }}</p>
+    <p><small>- {{ requested_by.get_full_name|default:requested_by.username|default:"Verification Team" }}, Verification Team</small></p>
 </div>
 
 <p>Please make the requested changes and resubmit your plot for verification.</p>
 
-<div style="text-align: center;">
-    <a href="{{ edit_url }}" class="button">Edit Your Plot</a>
+<div class="button-container">
+    <a href="{{ edit_url }}" class="button">✏️ Edit Your Plot</a>
 </div>
 
-<p>If you have any questions, please don't hesitate to contact our support team.</p>
+<p>If you have any questions about the requested changes, please don't hesitate to <a href="{{ support_url|default:'/support/' }}" style="color: #069132;">contact our support team</a>.</p>
 
-<p>Best regards,<br>AgriPlot Team</p>
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Revision Request:</strong> Your plot will remain in draft status until you make the requested changes and resubmit for verification.
+</div>
 {% endblock %}

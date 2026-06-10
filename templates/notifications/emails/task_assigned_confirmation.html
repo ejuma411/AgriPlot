@@ -1,21 +1,56 @@
 {% extends 'notifications/emails/base_email.html' %}
 
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
+</div>
+{% endblock %}
+
 {% block content %}
-<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
-<p>Your task assignment has been sent successfully.</p>
+<p>Your task assignment has been sent successfully. A new verification task requires your attention.</p>
 
-<div class="details">
-    <h3>{{ task.get_verification_type_display }}</h3>
-    <p><strong>Plot:</strong> {{ plot.title }}</p>
-    <p><strong>Assignee:</strong> {{ assignee.username|default:assignee.email|default:"there" }}</p>
-    <p><strong>Assigned at:</strong> {{ task.assigned_at|date:"F j, Y H:i" }}</p>
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong>📋 Task Summary:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Task Type:</strong> {{ task.get_verification_type_display|default:task.verification_type|default:"Verification" }}</li>
+        <li><strong>Plot:</strong> {{ plot.title }}</li>
+        <li><strong>Location:</strong> {{ plot.county|default:plot.location|default:"Not specified" }}</li>
+        <li><strong>Assigned to:</strong> {{ assignee.get_full_name|default:assignee.username|default:assignee.email }}</li>
+        <li><strong>Assigned at:</strong> {{ task.assigned_at|date:"F j, Y H:i"|default:"Recently" }}</li>
+    </ul>
 </div>
 
-<p>You can track progress from the task dashboard.</p>
-
-<div style="text-align: center;">
-    <a href="{{ login_url }}" class="button">View Task Dashboard</a>
+<div class="action-list">
+    <strong>📌 What You Need to Do:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>Review the plot details and verification requirements</li>
+        <li>Conduct the necessary inspection or document review</li>
+        <li>Submit your findings and verification report</li>
+        <li>Complete the task within the specified timeframe</li>
+    </ul>
 </div>
 
-<p>Best regards,<br>AgriPlot Team</p>
+<div class="warning-box">
+    <strong>⏰ Deadline Reminder:</strong> Please complete this task within the assigned timeframe to avoid delays in the verification process.
+</div>
+
+<div class="button-container">
+    <a href="{{ task_url|default:login_url }}" class="button">🔍 View Task Dashboard</a>
+</div>
+
+<p>You can track the progress of all your assigned tasks from your dashboard. If you have any questions about this assignment, please contact your supervisor.</p>
+
+<p>Thank you for your contribution to maintaining quality standards on <strong>AgriPlot Connect</strong>.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Task Management Tip:</strong> Log in to your dashboard to view all assigned tasks, update task status, and submit reports.
+</div>
 {% endblock %}

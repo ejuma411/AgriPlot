@@ -1,16 +1,60 @@
 {% extends 'notifications/emails/base_email.html' %}
 
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:user.email|default:"there" }},</strong>
+</div>
+{% endblock %}
+
 {% block content %}
-<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
-<p>Your plot <strong>{{ plot.title }}</strong> has completed a verification step:</p>
-<div class="status {% if status == 'approved' %}status-approved{% else %}status-rejected{% endif %}">
-    <strong>{{ task.get_verification_type_display }}</strong> — {{ status|title }}
+<p>Your plot <strong>"{{ plot.title }}"</strong> has completed a verification step.</p>
+
+{% if status == 'approved' %}
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132; text-align: center;">
+    <strong style="font-size: 18px;">✅ {{ task.get_verification_type_display|default:"Verification Step" }} — Approved</strong>
 </div>
-{% if task.notes %}
-    <p><strong>Notes:</strong> {{ task.notes }}</p>
+{% else %}
+<div class="warning-box" style="text-align: center;">
+    <strong style="font-size: 18px;">⚠️ {{ task.get_verification_type_display|default:"Verification Step" }} — {{ status|title }}</strong>
+</div>
 {% endif %}
-<div style="text-align:center; margin-top: 16px;">
-    <a href="{{ plot_url }}" class="button">View Plot</a>
+
+{% if task.notes %}
+<div class="action-list">
+    <strong>📝 Review Notes:</strong>
+    <div style="background: #f9f9f9; padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 14px; line-height: 1.5;">
+        {{ task.notes|linebreaks }}
+    </div>
 </div>
-<p>We’ll notify you as the remaining steps are completed.</p>
+{% endif %}
+
+<div class="info-box" style="background: #e2e3e5; border-left-color: #6c757d;">
+    <strong>📊 Verification Progress:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>This step has been completed by our verification team</li>
+        <li>Remaining verification steps are in progress</li>
+        <li>You will be notified as each step is completed</li>
+        <li>You can track real-time progress from your dashboard</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ plot_url }}" class="button">👁️ View Plot Status</a>
+</div>
+
+<p>We'll notify you as the remaining verification steps are completed. You can also track the progress of your plot verification from your dashboard at any time.</p>
+
+<p>Thank you for choosing <strong>AgriPlot Connect</strong> — Kenya's trusted agricultural land marketplace.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Status Updates:</strong> You will receive email notifications for each verification step. Log in to your dashboard for detailed progress tracking.
+</div>
 {% endblock %}

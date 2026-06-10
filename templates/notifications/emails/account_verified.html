@@ -1,16 +1,46 @@
 {% extends 'notifications/emails/base_email.html' %}
 
-{% block content %}
-<p>Hello {{ user.username|default:user.email|default:"there" }},</p>
-<p>Great news. Your email address on AgriPlot has been verified successfully.</p>
-<p>You can now:</p>
-<ul>
-    <li>✅ Continue using your account with full contact verification</li>
-    <li>✅ Access actions that require both phone and email confirmation</li>
-    <li>✅ Keep receiving AgriPlot updates on a verified email address</li>
-</ul>
-<div style="text-align: center;">
-    <a href="{{ login_url }}" class="button">Open AgriPlot</a>
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username|default:"there" }},</strong>
 </div>
-<p>Thank you for joining AgriPlot Connect.</p>
+{% endblock %}
+
+{% block content %}
+<p>Great news! Your email address on AgriPlot has been verified successfully.</p>
+
+<p>Your account is now fully active with email confirmation. You can now:</p>
+
+<div class="action-list">
+    <ul style="margin: 0; padding-left: 20px;">
+        <li>✅ Continue using your account with full contact verification</li>
+        <li>✅ Access actions that require both phone and email confirmation</li>
+        <li>✅ Keep receiving AgriPlot updates on your verified email address</li>
+        <li>✅ List land for sale or lease with verified status</li>
+        <li>✅ Initiate and receive escrow-backed payments</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ dashboard_url }}" class="button">🚀 Go to Your Dashboard</a>
+</div>
+
+<p>Thank you for joining <strong>AgriPlot Connect</strong> — Kenya's trusted agricultural land marketplace.</p>
+{% endblock %}
+
+{% block after_verification %}
+{# Hide the default after-verification section since user is already verified #}
+{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>✅ Account Status:</strong> Your email is now verified. You have full access to all platform features.
+</div>
+{% endblock %}
+
+{% block button_block %}
+{# Additional button for browsing plots #}
+<div class="button-container" style="margin-top: 8px;">
+    <a href="{{ browse_url }}" class="button" style="background: #6c757d;">🔍 Browse Verified Plots</a>
+</div>
 {% endblock %}

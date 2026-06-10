@@ -1,61 +1,66 @@
 {% extends 'notifications/emails/base_email.html' %}
 
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ username|default:user.username|default:"there" }},</strong>
+</div>
+{% endblock %}
+
 {% block content %}
-    <p>Hello <strong>{{ username|default:user.username|default:"there" }}</strong>,</p>
-    
-    <p>Thank you for joining <strong>AgriPlot Connect</strong> — the platform that is transforming how agricultural land is listed, verified, and transacted across Kenya.</p>
-    
-    <!-- Vision Section -->
-    <div class="vision-box">
-        <strong>🌍 Our Vision</strong><br>
-        To create Africa's most trusted digital ecosystem for agricultural land transactions, where every plot is verified, every transaction is transparent, and every farmer and investor can transact with confidence.
+<p>Thank you for joining <strong>AgriPlot Connect</strong> — the platform that is transforming how agricultural land is listed, verified, and transacted across Kenya.</p>
+
+<!-- Vision Section -->
+<div class="vision-box">
+    <strong>🌍 Our Vision</strong><br>
+    To create Africa's most trusted digital ecosystem for agricultural land transactions, where every plot is verified, every transaction is transparent, and every farmer and investor can transact with confidence.
+</div>
+
+<!-- What We Do Section -->
+<p><strong>🚜 What We Do</strong></p>
+<p>AgriPlot Connect is more than just a listing platform. We combine marketplace functionality with rigorous verification, escrow-backed payments, and legally sequenced closing workflows to ensure that every land transaction is secure and trustworthy.</p>
+
+<!-- Features Grid (Replaces default base template grid) -->
+<div class="feature-grid">
+    <div class="feature-item">
+        <div class="feature-icon">✅</div>
+        <div class="feature-title">Verified Listings</div>
+        <div class="feature-desc">Every plot undergoes multi-stage verification before going live</div>
     </div>
-    
-    <!-- What We Do Section -->
-    <p><strong>🚜 What We Do</strong></p>
-    <p>AgriPlot Connect is more than just a listing platform. We combine marketplace functionality with rigorous verification, escrow-backed payments, and legally sequenced closing workflows to ensure that every land transaction is secure and trustworthy.</p>
-    
-    <!-- Features Grid -->
-    <div class="feature-grid">
-        <div class="feature-item">
-            <div class="feature-icon">✅</div>
-            <div class="feature-title">Verified Listings</div>
-            <div class="feature-desc">Every plot undergoes multi-stage verification before going live</div>
-        </div>
-        <div class="feature-item">
-            <div class="feature-icon">🔒</div>
-            <div class="feature-title">Escrow Protection</div>
-            <div class="feature-desc">Funds are held securely until milestones are met</div>
-        </div>
-        <div class="feature-item">
-            <div class="feature-icon">📜</div>
-            <div class="feature-title">Legal Workflow</div>
-            <div class="feature-desc">Structured closing steps with evidence gating</div>
-        </div>
-        <div class="feature-item">
-            <div class="feature-icon">📱</div>
-            <div class="feature-title">M-Pesa Integration</div>
-            <div class="feature-desc">Seamless STK push payments and wallet management</div>
-        </div>
+    <div class="feature-item">
+        <div class="feature-icon">🔒</div>
+        <div class="feature-title">Escrow Protection</div>
+        <div class="feature-desc">Funds are held securely until milestones are met</div>
     </div>
-    
-    <!-- Verification Call to Action -->
-    <p style="margin-top: 24px;"><strong>Before you can start exploring verified plots or listing your land,</strong> we need to confirm your email address. This helps us maintain a secure and trustworthy platform for all users.</p>
-    
-    <p style="text-align:center; margin: 28px 0;">
-        <a href="{{ verification_url }}" class="button">Verify Email Address</a>
-    </p>
-    
-    <p style="text-align:center; font-size: 13px; color: #666;">Or copy and paste this link:</p>
-    <p style="word-break: break-all; background: #f0f0f0; padding: 12px; border-radius: 4px; font-size: 12px; text-align: center;">
-        {{ verification_url }}
-    </p>
-    
-    <div class="divider"></div>
-    
-    <!-- What happens after verification -->
-    <p><strong>✨ What happens after verification?</strong></p>
-    <ul style="color: #555;">
+    <div class="feature-item">
+        <div class="feature-icon">📜</div>
+        <div class="feature-title">Legal Workflow</div>
+        <div class="feature-desc">Structured closing steps with evidence gating</div>
+    </div>
+    <div class="feature-item">
+        <div class="feature-icon">📱</div>
+        <div class="feature-title">M-Pesa Integration</div>
+        <div class="feature-desc">Seamless STK push payments and wallet management</div>
+    </div>
+</div>
+
+<!-- Verification Call to Action -->
+<p style="margin-top: 24px;"><strong>Before you can start exploring verified plots or listing your land,</strong> we need to confirm your email address. This helps us maintain a secure and trustworthy platform for all users.</p>
+
+<div class="button-container">
+    <a href="{{ verification_url }}" class="button">✓ Verify Email Address</a>
+</div>
+
+<p style="text-align:center; font-size: 13px; color: #666; margin-top: 16px;">Or copy and paste this link:</p>
+<div class="highlight-box" style="margin: 12px 0;">
+    <span style="word-break: break-all;">{{ verification_url }}</span>
+</div>
+
+<div class="divider"></div>
+
+<!-- What happens after verification -->
+<p><strong>✨ What happens after verification?</strong></p>
+<div class="action-list">
+    <ul style="margin: 0; padding-left: 20px;">
         <li>Browse verified agricultural plots across all 47 counties</li>
         <li>List your land for sale or lease with document upload</li>
         <li>Track verification progress in real-time</li>
@@ -63,18 +68,25 @@
         <li>Access your AgriPlot wallet and transaction history</li>
         <li>Receive notifications for every important milestone</li>
     </ul>
-    
-    <div class="divider"></div>
-    
-    <!-- Support Section -->
-    <p style="font-size: 13px;">If you did not create this account, you can safely ignore this email. No further action is required.</p>
-    
-    <p style="margin-top: 20px;">
-        ❓ <strong>Need help?</strong> Visit our <a href="{{ support_url }}">Support Center</a> or reply to this email.
-    </p>
-    
-    <p style="margin-top: 20px;">
-        Warm regards,<br>
-        <strong>The AgriPlot Connect Team</strong>
-    </p>
+</div>
+
+<div class="divider"></div>
+
+<!-- Support Section -->
+<p>❓ <strong>Need help?</strong> Visit our <a href="{{ support_url|default:'/support/' }}" style="color: #069132;">Support Center</a> or reply to this email.</p>
+
+<p>
+    Warm regards,<br>
+    <strong>The AgriPlot Connect Team</strong>
+</p>
+{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>🔒 Security Notice:</strong> If you did not create this account, you can safely ignore this email. No further action is required.
+</div>
+{% endblock %}
+
+{% block footer_note %}
+This email was sent by AgriPlot Connect as part of the account verification process. If you have any concerns, please contact our support team.
 {% endblock %}

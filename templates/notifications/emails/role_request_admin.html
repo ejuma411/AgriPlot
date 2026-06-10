@@ -1,13 +1,50 @@
 {% extends 'notifications/emails/base_email.html' %}
 
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ admin.get_full_name|default:admin.username|default:"Administrator" }},</strong>
+</div>
+{% endblock %}
+
 {% block content %}
-<p>Hello {{ admin.username|default:admin.email|default:"there" }},</p>
-<p>{{ user.username|default:user.email|default:"there" }} has submitted a request for <strong>{{ role }}</strong>.</p>
+<p><strong>{{ user.get_full_name|default:user.username|default:user.email }}</strong> has submitted a request for the <strong>{{ role }}</strong> role on AgriPlot Connect.</p>
+
+<div class="info-box" style="background: #e8f5e9; border-left-color: #069132;">
+    <strong>📋 Request Summary:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Applicant:</strong> {{ user.get_full_name|default:user.username }}</li>
+        <li><strong>Email:</strong> {{ user.email }}</li>
+        <li><strong>Requested Role:</strong> {{ role }}</li>
+        <li><strong>Submitted at:</strong> {{ submitted_at|date:"F j, Y H:i"|default:"Recently" }}</li>
+    </ul>
+</div>
+
 {% if details %}
-    <p><strong>Submitted details:</strong></p>
-    <pre style="white-space: pre-wrap;">{{ details }}</pre>
+<div class="action-list">
+    <strong>📝 Applicant's Details / Notes:</strong>
+    <pre style="white-space: pre-wrap; background: #f9f9f9; padding: 12px; border-radius: 6px; margin-top: 10px; font-size: 13px;">{{ details }}</pre>
+</div>
 {% endif %}
-<div style="text-align:center; margin-top: 16px;">
-    <a href="{{ review_url }}" class="button">Review Request</a>
+
+<div class="warning-box">
+    <strong>⚠️ Action Required:</strong> This request requires your review and approval before the user can access {{ role }} features.
+</div>
+
+<div class="button-container">
+    <a href="{{ review_url }}" class="button">🔍 Review Request</a>
+</div>
+
+<p>Please review the applicant's credentials and documentation before making a decision. You can approve or reject this request from the admin dashboard.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Admin Notice:</strong> This is an automated notification. Please ensure all verification requirements are met before approving role changes.
 </div>
 {% endblock %}

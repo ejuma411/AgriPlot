@@ -1,29 +1,62 @@
 {% extends 'notifications/emails/base_email.html' %}
 
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user|display_name }},</strong>
+</div>
+{% endblock %}
+
 {% block content %}
-<h2>Hello {{ user|display_name }},</h2>
-        
-        <div class="warning">
-            <strong>⚠️ This task is overdue by {{ days_overdue }} days</strong>
-        </div>
-        
-        <p>A verification task assigned to you is still pending:</p>
-        
-        <div class="details">
-            <h3>{{ task.get_verification_type_display }}</h3>
-            <p><strong>Plot:</strong> {{ plot.title }}</p>
-            <p><strong>Location:</strong> {{ plot.county|default:plot.location }}</p>
-            <p><strong>Assigned:</strong> {{ task.assigned_at|date:"F j, Y H:i" }}</p>
-            <p><strong>Days Overdue:</strong> {{ days_overdue }}</p>
-        </div>
-        
-        <p>Please complete this task as soon as possible to avoid delays in the verification process.</p>
-        
-        <div style="text-align: center;">
-            <a href="{{ task_url }}" class="button">Complete Task Now</a>
-        </div>
-        
-        <p>Thank you for your prompt attention to this matter.</p>
-        
-        <p>Best regards,<br>AgriPlot Team</p>
+<div class="warning-box" style="text-align: center; background: #dc2626; color: white; border-left-color: #991b1b;">
+    <strong style="font-size: 18px;">⚠️ URGENT: Task Overdue by {{ days_overdue }} Day{% if days_overdue > 1 %}s{% endif %}</strong>
+</div>
+
+<p>A verification task assigned to you is still pending and requires your immediate attention.</p>
+
+<div class="info-box" style="background: #fff3cd; border-left-color: #ffc107;">
+    <strong>📋 Overdue Task Details:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Task Type:</strong> {{ task.get_verification_type_display|default:task.verification_type|default:"Verification" }}</li>
+        <li><strong>Plot:</strong> {{ plot.title }}</li>
+        <li><strong>Location:</strong> {{ plot.county|default:plot.location|default:"Not specified" }}</li>
+        <li><strong>Assigned at:</strong> {{ task.assigned_at|date:"F j, Y H:i"|default:"Previously" }}</li>
+        <li><strong>Days Overdue:</strong> {{ days_overdue }}</li>
+        {% if deadline_at %}
+        <li><strong>Original deadline:</strong> {{ deadline_at|date:"F j, Y H:i" }}</li>
+        {% endif %}
+    </ul>
+</div>
+
+<div class="warning-box">
+    <strong>⚠️ Consequences of Continued Delay:</strong>
+    <ul style="margin-top: 8px; margin-bottom: 0; padding-left: 20px;">
+        <li>The plot verification process is stalled awaiting your review</li>
+        <li>Repeated delays may affect your future task assignments</li>
+        <li>The task may be reassigned to another officer if not completed soon</li>
+    </ul>
+</div>
+
+<div class="button-container">
+    <a href="{{ task_url }}" class="button">✅ Complete Task Now</a>
+</div>
+
+<div class="button-container" style="margin-top: 8px;">
+    <a href="{{ dashboard_url|default:'/dashboard/' }}" class="button" style="background: #6c757d;">📊 View All Tasks</a>
+</div>
+
+<p>Please complete this task as soon as possible to avoid further delays in the verification process. If you are unable to complete this task, please contact your supervisor to request reassignment.</p>
+
+<p>Thank you for your prompt attention to this matter.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ Need Assistance?</strong> If you're experiencing difficulties completing this task, please contact support or your supervisor for guidance.
+</div>
 {% endblock %}

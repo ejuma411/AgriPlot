@@ -1,10 +1,46 @@
 {% extends 'notifications/emails/base_email.html' %}
 
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ admin_name|default:"Administrator" }},</strong>
+</div>
+{% endblock %}
+
 {% block content %}
-{{ admin_name|default:"Administrator" }}
-        <p>No verified <strong>{{ role_label }}</strong> is available for <strong>{{ county }}</strong>.</p>
-        <p>Plot: <strong>{{ plot.title }}</strong></p>
-        <div style="text-align:center; margin-top: 16px;">
-            <a href="{{ review_url }}" class="button">Assign Manually</a>
-        </div>
+<p>No verified <strong>{{ role_label }}</strong> is currently available for <strong>{{ county }}</strong> county.</p>
+
+<div class="info-box" style="background: #fff3cd; border-left-color: #ffc107;">
+    <p><strong>📋 Plot Details:</strong></p>
+    <p><strong>Title:</strong> {{ plot.title }}</p>
+    <p><strong>Location:</strong> {{ plot.county|default:county }} county</p>
+    <p><strong>Submitted by:</strong> 
+        {% if plot.agent %}
+            {{ plot.agent.user.get_full_name|default:plot.agent.user.username }} (Agent)
+        {% else %}
+            {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }} (Landowner)
+        {% endif %}
+    </p>
+</div>
+
+<div class="warning-box">
+    <strong>⚠️ Action Required:</strong> This plot cannot proceed with verification until an officer is assigned.
+</div>
+
+<div class="button-container">
+    <a href="{{ review_url }}" class="button">👤 Assign Officer Manually</a>
+</div>
+
+<p>If no officer exists in this county, please consider recruiting or temporarily reassigning an officer from a neighboring county.</p>
+
+<p>Best regards,<br><strong>The AgriPlot Connect Team</strong></p>
+{% endblock %}
+
+{% block after_verification %}{% endblock %}
+
+{% block feature_grid %}{% endblock %}
+
+{% block security_note %}
+<div class="security-note">
+    <strong>ℹ️ System Notice:</strong> Automated assignment failed due to no available officer matching the required criteria in the specified county.
+</div>
 {% endblock %}

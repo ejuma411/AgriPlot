@@ -30,6 +30,10 @@
             font-weight: bold;
             margin-bottom: 8px;
         }
+        .logo-icon {
+            font-size: 32px;
+            margin-right: 6px;
+        }
         .tagline {
             font-size: 14px;
             opacity: 0.9;
@@ -37,12 +41,21 @@
         .content { 
             padding: 32px 24px; 
         }
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
         .vision-box {
             background: #e8f5e9;
             border-left: 4px solid #069132;
             padding: 16px 20px;
             margin: 24px 0;
             border-radius: 0 8px 8px 0;
+        }
+        .vision-title {
+            font-weight: bold;
+            color: #069132;
+            margin-bottom: 8px;
         }
         .feature-grid {
             display: flex;
@@ -52,23 +65,25 @@
         }
         .feature-item {
             flex: 1;
-            min-width: 160px;
+            min-width: 130px;
             background: #f9f9f9;
             padding: 12px;
             border-radius: 6px;
             text-align: center;
+            border: 1px solid #e8e8e8;
         }
         .feature-icon {
-            font-size: 24px;
+            font-size: 28px;
             margin-bottom: 8px;
         }
         .feature-title {
             font-weight: bold;
             color: #069132;
             margin-bottom: 4px;
+            font-size: 14px;
         }
         .feature-desc {
-            font-size: 12px;
+            font-size: 11px;
             color: #666;
         }
         .button { 
@@ -84,9 +99,23 @@
         .button:hover {
             background: #047a29;
         }
+        .button-container {
+            text-align: center;
+            margin: 28px 0;
+        }
         .divider {
             border-top: 1px solid #e0e0e0;
             margin: 24px 0;
+        }
+        .action-list {
+            background: #f9f9f9;
+            padding: 16px 24px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .action-list li {
+            margin: 8px 0;
+            color: #555;
         }
         .footer { 
             text-align: center; 
@@ -94,14 +123,19 @@
             background: #f5f5f5;
             color: #666; 
             font-size: 12px; 
+            border-top: 1px solid #e0e0e0;
         }
         .footer a {
             color: #069132;
             text-decoration: none;
         }
+        .footer a:hover {
+            text-decoration: underline;
+        }
         .small-text {
             font-size: 11px;
             color: #999;
+            margin-top: 10px;
         }
         .warning-box {
             background-color: #fff3cd;
@@ -129,6 +163,14 @@
             text-align: center;
             word-break: break-all;
         }
+        .security-note {
+            background: #e8f5e9;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #2e7d32;
+            margin: 20px 0;
+        }
         @media (max-width: 480px) {
             .feature-grid {
                 flex-direction: column;
@@ -146,23 +188,99 @@
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🌾 AgriPlot Connect</div>
+            <div class="logo">
+                <span class="logo-icon">🌾</span> AgriPlot Connect
+            </div>
             <div class="tagline">Kenya's Trusted Agricultural Land Marketplace</div>
         </div>
         
         <div class="content">
+            <!-- Greeting Block - Override in child templates -->
+            {% block greeting %}
+            <div class="greeting">
+                <strong>Hello,</strong>
+            </div>
+            {% endblock %}
+            
+            <!-- Main Content Block -->
             {% block content %}
+            {% endblock %}
+            
+            <!-- Default Vision Box - Can be overridden or hidden -->
+            {% block vision_box %}
+            <div class="vision-box">
+                <div class="vision-title">🌍 Our Vision</div>
+                <div>To create Africa's most trusted digital ecosystem for agricultural land transactions, where every plot is verified, every transaction is transparent, and every farmer and investor can transact with confidence.</div>
+            </div>
+            {% endblock %}
+            
+            <!-- Feature Grid - Can be overridden or hidden -->
+            {% block feature_grid %}
+            <div class="feature-grid">
+                <div class="feature-item">
+                    <div class="feature-icon">✅</div>
+                    <div class="feature-title">Verified Listings</div>
+                    <div class="feature-desc">Multi-stage verification</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">🛡️</div>
+                    <div class="feature-title">Escrow Protection</div>
+                    <div class="feature-desc">Funds held securely</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">⚖️</div>
+                    <div class="feature-title">Legal Workflow</div>
+                    <div class="feature-desc">Structured closing steps</div>
+                </div>
+                <div class="feature-item">
+                    <div class="feature-icon">📱</div>
+                    <div class="feature-title">M-Pesa Integration</div>
+                    <div class="feature-desc">STK push & wallet</div>
+                </div>
+            </div>
+            {% endblock %}
+            
+            <!-- What Happens Next Section -->
+            {% block after_verification %}
+            <div class="action-list">
+                <strong style="display: block; margin-bottom: 12px; color: #069132;">✅ What happens after verification?</strong>
+                <ul style="margin: 0; padding-left: 20px;">
+                    <li>Browse verified agricultural plots across all 47 counties</li>
+                    <li>List your land for sale or lease with document upload</li>
+                    <li>Track verification progress in real-time</li>
+                    <li>Initiate escrow payments via M-Pesa STK push</li>
+                    <li>Access your AgriPlot wallet and transaction history</li>
+                    <li>Receive notifications for every important milestone</li>
+                </ul>
+            </div>
+            {% endblock %}
+            
+            <!-- Security Note -->
+            {% block security_note %}
+            <div class="security-note">
+                <strong>🔒 Security Notice:</strong> If you did not initiate this action, you can safely ignore this email. No further action is required.
+            </div>
+            {% endblock %}
+            
+            <!-- Button Block -->
+            {% block button_block %}
             {% endblock %}
         </div>
         
         <div class="footer">
+            <p><strong>Warm regards,</strong><br>The AgriPlot Connect Team</p>
             <p>© {% now "Y" %} AgriPlot Connect. All rights reserved.</p>
             <p class="small-text">
                 AgriPlot Connect is a verified agricultural land marketplace dedicated to transparency, 
                 security, and trust in land transactions across Kenya.
             </p>
             <p class="small-text">
-                {% block footer_note %}This email was sent by AgriPlot Connect. If you have any concerns, please contact our support team.{% endblock %}
+                {% block footer_note %}
+                This email was sent by AgriPlot Connect. If you have any concerns, please contact our support team.
+                {% endblock %}
+            </p>
+            <p class="small-text">
+                <a href="{% url 'listings:contact_support' %}">Help Center</a> | <a href="{% url 'listings:privacy' %}">Privacy Policy</a> | <a href="{% url 'listings:terms' %}">Terms of Service</a>
             </p>
         </div>
     </div>
