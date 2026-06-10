@@ -240,9 +240,11 @@ class JengaBankTransferProvider(BaseBankTransferProvider):
             raise ValidationError("BANK_TRANSFER_PRIVATE_KEY_PATH is required for RSA signing.")
 
         try:
-            from cryptography.hazmat.primitives import hashes, serialization
-            from cryptography.hazmat.primitives.asymmetric import padding
-        except ImportError as exc:
+            import importlib
+            hashes = importlib.import_module("cryptography.hazmat.primitives.hashes")
+            serialization = importlib.import_module("cryptography.hazmat.primitives.serialization")
+            padding = importlib.import_module("cryptography.hazmat.primitives.asymmetric.padding")
+        except Exception as exc:
             raise ValidationError("cryptography is required for RSA bank transfer signing.") from exc
 
         with open(key_path, "rb") as handle:
@@ -369,9 +371,11 @@ class JengaBankTransferProvider(BaseBankTransferProvider):
 
         if public_key_path:
             try:
-                from cryptography.hazmat.primitives import hashes, serialization
-                from cryptography.hazmat.primitives.asymmetric import padding
-            except ImportError:
+                import importlib
+                hashes = importlib.import_module("cryptography.hazmat.primitives.hashes")
+                serialization = importlib.import_module("cryptography.hazmat.primitives.serialization")
+                padding = importlib.import_module("cryptography.hazmat.primitives.asymmetric.padding")
+            except Exception:
                 raise ValidationError("cryptography is required to verify signed bank callbacks.")
             with open(public_key_path, "rb") as handle:
                 public_key = serialization.load_pem_public_key(handle.read())

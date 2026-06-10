@@ -12,24 +12,22 @@
         <div class="hero-card-logo">
             <img src="{% static 'images/agriplot-logo.png' %}" alt="AgriPlot">
         </div>
+        
         <div class="hero-card-info">
             <h2>{{ plot.title }}</h2>
             <p class="hero-location">
+                <i class="fas fa-map-marker-alt me-1"></i>
                 {% if plot.county %}{{ plot.county }}{% if plot.subcounty %}, {{ plot.subcounty }}{% endif %}{% if plot.ward %}, {{ plot.ward }}{% endif %}{% else %}{{ plot.location }}{% endif %}
             </p>
+            
             <div class="availability-banner {{ plot.market_status_css }}">
                 <span class="availability-eyebrow">Availability Status</span>
                 <div class="availability-status-line">
-                    <span class="availability-pill">
-                        {{ plot.occupancy_status_label }}
-                    </span>
+                    <span class="availability-pill">{{ plot.occupancy_status_label }}</span>
                     <span class="availability-mode">
-                        {% if plot.listing_type == 'lease' %}
-                            Lease listing
-                        {% elif plot.listing_type == 'sale' %}
-                            Sale listing
-                        {% else %}
-                            Sale or lease
+                        {% if plot.listing_type == 'lease' %}Lease listing
+                        {% elif plot.listing_type == 'sale' %}Sale listing
+                        {% else %}Sale or lease
                         {% endif %}
                     </span>
                 </div>
@@ -38,20 +36,79 @@
                 <p class="availability-copy mt-2 mb-0"><strong>{{ checkout_availability_message }}</strong></p>
                 {% endif %}
             </div>
+
+            <!-- Pricing Stats - Dynamic based on listing type -->
             <div class="hero-stats">
-                <div class="hero-stat">
-                    <span class="value">KES {{ plot.price|floatformat:0 }}</span>
-                    <span class="label">Price</span>
-                </div>
+                {% if plot.listing_type == 'lease' %}
+                    <div class="hero-stat">
+                        <span class="value">
+                            {% if plot.lease_price_monthly %}
+                                KES {{ plot.lease_price_monthly|floatformat:0|intcomma }}
+                            {% elif plot.lease_price_yearly %}
+                                KES {{ plot.lease_price_yearly|floatformat:0|intcomma }}
+                            {% else %}
+                                Contact for price
+                            {% endif %}
+                        </span>
+                        <span class="label">
+                            {% if plot.lease_price_monthly %}Monthly Lease
+                            {% elif plot.lease_price_yearly %}Yearly Lease
+                            {% else %}Lease Price
+                            {% endif %}
+                        </span>
+                    </div>
+                {% elif plot.listing_type == 'both' %}
+                    <div class="hero-stat">
+                        <span class="value">KES {{ plot.price|floatformat:0|intcomma }}</span>
+                        <span class="label">Sale Price</span>
+                    </div>
+                    <div class="hero-stat">
+                        <span class="value">
+                            {% if plot.lease_price_monthly %}
+                                KES {{ plot.lease_price_monthly|floatformat:0|intcomma }}
+                            {% elif plot.lease_price_yearly %}
+                                KES {{ plot.lease_price_yearly|floatformat:0|intcomma }}
+                            {% else %}
+                                Contact us
+                            {% endif %}
+                        </span>
+                        <span class="label">
+                            {% if plot.lease_price_monthly %}Monthly Lease
+                            {% elif plot.lease_price_yearly %}Yearly Lease
+                            {% else %}Lease Price
+                            {% endif %}
+                        </span>
+                    </div>
+                {% else %}
+                    <div class="hero-stat">
+                        <span class="value">KES {{ plot.price|floatformat:0|intcomma }}</span>
+                        <span class="label">Sale Price</span>
+                    </div>
+                {% endif %}
+
                 <div class="hero-stat">
                     <span class="value">{{ plot.area|floatformat:1 }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
                     <span class="label">Plot Area</span>
                 </div>
+
                 <div class="hero-stat">
                     <span class="value">
-                        {% if plot.area_acres and plot.area_acres > 0 and plot.price %}
-                            {% widthratio plot.price plot.area_acres 1 as price_per_acre %}
-                            KES {{ price_per_acre|floatformat:0|intcomma }} /acre
+                        {% if plot.area_acres and plot.area_acres > 0 %}
+                            {% if plot.listing_type == 'lease' %}
+                                {% if plot.lease_price_monthly %}
+                                    KES {% widthratio plot.lease_price_monthly plot.area_acres 1 as price_per_acre %}{{ price_per_acre|floatformat:0|intcomma }}/mo/acre
+                                {% elif plot.lease_price_yearly %}
+                                    KES {% widthratio plot.lease_price_yearly plot.area_acres 1 as price_per_acre %}{{ price_per_acre|floatformat:0|intcomma }}/yr/acre
+                                {% else %}
+                                    —
+                                {% endif %}
+                            {% else %}
+                                {% if plot.price %}
+                                    KES {% widthratio plot.price plot.area_acres 1 as price_per_acre %}{{ price_per_acre|floatformat:0|intcomma }}/acre
+                                {% else %}
+                                    —
+                                {% endif %}
+                            {% endif %}
                         {% else %}
                             —
                         {% endif %}
@@ -59,222 +116,143 @@
                     <span class="label">Price Per Acre</span>
                 </div>
             </div>
-        </div>
-        <div class="hero-card-actions">
-            <!-- Report 1: Due Diligence Report -->
-            <a href="{% url 'reports:encumbrance_search' plot.id %}" class="btn hero-btn outline">
-                <i class="fas fa-file-search me-2"></i>Due Diligence Report
-            </a>
             
-            <!-- More Reports Dropdown -->
-            <div class="dropdown d-inline-block">
-                <button class="btn hero-btn outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-chart-simple me-2"></i>More Reports
-                </button>
-                <ul class="dropdown-menu">
-                    <!-- Report 2: Land Use & Zoning (always visible for agricultural land) -->
-                    {% if plot.land_type == 'agricultural' %}
-                    <li><a class="dropdown-item" href="{% url 'reports:land_use_zoning' plot.id %}">
-                        <i class="fas fa-map me-2"></i>Land Use & Zoning Report
-                    </a></li>
-                    {% endif %}
-                    
-                    <!-- Owner-only reports -->
-                    {% if user.is_authenticated and plot.landowner == user %}
-                    <li><a class="dropdown-item" href="{% url 'reports:property_performance' plot.id %}">
-                        <i class="fas fa-chart-line me-2"></i>Property Performance Report
-                    </a></li>
-                    <li><a class="dropdown-item" href="{% url 'reports:occupancy_waitlist' plot.id %}">
-                        <i class="fas fa-users me-2"></i>Occupancy & Waitlist Report
-                    </a></li>
-                    {% endif %}
-                    
-                    <!-- Financial report for authenticated users -->
-                    {% if user.is_authenticated %}
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="{% url 'reports:escrow_statement' %}">
-                        <i class="fas fa-file-invoice-dollar me-2"></i>My Escrow Statement
-                    </a></li>
-                    {% endif %}
-                </ul>
-            </div>
-            
-            <!-- Chat with Seller -->
-            <a href="#agent" class="btn hero-btn primary">
-                <i class="fas fa-comment-dots me-2"></i>Chat with Seller
-            </a>
-            
-            <!-- Save Plot -->
-            {% if user.is_authenticated and not is_owner %}
-            <form method="post" action="{% url 'listings:toggle_saved_plot' plot.id %}" class="inline-action-form">
-                {% csrf_token %}
-                <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                <button type="submit" class="btn hero-btn save-toggle {% if is_saved_plot %}saved{% endif %}">
-                    <i class="{% if is_saved_plot %}fas{% else %}far{% endif %} fa-heart me-2"></i>
-                    {% if is_saved_plot %}Saved Plot{% else %}Save Plot{% endif %}
-                </button>
-            </form>
-            {% elif not user.is_authenticated %}
-            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn hero-btn save-toggle">
-                <i class="far fa-heart me-2"></i>Login to Save
-            </a>
-            {% endif %}
-            
-            <!-- Transaction Actions -->
-            {% if current_buyer_deal %}
-            <a href="{% if current_buyer_deal.next_closing_step %}{% url 'payments:closing_step_workspace' current_buyer_deal.pk current_buyer_deal.next_closing_step.pk %}{% else %}{% url 'payments:detail' current_buyer_deal.pk %}{% endif %}" class="btn hero-btn payment">
-                <i class="fas fa-route me-2"></i>
-                {% if current_buyer_deal.next_closing_step %}
-                    {% if current_buyer_deal.seller_id == user.id %}
-                        {% if current_buyer_deal.transaction_type == 'lease' %}
-                            Open landowner confirmation
-                        {% else %}
-                            Open seller confirmation
+            <!-- Action Buttons - Moved here (inside hero-card-info, after stats) -->
+            <div class="hero-card-actions">
+                <a href="{% url 'reports:encumbrance_search' plot.id %}" class="btn hero-btn outline">
+                    <i class="fas fa-file-search me-2"></i>Due Diligence
+                </a>
+                
+                <div class="dropdown d-inline-block">
+                    <button class="btn hero-btn outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-chart-simple me-2"></i>More Reports
+                    </button>
+                    <ul class="dropdown-menu">
+                        {% if plot.land_type == 'agricultural' %}
+                        <li><a class="dropdown-item" href="{% url 'reports:land_use_zoning' plot.id %}">
+                            <i class="fas fa-map me-2"></i>Land Use & Zoning
+                        </a></li>
                         {% endif %}
-                    {% else %}
-                        {{ current_buyer_deal.next_closing_step.action_cta_label }}
-                    {% endif %}
-                {% else %}
-                    Continue Transaction
+                        {% if user.is_authenticated and plot.landowner == user %}
+                        <li><a class="dropdown-item" href="{% url 'reports:property_performance' plot.id %}">
+                            <i class="fas fa-chart-line me-2"></i>Property Performance
+                        </a></li>
+                        <li><a class="dropdown-item" href="{% url 'reports:occupancy_waitlist' plot.id %}">
+                            <i class="fas fa-users me-2"></i>Occupancy & Waitlist
+                        </a></li>
+                        {% endif %}
+                        {% if user.is_authenticated %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{% url 'reports:escrow_statement' %}">
+                            <i class="fas fa-file-invoice-dollar me-2"></i>My Escrow Statement
+                        </a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+
+                <a href="#agent" class="btn hero-btn primary">
+                    <i class="fas fa-comment-dots me-2"></i>Chat with Seller
+                </a>
+
+                {% if user.is_authenticated and not is_owner %}
+                <form method="post" action="{% url 'listings:toggle_saved_plot' plot.id %}" class="inline-action-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="btn hero-btn save-toggle {% if is_saved_plot %}saved{% endif %}">
+                        <i class="{% if is_saved_plot %}fas{% else %}far{% endif %} fa-heart me-2"></i>
+                        {% if is_saved_plot %}Saved{% else %}Save{% endif %}
+                    </button>
+                </form>
+                {% elif not user.is_authenticated %}
+                <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn hero-btn save-toggle">
+                    <i class="far fa-heart me-2"></i>Save
+                </a>
                 {% endif %}
-            </a>
-            {% elif can_start_lease %}
-            <a href="{{ legal_workflow_url }}" class="btn hero-btn payment">
-                <i class="fas fa-scale-balanced me-2"></i>Lease Now
-            </a>
-            {% elif can_start_purchase %}
-            <a href="{{ legal_workflow_url }}&transaction_type=purchase" class="btn hero-btn payment">
-                <i class="fas fa-scale-balanced me-2"></i>{% if plot.has_active_lease %}Buy with Active Lease{% else %}Open Purchase Workflow{% endif %}
-            </a>
-            {% elif show_waitlist_cta %}
-            <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="inline-action-form">
-                {% csrf_token %}
-                <button type="submit" class="btn hero-btn payment">
-                    <i class="fas fa-hourglass-half me-2"></i>Reserve Next Lease Window
-                </button>
-            </form>
-            {% elif show_waitlist_confirm_cta %}
-            <form method="post" action="{% url 'listings:confirm_lease_waitlist' plot.id %}" class="inline-action-form">
-                {% csrf_token %}
-                <button type="submit" class="btn hero-btn payment">
-                    <i class="fas fa-check-circle me-2"></i>Confirm Next Lease Interest
-                </button>
-            </form>
-            {% elif show_login_waitlist_cta %}
-            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn hero-btn payment">
-                <i class="fas fa-hourglass-half me-2"></i>Login to Reserve Next
-            </a>
-            {% elif user.is_authenticated and not is_owner %}
-            <span class="btn hero-btn payment disabled">
-                <i class="fas fa-ban me-2"></i>Currently Unavailable
-            </span>
-            {% elif not user.is_authenticated %}
-            <a href="{% url 'login' %}?next={{ legal_workflow_url|urlencode }}" class="btn hero-btn payment">
-                <i class="fas fa-scale-balanced me-2"></i>Login for Legal Workflow
-            </a>
-            {% endif %}
-            
-            <!-- Waitlist Actions -->
-            {% if plot.next_lease_booking_open and not current_buyer_deal %}
-            {% if show_waitlist_cta %}
-            <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="inline-action-form">
-                {% csrf_token %}
-                <button type="submit" class="btn hero-btn outline">
-                    <i class="fas fa-hourglass-half me-2"></i>Reserve Next Lease Window
-                </button>
-            </form>
-            {% elif show_waitlist_confirm_cta %}
-            <form method="post" action="{% url 'listings:confirm_lease_waitlist' plot.id %}" class="inline-action-form">
-                {% csrf_token %}
-                <button type="submit" class="btn hero-btn outline">
-                    <i class="fas fa-check-circle me-2"></i>Confirm Next Lease
-                </button>
-            </form>
-            {% elif show_login_waitlist_cta %}
-            <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn hero-btn outline">
-                <i class="fas fa-hourglass-half me-2"></i>Login to Reserve Next
-            </a>
-            {% endif %}
-            {% endif %}
-            
-            <!-- Location & Full Details -->
-            <a href="#location" class="btn hero-btn outline">
-                <i class="fas fa-map-marker-alt me-2"></i>View Location
-            </a>
-            <a href="{% url 'listings:land_full_details' plot.id %}" class="btn hero-btn outline">
-                <i class="fas fa-file-alt me-2"></i>Full Land Details
-            </a>
+
+                {% if current_buyer_deal %}
+                <a href="{% if current_buyer_deal.next_closing_step %}{% url 'payments:closing_step_workspace' current_buyer_deal.pk current_buyer_deal.next_closing_step.pk %}{% else %}{% url 'payments:detail' current_buyer_deal.pk %}{% endif %}" class="btn hero-btn payment">
+                    <i class="fas fa-route me-2"></i>Continue Transaction
+                </a>
+                {% elif can_start_lease %}
+                <a href="{{ legal_workflow_url }}" class="btn hero-btn payment">
+                    <i class="fas fa-scale-balanced me-2"></i>Lease Now
+                </a>
+                {% elif can_start_purchase %}
+                <a href="{{ legal_workflow_url }}&transaction_type=purchase" class="btn hero-btn payment">
+                    <i class="fas fa-scale-balanced me-2"></i>Purchase Now
+                </a>
+                {% elif show_waitlist_cta %}
+                <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="inline-action-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn hero-btn payment">Reserve Next Lease</button>
+                </form>
+                {% elif show_login_waitlist_cta %}
+                <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="btn hero-btn payment">Login to Reserve</a>
+                {% endif %}
+
+                <a href="#location" class="btn hero-btn outline">
+                    <i class="fas fa-map-marker-alt me-2"></i>Location
+                </a>
+                <a href="{% url 'listings:land_full_details' plot.id %}" class="btn hero-btn outline">
+                    <i class="fas fa-file-alt me-2"></i>Full Details
+                </a>
+            </div>
         </div>
     </div>
 </section>
 
+<!-- Price Info Banner for Both Listing Types -->
+{% if plot.listing_type == 'both' %}
+<section class="container mt-3">
+    <div class="alert alert-info text-center">
+        <i class="fas fa-info-circle me-2"></i>
+        <strong>Available for both sale and lease</strong> — 
+        Sale: <strong>KES {{ plot.price|floatformat:0|intcomma }}</strong> | 
+        Lease: <strong>
+            {% if plot.lease_price_monthly %}KES {{ plot.lease_price_monthly|floatformat:0|intcomma }}/month
+            {% elif plot.lease_price_yearly %}KES {{ plot.lease_price_yearly|floatformat:0|intcomma }}/year
+            {% else %}Contact for pricing{% endif %}
+        </strong>
+    </div>
+</section>
+{% endif %}
+
 {% if show_waitlist_priority_notice %}
 <section class="container py-3">
-    <div class="workspace-notice">
-        You already confirmed your interest for the next lease window on this land, and the plot is now free again. You can continue with the AgriPlot lease workflow now.
-    </div>
+    <div class="workspace-notice">You confirmed interest for the next lease window. The plot is now free — continue with the lease workflow.</div>
 </section>
 {% endif %}
 
 <div class="container-fluid py-4 detail-shell">
     <div class="detail-layout">
+        <!-- Sidebar Navigation -->
         <aside class="detail-nav">
-            <!-- Navigation Links -->
-            <a href="{% url 'listings:home' %}" class="nav-link"><i class="fas fa-arrow-left me-2"></i>Back to Listings</a>
+            <a href="{% url 'listings:home' %}" class="nav-link"><i class="fas fa-arrow-left me-2"></i>Back</a>
             <a href="#details" class="nav-link active">Overview</a>
             <a href="#about" class="nav-link">About</a>
-            {% if plot.agent %}
-            <a href="#authority" class="nav-link">Authority</a>
-            {% endif %}
+            {% if plot.agent %}<a href="#authority" class="nav-link">Authority</a>{% endif %}
             <a href="#amenities" class="nav-link">Amenities</a>
             <a href="#gallery" class="nav-link">Gallery</a>
             <a href="#location" class="nav-link">Location</a>
             <a href="#agent" class="nav-link">Owner</a>
-            
-            <!-- Reports Section in Sidebar -->
-            <div class="nav-divider my-2" style="height: 1px; background: #e5e7eb;"></div>
-            
-            <!-- Report 1: Due Diligence -->
-            <a href="{% url 'reports:encumbrance_search' plot.id %}" class="nav-link">
-                <i class="fas fa-file-pdf me-2"></i>Due Diligence Report
-            </a>
-            
-            <!-- Report 2: Land Use & Zoning -->
+            <div class="nav-divider my-2"></div>
+            <a href="{% url 'reports:encumbrance_search' plot.id %}" class="nav-link"><i class="fas fa-file-pdf me-2"></i>Due Diligence</a>
             {% if plot.land_type == 'agricultural' %}
-            <a href="{% url 'reports:land_use_zoning' plot.id %}" class="nav-link">
-                <i class="fas fa-map me-2"></i>Land Use & Zoning Report
-            </a>
+            <a href="{% url 'reports:land_use_zoning' plot.id %}" class="nav-link"><i class="fas fa-map me-2"></i>Land Use Report</a>
             {% endif %}
-            
-            <!-- Owner-only reports in sidebar -->
-            {% if user.is_authenticated and plot.landowner == user %}
-            <a href="{% url 'reports:property_performance' plot.id %}" class="nav-link">
-                <i class="fas fa-chart-line me-2"></i>Property Performance Report
-            </a>
-            <a href="{% url 'reports:occupancy_waitlist' plot.id %}" class="nav-link">
-                <i class="fas fa-users me-2"></i>Occupancy & Waitlist Report
-            </a>
-            {% endif %}
-            
-            <!-- Financial Report Link -->
             {% if user.is_authenticated %}
-            <a href="{% url 'reports:escrow_statement' %}" class="nav-link">
-                <i class="fas fa-file-invoice-dollar me-2"></i>My Escrow Statement
-            </a>
+            <a href="{% url 'reports:escrow_statement' %}" class="nav-link"><i class="fas fa-file-invoice-dollar me-2"></i>My Escrow</a>
             {% endif %}
         </aside>
-        
+
         <main class="detail-main">
-            <!-- Main Content Grid -->
             <div class="row">
-                <!-- Left Column: Location & Details -->
+                <!-- Left Column -->
                 <div class="col-lg-8 mb-4">
-                    <!-- About Section -->
+                    <!-- About -->
                     <div class="dashboard-card mb-4" id="about">
                         <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-align-left me-2"></i>About
-                            </h6>
+                            <h6 class="card-title"><i class="fas fa-align-left me-2"></i>About</h6>
                         </div>
                         <div class="card-body">
                             <p class="mb-0">
@@ -289,85 +267,10 @@
                         </div>
                     </div>
 
-                    {% if plot.agent %}
-                    <div class="dashboard-card mb-4" id="authority">
-                        <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-file-signature me-2"></i>Agent Authority & Owner Approval
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <div class="border rounded p-3 h-100">
-                                        <small class="text-muted d-block">Listing authority status</small>
-                                        <strong>{{ plot.get_owner_approval_status_display }}</strong>
-                                        {% if plot.owner_approval_requested_at %}
-                                        <div class="small text-muted mt-2">Requested {{ plot.owner_approval_requested_at|date:"M d, Y H:i" }}</div>
-                                        {% endif %}
-                                        {% if plot.owner_approval_at %}
-                                        <div class="small text-muted">Reviewed {{ plot.owner_approval_at|date:"M d, Y H:i" }}</div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="border rounded p-3 h-100">
-                                        <small class="text-muted d-block">Commission structure</small>
-                                        <strong>
-                                            {% if plot.agent_commission_type and plot.agent_commission_value %}
-                                                {{ plot.get_agent_commission_type_display }}: {{ plot.agent_commission_value }}
-                                            {% else %}
-                                                Not shared publicly
-                                            {% endif %}
-                                        </strong>
-                                        <div class="small text-muted mt-2">
-                                            Agent: {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% if plot.agency_agreement and can_view_documents %}
-                            <p class="mt-3 mb-0">
-                                <a href="{{ plot.agency_agreement.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
-                                    <i class="fas fa-paperclip me-2"></i>Open Agency Agreement
-                                </a>
-                            </p>
-                            {% endif %}
-                            {% if plot.owner_approval_notes %}
-                            <div class="alert alert-light border mt-3 mb-0">
-                                <strong>Owner review note:</strong> {{ plot.owner_approval_notes }}
-                            </div>
-                            {% endif %}
-                            {% if can_approve_agent_listing %}
-                            <div class="alert alert-warning mt-3">
-                                This listing was submitted by an agent on your behalf. Review the authority details before it can continue to verification.
-                            </div>
-                            <form method="post" action="{% url 'listings:approve_agent_listing' plot.id %}" class="mt-3">
-                                {% csrf_token %}
-                                <div class="mb-3">
-                                    <label class="form-label">Review note</label>
-                                    <textarea name="notes" class="form-control" rows="3" placeholder="Optional note for the agent or admin team."></textarea>
-                                </div>
-                                <div class="d-flex gap-2 flex-wrap">
-                                    <button type="submit" class="btn btn-success">
-                                        <i class="fas fa-check me-2"></i>Approve Listing Authority
-                                    </button>
-                                    <button type="submit" name="action" value="reject" class="btn btn-outline-danger">
-                                        <i class="fas fa-ban me-2"></i>Reject Request
-                                    </button>
-                                </div>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Amenities Section -->
+                    <!-- Amenities -->
                     <div class="dashboard-card mb-4" id="amenities">
                         <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-list-check me-2"></i>Amenities
-                            </h6>
+                            <h6 class="card-title"><i class="fas fa-list-check me-2"></i>Amenities</h6>
                         </div>
                         <div class="card-body">
                             <div class="amenities-grid">
@@ -387,111 +290,13 @@
                                     <i class="fas fa-border-all me-1"></i>Fencing: {{ plot.fencing|default:"Not specified" }}
                                 </span>
                             </div>
-                            {% if has_amenity_distances %}
-                            <div class="row g-3 mt-2">
-                                <div class="col-md-6 col-xl-4">
-                                    <div class="border rounded p-3 h-100">
-                                        <small class="text-muted d-block">Nearest water source</small>
-                                        <strong>{% if amenity_distances.water %}{{ amenity_distances.water }} km{% else %}Not available{% endif %}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-xl-4">
-                                    <div class="border rounded p-3 h-100">
-                                        <small class="text-muted d-block">Nearest market</small>
-                                        <strong>{% if amenity_distances.market %}{{ amenity_distances.market }} km{% else %}Not available{% endif %}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-xl-4">
-                                    <div class="border rounded p-3 h-100">
-                                        <small class="text-muted d-block">Nearest road</small>
-                                        <strong>{% if amenity_distances.road %}{{ amenity_distances.road }} km{% else %}Not available{% endif %}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-xl-4">
-                                    <div class="border rounded p-3 h-100">
-                                        <small class="text-muted d-block">Nearest school</small>
-                                        <strong>{% if amenity_distances.school %}{{ amenity_distances.school }} km{% else %}Not available{% endif %}</strong>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 col-xl-4">
-                                    <div class="border rounded p-3 h-100">
-                                        <small class="text-muted d-block">Nearest health facility</small>
-                                        <strong>{% if amenity_distances.health %}{{ amenity_distances.health }} km{% else %}Not available{% endif %}</strong>
-                                    </div>
-                                </div>
-                            </div>
-                            {% elif water_sources or roads or markets or schools or health_facilities %}
-                            <p class="text-muted mt-3 mb-0">
-                                Distance cards will appear once this plot and its linked amenity records have map coordinates.
-                            </p>
-                            {% endif %}
-                            {% if water_sources or roads or markets or schools or health_facilities %}
-                            <div class="mt-4">
-                                <strong class="d-block mb-2">Linked Amenity Records</strong>
-                                <div class="row g-3">
-                                    {% for item in water_sources %}
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-3 h-100">
-                                            <small class="text-muted d-block">Water Source</small>
-                                            <strong>{{ item.name }}</strong>
-                                            {% if item.description %}<div class="text-muted small mt-1">{{ item.description }}</div>{% endif %}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                    {% for item in roads %}
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-3 h-100">
-                                            <small class="text-muted d-block">Road</small>
-                                            <strong>{{ item.name }}</strong>
-                                            {% if item.road_type %}<div class="text-muted small mt-1">{{ item.get_road_type_display }}</div>{% endif %}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                    {% for item in markets %}
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-3 h-100">
-                                            <small class="text-muted d-block">Market</small>
-                                            <strong>{{ item.name }}</strong>
-                                            {% if item.description %}<div class="text-muted small mt-1">{{ item.description }}</div>{% endif %}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                    {% for item in schools %}
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-3 h-100">
-                                            <small class="text-muted d-block">School</small>
-                                            <strong>{{ item.name }}</strong>
-                                            {% if item.level %}<div class="text-muted small mt-1">{{ item.level }}</div>{% endif %}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                    {% for item in health_facilities %}
-                                    <div class="col-md-6">
-                                        <div class="border rounded p-3 h-100">
-                                            <small class="text-muted d-block">Health Facility</small>
-                                            <strong>{{ item.name }}</strong>
-                                            {% if item.facility_type %}<div class="text-muted small mt-1">{{ item.facility_type }}</div>{% endif %}
-                                        </div>
-                                    </div>
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                            {% if plot.other_amenities %}
-                            <div class="mt-3">
-                                <strong>Other amenities</strong>
-                                <p class="mb-0 text-muted">{{ plot.other_amenities|linebreaksbr }}</p>
-                            </div>
-                            {% endif %}
                         </div>
                     </div>
 
-                    <!-- Gallery Section -->
+                    <!-- Gallery -->
                     <div class="dashboard-card mb-4" id="gallery">
                         <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-images me-2"></i>Gallery
-                            </h6>
+                            <h6 class="card-title"><i class="fas fa-images me-2"></i>Gallery</h6>
                         </div>
                         <div class="card-body">
                             <div class="gallery-grid">
@@ -499,1108 +304,877 @@
                                     {% for img in plot.images.all %}
                                         <img src="{{ img.image.url }}" alt="Plot photo" class="gallery-thumb">
                                     {% endfor %}
-                                {% elif plot.extension_reports.first and plot.extension_reports.first.site_photos %}
-                                    {% for photo in plot.extension_reports.first.site_photos %}
-                                        <img src="/media/{{ photo }}" alt="Plot photo" class="gallery-thumb">
-                                    {% endfor %}
                                 {% else %}
-                                    <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
-                                    <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
-                                    <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Plot photo" class="gallery-thumb">
+                                    <img src="{% static 'images/placeholder-plot.jpeg' %}" alt="Placeholder" class="gallery-thumb">
                                 {% endif %}
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Location / GIS Map -->
+
+                    <!-- Location -->
                     <div class="dashboard-card mb-4" id="location">
                         <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-map-marker-alt me-2"></i>Location &amp; Map
-                            </h6>
+                            <h6 class="card-title"><i class="fas fa-map-marker-alt me-2"></i>Location</h6>
                         </div>
                         <div class="card-body">
                             {% if plot.has_coordinates %}
-                            <p class="mb-2">
-                                <i class="fas fa-globe me-2 text-primary"></i>
-                                <strong>Coordinates:</strong> {{ plot.latitude }}°, {{ plot.longitude }}°
-                            </p>
-                            {% if map_bbox %}
-                            <div class="map-embed rounded overflow-hidden border" style="height: 300px; background: #e9ecef;">
-                                <iframe
-                                    width="100%"
-                                    height="300"
-                                    style="border:0"
-                                    loading="lazy"
-                                    allowfullscreen
-                                    referrerpolicy="no-referrer-when-downgrade"
-                                    src="https://www.openstreetmap.org/export/embed.html?bbox={{ map_bbox }}&amp;layer=map&amp;marker={{ plot.latitude }}%2C{{ plot.longitude }}">
-                                </iframe>
-                            </div>
-                            {% endif %}
-                            <p class="mt-2 mb-0">
-                                <a href="https://www.openstreetmap.org/?mlat={{ plot.latitude }}&amp;mlon={{ plot.longitude }}#map=15/{{ plot.latitude }}/{{ plot.longitude }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
-                                    <i class="fas fa-external-link-alt me-1"></i>Open in OpenStreetMap
-                                </a>
-                            </p>
+                                <div class="map-embed rounded overflow-hidden border" style="height: 300px;">
+                                    <iframe width="100%" height="300" style="border:0" loading="lazy" allowfullscreen
+                                        src="https://www.openstreetmap.org/export/embed.html?bbox={{ map_bbox }}&amp;layer=map&amp;marker={{ plot.latitude }}%2C{{ plot.longitude }}">
+                                    </iframe>
+                                </div>             
                             {% else %}
-                            <div class="empty-gallery text-center py-5">
-                                <i class="fas fa-map fa-4x text-muted mb-3"></i>
-                                <h5>No coordinates set</h5>
-                                <p class="text-muted mb-0">Location: {{ plot.location }}</p>
-                                <p class="text-muted small">Coordinates can be added by the listing owner for map view.</p>
-                            </div>
+                                <div class="text-center py-4">
+                                    <i class="fas fa-map fa-3x text-muted mb-2"></i>
+                                    <p class="text-muted mb-0">Location: {{ plot.location }}</p>
+                                </div>
                             {% endif %}
                         </div>
                     </div>
 
-                    {% if user.is_authenticated and not is_owner %}
-                    <div class="dashboard-card mb-4" id="trust">
-                        <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-shield-halved me-2"></i>Trust & Reporting
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted">If anything about this listing looks suspicious, send it to the AgriPlot review team.</p>
-                            <form method="post" action="{% url 'listings:submit_fraud_report' plot.id %}">
-                                {% csrf_token %}
-                                <div class="mb-3">
-                                    <label class="form-label">Reason</label>
-                                    <textarea name="reason" class="form-control" rows="3" placeholder="Explain what looks suspicious." required></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Extra notes</label>
-                                    <input type="text" name="notes" class="form-control" placeholder="Optional supporting context">
-                                </div>
-                                <button type="submit" class="btn btn-outline-danger">
-                                    <i class="fas fa-flag me-2"></i>Report Listing
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if visible_transfer_agreements %}
-                    <div class="dashboard-card mb-4" id="legal-documents">
-                        <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-scale-balanced me-2"></i>Transfer Documents
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted">You can see these documents because you are directly involved in this transfer or assigned to it.</p>
-                            <div class="row g-3">
-                                {% for agreement in visible_transfer_agreements %}
-                                <div class="col-md-6">
-                                    <div class="border rounded p-3 h-100">
-                                        <small class="text-muted d-block">Agreement Date</small>
-                                        <strong>{{ agreement.agreement_date|default:"Pending" }}</strong>
-                                        <div class="small text-muted mt-2">
-                                            Buyer:
-                                            {% if agreement.buyer %}{{ agreement.buyer.user.get_full_name|default:agreement.buyer.user.username }}{% else %}Not set{% endif %}
-                                        </div>
-                                        <div class="small text-muted">
-                                            Seller:
-                                            {% if agreement.seller %}{{ agreement.seller.user.get_full_name|default:agreement.seller.user.username }}{% else %}Not set{% endif %}
-                                        </div>
-                                        {% if agreement.notes %}
-                                        <div class="small mt-2">{{ agreement.notes }}</div>
-                                        {% endif %}
-                                        <div class="mt-3">
-                                            {% if agreement.document %}
-                                            <a href="{{ agreement.document.url }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-file-arrow-up-right me-1"></i>Open Agreement
-                                            </a>
-                                            {% else %}
-                                            <span class="text-muted small">Document not uploaded yet</span>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Plot Details Table -->
+                    <!-- Details Table -->
                     <div class="dashboard-card" id="details">
                         <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-info-circle me-2"></i>Plot Details
-                            </h6>
+                            <h6 class="card-title"><i class="fas fa-info-circle me-2"></i>Property Details</h6>
                         </div>
                         <div class="card-body">
-                            <div class="details-table">
-                                <table class="plot-details-table">
-                                    <tbody>
-                                        <tr>
-                                            <td class="detail-label">Title</td>
-                                            <td class="detail-value">{{ plot.title }}</td>
-                                        </tr>
-                                        <tr>
-                                            <td class="detail-label">Location</td>
-                                            <td class="detail-value">
-                                                <i class="fas fa-map-marker-alt text-danger me-2"></i>
-                                                {{ plot.location }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td class="detail-label">Area</td>
-                                            <td class="detail-value">
-                                                <i class="fas fa-ruler-combined text-warning me-2"></i>
-                                                {{ plot.area|floatformat:1 }} {{ plot.get_area_unit_display|default:"Acres" }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td class="detail-label">Parcel Number</td>
-                                            <td class="detail-value">
-                                                <i class="fas fa-hashtag text-secondary me-2"></i>
-                                                {{ plot.parcel_number|default:"Not provided" }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td class="detail-label">Registration Section</td>
-                                            <td class="detail-value">
-                                                <i class="fas fa-map-marked-alt text-secondary me-2"></i>
-                                                {{ plot.registration_section|default:"Not provided" }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td class="detail-label">Price</td>
-                                            <td class="detail-value">
-                                                <i class="fas fa-money-bill-wave text-success me-2"></i>
-                                                KES {{ plot.price|floatformat:0 }}
-                                                {% if plot.area_acres and plot.area_acres > 0 %}
-                                                <small class="text-muted d-block mt-1">
-                                                    (KES {% widthratio plot.price plot.area_acres 1 as price_per_acre %}{{ price_per_acre|floatformat:0 }} per acre)
-                                                </small>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td class="detail-label">Soil Type</td>
-                                            <td class="detail-value">
-                                                <i class="fas fa-seedling text-success me-2"></i>
-                                                {{ plot.soil_type|default:"Not specified" }}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td class="detail-label">Crop Suitability</td>
-                                            <td class="detail-value">
-                                                <i class="fas fa-leaf text-info me-2"></i>
-                                                {{ plot.crop_suitability|default:"Various crops" }}
-                                            </td>
-                                        </tr>
-                                        {% if plot.ph_level %}
-                                        <tr>
-                                            <td class="detail-label">pH Level</td>
-                                            <td class="detail-value">
-                                                <i class="fas fa-flask text-primary me-2"></i>
-                                                {{ plot.ph_level }}
-                                                <span class="ph-indicator 
-                                                    {% if plot.ph_level < 5 %}text-danger{% elif plot.ph_level > 8 %}text-warning{% else %}text-success{% endif %}">
-                                                    {% if plot.ph_level < 5 %}(Acidic){% elif plot.ph_level > 8 %}(Alkaline){% else %}(Neutral){% endif %}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                        {% endif %}
-                                        <tr>
-                                            <td class="detail-label">Verification Status</td>
-                                            <td class="detail-value">
-                                                {% if plot.verification_status.status == 'verified' %}
-                                                <span class="badge bg-success">
-                                                    <i class="fas fa-check-circle me-1"></i>Verified
-                                                </span>
-                                                {% elif plot.verification_status.status == 'pending' %}
-                                                <span class="badge bg-warning">
-                                                    <i class="fas fa-clock me-1"></i>Pending
-                                                </span>
-                                                {% elif plot.verification_status.status == 'rejected' %}
-                                                <span class="badge bg-danger">
-                                                    <i class="fas fa-times-circle me-1"></i>Rejected
-                                                </span>
+                            <table class="plot-details-table">
+                                <tbody>
+                                    <tr><td class="detail-label">Title</td><td class="detail-value">{{ plot.title }}</td></tr>
+                                    <tr><td class="detail-label">Location</td><td class="detail-value">{{ plot.location }}</td></tr>
+                                    <tr><td class="detail-label">Area</td><td class="detail-value">{{ plot.area|floatformat:1 }} {{ plot.get_area_unit_display|default:"Acres" }}</td></tr>
+                                    <tr><td class="detail-label">Parcel Number</td><td class="detail-value">{{ plot.parcel_number|default:"Not provided" }}</td></tr>
+                                    <tr>
+                                        <td class="detail-label">Price</td>
+                                        <td class="detail-value">
+                                            {% if plot.listing_type == 'lease' %}
+                                                {% if plot.lease_price_monthly %}
+                                                    <strong>KES {{ plot.lease_price_monthly|floatformat:0|intcomma }}</strong> <span class="text-muted">(per month)</span>
+                                                {% elif plot.lease_price_yearly %}
+                                                    <strong>KES {{ plot.lease_price_yearly|floatformat:0|intcomma }}</strong> <span class="text-muted">(per year)</span>
                                                 {% else %}
-                                                <span class="badge bg-secondary">
-                                                    {{ plot.verification_status.status|title }}
-                                                </span>
+                                                    <span class="text-muted">Contact for lease pricing</span>
                                                 {% endif %}
-                                                {% if plot.verification_status.reviewed_at %}
-                                                <small class="text-muted d-block mt-1">
-                                                    Reviewed: {{ plot.verification_status.reviewed_at|date:"M d, Y" }}
-                                                </small>
+                                            {% elif plot.listing_type == 'both' %}
+                                                <div><strong>Sale:</strong> KES {{ plot.price|floatformat:0|intcomma }}</div>
+                                                <div class="mt-1"><strong>Lease:</strong> 
+                                                    {% if plot.lease_price_monthly %}KES {{ plot.lease_price_monthly|floatformat:0|intcomma }}/month
+                                                    {% elif plot.lease_price_yearly %}KES {{ plot.lease_price_yearly|floatformat:0|intcomma }}/year
+                                                    {% else %}Contact for pricing{% endif %}
+                                                </div>
+                                            {% else %}
+                                                <strong>KES {{ plot.price|floatformat:0|intcomma }}</strong>
+                                                {% if plot.area_acres and plot.area_acres > 0 %}
+                                                    <div class="small text-muted mt-1">(KES {% widthratio plot.price plot.area_acres 1 as price_per_acre %}{{ price_per_acre|floatformat:0|intcomma }} per acre)</div>
                                                 {% endif %}
-                                            </td>
-                                        </tr>
-                                        <tr>
-                                            <td class="detail-label">Date Listed</td>
-                                            <td class="detail-value">
-                                                <i class="fas fa-calendar text-primary me-2"></i>
-                                                {{ plot.created_at|date:"F d, Y" }}
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    <tr><td class="detail-label">Soil Type</td><td class="detail-value">{{ plot.soil_type|default:"Not specified" }}</td></tr>
+                                    <tr><td class="detail-label">Crop Suitability</td><td class="detail-value">{{ plot.crop_suitability|default:"Various crops" }}</td></tr>
+                                    <tr><td class="detail-label">Date Listed</td><td class="detail-value">{{ plot.created_at|date:"F d, Y" }}</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
-
-                    {% if show_public_lease_status %}
-                    <div class="dashboard-card mt-4" id="lease-status">
-                        <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-file-signature me-2"></i>Current Lease Status
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="lease-status-grid">
-                                <div class="lease-status-item">
-                                    <span class="lease-status-label">Occupation Window</span>
-                                    <strong>{{ public_lease_start_date|date:"M d, Y" }} to {{ public_lease_end_date|date:"M d, Y" }}</strong>
-                                </div>
-                                <div class="lease-status-item">
-                                    <span class="lease-status-label">Notice Window Opens</span>
-                                    <strong>{% if active_lease_deal and active_lease_deal.vacation_notice_date %}{{ active_lease_deal.vacation_notice_date|date:"M d, Y" }}{% else %}Depends on the signed lease notice clause{% endif %}</strong>
-                                </div>
-                                <div class="lease-status-item">
-                                    <span class="lease-status-label">Intended Use</span>
-                                    <strong>{% if active_lease_deal %}{{ active_lease_deal.intended_use|default:"Not publicly stated" }}{% else %}Available on lease agreement record{% endif %}</strong>
-                                </div>
-                                <div class="lease-status-item">
-                                    <span class="lease-status-label">Security Deposit</span>
-                                    <strong>{% if active_lease_deal and active_lease_deal.lease_security_deposit %}KES {{ active_lease_deal.lease_security_deposit|floatformat:0|intcomma }}{% else %}Held in workflow{% endif %}</strong>
-                                </div>
-                            </div>
-                            <div class="workspace-notice mt-3">
-                                {% if active_lease_deal %}
-                                {{ active_lease_deal.public_lease_summary }}
-                                {% else %}
-                                Occupied until {{ public_lease_end_date|date:"M d, Y" }}. You can still join the queue now and reserve the next lease window once the current term ends.
-                                {% endif %}
-                            </div>
-                            <ul class="hero-list mt-3 mb-0">
-                                <li>Good husbandry clause: {% if active_lease_deal %}{% if active_lease_deal.good_husbandry_required %}required{% else %}not marked as required{% endif %}{% else %}tracked in the lease record{% endif %}.</li>
-                                <li>Soil exit test: {% if active_lease_deal %}{% if active_lease_deal.soil_exit_test_required %}required before final exit{% else %}not flagged{% endif %}{% else %}tracked in the lease record{% endif %}.</li>
-                                <li>Lease registry: {% if active_lease_deal %}{% if active_lease_deal.requires_registry_protection %}should be protected at the Lands Registry because the lease is over 2 years{% else %}formal registry protection is not mandatory from duration alone{% endif %}{% else %}depends on the lease term{% endif %}.</li>
-                                <li>Waitlist queue: {{ lease_waitlist_count }} interested {% if lease_waitlist_count == 1 %}user{% else %}users{% endif %} for the next lease slot.</li>
-                                {% if active_lease_deal and active_lease_deal.subject_to_sale %}
-                                <li>Subject to sale: this tenancy remains on the market for investors, and the lease should be honoured or terminated through the agreed notice path.</li>
-                                {% endif %}
-                            </ul>
-                            {% if user_waitlist_entry %}
-                            <div class="workspace-notice mt-3">
-                                You are already in the next-lease queue with status: <strong>{{ user_waitlist_entry.get_status_display }}</strong>.
-                            </div>
-                            {% if show_waitlist_confirm_cta %}
-                            <form method="post" action="{% url 'listings:confirm_lease_waitlist' plot.id %}" class="mt-3">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-check-circle me-2"></i>Confirm You Still Want This Lease
-                                </button>
-                            </form>
-                            {% endif %}
-                            {% elif show_waitlist_cta %}
-                            <form method="post" action="{% url 'listings:join_lease_waitlist' plot.id %}" class="mt-3">
-                                {% csrf_token %}
-                                <button type="submit" class="btn btn-outline-primary">
-                                    <i class="fas fa-hourglass-half me-2"></i>Join Waitlist / Reserve Next
-                                </button>
-                            </form>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
                 </div>
 
-                <!-- Right Column: Documents & Broker Info -->
+                <!-- Right Column -->
                 <div class="col-lg-4 mb-4">
-                    <!-- Owner/Agent Information & Contact -->
+                    <!-- Owner Info -->
                     <div class="dashboard-card mb-4" id="agent">
                         <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-user-tie me-2"></i>Owner / Agent Information
-                            </h6>
+                            <h6 class="card-title"><i class="fas fa-user-tie me-2"></i>Seller Info</h6>
                         </div>
-                        <div class="card-body">
+                        <div class="card-body text-center">
                             {% if plot.agent %}
-                            <div class="agent-profile">
-                                <div class="agent-header">
-                                    <div class="agent-avatar">
-                                        {% if plot.agent.profile_picture %}
-                                        <img src="{{ plot.agent.profile_picture.url }}" 
-                                            alt="{{ plot.agent.user.get_full_name }}" 
-                                            class="avatar-img">
-                                        {% else %}
-                                        <div class="avatar-placeholder">
-                                            {{ plot.agent.user|display_initial }}
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="agent-name">
-                                        <h5>{{ plot.agent.user|display_name }}</h5>
-                                        <span class="agent-badge {% if plot.agent.verified %}verified{% else %}pending{% endif %}">
-                                            {% if plot.agent.verified %}
-                                            <i class="fas fa-check-circle me-1"></i>Verified Agent
-                                            {% else %}
-                                            <i class="fas fa-clock me-1"></i>Pending Verification
-                                            {% endif %}
-                                        </span>
-                                        {% if plot.agent.rating %}
-                                        <div class="agent-rating">
-                                            {% for i in "12345" %}
-                                                {% if forloop.counter <= plot.agent.rating %}
-                                                <i class="fas fa-star text-warning"></i>
-                                                {% else %}
-                                                <i class="far fa-star text-warning"></i>
-                                                {% endif %}
-                                            {% endfor %}
-                                            <small class="text-muted ms-1">({{ plot.agent.review_count }})</small>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                
-                                <!-- Agent Stats -->
-                                <div class="agent-stats mt-3">
-                                    <div class="stats-grid">
-                                        <div class="stat-item">
-                                            <i class="fas fa-layer-group text-primary"></i>
-                                            <div>
-                                                <strong>{{ plot.agent.total_listings|default:"0" }}</strong>
-                                                <small>Listings</small>
-                                            </div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <i class="fas fa-check-circle text-success"></i>
-                                            <div>
-                                                <strong>{{ plot.agent.verified_listings|default:"0" }}</strong>
-                                                <small>Verified</small>
-                                            </div>
-                                        </div>
-                                        <div class="stat-item">
-                                            <i class="fas fa-clock text-warning"></i>
-                                            <div>
-                                                <strong>{{ plot.agent.response_rate|default:"100" }}%</strong>
-                                                <small>Response Rate</small>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <!-- Direct Contact Section -->
-                                <div class="agent-contact mt-4">
-                                    <h6>Contact Agent</h6>
-                                    
-                                    {% if user.is_authenticated %}
-                                    <div class="contact-methods">
-                                        <!-- Email -->
-                                        <a href="mailto:{{ plot.agent.user|contact_email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.agent.user|display_name }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user|display_name }}"
-                                            class="btn btn-outline-primary w-100 mb-2">
-                                            <i class="fas fa-envelope me-2"></i>Send Email
-                                            <small class="d-block text-muted mt-1">{{ plot.agent.user|contact_email|default:"Not provided" }}</small>
-                                        </a>
-                                        
-                                        <!-- Phone (if available) -->
-                                        {% if plot.agent.phone %}
-                                        <div class="phone-contact mb-2">
-                                            <button class="btn btn-success w-100" id="showPhoneNumber">
-                                                <i class="fas fa-phone me-2"></i>Show Phone Number
-                                            </button>
-                                            <div id="phoneNumber" class="text-center mt-2 d-none">
-                                                <strong>{{ plot.agent.phone }}</strong>
-                                                <div class="btn-group mt-2 w-100">
-                                                    <a href="tel:{{ plot.agent.phone }}" 
-                                                    class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-phone me-1"></i>Call
-                                                    </a>
-                                                    <a href="https://wa.me/{{ plot.agent.phone|cut:'+' }}?text=Hello {{ plot.agent.user|display_name }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
-                                                    class="btn btn-sm btn-outline-success" 
-                                                    target="_blank">
-                                                        <i class="fab fa-whatsapp me-1"></i>WhatsApp
-                                                    </a>
-                                                    <a href="sms:{{ plot.agent.phone }}?body=Hello, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
-                                                    class="btn btn-sm btn-outline-info">
-                                                        <i class="fas fa-sms me-1"></i>SMS
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% else %}
-                                        <button class="btn btn-outline-secondary w-100 mb-2" 
-                                                onclick="requestContactDetails()">
-                                            <i class="fas fa-phone me-2"></i>Request Phone Number
-                                        </button>
-                                        {% endif %}
-
-                                        <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#contactFormModal">
-                                            <i class="fas fa-paper-plane me-2"></i>Send Message
-                                        </button>
-                                    </div>
+                                <div class="agent-avatar mx-auto mb-3">
+                                    {% if plot.agent.profile_picture %}
+                                        <img src="{{ plot.agent.profile_picture.url }}" class="avatar-img">
                                     {% else %}
-                                    <a href="{% url 'login' %}" class="btn btn-outline-primary w-100">Login to contact agent</a>
+                                        <div class="avatar-placeholder">{{ plot.agent.user.username|make_list|first|upper }}</div>
                                     {% endif %}
                                 </div>
-                            </div>
+                                <h5>{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}</h5>
+                                <div class="agent-badge verified mb-3">✓ Verified Agent</div>
                             {% elif plot.landowner %}
-                            <div class="agent-profile">
-                                <div class="agent-header">
-                                    <div class="agent-avatar">
-                                        <div class="avatar-placeholder">
-                                            {{ plot.landowner.user|display_initial }}
-                                        </div>
-                                    </div>
-                                    <div class="agent-name">
-                                        <h5>{{ plot.landowner.user|display_name }}</h5>
-                                        <span class="agent-badge {% if plot.landowner.verified %}verified{% else %}pending{% endif %}">
-                                            {% if plot.landowner.verified %}
-                                            <i class="fas fa-check-circle me-1"></i>Verified Landowner
-                                            {% else %}
-                                            <i class="fas fa-clock me-1"></i>Pending Verification
-                                            {% endif %}
-                                        </span>
-                                    </div>
+                                <div class="agent-avatar mx-auto mb-3">
+                                    <div class="avatar-placeholder">{{ plot.landowner.user.username|make_list|first|upper }}</div>
                                 </div>
-                                <div class="agent-contact mt-4">
-                                    <h6>Contact Landowner</h6>
-                                    {% if user.is_authenticated %}
-                                    <div class="contact-methods">
-                                        <a href="mailto:{{ plot.landowner.user|contact_email }}?subject=Inquiry about {{ plot.title|urlencode }}&body=Hello {{ plot.landowner.user|display_name }},%0D%0A%0D%0AI'm interested in your plot titled '{{ plot.title }}' (ID: #{{ plot.id }}) located at {{ plot.location }}.%0D%0A%0D%0APlease provide more details about:%0D%0A1. Availability%0D%0A2. Viewing arrangements%0D%0A3. Payment terms%0D%0A%0D%0AThank you,%0D%0A{{ user|display_name }}"
-                                        class="btn btn-outline-primary w-100 mb-2">
-                                            <i class="fas fa-envelope me-2"></i>Send Email
-                                            <small class="d-block text-muted mt-1">{{ plot.landowner.user|contact_email|default:"Not provided" }}</small>
-                                        </a>
-
-                                        {% if plot.landowner.phone %}
-                                        <div class="phone-contact mb-2">
-                                            <button class="btn btn-success w-100" id="showPhoneNumber">
-                                                <i class="fas fa-phone me-2"></i>Show Phone Number
-                                            </button>
-                                            <div id="phoneNumber" class="text-center mt-2 d-none">
-                                                <strong>{{ plot.landowner.phone }}</strong>
-                                                <div class="btn-group mt-2 w-100">
-                                                    <a href="tel:{{ plot.landowner.phone }}" 
-                                                    class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-phone me-1"></i>Call
-                                                    </a>
-                                                    <a href="https://wa.me/{{ plot.landowner.phone|cut:'+' }}?text=Hello {{ plot.landowner.user|display_name }}, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
-                                                    class="btn btn-sm btn-outline-success" 
-                                                    target="_blank">
-                                                        <i class="fab fa-whatsapp me-1"></i>WhatsApp
-                                                    </a>
-                                                    <a href="sms:{{ plot.landowner.phone }}?body=Hello, I'm interested in your plot '{{ plot.title }}' (ID: #{{ plot.id }})"
-                                                    class="btn btn-sm btn-outline-info">
-                                                        <i class="fas fa-sms me-1"></i>SMS
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {% else %}
-                                        <button class="btn btn-outline-secondary w-100 mb-2" 
-                                                onclick="requestContactDetails()">
-                                            <i class="fas fa-phone me-2"></i>Request Phone Number
-                                        </button>
-                                        {% endif %}
-
-                                        <button class="btn btn-primary w-100 mb-2" data-bs-toggle="modal" data-bs-target="#contactFormModal">
-                                            <i class="fas fa-paper-plane me-2"></i>Send Message
-                                        </button>
-                                    </div>
-                                    {% else %}
-                                    <a href="{% url 'login' %}" class="btn btn-outline-primary w-100">Login to contact owner</a>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% else %}
-                            <div class="alert alert-warning">Owner details not available.</div>
+                                <h5>{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}</h5>
+                                <div class="agent-badge verified mb-3">✓ Landowner</div>
                             {% endif %}
 
                             {% if user.is_authenticated %}
-                            <!-- Contact Form Modal -->
-                            <div class="modal fade" id="contactFormModal" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog">
-                                    <div class="modal-content">
-                                        <form id="contactForm" method="POST" action="{% url 'listings:contact_agent' plot.id %}">
-                                            {% csrf_token %}
-                                            <div class="modal-header">
-                                                <h5 class="modal-title">
-                                                    <i class="fas fa-paper-plane me-2"></i>
-                                                    Message {% if plot.agent %}Agent{% elif plot.landowner %}Owner{% else %}Contact{% endif %}
-                                                </h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <div class="mb-3">
-                                                    <label for="messageSubject" class="form-label">Subject</label>
-                                                    <input type="text" class="form-control" id="messageSubject" 
-                                                        value="Inquiry about {{ plot.title }}" readonly>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label for="messageBody" class="form-label">Your Message</label>
-                                                    <textarea class="form-control" id="messageBody" name="message" rows="6" required
-                                                            placeholder="Write your message here..."></textarea>
-                                                    <div class="form-text">
-                                                        Include specific questions about price, location, soil quality, etc.
-                                                    </div>
-                                                </div>
-                                                <div class="alert alert-info">
-                                                    <i class="fas fa-info-circle me-2"></i>
-                                                    Your contact information (email: {{ user.email }}) will be shared with the {% if plot.agent %}agent{% elif plot.landowner %}owner{% else %}contact{% endif %}.
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                                <button type="submit" class="btn btn-primary">
-                                                    <i class="fas fa-paper-plane me-2"></i>Send Message
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
+                                <a href="mailto:{% if plot.agent %}{{ plot.agent.user.email }}{% elif plot.landowner %}{{ plot.landowner.user.email }}{% endif %}" 
+                                   class="btn btn-outline-primary w-100 mb-2">
+                                    <i class="fas fa-envelope me-2"></i>Email Seller
+                                </a>
+                                <button class="btn btn-primary w-100" data-bs-toggle="modal" data-bs-target="#contactModal">
+                                    <i class="fas fa-paper-plane me-2"></i>Send Message
+                                </button>
+                            {% else %}
+                                <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-primary w-100">Login to Contact</a>
                             {% endif %}
                         </div>
                     </div>
-
-                    <!-- Quick Actions -->
-                    <div class="dashboard-card">
-                        <div class="card-header">
-                            <h6 class="card-title">
-                                <i class="fas fa-bolt me-2"></i>Quick Actions
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="quick-actions-grid">
-                                {% if user.is_authenticated %}
-                                    {% if is_owner %}
-                                    <a href="{% url 'listings:edit_plot' plot.id %}" class="btn btn-outline-warning w-100 mb-2">
-                                        <i class="fas fa-edit me-2"></i>Edit Listing
-                                    </a>
-                                    <a href="{% url 'reports:property_performance' plot.id %}" class="btn btn-outline-success w-100 mb-2">
-                                        <i class="fas fa-chart-line me-2"></i>Performance Report
-                                    </a>
-                                    {% endif %}
-                                    <a href="{% url 'listings:add_plot' %}" class="btn btn-outline-primary w-100 mb-2">
-                                        <i class="fas fa-plus-circle me-2"></i>List Similar Plot
-                                    </a>
-                                    <a href="{% url 'reports:escrow_statement' %}" class="btn btn-outline-info w-100">
-                                        <i class="fas fa-file-invoice-dollar me-2"></i>My Escrow Statement
-                                    </a>
-                                {% else %}
-                                    <a href="{% url 'listings:register_buyer' %}?next={{ request.path }}" class="btn btn-primary w-100 mb-2">
-                                        <i class="fas fa-user-plus me-2"></i>Register to Contact
-                                    </a>
-                                    <a href="{% url 'login' %}?next={{ request.path }}" class="btn btn-outline-primary w-100">
-                                        <i class="fas fa-sign-in-alt me-2"></i>Sign In
-                                    </a>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
+                    
                 </div>
             </div>
         </main>
     </div>
 </div>
 
-<!-- CSS Styles -->
+<!-- Contact Modal -->
+<div class="modal fade" id="contactModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{% url 'listings:contact_agent' plot.id %}">
+                {% csrf_token %}
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">Message Seller</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Property</label>
+                        <input type="text" class="form-control" value="{{ plot.title }}" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Your Message</label>
+                        <textarea class="form-control" name="message" rows="5" required></textarea>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>Your email ({{ user.email }}) will be shared with the seller.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <style>
-    /* =========================
-    GLOBAL STYLES
-    ========================= */
-    body {
-        font-family: 'Inter', sans-serif;
-        background: #f8f9fa;
-        color: #333;
-        line-height: 1.6;
+    /* ========================================
+       STYLING FOR LISTING DETAILS PAGE
+    ======================================== */
+    
+    /* Base Styles */
+    body { 
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+        background: #f8f9fa; 
+        color: #1f2937; 
+        line-height: 1.5;
     }
-
-    h1, h2, h3, h4, h5, h6 {
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 0.5rem;
-    }
-
-    p {
-        margin-bottom: 1rem;
-        color: #4b5563;
-    }
-
-    a {
-        text-decoration: none;
-        transition: all 0.3s ease;
-    }
-
-    a:hover {
-        text-decoration: none;
-        color: #1f7a4d;
-    }
-
-    .hero-btn.payment {
-        background: linear-gradient(135deg, #f0b429 0%, #f7ce68 100%);
-        color: #173a29;
-        border: none;
-        box-shadow: 0 14px 28px rgba(240, 180, 41, 0.28);
-    }
-
-    .hero-btn.payment:hover {
-        color: #173a29;
-        transform: translateY(-2px);
-    }
-
-    .inline-action-form {
-        display: inline-flex;
-    }
-
-    .hero-btn.save-toggle {
-        background: rgba(255, 255, 255, 0.12);
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.24);
-    }
-
-    .hero-btn.save-toggle.saved {
-        background: linear-gradient(135deg, #ffebe8 0%, #ffd0c8 100%);
-        color: #8a1d10;
-        border-color: rgba(138, 29, 16, 0.12);
-    }
-
-    /* =========================
-    FARMLAND-STYLE DETAILS
-    ========================= */
+    
+    /* Hero Section */
     .detail-hero {
         position: relative;
-        min-height: 360px;
+        min-height: 480px;
         background-size: cover;
         background-position: center;
         display: flex;
         align-items: flex-end;
+        justify-content: center;
         padding: 40px 0 30px;
     }
-
     .detail-hero-overlay {
         position: absolute;
         inset: 0;
-        background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.6));
+        background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.7) 100%);
+        pointer-events: none;
     }
-
     .detail-hero-card {
         position: relative;
         z-index: 2;
-        max-width: 1100px;
+        max-width: 1200px;
+        width: 90%;
         margin: 0 auto;
-        background: #fff;
-        border-radius: 18px;
-        padding: 20px 24px;
-        display: grid;
-        grid-template-columns: 90px 1fr auto;
-        gap: 18px;
-        align-items: center;
-        box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+        background: white;
+        border-radius: 20px;
+        padding: 24px 32px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.15);
     }
-
-    .hero-card-logo img {
-        width: 80px;
-        height: 80px;
-        object-fit: contain;
+    
+    /* Logo */
+    .hero-card-logo {
+        position: absolute;
+        top: 24px;
+        right: 32px;
     }
-
-    .hero-card-info h2 {
-        margin: 0 0 6px;
-        font-size: 1.4rem;
+    .hero-card-logo img { 
+        width: 60px; 
+        height: 60px; 
+        object-fit: contain; 
     }
-
-    .hero-location {
-        margin: 0 0 12px;
-        color: #5d6d6a;
+    
+    /* Hero Content */
+    .hero-card-info h2 { 
+        font-size: 1.6rem; 
+        margin-bottom: 6px; 
+        color: #1f2937; 
+        padding-right: 80px;
     }
-
+    .hero-location { 
+        color: #6b7280; 
+        margin-bottom: 12px; 
+        font-size: 0.9rem; 
+        display: flex; 
+        align-items: center; 
+        gap: 6px; 
+        flex-wrap: wrap; 
+    }
+    
+    /* Stats */
     .hero-stats {
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-top: 16px;
+        margin-bottom: 20px;
     }
-
+    .hero-stat {
+        background: #f9fafb;
+        padding: 10px 16px;
+        border-radius: 12px;
+        text-align: center;
+        flex: 1;
+        min-width: 120px;
+    }
     .hero-stat .value {
         font-weight: 700;
-        color: #1f7a4d;
+        font-size: 1rem;
+        color: #0f5c3f;
+        display: block;
+        word-break: break-word;
     }
-
     .hero-stat .label {
-        font-size: 0.78rem;
-        color: #66756f;
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #6b7280;
     }
-
+    
+    /* Buttons */
     .hero-card-actions {
-        display: grid;
-        gap: 8px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 8px;
+        padding-top: 16px;
+        border-top: 1px solid #e5e7eb;
     }
-
     .hero-btn {
-        padding: 8px 14px;
+        padding: 10px 16px;
         border-radius: 10px;
         font-weight: 600;
+        font-size: 0.8rem;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
+        transition: all 0.2s ease;
+        border: none;
+        cursor: pointer;
+        text-decoration: none;
+        flex: 1;
+        min-width: 130px;
+        white-space: nowrap;
     }
-
-    .hero-btn.primary {
-        background: #1f7a4d;
-        color: #fff;
+    .hero-btn.primary { background: #0f5c3f; color: white; }
+    .hero-btn.primary:hover { background: #0a3d28; transform: translateY(-2px); }
+    .hero-btn.outline { border: 1px solid #0f5c3f; color: #0f5c3f; background: transparent; }
+    .hero-btn.outline:hover { background: #0f5c3f; color: white; transform: translateY(-2px); }
+    .hero-btn.payment { background: linear-gradient(135deg, #f0b429, #f7ce68); color: #173a29; }
+    .hero-btn.payment:hover { transform: translateY(-2px); }
+    .hero-btn.save-toggle { background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.24); }
+    .hero-btn.save-toggle.saved { background: #fee2e2; color: #dc2626; border-color: #fecaca; }
+    
+    /* Dropdown inside buttons */
+    .dropdown {
+        flex: 1;
+        min-width: 130px;
     }
-
-    .hero-btn.outline {
-        border: 1px solid #1f7a4d;
-        color: #1f7a4d;
-        background: transparent;
+    .dropdown .hero-btn {
+        width: 100%;
     }
-
-    .hero-btn.outline:hover {
-        background: #1f7a4d;
-        color: #fff;
+    .inline-action-form {
+        flex: 1;
+        min-width: 130px;
     }
-
-    .detail-shell {
-        background: #f6f8f6;
+    .inline-action-form .hero-btn {
+        width: 100%;
     }
-
-    .detail-layout {
-        display: grid;
-        grid-template-columns: 220px 1fr;
-        gap: 24px;
-    }
-
+    
+    /* Layout */
+    .detail-shell { background: #f8f9fa; padding: 2rem 1rem; }
+    .detail-layout { display: grid; grid-template-columns: 240px 1fr; gap: 24px; max-width: 1400px; margin: 0 auto; }
+    
+    /* Sidebar */
     .detail-nav {
         position: sticky;
         top: 90px;
-        align-self: start;
-        background: #fff;
-        border-radius: 12px;
-        padding: 14px;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+        background: white;
+        border-radius: 16px;
+        padding: 16px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
     }
-
     .detail-nav .nav-link {
         display: block;
         padding: 10px 12px;
-        color: #4b5b56;
-        border-left: 3px solid transparent;
+        color: #4b5563;
+        border-radius: 10px;
+        transition: all 0.2s;
+        text-decoration: none;
+        font-size: 0.9rem;
     }
-
-    .detail-nav .nav-link:hover {
-        border-left-color: #1f7a4d;
-        background: #f3faf6;
+    .detail-nav .nav-link:hover, .detail-nav .nav-link.active {
+        background: #0f5c3f;
+        color: white;
     }
-
-    .detail-main .dashboard-card {
-        border-radius: 14px;
+    .detail-nav .nav-link i { width: 20px; }
+    .nav-divider { height: 1px; background: #e5e7eb; margin: 12px 0; }
+    
+    /* Cards */
+    .dashboard-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        overflow: hidden;
+        margin-bottom: 24px;
     }
-
-    .amenities-grid {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
+    .card-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+        background: white;
     }
-
+    .card-title { font-size: 1rem; font-weight: 600; margin: 0; color: #1f2937; }
+    .card-body { padding: 20px; }
+    
+    /* Amenities */
+    .amenities-grid { display: flex; flex-wrap: wrap; gap: 10px; }
     .amenity-chip {
-        background: #f3f7f5;
-        padding: 8px 12px;
-        border-radius: 999px;
+        background: #f3f4f6;
+        padding: 6px 14px;
+        border-radius: 20px;
         font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
     }
-
-    .amenity-chip.ok {
-        background: #e6f6ee;
-        color: #1f7a4d;
-    }
-
-    .amenity-chip.no {
-        background: #fff1f1;
-        color: #c0392b;
-    }
-
+    .amenity-chip.ok { background: #d1fae5; color: #065f46; }
+    .amenity-chip.no { background: #fee2e2; color: #dc2626; }
+    
+    /* Availability Banner */
     .availability-banner {
-        margin-top: 1rem;
-        padding: 1rem 1.1rem;
-        border-radius: 18px;
-        border: 1px solid rgba(15, 74, 46, 0.12);
+        background: #f9fafb;
+        border-left: 4px solid #0f5c3f;
+        padding: 12px 16px;
+        border-radius: 12px;
+        margin-top: 12px;
     }
-
-    .availability-banner.is-available {
-        background: rgba(6, 145, 50, 0.14);
-        border-color: rgba(6, 145, 50, 0.22);
+    .availability-pill {
+        background: #0f5c3f;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
     }
-
-    .availability-banner.is-reserved {
-        background: rgba(180, 83, 9, 0.12);
-        border-color: rgba(180, 83, 9, 0.22);
-    }
-
-    .availability-banner.is-leased,
-    .availability-banner.is-sold {
-        background: rgba(153, 27, 27, 0.12);
-        border-color: rgba(153, 27, 27, 0.22);
-    }
-
-    .availability-eyebrow {
-        display: block;
-        font-size: 0.76rem;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        opacity: 0.8;
-        margin-bottom: 0.35rem;
-    }
-
     .availability-status-line {
         display: flex;
         flex-wrap: wrap;
-        gap: 0.5rem;
         align-items: center;
-        margin-bottom: 0.45rem;
+        gap: 10px;
+        margin: 8px 0;
     }
-
-    .availability-pill,
     .availability-mode {
-        display: inline-flex;
-        align-items: center;
-        padding: 0.3rem 0.7rem;
-        border-radius: 999px;
-        font-size: 0.82rem;
-        font-weight: 700;
-        background: rgba(255, 255, 255, 0.58);
+        background: #e5e7eb;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
     }
-
-    .availability-copy {
-        font-size: 0.96rem;
-        line-height: 1.5;
-    }
-
-    .lease-status-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
-    }
-
-    .lease-status-item {
-        background: #f3f7f5;
-        border-radius: 12px;
-        padding: 12px 14px;
-    }
-
-    .lease-status-label {
-        display: block;
-        font-size: 0.78rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: #6b7d76;
-        margin-bottom: 4px;
-    }
-
-    .workspace-notice {
-        padding: 0.95rem 1rem;
-        border-radius: 14px;
-        background: rgba(31, 122, 77, 0.08);
-        border: 1px solid rgba(31, 122, 77, 0.14);
-        color: #244436;
-    }
-
-    .gallery-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-        gap: 12px;
-    }
-
-    .gallery-thumb {
-        width: 100%;
-        height: 140px;
-        object-fit: cover;
-        border-radius: 10px;
-    }
-
-    /* Owner/Agent Profile */
-    .agent-profile {
-        text-align: center;
-    }
-
-    .agent-header {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid #e5e7eb;
-    }
-
-    .agent-avatar {
-        width: 80px;
-        height: 80px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #f3f4f6;
-        border-radius: 50%;
-    }
-
-    .agent-avatar .avatar-img {
-        width: 80px;
-        height: 80px;
-        border-radius: 50%;
-        object-fit: cover;
-        border: 3px solid #1f7a4d;
-    }
-
-    .agent-avatar .avatar-placeholder {
-        width: 80px;
-        height: 80px;
-        background: linear-gradient(135deg, #1f7a4d, #10b981);
-        border-radius: 50%;
+    
+    /* Gallery */
+    .gallery-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .gallery-thumb { width: 100%; height: 120px; object-fit: cover; border-radius: 12px; cursor: pointer; transition: transform 0.2s; }
+    .gallery-thumb:hover { transform: scale(1.02); }
+    
+    /* Details Table */
+    .plot-details-table { width: 100%; border-collapse: collapse; }
+    .plot-details-table tr { border-bottom: 1px solid #f3f4f6; }
+    .plot-details-table td { padding: 12px; vertical-align: top; }
+    .detail-label { font-weight: 600; width: 35%; color: #4b5563; }
+    .detail-value { width: 65%; color: #1f2937; }
+    
+    /* Agent Profile */
+    .agent-avatar { width: 80px; height: 80px; margin: 0 auto; }
+    .avatar-img, .avatar-placeholder { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; }
+    .avatar-placeholder {
+        background: linear-gradient(135deg, #0f5c3f, #10b981);
         display: flex;
         align-items: center;
         justify-content: center;
         color: white;
         font-size: 2rem;
-        font-weight: bold;
-    }
-
-    .agent-name h5 {
-        margin-bottom: 0.25rem;
-        color: #1f2937;
-    }
-
-    .agent-badge {
-        display: inline-block;
-        padding: 0.25em 0.75em;
-        border-radius: 50px;
-        font-size: 0.8rem;
-        font-weight: 500;
-    }
-
-    .agent-badge.verified {
-        background: #d1fae5;
-        color: #065f46;
-    }
-
-    .agent-badge.pending {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 12px;
-    }
-
-    .stat-item {
-        text-align: center;
-        padding: 0.5rem;
-    }
-
-    .stat-item i {
-        font-size: 1.5rem;
-        margin-bottom: 0.5rem;
-        display: block;
-    }
-
-    .plot-details-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
-    }
-
-    .plot-details-table tr {
-        border-bottom: 1px solid #e5e7eb;
-    }
-
-    .plot-details-table td {
-        padding: 1rem;
-        vertical-align: top;
-    }
-
-    .detail-label {
-        width: 35%;
         font-weight: 600;
-        color: #374151;
-        border-right: 1px solid #e5e7eb;
     }
-
-    .detail-value {
-        width: 65%;
-        color: #1f2937;
-    }
-
-    /* Dropdown Styles */
-    .dropdown-menu {
+    .agent-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; }
+    .agent-badge.verified { background: #d1fae5; color: #065f46; }
+    .agent-badge.pending { background: #fef3c7; color: #92400e; }
+    
+    /* Stats Grid */
+    .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px; }
+    .stat-item { text-align: center; padding: 8px; background: #f9fafb; border-radius: 10px; }
+    .stat-item i { font-size: 1.25rem; margin-bottom: 4px; display: block; }
+    .stat-item strong { display: block; font-size: 1rem; }
+    .stat-item small { font-size: 0.7rem; color: #6b7280; }
+    
+    /* Lease Status */
+    .lease-status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+    .lease-status-item { background: #f3f7f5; border-radius: 12px; padding: 12px 14px; }
+    .lease-status-label { display: block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; color: #6b7d76; margin-bottom: 4px; }
+    .lease-status-item strong { font-size: 0.9rem; }
+    
+    /* Workspace Notice */
+    .workspace-notice {
+        background: #f0fdf4;
+        border-left: 4px solid #0f5c3f;
+        padding: 12px 16px;
         border-radius: 12px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        margin: 12px 0;
+    }
+    
+    /* Alert Banner */
+    .alert-info {
+        background: #e0f2fe;
         border: none;
-        padding: 8px 0;
+        border-left: 4px solid #0284c7;
+        border-radius: 12px;
+        padding: 12px 16px;
     }
-
-    .dropdown-item {
-        padding: 10px 20px;
-        font-size: 14px;
-    }
-
-    .dropdown-item:hover {
-        background: #f3faf6;
-        color: #1f7a4d;
-    }
-
-    .dropdown-item i {
-        width: 20px;
-        color: #1f7a4d;
-    }
-
-    /* Responsive */
+    
+    /* ========================================
+       RESPONSIVE STYLES - MOBILE FIXES
+    ======================================== */
+    
+    /* Tablet (max-width: 992px) */
     @media (max-width: 992px) {
-        .detail-layout {
-            grid-template-columns: 1fr;
+        .detail-layout { 
+            grid-template-columns: 1fr; 
+            gap: 16px; 
         }
+        
+        .detail-hero-card {
+            width: 95%;
+            padding: 20px;
+        }
+        
+        .hero-card-logo {
+            position: static;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        
+        .hero-card-info h2 { 
+            padding-right: 0;
+            text-align: center;
+            font-size: 1.4rem;
+        }
+        
+        .hero-location { 
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .hero-stats { 
+            justify-content: center;
+            gap: 12px;
+        }
+        
+        .hero-stat {
+            min-width: 100px;
+            padding: 8px 12px;
+        }
+        
+        .hero-stat .value {
+            font-size: 0.9rem;
+        }
+        
+        .hero-stat .label {
+            font-size: 0.6rem;
+        }
+        
+        /* Sidebar horizontal scroll */
         .detail-nav {
             position: static;
             display: flex;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
+            overflow-x: auto;
             gap: 8px;
+            padding: 12px;
+            margin-bottom: 20px;
+            max-height: none;
+            -webkit-overflow-scrolling: touch;
         }
         .detail-nav .nav-link {
-            display: inline-flex;
             white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
         }
-        .detail-hero-card {
-            grid-template-columns: 70px 1fr;
+        
+        .gallery-grid { 
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); 
+            gap: 10px; 
         }
-        .hero-card-actions {
-            grid-column: 1 / -1;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
+        .gallery-thumb { height: 100px; }
+        .amenity-chip { font-size: 0.75rem; padding: 5px 10px; }
+        .lease-status-grid { grid-template-columns: 1fr; gap: 10px; }
+        .stats-grid { gap: 8px; }
+        .stat-item i { font-size: 1rem; }
     }
-
+    
+    /* Mobile (max-width: 768px) */
     @media (max-width: 768px) {
+        .detail-hero { 
+            min-height: auto; 
+            padding: 20px 0; 
+        }
+        
+        .detail-hero-card { 
+            width: calc(100% - 20px); 
+            padding: 16px;
+            border-radius: 16px;
+        }
+        
+        .hero-card-info h2 { 
+            font-size: 1.2rem; 
+            text-align: center;
+        }
+        
+        .hero-location { 
+            font-size: 0.75rem;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        /* Stats stack vertically on mobile */
+        .hero-stats { 
+            flex-direction: column;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        
+        .hero-stat { 
+            padding: 8px 12px;
+            min-width: auto;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            text-align: left;
+        }
+        
+        .hero-stat .value {
+            font-size: 0.9rem;
+            display: inline-block;
+            order: 2;
+        }
+        
+        .hero-stat .label {
+            font-size: 0.7rem;
+            display: inline-block;
+            order: 1;
+            text-transform: none;
+        }
+        
+        /* Buttons stack vertically */
+        .hero-card-actions {
+            flex-direction: column;
+            gap: 8px;
+            padding-top: 12px;
+        }
+        
+        .hero-btn, .dropdown, .inline-action-form { 
+            min-width: 100%;
+            width: 100%;
+            white-space: normal;
+            font-size: 0.85rem;
+            padding: 10px 12px;
+        }
+        
+        /* Availability banner mobile */
+        .availability-banner {
+            padding: 10px 12px;
+        }
+        
+        .availability-status-line {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+        }
+        
+        .availability-pill, .availability-mode {
+            font-size: 0.7rem;
+            padding: 3px 10px;
+        }
+        
+        .availability-copy {
+            font-size: 0.8rem;
+        }
+        
+        /* Table to cards - better mobile display */
         .plot-details-table tr {
             display: block;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             border: 1px solid #e5e7eb;
             border-radius: 12px;
-            padding: 12px;
+            overflow: hidden;
         }
+        
         .plot-details-table td {
-            display: block;
-            width: 100%;
-            border: none;
-            padding: 4px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-bottom: 1px solid #f3f4f6;
+            font-size: 0.85rem;
         }
-        .detail-label {
-            border-right: none;
+        
+        .plot-details-table td:last-child { 
+            border-bottom: none; 
         }
-        .hero-card-actions {
-            grid-template-columns: 1fr;
+        
+        .detail-label { 
+            width: 40%; 
+            background: none;
+            font-weight: 600;
         }
-        .lease-status-grid {
-            grid-template-columns: 1fr;
+        
+        .detail-value { 
+            width: 60%; 
+            text-align: right;
+            word-break: break-word;
+        }
+        
+        /* Cards mobile */
+        .card-header {
+            padding: 12px 16px;
+        }
+        
+        .card-title {
+            font-size: 0.9rem;
+        }
+        
+        .card-body {
+            padding: 14px;
+        }
+        
+        /* Gallery mobile */
+        .gallery-grid { 
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); 
+            gap: 8px; 
+        }
+        .gallery-thumb { height: 85px; }
+        
+        /* Amenities mobile */
+        .amenities-grid { 
+            gap: 8px; 
+        }
+        .amenity-chip { 
+            font-size: 0.7rem; 
+            padding: 4px 10px; 
+        }
+        
+        /* Agent profile mobile */
+        .agent-header {
+            flex-direction: column;
+            text-align: center;
+        }
+        
+        .stats-grid {
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+        }
+        
+        .stat-item i {
+            font-size: 1rem;
+            margin-bottom: 0;
+            order: 1;
+        }
+        
+        .stat-item div {
+            order: 2;
+            text-align: right;
+        }
+        
+        .stat-item strong {
+            font-size: 0.9rem;
+        }
+        
+        .stat-item small {
+            font-size: 0.65rem;
+        }
+        
+        /* Touch targets */
+        button, .btn, .hero-btn, .nav-link, .dropdown-item { 
+            min-height: 44px; 
+        }
+        
+        input, select, textarea { 
+            font-size: 16px !important; 
+        }
+        
+        .workspace-notice { 
+            padding: 10px 12px; 
+            font-size: 0.75rem; 
+        }
+        
+        /* Dropdown fix */
+        .dropdown-menu {
+            position: absolute !important;
+            transform: translate3d(0px, 45px, 0px) !important;
+            max-width: 90vw;
+            left: 5% !important;
+            right: auto !important;
+        }
+        .dropdown-item { 
+            white-space: normal; 
+            word-wrap: break-word;
+            font-size: 0.85rem;
+        }
+        
+        /* Modal mobile */
+        .modal-dialog {
+            margin: 0.5rem;
+        }
+        .modal-header, .modal-footer {
+            padding: 0.75rem 1rem;
+        }
+        .modal-body {
+            padding: 1rem;
         }
     }
+    
+    /* Extra small devices (max-width: 480px) */
+    @media (max-width: 480px) {
+        .detail-hero-card { 
+            width: calc(100% - 16px); 
+            padding: 12px;
+        }
+        
+        .hero-card-info h2 { 
+            font-size: 1rem; 
+        }
+        
+        .hero-stat .value {
+            font-size: 0.8rem;
+        }
+        
+        .hero-stat .label {
+            font-size: 0.65rem;
+        }
+        
+        .hero-btn {
+            font-size: 0.75rem;
+            padding: 8px 12px;
+        }
+        
+        .plot-details-table td {
+            padding: 8px 10px;
+            font-size: 0.75rem;
+        }
+        
+        .gallery-grid { 
+            grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); 
+            gap: 6px; 
+        }
+        .gallery-thumb { height: 70px; }
+        
+        .stats-grid { gap: 6px; }
+        .stat-item i { font-size: 0.85rem; }
+        .stat-item strong { font-size: 0.8rem; }
+        .stat-item small { font-size: 0.6rem; }
+    }
+    
+    /* Landscape orientation */
+    @media (max-width: 768px) and (orientation: landscape) {
+        .detail-hero { 
+            min-height: 300px; 
+        }
+        
+        .hero-stats {
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+        
+        .hero-stat {
+            flex: 1;
+            min-width: 80px;
+        }
+        
+        .hero-stat .value {
+            font-size: 0.8rem;
+        }
+        
+        .hero-card-actions {
+            flex-direction: row;
+            flex-wrap: wrap;
+        }
+        
+        .hero-btn {
+            flex: 1;
+            min-width: auto;
+        }
+    }
+    
+    /* Tablet landscape */
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .hero-stat .value { 
+            font-size: 0.85rem; 
+        }
+        
+        .hero-btn {
+            padding: 8px 12px;
+            font-size: 0.75rem;
+        }
+    }
+    
+    /* Large screens */
+    @media (min-width: 1400px) {
+        .detail-hero-card {
+            width: 100%;
+            max-width: 1320px;
+        }
+    }
+    
+    /* Utility Classes */
+    .text-center { text-align: center; }
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 16px; }
+    .mb-0 { margin-bottom: 0; }
+    .mb-2 { margin-bottom: 8px; }
+    .mb-3 { margin-bottom: 16px; }
+    .me-1 { margin-right: 4px; }
+    .me-2 { margin-right: 8px; }
+    .ms-2 { margin-left: 8px; }
+    
+    /* Smooth Scrolling */
+    html { scroll-padding-top: 80px; scroll-behavior: smooth; }
 </style>
 
 <script>
@@ -1608,7 +1182,8 @@
         // Phone number toggle
         const showPhoneBtn = document.getElementById('showPhoneNumber');
         if (showPhoneBtn) {
-            showPhoneBtn.addEventListener('click', function() {
+            showPhoneBtn.addEventListener('click', function(e) {
+                e.preventDefault();
                 const phoneNumberDiv = document.getElementById('phoneNumber');
                 if (phoneNumberDiv) {
                     phoneNumberDiv.classList.toggle('d-none');
@@ -1616,16 +1191,24 @@
             });
         }
         
-        // Smooth scroll for navigation
-        document.querySelectorAll('.detail-nav .nav-link[href^="#"]').forEach(anchor => {
+        // Smooth scroll for navigation with offset
+        document.querySelectorAll('.detail-nav .nav-link[href^="#"], .hero-btn[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function(e) {
                 const href = this.getAttribute('href');
-                if (href && href !== '#') {
+                if (href && href !== '#' && href !== '#') {
                     e.preventDefault();
                     const target = document.querySelector(href);
                     if (target) {
-                        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        // Update active state
+                        const offset = 80;
+                        const elementPosition = target.getBoundingClientRect().top;
+                        const offsetPosition = elementPosition + window.pageYOffset - offset;
+                        
+                        window.scrollTo({
+                            top: offsetPosition,
+                            behavior: 'smooth'
+                        });
+                        
+                        // Update active state in sidebar
                         document.querySelectorAll('.detail-nav .nav-link').forEach(link => {
                             link.classList.remove('active');
                         });
@@ -1635,10 +1218,42 @@
             });
         });
         
+        // Highlight active section on scroll
+        const sections = document.querySelectorAll('#details, #about, #authority, #amenities, #gallery, #location, #agent, #lease-status');
+        const navLinks = document.querySelectorAll('.detail-nav .nav-link');
+        
+        function updateActiveSection() {
+            let current = '';
+            const scrollPosition = window.scrollY + 100;
+            
+            sections.forEach(section => {
+                if (section) {
+                    const sectionTop = section.offsetTop;
+                    const sectionBottom = sectionTop + section.offsetHeight;
+                    
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionBottom) {
+                        current = section.getAttribute('id');
+                    }
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                const href = link.getAttribute('href');
+                if (href && href === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        }
+        
+        window.addEventListener('scroll', updateActiveSection);
+        updateActiveSection();
+        
         // Global function for contact requests
         window.requestContactDetails = function() {
             alert('Contact request sent. The owner/agent will contact you shortly.');
         };
     });
 </script>
+
 {% endblock %}

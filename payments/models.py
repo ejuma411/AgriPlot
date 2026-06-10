@@ -3537,6 +3537,8 @@ class WalletDepositRequest(models.Model):
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     phone_number = models.CharField(max_length=20, blank=True)
     payment_method = models.CharField(max_length=20, choices=PaymentRequest.Method.choices, default=PaymentRequest.Method.MPESA_STK)
+    
+    
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     
     reference = models.CharField(max_length=50, unique=True, editable=False, default='', blank=True)
@@ -3545,6 +3547,14 @@ class WalletDepositRequest(models.Model):
     checkout_url = models.URLField(blank=True)
     provider_response = models.JSONField(default=dict, blank=True)
     
+    
+    payment_request = models.ForeignKey(
+        'PaymentRequest',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='wallet_deposits'
+    )
     wallet_transaction = models.OneToOneField(
         WalletTransaction,
         on_delete=models.SET_NULL,

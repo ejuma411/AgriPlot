@@ -41,9 +41,6 @@
                 </div>
                 <div class="d-flex flex-wrap gap-2 mb-2">
                     <span class="badge rounded-pill text-bg-light border">{{ plot.get_listing_type_display }}</span>
-                    {% comment %} <span class="badge rounded-pill {% if plot.pricing_review_badge.tone == 'success' %}text-bg-success{% elif plot.pricing_review_badge.tone == 'warning' %}text-bg-warning{% elif plot.pricing_review_badge.tone == 'danger' %}text-bg-danger{% else %}text-bg-secondary{% endif %}">
-                        {{ plot.pricing_review_badge.label }}
-                    </span> {% endcomment %}
                     {% if request.user.is_authenticated %}
                         {% if request.user.profile.intent == 'tenant' and plot.listing_type == 'lease' or request.user.profile.intent == 'tenant' and plot.listing_type == 'both' %}
                         <span class="badge rounded-pill text-bg-info">Fits tenant intent</span>
@@ -55,8 +52,37 @@
                     {% endif %}
                 </div>
                 <div class="fb-meta">
-                    <span class="fb-price">KES {{ plot.price|floatformat:0|intcomma }}</span>
-                    <span class="fb-area">{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
+                    {% if plot.listing_type == 'lease' %}
+                        <span class="fb-price">
+                            {% if plot.lease_price_monthly %}
+                                KES {{ plot.lease_price_monthly|floatformat:0|intcomma }}/mo
+                            {% elif plot.lease_price_yearly %}
+                                KES {{ plot.lease_price_yearly|floatformat:0|intcomma }}/yr
+                            {% else %}
+                                KES {{ plot.price|floatformat:0|intcomma }}
+                            {% endif %}
+                        </span>
+                        <span class="fb-area">
+                            {% if plot.lease_price_monthly %}Monthly{% elif plot.lease_price_yearly %}Yearly{% else %}Lease{% endif %}
+                        </span>
+                    {% elif plot.listing_type == 'both' %}
+                        <span class="fb-price" title="Sale price">
+                            KES {{ plot.price|floatformat:0|intcomma }}
+                        </span>
+                        <span class="fb-lease-info" title="Lease price">
+                            {% if plot.lease_price_monthly %}
+                                / KES {{ plot.lease_price_monthly|floatformat:0|intcomma }}/mo
+                            {% elif plot.lease_price_yearly %}
+                                / KES {{ plot.lease_price_yearly|floatformat:0|intcomma }}/yr
+                            {% else %}
+                                / Lease available
+                            {% endif %}
+                        </span>
+                        <span class="fb-area">{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
+                    {% else %}
+                        <span class="fb-price">KES {{ plot.price|floatformat:0|intcomma }}</span>
+                        <span class="fb-area">{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
+                    {% endif %}
                 </div>
                 <p class="fb-status-copy">{{ plot.availability_summary }}</p>
                 <div class="fb-actions">

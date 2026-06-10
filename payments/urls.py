@@ -1,4 +1,6 @@
 from django.urls import path
+
+from payments import views_jenga_webhook
 from . import views
 from .views import (
     PaymentDashboardView,
@@ -61,26 +63,9 @@ urlpatterns = [
     # TEST URLS (Development only - remove in production)
     # ============================================================
     path('test-stk/', views.test_stk_push, name='test_stk_push'),
-]
 
-
-# Optional: Add a health check endpoint for ngrok callback testing
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-from django.utils import timezone
-
-@csrf_exempt
-def callback_health_check(request):
-    """Simple health check endpoint to verify ngrok is forwarding correctly"""
-    return JsonResponse({
-        'status': 'ok',
-        'message': 'Callback endpoint is reachable',
-        'ngrok_working': True,
-        'method': request.method,
-        'timestamp': str(timezone.now())
-    })
-
-# Add this to urls for testing (can be removed in production)
-urlpatterns += [
-    path('mpesa/health/', callback_health_check, name='mpesa_health'),
+    # Jenga Webhook URLs (must be accessible via ngrok/internet)
+    path('jenga/c2b-webhook/', views_jenga_webhook.jenga_c2b_webhook, name='jenga_c2b_webhook'),
+    path('jenga/b2c-webhook/', views_jenga_webhook.jenga_b2c_webhook, name='jenga_b2c_webhook'),
+    path('jenga/b2b-webhook/', views_jenga_webhook.jenga_b2b_webhook, name='jenga_b2b_webhook'),
 ]

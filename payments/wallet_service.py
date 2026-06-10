@@ -1,4 +1,6 @@
+from datetime import timedelta
 from decimal import Decimal
+import uuid
 
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
@@ -591,6 +593,54 @@ class WalletService:
             )
         except Exception as e:
             logger.warning(f"Failed to send deposit notification email: {e}")
+
+    # JENGA INTEGRATION METHODS (for C2B deposits via Jenga)
+    @staticmethod
+    def initiate_jenga_deposit(user, amount, phone_number, payment_request=None, reference=None):
+        """Initiate a wallet deposit via Jenga C2B checkout"""
+        from .jenga_service import JengaService
+        
+        jenga = JengaService()
+        ref = reference or f"DEP-{uuid.uuid4().hex[:12].upper()}"
+        
+        # Create deposit request
+        deposit = WalletDepositRequest.objects.create(
+            user=user,
+            amount=amount,
+            phone_number=phone_number,
+            payment_method=PaymentRequest.Method.BANK_TRANSFER,
+            reference=ref,
+            payment_request=payment_request,  # Link to payment request
+            status='pending',
+            expires_at=timezone.now() + timedelta(minutes=30)
+        )
+        
+        # Initiate Jenga checkout
+        result = jenga.initiate_c2b_checkout(
+            amount=amount,
+            phone_number=phone_number,
+            reference=ref,
+            customer_name=user.get_full_name() or user.username,
+            email=user.email
+        )
+        
+        if result.get('success'):
+            deposit.checkout_url = result.get('checkout_url')
+            deposit.provider_reference = result.get('checkout_id')
+            deposit.status = 'processing'
+            deposit.save(update_fields=['checkout_url', 'provider_reference', 'status', 'updated_at'])
+            
+            return {
+                'success': True,
+                'deposit_reference': ref,
+                'checkout_url': result.get('checkout_url'),
+                'message': 'Redirect customer to Jenga checkout to complete payment'
+            }
+        else:
+            deposit.status = 'failed'
+            deposit.provider_response = result
+            deposit.save(update_fields=['status', 'provider_response', 'updated_at'])
+            raise ValidationError(result.get('error', 'Jenga checkout initiation failed'))
 
     # ============================================================
     # ADMIN / MAKER-CHECKER OPERATIONS

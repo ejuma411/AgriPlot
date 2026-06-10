@@ -10,13 +10,16 @@ import importlib.util
 from urllib.parse import parse_qs, unquote, urlparse
 from dotenv import load_dotenv
 from django.core.management.utils import get_random_secret_key
-try:
-    import dj_database_url
-except ModuleNotFoundError:
+import importlib
+
+if importlib.util.find_spec("dj_database_url") is not None:
+    dj_database_url = importlib.import_module("dj_database_url")
+else:
     dj_database_url = None
-try:
-    from decouple import config
-except ModuleNotFoundError:
+
+if importlib.util.find_spec("decouple") is not None:
+    config = importlib.import_module("decouple").config
+else:
     def config(name, default=None, cast=None):
         value = os.environ.get(name, default)
         if cast and value is not None:
@@ -578,12 +581,30 @@ BANK_TRANSFER_DESTINATION_MOBILE_NUMBER = os.environ.get("BANK_TRANSFER_DESTINAT
 BANK_TRANSFER_DESTINATION_EMAIL = os.environ.get("BANK_TRANSFER_DESTINATION_EMAIL", "")
 BANK_TRANSFER_DESTINATION_ADDRESS = os.environ.get("BANK_TRANSFER_DESTINATION_ADDRESS", "")
 
-JENGA_MERCHANT_CODE = os.environ.get("JENGA_MERCHANT_CODE", "")
-JENGA_CONSUMER_SECRET = os.environ.get("JENGA_CONSUMER_SECRET", "")
-JENGA_API_KEY = os.environ.get("JENGA_API_KEY", "")
-JENGA_PUBLIC_KEY = os.environ.get("JENGA_PUBLIC_KEY", "")
-JENGA_CONSUMER_KEY = os.environ.get("JENGA_CONSUMER_KEY", JENGA_API_KEY)
+# ===============================================================================
+# JENGA SPECIFIC CONFIGURATION
+# ===============================================================================
 
+# Jenga API Configuration
+JENGA_ENVIRONMENT = os.environ.get('JENGA_ENVIRONMENT', 'sandbox')  # sandbox or live
+JENGA_API_BASE_URL = os.environ.get('JENGA_API_BASE_URL', 'https://uat.jengahq.io/api/v3')
+JENGA_API_KEY = os.environ.get('JENGA_API_KEY', '')
+JENGA_API_SECRET = os.environ.get('JENGA_API_SECRET', '')
+JENGA_MERCHANT_CODE = os.environ.get('JENGA_MERCHANT_CODE', '')
+JENGA_WEBHOOK_SECRET = os.environ.get('JENGA_WEBHOOK_SECRET', '')  # For signature verification
+
+# Corporate Account Details
+JENGA_CORPORATE_ACCOUNT_NUMBER = os.environ.get('JENGA_CORPORATE_ACCOUNT_NUMBER', '')
+JENGA_CORPORATE_ACCOUNT_NAME = os.environ.get('JENGA_CORPORATE_ACCOUNT_NAME', '')
+JENGA_CORPORATE_BANK_CODE = os.environ.get('JENGA_CORPORATE_BANK_CODE', '')  # e.g., '68' for Equity
+
+# C2B Configuration
+JENGA_PAYBILL_NUMBER = os.environ.get('JENGA_PAYBILL_NUMBER', '')  # For M-Pesa style payments
+JENGA_TILL_NUMBER = os.environ.get('JENGA_TILL_NUMBER', '')  # For card/Till payments
+JENGA_CHECKOUT_REDIRECT_URL = os.environ.get('JENGA_CHECKOUT_REDIRECT_URL', '')
+JENGA_WEBHOOK_C2B_URL = os.environ.get('JENGA_WEBHOOK_C2B_URL', '')
+JENGA_WEBHOOK_B2C_URL = os.environ.get('JENGA_WEBHOOK_B2C_URL', '')
+JENGA_WEBHOOK_B2B_URL = os.environ.get('JENGA_WEBHOOK_B2B_URL', '')
 AIRTEL_MONEY_ENABLED = _env_bool("AIRTEL_MONEY_ENABLED", default=False)
 AIRTEL_MONEY_CLIENT_ID = os.environ.get("AIRTEL_MONEY_CLIENT_ID", "")
 AIRTEL_MONEY_CLIENT_SECRET = os.environ.get("AIRTEL_MONEY_CLIENT_SECRET", "")
