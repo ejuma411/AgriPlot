@@ -1043,6 +1043,12 @@ class PaymentRequest(models.Model):
             "Review the official search, survey, and supporting diligence records before moving the sale forward.",
         ),
         (
+            "offer",
+            "Letter of Offer",
+            "Letter of offer / reservation terms",
+            "Issue and upload the formal letter of offer before the full sale agreement is drafted.",
+        ),
+        (
             "agreement",
             "Sale Agreement",
             "Executed sale agreement",
@@ -1055,16 +1061,16 @@ class PaymentRequest(models.Model):
             "Capture Land Control Board approval or the equivalent seller clearances and supporting consents required for transfer.",
         ),
         (
-            "stamp_duty",
-            "Valuation & Stamp Duty",
-            "Government valuation and stamp duty receipt",
-            "Record the valuation outcome, assessed duty, and proof of payment before completion.",
-        ),
-        (
             "completion_docs",
             "Completion Documents",
             "Completion document checklist",
-            "Confirm the title, signed transfer forms, and seller identification documents are all in place before release.",
+            "Confirm the title, signed transfer forms, and seller identification documents are all in place before the valuation and tax stage.",
+        ),
+        (
+            "stamp_duty",
+            "Valuation & Stamp Duty",
+            "Government valuation and stamp duty receipt",
+            "Record the valuation outcome, assessed duty, and proof of payment before registration.",
         ),
         (
             "registration",
@@ -1294,7 +1300,10 @@ class PaymentRequest(models.Model):
         if not templates:
             return
 
-        existing_codes = set(self.closing_steps.values_list("code", flat=True))
+        existing_steps = {
+            step.code: step
+            for step in self.closing_steps.all()
+        }
         to_create = []
         for sequence, template in enumerate(templates, start=1):
             if len(template) == 4:
@@ -1306,7 +1315,20 @@ class PaymentRequest(models.Model):
                 raise ValueError(
                     "Closing step templates must define either 3 or 4 values per step."
                 )
-            if code in existing_codes:
+            step = existing_steps.get(code)
+            if step:
+                changed = False
+                for field_name, new_value in {
+                    "sequence": sequence,
+                    "title": title,
+                    "document_name": document_name,
+                    "guidance": guidance,
+                }.items():
+                    if getattr(step, field_name) != new_value:
+                        setattr(step, field_name, new_value)
+                        changed = True
+                if changed:
+                    step.save(update_fields=["sequence", "title", "document_name", "guidance", "updated_at"])
                 continue
             to_create.append(
                 PaymentClosingStep(
@@ -1500,6 +1522,11 @@ class PaymentRequest(models.Model):
                     ),
                 },
                 {
+                    "status": grouped_status(["offer", "commitment"]),
+                    "title": "Letter of Offer Confirmed",
+                    "summary": "The buyer has issued or confirmed the letter of offer before the formal sale agreement is drafted.",
+                },
+                {
                     "title": "Sale Agreement Signed",
                     "status": grouped_status(["agreement"]),
                     "summary": "The agreement is signed and the 10% deposit is secured under the legal framework.",
@@ -1510,14 +1537,14 @@ class PaymentRequest(models.Model):
                     "summary": consent_summary,
                 },
                 {
+                    "title": "Completion Docs Exchanged",
+                    "status": grouped_status(["completion_docs"]),
+                    "summary": "The completion pack is exchanged and the remaining balance can now be released safely.",
+                },
+                {
                     "title": "Government Valuation & Stamp Duty",
                     "status": grouped_status(["stamp_duty"]),
                     "summary": "Government valuation is completed and stamp duty is paid through the official channels.",
-                },
-                {
-                    "title": "Completion Docs Exchanged",
-                    "status": grouped_status(["completion_docs"]),
-                    "summary": "The remaining balance is cleared and the completion documents are exchanged safely.",
                 },
                 {
                     "title": "Title Registered",
@@ -2613,6 +2640,39 @@ class PaymentClosingStep(models.Model):
         return f"{self.payment.internal_reference} - {self.title}"
 
     @property
+    def workflow_code(self):
+        raw_code = (self.code or "").strip().lower()
+        legacy_aliases = {
+            "commitment": "offer",
+            "letter_of_offer": "offer",
+            "letter-of-offer": "offer",
+            "letter offer": "offer",
+        }
+        if raw_code in legacy_aliases:
+            return legacy_aliases[raw_code]
+
+        text_blob = " ".join(
+            value
+            for value in [self.code, self.title, self.document_name, self.guidance]
+            if value
+        ).lower()
+        if "offer" in text_blob:
+            return "offer"
+        if "due diligence" in text_blob or "official search" in text_blob or "survey" in text_blob:
+            return "due_diligence"
+        if "agreement" in text_blob or "contract" in text_blob:
+            return "agreement"
+        if "consent" in text_blob or "lcb" in text_blob:
+            return "lcb_consent"
+        if "completion" in text_blob or "balance" in text_blob:
+            return "completion_docs"
+        if "stamp duty" in text_blob or "valuation" in text_blob or "tax" in text_blob:
+            return "stamp_duty"
+        if "registration" in text_blob or "title" in text_blob or "registry" in text_blob:
+            return "registration"
+        return raw_code
+
+    @property
     def display_title(self):
         plot = self.payment.plot
         if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE and self.code == "lcb_consent":
@@ -2660,12 +2720,15 @@ class PaymentClosingStep(models.Model):
 
     @property
     def responsible_party_label(self):
+        code = self.workflow_code
         purchase_map = {
             "due_diligence": "Buyer",
+            "offer": "Buyer / Seller",
+            "commitment": "Buyer / Seller",
             "agreement": "Seller Advocate",
             "lcb_consent": "Admin / Lawyer",
-            "stamp_duty": "Buyer / Admin",
             "completion_docs": "Buyer Advocate",
+            "stamp_duty": "Buyer / Admin",
             "registration": "Registrar / Admin",
         }
         lease_map = {
@@ -2678,13 +2741,14 @@ class PaymentClosingStep(models.Model):
             "handover": "Seller / Landowner",
         }
         if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
-            return purchase_map.get(self.code, "Operations")
+            return purchase_map.get(code, "Operations")
         if self.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
-            return lease_map.get(self.code, "Operations")
+            return lease_map.get(code, "Operations")
         return "Operations"
 
     @property
     def action_summary(self):
+        code = self.workflow_code
         plot = self.payment.plot
         is_agricultural = bool(plot and plot.land_type == "agricultural")
         purchase_map = {
@@ -2695,6 +2759,22 @@ class PaymentClosingStep(models.Model):
                 "platform_role": "AgriPlot locks the plot, releases the verified documents, and uses this step as the legal green light before the serious legal work starts.",
                 "cta_label": "Review Due Diligence Pack",
                 "support_label": "Do not move to the sale agreement until the verified search and survey evidence make sense for this deal.",
+            },
+            "offer": {
+                "headline": "Upload the letter of offer and let the seller confirm it.",
+                "where": "Draft and upload the letter of offer or reservation terms, then let the seller or their advocate countersign the same step in the system.",
+                "document": "Letter of offer / reservation terms",
+                "platform_role": "AgriPlot records the buyer's intent, then lets the seller side confirm the signed offer before the agreement stage opens.",
+                "cta_label": "Upload Offer",
+                "support_label": "This step should be completed by the buyer first and then confirmed by the seller or their advocate.",
+            },
+            "commitment": {
+                "headline": "Upload the letter of offer and let the seller confirm it.",
+                "where": "Draft and upload the letter of offer or reservation terms, then let the seller or their advocate countersign the same step in the system.",
+                "document": "Letter of offer / reservation terms",
+                "platform_role": "AgriPlot records the buyer's intent, then lets the seller side confirm the signed offer before the agreement stage opens.",
+                "cta_label": "Upload Offer",
+                "support_label": "This step should be completed by the buyer first and then confirmed by the seller or their advocate.",
             },
             "agreement": {
                 "headline": "Sign the sale agreement and secure the 10% deposit.",
@@ -2721,8 +2801,8 @@ class PaymentClosingStep(models.Model):
                 "support_label": "Do not treat the tax step as done until the government value and stamp duty receipt are both captured.",
             },
             "completion_docs": {
-                "headline": "Exchange the completion papers and clear the remaining balance.",
-                "where": "The buyer's lawyer confirms the original title, signed transfer forms, and ID/KRA copies are all in order before the balance is treated as safely released.",
+                "headline": "Exchange the completion papers and prepare the 90% balance release.",
+                "where": "The buyer's lawyer confirms the original title, signed transfer forms, ID/KRA copies, and clearances are all in order before the remaining balance is released.",
                 "document": "Completion document pack",
                 "platform_role": "AgriPlot uses the completion checklist to make sure the final money-for-papers exchange is evidence-backed.",
                 "cta_label": "Confirm Completion Exchange",
@@ -2807,9 +2887,9 @@ class PaymentClosingStep(models.Model):
             },
         }
         if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
-            return purchase_map.get(self.code, {})
+            return purchase_map.get(code, {})
         if self.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
-            return lease_map.get(self.code, {})
+            return lease_map.get(self.workflow_code, {})
         return {}
 
     @property
@@ -2838,12 +2918,15 @@ class PaymentClosingStep(models.Model):
 
     @property
     def buyer_instruction(self):
+        code = self.workflow_code
         purchase_map = {
             "due_diligence": "Review the verified search, survey, and registry pack on AgriPlot before moving into the sale agreement stage.",
+            "offer": "Upload the letter of offer, then let the seller or their advocate confirm the signed copy in the system.",
+            "commitment": "Upload the letter of offer, then let the seller or their advocate confirm the signed copy in the system.",
             "agreement": "Review the sale agreement with your advocate and confirm once the seller-side upload is ready.",
             "lcb_consent": "Coordinate with the seller for the Land Control Board meeting and carry your ID documents.",
+            "completion_docs": "Wait for the completion pack to be exchanged, then confirm it is complete before the balance and tax stages move on.",
             "stamp_duty": "Follow up on the government valuation, pay stamp duty through KRA/eCitizen, and upload the proof here.",
-            "completion_docs": "Wait for the seller's advocate to hand over the completion documents, then confirm they are complete before the balance is released.",
             "registration": "Ask your advocate to lodge the transfer at the registry or Ardhisasa and upload the final proof.",
         }
         lease_map = {
@@ -2859,19 +2942,22 @@ class PaymentClosingStep(models.Model):
             "handover": "Arrange the handover meeting and confirm possession details before occupying the land.",
         }
         if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
-            return purchase_map.get(self.code, "Open this step and follow the guidance provided.")
+            return purchase_map.get(code, "Open this step and follow the guidance provided.")
         if self.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
-            return lease_map.get(self.code, "Open this step and follow the guidance provided.")
+            return lease_map.get(self.workflow_code, "Open this step and follow the guidance provided.")
         return "Open this step and follow the guidance provided."
 
     @property
     def stakeholder_update_label(self):
+        code = self.workflow_code
         purchase_map = {
             "due_diligence": "Buyer review confirmation",
+            "offer": "Buyer offer upload / seller confirmation",
+            "commitment": "Buyer offer upload / seller confirmation",
             "agreement": "Seller-side legal upload and buyer confirmation",
             "lcb_consent": "Admin / lawyer evidence upload",
+            "completion_docs": "Buyer advocate completion pack upload",
             "stamp_duty": "Buyer and admin tax evidence upload",
-            "completion_docs": "Buyer-side completion checklist",
             "registration": "Registrar / admin proof upload",
         }
         lease_map = {
@@ -2884,18 +2970,21 @@ class PaymentClosingStep(models.Model):
             "handover": "Seller handover confirmation",
         }
         if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
-            return purchase_map.get(self.code, "Evidence-backed update")
+            return purchase_map.get(code, "Evidence-backed update")
         if self.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
-            return lease_map.get(self.code, "Evidence-backed update")
+            return lease_map.get(self.workflow_code, "Evidence-backed update")
         return "Evidence-backed update"
 
     @property
     def completion_requirements(self):
+        code = self.workflow_code
         requirement_map = {
+            "offer": ["Letter of offer uploaded"],
+            "commitment": ["Letter of offer uploaded"],
             "agreement": ["Executed sale agreement uploaded"],
             "lcb_consent": ["Consent number entered", "Meeting date entered", "LCB / spousal consent upload"],
-            "stamp_duty": ["Official market value entered", "Calculated stamp duty entered", "Stamp duty receipt uploaded"],
             "completion_docs": ["Original title received", "Seller ID / KRA copies received", "Transfer forms signed"],
+            "stamp_duty": ["Official market value entered", "Calculated stamp duty entered", "Stamp duty receipt uploaded"],
             "registration": ["New search or registry proof uploaded"],
             "payment_security": [
                 "Security deposit amount confirmed",
@@ -2904,46 +2993,47 @@ class PaymentClosingStep(models.Model):
             "lease_registration": ["Lease registry proof uploaded"],
             "soil_health_baseline": ["Baseline soil or condition report uploaded"],
         }
-        return requirement_map.get(self.code, [])
+        return requirement_map.get(code, [])
 
     def can_mark_complete_with_current_evidence(self):
+        code = self.workflow_code
         active_payment_statuses = {
             PaymentRequest.Status.PAID,
             PaymentRequest.Status.IN_ESCROW,
             PaymentRequest.Status.PARTIALLY_RELEASED,
             PaymentRequest.Status.RELEASED,
         }
-        if self.code == "due_diligence":
+        if code == "due_diligence":
             return True
-        if self.code == "agreement":
+        if code == "agreement":
             if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
                 return bool(self.document and self.buyer_confirmed_at and self.seller_confirmed_at)
             return bool(self.buyer_confirmed_at and self.seller_confirmed_at)
-        if self.code == "registration":
+        if code == "registration":
             return bool(self.document)
-        if self.code == "lcb_consent":
+        if code == "lcb_consent":
             return bool(self.document and self.consent_reference_number and self.meeting_date)
-        if self.code == "stamp_duty":
+        if code == "stamp_duty":
             return bool(
                 self.document
                 and self.official_market_value is not None
                 and self.assessed_stamp_duty is not None
             )
-        if self.code == "completion_docs":
+        if code == "completion_docs":
             return bool(
                 self.original_title_received
                 and self.seller_id_copy_received
                 and self.transfer_forms_signed
             )
-        if self.code == "payment_security":
+        if code == "payment_security":
             return any(
                 related_payment.category == PaymentRequest.Category.ESCROW_DEPOSIT
                 and related_payment.status in active_payment_statuses
                 for related_payment in self.payment.workflow_related_payments
             )
-        if self.code in {"lease_registration", "soil_health_baseline", "handover"}:
+        if code in {"lease_registration", "soil_health_baseline", "handover"}:
             return bool(self.document)
-        if self.code == "offer":
+        if code in {"offer", "commitment"}:
             return bool(self.notes or self.document)
         return True
 
@@ -3110,163 +3200,6 @@ class LeaseWaitlistEntry(models.Model):
         self.status = self.Status.WITHDRAWN
         if save:
             self.save(update_fields=["status", "updated_at"])
-
-
-# ============================================================
-# DEAL, PAYMENT, ESCROW MODELS
-# ============================================================
-
-class Deal(models.Model):
-    TRANSACTION_TYPES = [
-        ('purchase', 'Purchase'),
-        ('lease', 'Lease'),
-    ]
-    
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('in_progress', 'In Progress'),
-        ('completed', 'Completed'),
-        ('cancelled', 'Cancelled'),
-        ('disputed', 'Disputed'),
-    ]
-    
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
-    plot = models.ForeignKey("listings.Plot", on_delete=models.CASCADE, related_name='deals')
-    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='purchases')
-    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sales')
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    
-    offer_price = models.DecimalField(max_digits=15, decimal_places=2)
-    final_price = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    platform_fee = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    
-    lease_duration_months = models.IntegerField(null=True, blank=True)
-    monthly_rent = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    security_deposit = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    lease_start_date = models.DateField(null=True, blank=True)
-    lease_end_date = models.DateField(null=True, blank=True)
-    
-    offer_accepted_date = models.DateTimeField(null=True, blank=True)
-    due_diligence_date = models.DateTimeField(null=True, blank=True)
-    lcb_consent_date = models.DateTimeField(null=True, blank=True)
-    stamp_duty_date = models.DateTimeField(null=True, blank=True)
-    title_transfer_date = models.DateTimeField(null=True, blank=True)
-    final_payment_date = models.DateTimeField(null=True, blank=True)
-    completion_date = models.DateTimeField(null=True, blank=True)
-    agreement_date = models.DateTimeField(null=True, blank=True)
-    handover_date = models.DateTimeField(null=True, blank=True)
-    lease_active_date = models.DateTimeField(null=True, blank=True)
-    
-    offer_deadline = models.DateField(null=True, blank=True)
-    due_diligence_deadline = models.DateField(null=True, blank=True)
-    lcb_consent_deadline = models.DateField(null=True, blank=True)
-    stamp_duty_deadline = models.DateField(null=True, blank=True)
-    title_transfer_deadline = models.DateField(null=True, blank=True)
-    final_payment_deadline = models.DateField(null=True, blank=True)
-    completion_deadline = models.DateField(null=True, blank=True)
-    
-    notes = models.TextField(blank=True)
-    documents = models.JSONField(default=list)
-    
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return f"Deal {self.id} - {self.plot.title} - {self.buyer.username}"
-    
-    @property
-    def progress_percentage(self):
-        if self.transaction_type == 'purchase':
-            milestones = [
-                self.offer_accepted_date,
-                self.due_diligence_date,
-                self.lcb_consent_date,
-                self.stamp_duty_date,
-                self.title_transfer_date,
-                self.final_payment_date,
-                self.completion_date
-            ]
-        else:
-            milestones = [
-                self.offer_accepted_date,
-                self.agreement_date,
-                self.security_deposit,
-                self.final_payment_date,
-                self.handover_date,
-                self.lease_active_date
-            ]
-        
-        completed = sum(1 for m in milestones if m is not None)
-        return (completed / len(milestones)) * 100
-    
-    @property
-    def days_elapsed(self):
-        return (timezone.now().date() - self.created_at.date()).days
-
-    def get_bottlenecks(self):
-        bottlenecks = []
-        if self.offer_accepted_date and not self.due_diligence_date:
-            bottlenecks.append("Due Diligence pending")
-        if self.due_diligence_date and not self.lcb_consent_date:
-            bottlenecks.append("LCB Consent pending")
-        if self.lcb_consent_date and not self.title_transfer_date:
-            bottlenecks.append("Title Transfer pending")
-        return bottlenecks
-
-
-class Payment(models.Model):
-    PAYMENT_TYPES = [
-        ('deposit', 'Deposit'),
-        ('installment', 'Installment'),
-        ('final', 'Final Payment'),
-        ('rent', 'Rent'),
-        ('security_deposit', 'Security Deposit'),
-        ('platform_fee', 'Platform Fee'),
-        ('professional_fee', 'Professional Fee'),
-    ]
-    
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('completed', 'Completed'),
-        ('failed', 'Failed'),
-        ('refunded', 'Refunded'),
-    ]
-    
-    deal = models.ForeignKey(Deal, on_delete=models.CASCADE, related_name='payments')
-    payer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payments_made')
-    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='payments_received')
-    amount = models.DecimalField(max_digits=15, decimal_places=2)
-    payment_type = models.CharField(max_length=20, choices=PAYMENT_TYPES)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
-    transaction_id = models.CharField(max_length=100, unique=True, null=True, blank=True)
-    payment_method = models.CharField(max_length=50, blank=True)
-    due_date = models.DateField(null=True, blank=True)
-    paid_at = models.DateTimeField(null=True, blank=True)
-    notes = models.TextField(blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return f"Payment {self.id} - {self.payment_type} - {self.amount}"
-
-
-class EscrowAccount(models.Model):
-    deal = models.OneToOneField(Deal, on_delete=models.CASCADE, related_name='escrow_account')
-    buyer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='escrow_as_buyer')
-    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='escrow_as_seller')
-    balance = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    released_amount = models.DecimalField(max_digits=15, decimal_places=2, default=0)
-    is_released = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    def __str__(self):
-        return f"Escrow for Deal {self.deal.id} - Balance: {self.balance}"
 
 
 # ============================================================
