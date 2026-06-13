@@ -1,0 +1,132 @@
+{% extends "accounts/dashboard/base_dashboard.html" %}
+{% load humanize %}
+
+{% block dash_page_title %}Tasks & Queue{% endblock %}
+{% block dash_page_subtitle %}Manage your active verifications, inspections, and pending tasks.{% endblock %}
+
+{% block dashboard_content %}
+<!-- Stats Grid -->
+<div class="dash-grid-4 mb-4">
+    <div class="dash-card">
+        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
+            <div style="background: rgba(59, 130, 246, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 1.25rem;">
+                <i class="fa-solid fa-list-check"></i>
+            </div>
+        </div>
+        <div>
+            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ task_stats.pending|add:my_tasks_count|default:0 }}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Total Tasks</p>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
+            <div style="background: rgba(245, 158, 11, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #f59e0b; font-size: 1.25rem;">
+                <i class="fa-solid fa-hourglass-half"></i>
+            </div>
+        </div>
+        <div>
+            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ task_stats.pending|default:0 }}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Pending Queue</p>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
+            <div style="background: rgba(139, 92, 246, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #8b5cf6; font-size: 1.25rem;">
+                <i class="fa-solid fa-user-check"></i>
+            </div>
+        </div>
+        <div>
+            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ my_tasks_count|default:0 }}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">My Active Tasks</p>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
+            <div style="background: rgba(16, 185, 129, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent-hover); font-size: 1.25rem;">
+                <i class="fa-solid fa-check-double"></i>
+            </div>
+        </div>
+        <div>
+            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ task_stats.completed|default:0 }}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Completed</p>
+        </div>
+    </div>
+</div>
+
+<div class="dash-grid-2">
+    <!-- Active Tasks -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <h3 class="dash-card-title">My Active Tasks</h3>
+            <span style="background: #f1f5f9; color: var(--text-secondary); padding: 0.25rem 0.5rem; border-radius: 0.5rem; font-size: 0.8rem; font-weight: 600;">{{ my_tasks_count|default:0 }}</span>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            {% if workspace_tasks %}
+                {% for task in workspace_tasks %}
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; border: 1px solid #f1f5f9; border-radius: 0.75rem; background: white;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: {% if task.deadline_at and task.deadline_at < now %}rgba(239, 68, 68, 0.1); color: #ef4444;{% else %}#f8fafc; color: var(--text-secondary);{% endif %} display: flex; align-items: center; justify-content: center;">
+                                <i class="fa-solid fa-clipboard-check"></i>
+                            </div>
+                            <div>
+                                <h4 style="font-size: 0.95rem; font-weight: 600; margin: 0; color: var(--text-primary);">{{ task.plot.title|default:task.get_verification_type_display }}</h4>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">{{ task.get_verification_type_display }} · Due {{ task.deadline_at|date:"M d, Y"|default:"Soon" }}</p>
+                            </div>
+                        </div>
+                        <span style="padding: 0.25rem 0.75rem; border-radius: 2rem; background: {% if task.deadline_at and task.deadline_at < now %}rgba(239, 68, 68, 0.1); color: #ef4444;{% else %}#f1f5f9; color: var(--text-secondary);{% endif %} font-size: 0.75rem; font-weight: 600;">
+                            {{ task.get_status_display }}
+                        </span>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 2rem;">
+                    <i class="fa-solid fa-clipboard-list mb-3" style="font-size: 2rem; color: #cbd5e1;"></i>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">You have no active tasks currently.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- General Queue -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <h3 class="dash-card-title">{{ primary_queue_title|default:"Queue Items" }}</h3>
+            {% if primary_queue|length > 0 %}
+                <a href="#" class="ap-btn ap-btn-ghost btn-sm" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">Filter</a>
+            {% endif %}
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            {% if primary_queue %}
+                {% for item in primary_queue %}
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; border: 1px solid #f1f5f9; border-radius: 0.75rem; background: white; transition: transform 0.2s ease;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
+                                <i class="fa-solid fa-file-signature"></i>
+                            </div>
+                            <div>
+                                <h4 style="font-size: 0.95rem; font-weight: 600; margin: 0; color: var(--text-primary);">{{ item.title }}</h4>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">{{ item.subtitle }}</p>
+                            </div>
+                        </div>
+                        {% if item.url %}
+                            <a href="{{ item.url }}" style="padding: 0.25rem 0.75rem; border-radius: 2rem; background: var(--accent-light); color: var(--accent-hover); font-size: 0.75rem; font-weight: 600; text-decoration: none;">{{ item.status }}</a>
+                        {% else %}
+                            <span style="padding: 0.25rem 0.75rem; border-radius: 2rem; background: #f1f5f9; color: var(--text-secondary); font-size: 0.75rem; font-weight: 600;">{{ item.status }}</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div style="text-align: center; padding: 2rem;">
+                    <i class="fa-solid fa-inbox mb-3" style="font-size: 2rem; color: #cbd5e1;"></i>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">No items in the queue right now.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

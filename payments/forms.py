@@ -2,13 +2,19 @@ from decimal import Decimal, ROUND_HALF_UP
 from datetime import datetime, timedelta
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from accounts.validators import validate_kenyan_phone, validate_person_name
 
 from listings.models import Plot
 
-from .models import PaymentClosingStep, PaymentDispute, PaymentMilestone, PaymentRequest
+from .models import (
+    PaymentRequest,
+    PaymentMilestone,      # ADD THIS
+    PaymentDispute,        # ADD THIS
+    PaymentClosingStep,    # ADD THIS
+)
 from .permissions import user_is_finance_admin
 
 
@@ -23,12 +29,12 @@ class PaymentRequestForm(forms.ModelForm):
         (PaymentRequest.TransactionType.LEASE, "Lease"),
     ]
     DIRECT_CATEGORY_CHOICES = [
-        (PaymentRequest.Category.COMMITMENT_FEE, "Commitment / Verification Fee"),
+        (PaymentRequest.Category.COMMITMENT_FEE, "Verification Fee"),
         (PaymentRequest.Category.RESERVATION_DEPOSIT, "Reservation Deposit"),
-        (PaymentRequest.Category.AGREEMENT_DEPOSIT, "Agreement Deposit (10%)"),
+        (PaymentRequest.Category.AGREEMENT_DEPOSIT, "10% Escrow Deposit"),
         (PaymentRequest.Category.ESCROW_DEPOSIT, "Escrow Deposit"),
         (PaymentRequest.Category.STAMP_DUTY, "Stamp Duty"),
-        (PaymentRequest.Category.COMPLETION_BALANCE, "Completion Balance"),
+        (PaymentRequest.Category.COMPLETION_BALANCE, "90% Escrow Balance"),
     ]
     DEFAULT_DUE_WINDOWS = {
         PaymentRequest.Category.COMMITMENT_FEE: timedelta(hours=24),
@@ -532,27 +538,51 @@ class PaymentRequestForm(forms.ModelForm):
             if self.allow_lease_term_entry:
                 if not cleaned_data.get("lease_start_date"):
                     self.add_error("lease_start_date", "Lease start date is required for this lease checkout.")
+                else:
+                    self.instance.lease_start_date = cleaned_data.get("lease_start_date")
+                
                 if not cleaned_data.get("lease_end_date"):
                     self.add_error("lease_end_date", "Lease end date is required for this lease checkout.")
+                else:
+                    self.instance.lease_end_date = cleaned_data.get("lease_end_date")
+                
                 if cleaned_data.get("lease_start_date") and cleaned_data.get("lease_end_date"):
                     if cleaned_data["lease_end_date"] <= cleaned_data["lease_start_date"]:
                         self.add_error(
                             "lease_end_date",
                             "Lease end date must be after the lease start date.",
                         )
+                
                 if not cleaned_data.get("intended_use"):
                     self.add_error("intended_use", "Tell AgriPlot how the tenant will use the land.")
+                else:
+                    self.instance.intended_use = cleaned_data.get("intended_use")
+                
                 if not cleaned_data.get("lease_security_deposit") and plot:
                     lease_base = self.lease_base_amount(plot)
                     if lease_base:
                         cleaned_data["lease_security_deposit"] = lease_base
                         self.instance.lease_security_deposit = lease_base
+                else:
+                    self.instance.lease_security_deposit = cleaned_data.get("lease_security_deposit")
+                
                 if plot and plot.listing_type == "both":
                     cleaned_data["subject_to_sale"] = True
                     self.instance.subject_to_sale = True
+                
+                if cleaned_data.get("notice_period_days"):
+                    self.instance.notice_period_days = cleaned_data.get("notice_period_days")
+                
+                if cleaned_data.get("good_husbandry_required") is not None:
+                    self.instance.good_husbandry_required = cleaned_data.get("good_husbandry_required")
+                
+                if cleaned_data.get("soil_exit_test_required") is not None:
+                    self.instance.soil_exit_test_required = cleaned_data.get("soil_exit_test_required")
             else:
                 cleaned_data["lease_start_date"] = None
                 cleaned_data["lease_end_date"] = None
+                self.instance.lease_start_date = None
+                self.instance.lease_end_date = None
         self.instance.title = cleaned_data["title"]
         self.instance.description = cleaned_data["description"]
         self.instance.escrow_enabled = cleaned_data["escrow_enabled"]
@@ -578,7 +608,6 @@ class PaymentRequestForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
-
 
 class PaymentMilestoneForm(forms.ModelForm):
     class Meta:
@@ -726,7 +755,8 @@ class PaymentClosingStepForm(forms.ModelForm):
         self.agreement_role = None
         step = self.instance if getattr(self.instance, "pk", None) else None
         allowed_field_map = {
-            "offer": {"status", "notes", "document"},
+            "offer": {"status", "notes", "document", "submitter_name", "submitter_phone", "submitter_role", "submitter_organisation"},
+            "commitment": {"status", "notes", "document", "submitter_name", "submitter_phone", "submitter_role", "submitter_organisation"},
             "due_diligence": {"status", "notes"},
             "agreement": {
                 "status",
@@ -754,7 +784,6 @@ class PaymentClosingStepForm(forms.ModelForm):
                 "submitter_role",
                 "submitter_organisation",
             },
-            
             "consents_clearances": {
                 "status",
                 "notes",
@@ -766,7 +795,6 @@ class PaymentClosingStepForm(forms.ModelForm):
                 "submitter_role",
                 "submitter_organisation",
             },
-            
             "stamp_duty": {
                 "status",
                 "notes",
@@ -940,7 +968,7 @@ class PaymentClosingStepForm(forms.ModelForm):
         if not requested_completion:
             return cleaned_data
 
-        if step.code in {"offer", "agreement", "registration"} and not (
+        if step.code in {"offer", "commitment", "agreement", "registration"} and not (
             cleaned_data.get("document") or step.document
         ) and not (
             step.code == "agreement"
@@ -1116,6 +1144,74 @@ class PaymentClosingStepForm(forms.ModelForm):
             ]:
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, f"Enter the {label} before completing this step.")
+
+        # ============================================================
+        # LEGAL DOCUMENT VALIDATION - INTEGRATION WITH TRANSACTION MODEL
+        # ============================================================
+        from transactions.models import Transaction, TransactionDocument
+        
+        payment = step.payment
+        
+        # Check if there's a linked legal transaction
+        legal_tx = None
+        try:
+            legal_tx = payment.legal_transaction
+        except (Transaction.DoesNotExist, AttributeError):
+            pass
+        
+        # Only check for purchase transactions that have a legal transaction linked
+        if legal_tx and payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+            # Map payment closing step to required legal documents
+            legal_requirements = {
+                'due_diligence': ['OFFICIAL_SEARCH', 'SURVEY_MAP'],
+                'offer': ['LETTER_OF_OFFER'],
+                'commitment': ['LETTER_OF_OFFER'],
+                'agreement': ['SALE_AGREEMENT'],
+                'lcb_consent': ['LCB_CONSENT', 'SPOUSAL_CONSENT'],
+                'completion_docs': ['NEW_TITLE_DEED', 'TRANSFER_FORM'],
+                'stamp_duty': ['STAMP_DUTY_RECEIPT', 'VALUATION_REPORT', 'CGT_RECEIPT'],
+                'registration': ['NEW_TITLE_DEED', 'TRANSFER_FORM'],
+            }
+            
+            required_docs = legal_requirements.get(step.code, [])
+            
+            if required_docs and requested_completion:
+                missing_docs = []
+                
+                for doc_type in required_docs:
+                    has_doc = TransactionDocument.objects.filter(
+                        transaction=legal_tx,
+                        document_type=doc_type,
+                        status='verified'
+                    ).exists()
+                    if not has_doc:
+                        missing_docs.append(dict(TransactionDocument.DocType.choices).get(doc_type, doc_type))
+                
+                if missing_docs:
+                    raise ValidationError(
+                        f"Cannot complete this payment step. Missing legal documents in the Legal Workspace: {', '.join(missing_docs)}. "
+                        "Please upload and verify these documents before proceeding."
+                    )
+                
+                # Also check if legal stage is sufficiently advanced
+                legal_stage_required = {
+                    'due_diligence': Transaction.Stage.DUE_DILIGENCE,
+                    'offer': Transaction.Stage.COMMITMENT,
+                    'commitment': Transaction.Stage.COMMITMENT,
+                    'agreement': Transaction.Stage.CONTRACTS,
+                    'lcb_consent': Transaction.Stage.STATUTORY_CONSENTS,
+                    'completion_docs': Transaction.Stage.STATUTORY_CONSENTS,
+                    'stamp_duty': Transaction.Stage.TAXATION,
+                    'registration': Transaction.Stage.REGISTRATION,
+                }
+                
+                required_stage = legal_stage_required.get(step.code)
+                if required_stage and legal_tx.stage != required_stage:
+                    raise ValidationError(
+                        f"Cannot complete this payment step. The legal transaction must be at the '{dict(Transaction.Stage.choices).get(required_stage)}' stage. "
+                        f"Current legal stage: '{dict(Transaction.Stage.choices).get(legal_tx.stage)}'. "
+                        "Please advance the legal workspace first."
+                    )
 
         return cleaned_data
 

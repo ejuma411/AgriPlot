@@ -1,0 +1,21 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block header_title %}Transaction Advanced{% endblock %}
+
+{% block content %}
+<h2>Transaction Progress Update</h2>
+<p>Hello {{ user.first_name|default:user.username }},</p>
+
+<p>Great news! The transaction for the property <strong>{{ plot_title }}</strong> has successfully progressed to the next legal stage.</p>
+
+<div style="background-color: #f8f9fa; border-left: 4px solid #059669; padding: 15px; margin: 20px 0;">
+    <h3 style="margin-top: 0; color: #059669;">Current Stage: {{ stage_display }}</h3>
+    <p style="margin-bottom: 0;">Our system is tracking all statutory requirements to ensure full compliance with the Kenyan Land Act.</p>
+</div>
+
+<p>Please log in to your dashboard to review any required documents or escrow deposits for this new stage.</p>
+{% endblock %}
+
+{% block cta %}
+<a href="{{ transaction_url }}" class="button">Go to Transaction Workspace</a>
+{% endblock %}

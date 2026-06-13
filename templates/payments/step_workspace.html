@@ -6,839 +6,753 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/payments.css' %}">
 <style>
-    .workspace-hero {
-        background: linear-gradient(135deg, #f7fbf6 0%, #edf5ee 100%);
-        border: 1px solid var(--ap-border);
-        border-radius: 16px;
-        padding: 28px;
-        margin-bottom: 24px;
+    :root {
+        --ws-bg: #f8fafc;
+        --ws-card: #ffffff;
+        --ws-border: #e2e8f0;
+        --ws-text: #0f172a;
+        --ws-muted: #64748b;
+        --ws-primary: #10b981;
+        --ws-primary-light: #d1fae5;
+        --ws-legal: #8b5cf6;
+        --ws-legal-light: #ede9fe;
     }
-    .workspace-hero.lease {
-        background: linear-gradient(135deg, #f4fbf5 0%, #e7f1e4 100%);
+
+    body {
+        background-color: var(--ws-bg);
     }
-    .workspace-hero.purchase {
-        background: linear-gradient(135deg, #fcfaf3 0%, #f7ecd8 100%);
+
+    .ws-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 1.5rem;
     }
-    .workspace-stat-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 14px;
-        margin-top: 20px;
-    }
-    .workspace-stat {
-        background: rgba(255, 255, 255, 0.92);
-        border-radius: 16px;
-        padding: 16px;
-        border: 1px solid var(--ap-border);
-    }
-    .workspace-stat small {
-        display: block;
-        color: var(--ap-muted);
-        margin-bottom: 8px;
-        font-size: 11px;
-    }
-    .workspace-stat strong {
-        font-size: 1.2rem;
-        color: var(--ap-text);
-    }
-    .workspace-panels {
-        display: grid;
-        grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
-        gap: 24px;
-    }
-    .workspace-stack {
-        display: grid;
-        gap: 24px;
-    }
-    .workspace-card {
-        background: #fff;
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: var(--ap-shadow);
-        border: 1px solid var(--ap-border);
-    }
-    .workspace-card h2,
-    .workspace-card h3 {
-        margin-top: 0;
-        color: var(--ap-text);
-    }
-    .workspace-label {
-        display: inline-flex;
-        align-items: center;
-        padding: 6px 12px;
-        border-radius: 999px;
-        background: rgba(47, 133, 90, 0.1);
-        color: var(--ap-green-dark);
-        font-size: 0.85rem;
-        font-weight: 600;
-    }
-    .workspace-note {
-        background: var(--ap-surface-muted);
-        border-left: 4px solid var(--ap-green);
-        border-radius: 14px;
-        padding: 16px;
-        margin: 16px 0;
-        color: var(--ap-text);
-    }
-    .workspace-note strong {
-        color: var(--ap-green-dark);
-    }
-    .workspace-note.warning {
-        border-left-color: var(--ap-gold);
-        background: #fff7e1;
-        color: #4a3000;
-    }
-    .workspace-note.info {
-        border-left-color: #4c8bf5;
-        background: #eef6ff;
-        color: var(--ap-text);
-    }
-    .workspace-checklist {
-        margin: 0;
-        padding-left: 20px;
-    }
-    .workspace-checklist li + li {
-        margin-top: 8px;
-    }
-    .workspace-form-grid {
-        display: grid;
-        gap: 14px;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-    .workspace-form-grid .field-block.full {
-        grid-column: 1 / -1;
-    }
-    .agreement-sections {
-        display: grid;
-        gap: 18px;
-    }
-    .agreement-section {
-        border: 1px solid var(--ap-border);
-        border-radius: 16px;
-        background: #fbfcfe;
-        padding: 18px;
-    }
-    .agreement-section-header {
+
+    .ws-hero {
+        background: var(--ws-card);
+        border: 1px solid var(--ws-border);
+        border-radius: 1.25rem;
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 14px;
-    }
-    .agreement-section-header h4 {
-        margin: 0;
-        color: var(--ap-text);
-        font-size: 1rem;
-    }
-    .agreement-section-header p {
-        margin: 4px 0 0;
-        color: var(--ap-muted);
-        font-size: 0.92rem;
-    }
-    .agreement-field-grid {
-        display: grid;
-        gap: 14px;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    }
-    .agreement-field-grid .field-block.full {
-        grid-column: 1 / -1;
-    }
-    .workspace-nav {
-        display: flex;
-        gap: 12px;
         flex-wrap: wrap;
-        margin-top: 20px;
+        gap: 2rem;
     }
-    .workspace-nav a,
-    .workspace-nav button {
-        text-decoration: none;
+
+    .ws-hero-left {
+        flex: 1;
+        min-width: 300px;
     }
-    .hero-btn-primary {
-        background: var(--ap-green);
-        color: #fff;
-        padding: 10px 20px;
-        border-radius: 12px;
-        border: none;
-        cursor: pointer;
-        font-weight: 600;
-    }
-    .hero-btn-secondary {
-        background: var(--ap-gold);
-        color: #0c3322;
-        padding: 10px 20px;
-        border-radius: 12px;
-        border: none;
-        cursor: pointer;
-        font-weight: 600;
-        text-decoration: none;
+
+    .ws-kicker {
         display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        background: var(--ws-primary-light);
+        color: #059669;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 1rem;
     }
-    .workspace-payment-callout {
-        background: linear-gradient(135deg, var(--ap-green-dark), #1f6b43);
-        color: #f7f7f2;
-        border-radius: 16px;
-        padding: 22px;
-        box-shadow: var(--ap-shadow);
-    }
-    .workspace-payment-callout p,
-    .workspace-payment-callout strong,
-    .workspace-payment-callout small {
-        color: inherit;
-    }
-    .workspace-checkout-form {
-        display: grid;
-        gap: 14px;
-        margin-top: 16px;
-    }
-    .workspace-checkout-form input[type="text"] {
-        width: 100%;
-        border-radius: 14px;
-        border: 1px solid rgba(255, 255, 255, 0.22);
-        background: rgba(255, 255, 255, 0.14);
-        color: #fff;
-        padding: 14px 16px;
-    }
-    .workspace-checkout-form input[type="text"]::placeholder {
-        color: rgba(247, 247, 242, 0.78);
-    }
-    .workspace-checkout-form label,
-    .workspace-checkout-form .help-copy {
-        color: #f7f7f2;
-    }
-    .workspace-payment-status {
-        margin-top: 14px;
-        padding: 12px 14px;
-        border-radius: 14px;
-        background: rgba(255, 255, 255, 0.14);
-        color: #f7f7f2;
-    }
-    .workspace-payment-status.error {
-        background: rgba(176, 42, 55, 0.2);
-    }
-    .workspace-days-critical {
-        color: #c62828;
+
+    .ws-legal-badge {
+        display: inline-block;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        background: var(--ws-legal-light);
+        color: #6d28d9;
+        font-size: 0.7rem;
         font-weight: 600;
+        margin-left: 0.5rem;
     }
-    .workspace-days-safe {
-        color: var(--ap-green);
-        font-weight: 600;
+
+    .ws-title {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--ws-text);
+        margin: 0 0 0.5rem 0;
+        line-height: 1.2;
     }
-    .workspace-task-card {
-        border: 1px solid var(--ap-border);
-        background: linear-gradient(180deg, #ffffff 0%, #fbfdf9 100%);
+
+    .ws-subtitle {
+        color: var(--ws-muted);
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
     }
-    .workspace-task-grid {
+
+    .ws-stats-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 12px;
-        margin-top: 18px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1rem;
+        min-width: 300px;
     }
-    .workspace-task-pill {
-        border-radius: 14px;
-        background: #ffffff;
-        border: 1px solid var(--ap-border);
-        padding: 14px 16px;
+
+    .ws-stat-card {
+        background: #f8fafc;
+        border: 1px solid var(--ws-border);
+        border-radius: 1rem;
+        padding: 1.25rem;
     }
-    .workspace-task-pill small {
+
+    .ws-stat-label {
+        font-size: 0.8rem;
+        color: var(--ws-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.5rem;
         display: block;
-        color: var(--ap-muted);
-        margin-bottom: 6px;
-        font-size: 11px;
     }
-    .workspace-task-pill strong {
-        color: var(--ap-text);
+
+    .ws-stat-value {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--ws-text);
     }
-    .workspace-progress-list {
+
+    .ws-layout {
         display: grid;
-        gap: 10px;
+        grid-template-columns: 2fr 1fr;
+        gap: 2rem;
+        align-items: start;
     }
-    .workspace-progress-item {
-        border: 1px solid var(--ap-border);
-        border-radius: 16px;
-        padding: 14px 16px;
-        background: #fff;
-        color: var(--ap-text);
+
+    .ws-card {
+        background: var(--ws-card);
+        border: 1px solid var(--ws-border);
+        border-radius: 1.25rem;
+        padding: 2rem;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1.5rem;
     }
-    .workspace-progress-item.current {
-        border-color: rgba(47, 133, 90, 0.28);
-        background: #f0f7f0;
+
+    .ws-card-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--ws-border);
     }
-    .workspace-progress-item.done {
-        background: var(--ap-surface-muted);
+
+    .ws-card-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--ws-text);
+        margin: 0;
     }
-    .text-link {
-        color: var(--ap-green);
+
+    .ws-alert {
+        padding: 1rem 1.25rem;
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+        border-left: 4px solid;
+    }
+
+    .ws-alert-info {
+        background: #eff6ff;
+        border-left-color: #3b82f6;
+        color: #1e3a8a;
+    }
+
+    .ws-alert-warning {
+        background: #fffbeb;
+        border-left-color: #f59e0b;
+        color: #92400e;
+    }
+
+    .ws-alert-success {
+        background: #ecfdf5;
+        border-left-color: #10b981;
+        color: #065f46;
+    }
+
+    .ws-alert-legal {
+        background: #ede9fe;
+        border-left-color: #8b5cf6;
+        color: #5b21b6;
+    }
+
+    /* Form Styles */
+    .ws-form-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1.25rem;
+    }
+
+    .ws-form-group label {
+        display: block;
+        font-weight: 600;
+        color: var(--ws-text);
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .ws-form-group input[type="text"],
+    .ws-form-group input[type="number"],
+    .ws-form-group input[type="tel"],
+    .ws-form-group select,
+    .ws-form-group textarea {
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: 1px solid var(--ws-border);
+        border-radius: 0.5rem;
+        font-size: 0.95rem;
+        transition: border-color 0.2s;
+    }
+
+    .ws-form-group input:focus,
+    .ws-form-group select:focus,
+    .ws-form-group textarea:focus {
+        outline: none;
+        border-color: var(--ws-primary);
+        box-shadow: 0 0 0 3px var(--ws-primary-light);
+    }
+
+    .ws-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.75rem 1.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
         text-decoration: none;
     }
-    .text-link:hover {
-        color: var(--ap-green-dark);
-        text-decoration: underline;
+
+    .ws-btn-primary {
+        background: var(--ws-primary);
+        color: white;
     }
-    @media (max-width: 960px) {
-        .workspace-panels {
-            grid-template-columns: 1fr;
-        }
+
+    .ws-btn-primary:hover {
+        background: #059669;
+        color: white;
     }
-    @media (max-width: 600px) {
-        .workspace-stat-grid {
+
+    .ws-btn-secondary {
+        background: #f1f5f9;
+        color: var(--ws-text);
+    }
+
+    .ws-btn-secondary:hover {
+        background: #e2e8f0;
+    }
+
+    .ws-btn-legal {
+        background: var(--ws-legal);
+        color: white;
+    }
+
+    .ws-btn-legal:hover {
+        background: #7c3aed;
+        color: white;
+    }
+
+    /* Timeline */
+    .ws-timeline-item {
+        padding: 1rem;
+        border: 1px solid var(--ws-border);
+        border-radius: 0.75rem;
+        margin-bottom: 0.75rem;
+        background: white;
+    }
+
+    .ws-timeline-item.active {
+        border-color: var(--ws-primary);
+        background: var(--ws-primary-light);
+    }
+
+    .ws-timeline-item.done {
+        background: #f8fafc;
+        opacity: 0.8;
+    }
+
+    .ws-timeline-title {
+        font-weight: 600;
+        color: var(--ws-text);
+        margin-bottom: 0.25rem;
+    }
+
+    .ws-timeline-meta {
+        font-size: 0.8rem;
+        color: var(--ws-muted);
+    }
+
+    /* Legal Progress Bar */
+    .legal-progress {
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--ws-border);
+    }
+
+    .legal-progress-label {
+        font-size: 0.75rem;
+        color: var(--ws-muted);
+        margin-bottom: 0.25rem;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .legal-progress-bar {
+        height: 6px;
+        background: #e2e8f0;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+
+    .legal-progress-fill {
+        height: 100%;
+        background: var(--ws-legal);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+    }
+
+    @media (max-width: 992px) {
+        .ws-layout {
             grid-template-columns: 1fr;
-        }
-        .workspace-task-grid {
-            grid-template-columns: 1fr;
-        }
-        .workspace-nav {
-            flex-direction: column;
-        }
-        .workspace-nav a,
-        .workspace-nav button {
-            width: 100%;
-            text-align: center;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<section class="payments-section">
-    <div class="payments-shell">
-        <div class="workspace-hero {% if payment.transaction_type == 'lease' %}lease{% else %}purchase{% endif %}">
-            <span class="section-kicker">{{ section_kicker }}</span>
-            <h1 class="detail-title">{{ workspace_title }}</h1>
-            <p class="detail-subtitle">
-                {{ payment.internal_reference }}
-                {% if payment.transaction_type == 'lease' %}
-                · Tenant: {{ payment.buyer|display_name:"Pending tenant" }}
-                · Landowner: {{ payment.counterparty_label }}
+<div class="ws-container">
+    
+    <!-- Top Actions (Reports) -->
+    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
+        <a href="{% url 'reports:transaction_milestone' payment.id %}" class="ws-btn ws-btn-secondary" target="_blank">
+            <i class="fas fa-chart-line me-2"></i>Milestone Report
+        </a>
+        <a href="{% url 'reports:escrow_statement_detail' payment.id %}" class="ws-btn ws-btn-secondary" target="_blank">
+            <i class="fas fa-file-invoice-dollar me-2"></i>Escrow Statement
+        </a>
+        {% if payment.transaction_type == 'lease' %}
+        <a href="{% url 'reports:lease_management' payment.id %}" class="ws-btn ws-btn-secondary" target="_blank">
+            <i class="fas fa-calendar-alt me-2"></i>Lease Dashboard
+        </a>
+        {% endif %}
+        {% if legal_workspace_url %}
+        <a href="{{ legal_workspace_url }}" class="ws-btn ws-btn-legal" target="_blank">
+            <i class="fas fa-gavel me-2"></i>Legal Workspace
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Hero Section -->
+    <div class="ws-hero">
+        <div class="ws-hero-left">
+            <span class="ws-kicker">
+                {{ section_kicker }}
+                {% if legal_transaction %}
+                <span class="ws-legal-badge">
+                    <i class="fas fa-check-circle me-1"></i>Legal: {{ legal_transaction.get_stage_display }}
+                </span>
+                {% endif %}
+            </span>
+            <h1 class="ws-title">{{ workspace_title }}</h1>
+            <div class="ws-subtitle">
+                <i class="fa-solid fa-hashtag me-1"></i> {{ payment.internal_reference }} <br>
+                {% if payment.plot %}
+                    {% if payment.transaction_type == 'lease' %}
+                        <i class="fa-solid fa-user me-1 mt-2"></i> Tenant: {{ payment.buyer|display_name:"Pending tenant" }} &nbsp;|&nbsp; Landowner: {{ payment.counterparty_label }}
+                    {% else %}
+                        <i class="fa-solid fa-user me-1 mt-2"></i> Buyer: {{ payment.buyer|display_name:"Pending buyer" }} &nbsp;|&nbsp; Seller: {{ payment.counterparty_label }}
+                    {% endif %}
                 {% else %}
-                · Buyer: {{ payment.buyer|display_name:"Pending buyer" }}
-                · Seller: {{ payment.counterparty_label }}
+                    <i class="fa-solid fa-user me-1 mt-2"></i> Account: {{ payment.buyer|display_name:"Pending user" }}
                 {% endif %}
-            </p>
-
-            <div class="workspace-note">
-                <span class="workspace-label">{{ primary_task_title }}</span>
-                <h2 style="margin: 12px 0 8px;">{{ step.display_title }}</h2>
-                <p style="margin-bottom: 0;">{{ primary_task_description }}</p>
-                <p style="margin-top: 10px; margin-bottom: 0;">Handled by {{ primary_task_label }}.</p>
             </div>
 
-            <div class="workspace-stat-grid">
-                <div class="workspace-stat">
-                    <small>Workflow progress</small>
-                    <strong>{{ completed_step_count }}/{{ total_step_count }} steps complete</strong>
+            <!-- Legal Status Alert -->
+            {% if legal_status_summary and legal_status_summary.action_required %}
+            <div class="ws-alert ws-alert-warning" style="margin-bottom: 1rem;">
+                <strong><i class="fas fa-gavel me-2"></i>Legal Documents Required</strong><br>
+                {{ legal_status_summary.message }}
+                {% if legal_workspace_url %}
+                <div style="margin-top: 0.75rem;">
+                    <a href="{{ legal_workspace_url }}" class="ws-btn ws-btn-secondary" style="background: #92400e; color: white; border: none;">
+                        <i class="fas fa-file-upload me-2"></i>Go to Legal Workspace
+                    </a>
                 </div>
-                <div class="workspace-stat">
-                    <small>Current owner</small>
-                    <strong>{{ primary_task_label }}</strong>
-                </div>
-                <div class="workspace-stat">
-                    <small>Status</small>
-                    <strong>{{ step.get_status_display }}</strong>
-                </div>
-                <div class="workspace-stat">
-                    <small>Next unlock</small>
-                    <strong>{% if next_step %}{{ next_step.display_title }}{% else %}Workflow complete{% endif %}</strong>
-                </div>
+                {% endif %}
             </div>
+            {% elif legal_status_summary and legal_status_summary.status == 'ready' %}
+            <div class="ws-alert ws-alert-success" style="margin-bottom: 1rem;">
+                <strong><i class="fas fa-check-circle me-2"></i>Legal Requirements Met</strong><br>
+                {{ legal_status_summary.message }}
+            </div>
+            {% endif %}
+
+            {% if primary_task_title %}
+            <div class="ws-alert ws-alert-success" style="margin-bottom: 0; background: #ecfdf5; border: 1px solid #a7f3d0; border-left: 4px solid #10b981;">
+                <div style="font-weight: 700; color: #065f46; margin-bottom: 0.25rem;">Current Task: {{ primary_task_title }}</div>
+                <div style="font-size: 0.9rem; color: #047857;">{{ primary_task_description }}</div>
+            </div>
+            {% endif %}
         </div>
 
-        <!-- Report Actions Section -->
-        <div class="workspace-note info" style="margin-top: 0; margin-bottom: 24px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <div>
-                    <strong><i class="fas fa-file-alt me-2"></i>Transaction Reports</strong>
-                    <div style="margin-top: 4px; font-size: 13px;">Download official reports for this transaction</div>
-                </div>
-                <div class="workspace-nav" style="margin-top: 0;">
-                    <a href="{% url 'reports:transaction_milestone' payment.id %}" class="hero-btn-secondary" target="_blank" style="text-decoration: none; display: inline-block;">
-                        <i class="fas fa-chart-line me-2"></i>Milestone Report
-                    </a>
-                    <a href="{% url 'reports:escrow_statement_detail' payment.id %}" class="hero-btn-secondary" target="_blank" style="text-decoration: none; display: inline-block;">
-                        <i class="fas fa-file-invoice-dollar me-2"></i>Escrow Statement
-                    </a>
-                    {% if payment.transaction_type == 'lease' %}
-                    <a href="{% url 'reports:lease_management' payment.id %}" class="hero-btn-secondary" target="_blank" style="text-decoration: none; display: inline-block;">
-                        <i class="fas fa-calendar-alt me-2"></i>Lease Dashboard
-                    </a>
-                    {% endif %}
-                    <a href="{% url 'reports:stamp_duty' payment.id %}" class="hero-btn-secondary" target="_blank" style="text-decoration: none; display: inline-block;">
-                        <i class="fas fa-receipt me-2"></i>Tax Clearance
-                    </a>
-                </div>
+        <div class="ws-stats-grid">
+            <div class="ws-stat-card">
+                <span class="ws-stat-label">Status</span>
+                <span class="ws-stat-value">{{ step.get_status_display }}</span>
             </div>
-        </div>
-
-        <div class="workspace-panels">
-            <div class="workspace-stack">
-                {% if viewing_historical_step %}
-                <section class="workspace-card">
-                    <div class="workspace-note warning" style="margin: 0;">
-                        <strong>Historical record</strong>
-                        <div style="margin-top: 8px;">
-                            {{ step.display_title }} is already complete. The only open task right now is
-                            <strong>{{ timeline_current_step.display_title }}</strong>.
-                        </div>
-                        {% if current_workspace_step_url %}
-                        <div class="workspace-nav">
-                            <a href="{{ current_workspace_step_url }}" class="hero-btn-primary">Open live task</a>
-                        </div>
-                        {% endif %}
-                    </div>
-                </section>
-                {% endif %}
-
-                <section class="workspace-card workspace-task-card">
-                    <div class="card-heading">
-                        <div>
-                            <h2>{{ primary_task_title }}</h2>
-                            <p class="summary-description mb-0">Only the step currently needed from admin, advocate, buyer, or seller stays open here.</p>
-                        </div>
-                    </div>
-                    <div class="workspace-task-grid">
-                        <div class="workspace-task-pill">
-                            <small>Who acts now</small>
-                            <strong>{{ primary_task_label }}</strong>
-                        </div>
-                        <div class="workspace-task-pill">
-                            <small>What must be confirmed</small>
-                            <strong>{{ step.action_document_label }}</strong>
-                        </div>
-                        <div class="workspace-task-pill">
-                            <small>What unlocks next</small>
-                            <strong>{% if next_step %}{{ next_step.display_title }}{% else %}No further step{% endif %}</strong>
-                        </div>
-                    </div>
-
-                    <div class="workspace-note" style="margin-top: 18px;">
-                        <strong>{{ step.action_headline }}</strong>
-                        <div style="margin-top: 8px;">{{ step.action_where }}</div>
-                    </div>
-
-                    <div class="workspace-note info">
-                        <strong>{{ step.stakeholder_update_label }}</strong>
-                        <div style="margin-top: 8px;">{{ step.buyer_instruction }}</div>
-                    </div>
-
-                    <div class="workspace-note info">
-                        <strong>Access control</strong>
-                        <div class="workspace-task-grid">
-                            {% for item in actor_access_summary %}
-                            <div class="workspace-task-pill">
-                                <small>{{ item.label }}</small>
-                                <strong>{{ item.value }}</strong>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-
-                    {% if step_action_checklist %}
-                    <div class="workspace-note info">
-                        <strong>Confirmation checklist</strong>
-                        <ol class="workspace-checklist">
-                            {% for item in step_action_checklist %}
-                            <li>{{ item }}</li>
-                            {% endfor %}
-                        </ol>
-                    </div>
-                    {% endif %}
-
-                    {% if step.code == "agreement" and payment.generated_lease_agreement_text %}
-                    <div class="workspace-note info">
-                        <strong>Digital lease agreement</strong>
-                        <pre style="white-space: pre-wrap; margin: 12px 0 0;">{{ payment.generated_lease_agreement_text }}</pre>
-                    </div>
-                    {% endif %}
-
-                    {% if step.code == "agreement" %}
-                    <div class="workspace-note info">
-                        <strong>Who edits this step</strong>
-                        <div style="margin-top: 8px;">{{ agreement_role_hint }}</div>
-                        <div style="margin-top: 8px; font-size: 0.95rem;">{{ agreement_field_hint }}</div>
-                    </div>
-                    <div class="workspace-task-grid">
-                        <div class="workspace-task-pill">
-                            <small>{% if payment.transaction_type == 'lease' %}Tenant confirmation{% else %}Buyer confirmation{% endif %}</small>
-                            <strong>{% if step.buyer_confirmed_at %}Confirmed{% else %}Pending{% endif %}</strong>
-                        </div>
-                        <div class="workspace-task-pill">
-                            <small>{% if payment.transaction_type == 'lease' %}Landowner confirmation{% else %}Seller confirmation{% endif %}</small>
-                            <strong>{% if step.seller_confirmed_at %}Confirmed{% else %}Pending{% endif %}</strong>
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if step.code == "payment_security" and step_payment_url and step_is_current and can_start_inline_step_checkout %}
-                    <div class="workspace-payment-callout" style="margin-bottom: 18px;">
-                        <strong>Security deposit checkout form</strong>
-                        <div style="margin-top: 10px;">
-                            Pay the exact agreed security deposit through AgriPlot. Once the M-Pesa payment succeeds, the escrow stage will continue with the recorded amount.
-                        </div>
-                        <form method="post" action="{% url 'payments:closing_step_stk_push' payment.pk step.pk %}" class="workspace-checkout-form" id="workspace-stk-form" data-status-url-template="{% url 'payments:payment_status_poll' payment.workflow_anchor_payment.pk 0 %}">
-                            {% csrf_token %}
-                            <label for="workspace-mpesa-number"><strong>M-Pesa number</strong></label>
-                            <input
-                                id="workspace-mpesa-number"
-                                type="text"
-                                name="phone_number"
-                                value="{{ checkout_phone_initial }}"
-                                placeholder="2547XXXXXXXX"
-                                required
-                            >
-                            <div class="help-copy">
-                               A prompt will be sent to this number for the exact agreed amount{% if step_payment_amount %}: KES {{ step_payment_amount|floatformat:2|intcomma }}{% endif %}.
-                            </div>
-                            <div class="workspace-nav">
-                                <button type="submit" class="hero-btn-secondary" id="workspace-stk-submit">
-                                    Start checkout{% if step_payment_amount %} · KES {{ step_payment_amount|floatformat:2|intcomma }}{% endif %}
-                                </button>
-                            </div>
-                            <div class="workspace-payment-status" id="workspace-stk-status" hidden></div>
-                        </form>
-                    </div>
-                    {% endif %}
-
-                    {% if step.code == "payment_security" and step_is_current and not can_start_inline_step_checkout %}
-                    <div class="workspace-note warning">
-                        <strong>Checkout locked</strong>
-                        <div style="margin-top: 8px;">{{ step_checkout_reason }}</div>
-                    </div>
-                    {% elif can_update_closing_steps and step_is_current %}
-                    <form method="post" action="{% url 'payments:update_closing_step' payment.pk step.pk %}" enctype="multipart/form-data" class="payments-form compact-form">
-                        {% csrf_token %}
-                        {% if step.code == "agreement" %}
-                        <div class="agreement-sections">
-                            <div class="agreement-section">
-                                <div class="agreement-section-header">
-                                    <div>
-                                        <h4>1. Agreement note</h4>
-                                        <p>Add a short note or blocker if this signature set needs context.</p>
-                                    </div>
-                                </div>
-                                <div class="agreement-field-grid">
-                                    {% for field in closing_step_form %}
-                                    {% if field.name == "notes" %}
-                                    <div class="field-block full">
-                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                        {{ field }}
-                                        {% if field.help_text %}
-                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
-                                        {% endif %}
-                                        {% for error in field.errors %}
-                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                            </div>
-
-                            {% if payment.transaction_type == 'purchase' %}
-                            {% if is_payment_seller or is_finance_admin %}
-                            <div class="agreement-section">
-                                <div class="agreement-section-header">
-                                    <div>
-                                        <h4>2. Submitter details</h4>
-                                        <p>Record the advocate or handler submitting the executed sale agreement.</p>
-                                    </div>
-                                </div>
-                                <div class="agreement-field-grid">
-                                    {% for field in closing_step_form %}
-                                    {% if field.name == "submitter_name" or field.name == "submitter_phone" or field.name == "submitter_role" or field.name == "submitter_organisation" %}
-                                    <div class="field-block">
-                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                        {{ field }}
-                                        {% if field.help_text %}
-                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
-                                        {% endif %}
-                                        {% for error in field.errors %}
-                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            <div class="agreement-section">
-                                <div class="agreement-section-header">
-                                    <div>
-                                        <h4>3. Seller-side legal file</h4>
-                                        <p>Upload the executed agreement and the seller advocate details.</p>
-                                    </div>
-                                </div>
-                                <div class="agreement-field-grid">
-                                    {% for field in closing_step_form %}
-                                    {% if field.name == "document" or field.name == "seller_advocate_name" or field.name == "seller_advocate_phone" %}
-                                    <div class="field-block {% if field.name == 'document' %}full{% endif %}">
-                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                        {{ field }}
-                                        {% if field.help_text %}
-                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
-                                        {% endif %}
-                                        {% for error in field.errors %}
-                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                            <div class="agreement-section">
-                                <div class="agreement-section-header">
-                                    <div>
-                                        <h4>{% if is_payment_buyer %}2{% elif is_payment_seller or is_finance_admin %}4{% else %}2{% endif %}. Buyer confirmation</h4>
-                                        <p>The buyer confirms they have reviewed the executed agreement.</p>
-                                    </div>
-                                </div>
-                                <div class="agreement-field-grid">
-                                    {% for field in closing_step_form %}
-                                    {% if field.name == "buyer_accepts_agreement" %}
-                                    <div class="field-block full">
-                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                        <div class="mt-2">{{ field }}</div>
-                                        {% if field.help_text %}
-                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
-                                        {% endif %}
-                                        {% for error in field.errors %}
-                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% if is_payment_seller or is_finance_admin %}
-                            <div class="agreement-section">
-                                <div class="agreement-section-header">
-                                    <div>
-                                        <h4>5. Seller confirmation</h4>
-                                        <p>The seller confirms the agreement reflects the final executed terms.</p>
-                                    </div>
-                                </div>
-                                <div class="agreement-field-grid">
-                                    {% for field in closing_step_form %}
-                                    {% if field.name == "seller_accepts_agreement" %}
-                                    <div class="field-block full">
-                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                        <div class="mt-2">{{ field }}</div>
-                                        {% if field.help_text %}
-                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
-                                        {% endif %}
-                                        {% for error in field.errors %}
-                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                            {% else %}
-                            <div class="agreement-section">
-                                <div class="agreement-section-header">
-                                    <div>
-                                        <h4>
-                                            2.
-                                            {% if closing_step_form.agreement_role == "seller" %}
-                                                Landowner confirmation
-                                            {% elif closing_step_form.agreement_role == "buyer" %}
-                                                Tenant confirmation
-                                            {% else %}
-                                                Two-party confirmation
-                                            {% endif %}
-                                        </h4>
-                                        <p>
-                                            {% if closing_step_form.agreement_role == "seller" %}
-                                                The landowner confirms the lease agreement from their own account.
-                                            {% elif closing_step_form.agreement_role == "buyer" %}
-                                                The tenant confirms the lease agreement from their own account.
-                                            {% else %}
-                                                Each side confirms the lease agreement from their own account.
-                                            {% endif %}
-                                        </p>
-                                    </div>
-                                </div>
-                                <div class="agreement-field-grid">
-                                    {% for field in closing_step_form %}
-                                    {% if field.name == "buyer_accepts_agreement" or field.name == "seller_accepts_agreement" %}
-                                    <div class="field-block full">
-                                        <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                        <div class="mt-2">{{ field }}</div>
-                                        {% if field.help_text %}
-                                        <div class="mini-note mt-2">{{ field.help_text }}</div>
-                                        {% endif %}
-                                        {% for error in field.errors %}
-                                        <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                    {% endfor %}
-                                </div>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% else %}
-                        <div class="workspace-form-grid">
-                            {% for field in closing_step_form %}
-                            <div class="field-block {% if field.name == 'notes' %}full{% endif %}">
-                                <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}
-                                <div class="mini-note mt-2">{{ field.help_text }}</div>
-                                {% endif %}
-                                {% for error in field.errors %}
-                                <div class="mini-note mt-2" style="color: #c62828;">{{ error }}</div>
-                                {% endfor %}
-                            </div>
-                            {% endfor %}
-                        </div>
-                        {% endif %}
-                        <div class="workspace-nav">
-                            <button type="submit" class="hero-btn-primary">Confirm this task</button>
-                            <a href="{% url 'payments:detail' payment.pk %}" class="hero-btn-secondary">Open full tracker</a>
-                        </div>
-                    </form>
-                    {% else %}
-                    <div class="workspace-note {% if step_requires_admin_action %}warning{% else %}info{% endif %}">
-                        <strong>
-                            {% if step_requires_admin_action %}
-                            Admin / official action required
-                            {% else %}
-                            Update locked for this account
-                            {% endif %}
-                        </strong>
-                        <div style="margin-top: 8px;">{{ step_update_reason }}</div>
-                    </div>
-                    {% endif %}
-
-                    <div class="workspace-nav">
-                        <a href="{% url 'payments:detail' payment.pk %}" class="hero-btn-secondary">Open full tracker</a>
-                    </div>
-                </section>
+            <div class="ws-stat-card">
+                <span class="ws-stat-label">Progress</span>
+                <span class="ws-stat-value">{{ completed_step_count }}/{{ total_step_count }} Steps</span>
             </div>
-
-            <aside class="workspace-stack">
-                <section class="workspace-card">
-                    <div class="card-heading">
-                        <div>
-                            <h3>Step progress</h3>
-                            <p class="summary-description mb-0">Only the live task stays open. Completed steps remain available as history.</p>
-                        </div>
-                    </div>
-                    <div class="workspace-progress-list">
-                        {% if timeline_current_step %}
-                        <div class="workspace-progress-item current">
-                            <span class="workspace-label">Open now</span>
-                            <div style="margin-top: 10px; font-weight: 600;">{{ timeline_current_step.display_title }}</div>
-                            <div class="mini-note mt-2">{{ timeline_current_step.responsible_party_label }}</div>
-                            {% if not step_is_current and current_workspace_step_url %}
-                            <div class="mini-note mt-2">
-                                <a href="{{ current_workspace_step_url }}" class="text-link">Open current task</a>
-                            </div>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-
-                        {% for item in completed_stages %}
-                        <div class="workspace-progress-item done">
-                            <span class="workspace-label">Completed</span>
-                            <div style="margin-top: 10px; font-weight: 600;">{{ item.display_title }}</div>
-                            <div class="mini-note mt-2">{{ item.get_status_display }}</div>
-                            <div class="mini-note mt-2">
-                                <a href="{% url 'payments:closing_step_workspace' payment.pk item.pk %}" class="text-link">Open</a>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </section>
-
-                <section class="workspace-card">
-                    <div class="card-heading">
-                        <div>
-                            <h3>Quick reference</h3>
-                            <p class="summary-description mb-0">Keep the key transaction facts nearby while confirming the current task.</p>
-                        </div>
-                    </div>
-                    <div class="workspace-note">
-                        <strong>{% if payment.transaction_type == 'lease' %}Landowner / seller{% else %}Seller{% endif %}</strong>
-                        <div style="margin-top: 8px;">{{ payment.counterparty_label }}</div>
-                    </div>
-                    <div class="workspace-note">
-                        <strong>Paid into workflow</strong>
-                        <div style="margin-top: 8px;">KES {{ total_paid_by_buyer|floatformat:2|intcomma }}</div>
-                    </div>
-                    <div class="workspace-note">
-                        <strong>Currently in escrow</strong>
-                        <div style="margin-top: 8px;">KES {{ current_escrow_balance|floatformat:2|intcomma }}</div>
-                    </div>
-                    {% if payment.transaction_type == 'lease' %}
-                    <div class="workspace-note">
-                        <strong>Lease window</strong>
-                        <div style="margin-top: 8px;">
-                            {% if payment.lease_start_date %}{{ payment.lease_start_date|date:"M d, Y" }}{% else %}-{% endif %}
-                            to
-                            {% if payment.lease_end_date %}{{ payment.lease_end_date|date:"M d, Y" }}{% else %}-{% endif %}
-                        </div>
-                    </div>
-                    <div class="workspace-note">
-                        <strong>Days remaining</strong>
-                        <div class="{% if lease_days_remaining is not None and lease_days_remaining < 30 %}workspace-days-critical{% else %}workspace-days-safe{% endif %}" style="margin-top: 8px;">
-                            {% if lease_days_remaining is not None %}{{ lease_days_remaining }} days{% else %}-{% endif %}
-                        </div>
-                    </div>
-                    <div class="workspace-note">
-                        <strong>Intended use</strong>
-                        <div style="margin-top: 8px;">{{ payment.intended_use|default:"To be confirmed" }}</div>
-                    </div>
-                    {% else %}
-                    <div class="workspace-note">
-                        <strong>Due-diligence pack</strong>
-                        <div style="margin-top: 8px;">{{ payment.search_result_summary }}</div>
-                    </div>
-                    <div class="workspace-note">
-                        <strong>Purchase value</strong>
-                        <div style="margin-top: 8px;">KES {{ payment.sale_price_value|floatformat:2|intcomma }}</div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Download Reports Section -->
-                    <div class="workspace-note info">
-                        <strong><i class="fas fa-download me-2"></i>Download Reports</strong>
-                        <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;">
-                            <a href="{% url 'reports:transaction_milestone' payment.id %}" class="hero-btn-secondary" target="_blank" style="text-decoration: none; text-align: center;">
-                                <i class="fas fa-chart-line me-2"></i>Transaction Milestone Report
-                            </a>
-                            <a href="{% url 'reports:escrow_statement_detail' payment.id %}" class="hero-btn-secondary" target="_blank" style="text-decoration: none; text-align: center;">
-                                <i class="fas fa-file-invoice-dollar me-2"></i>Detailed Escrow Statement
-                            </a>
-                            {% if payment.transaction_type == 'lease' %}
-                            <a href="{% url 'reports:lease_management' payment.id %}" class="hero-btn-secondary" target="_blank" style="text-decoration: none; text-align: center;">
-                                <i class="fas fa-calendar-alt me-2"></i>Lease Management Dashboard
-                            </a>
-                            {% endif %}
-                            <a href="{% url 'reports:stamp_duty' payment.id %}" class="hero-btn-secondary" target="_blank" style="text-decoration: none; text-align: center;">
-                                <i class="fas fa-receipt me-2"></i>Stamp Duty & Tax Clearance
-                            </a>
-                        </div>
-                    </div>
-
-                    <div class="workspace-note info">
-                        <strong>Need help?</strong>
-                        <div style="margin-top: 8px;">Use the full payment tracker for documents, milestones, certificates, and payout status without opening future steps out of sequence.</div>
-                        <div class="workspace-nav">
-                            <a href="{% url 'payments:detail' payment.pk %}" class="hero-btn-secondary">Open full transaction tracker</a>
-                            {% if payment.seller and payment.seller.email %}
-                            {% if payment.seller|contact_email %}
-                            <a href="mailto:{{ payment.seller|contact_email }}?subject=AgriPlot%20support%20for%20{{ payment.internal_reference }}" class="hero-btn-secondary">Email seller / landlord</a>
-                            {% endif %}
-                            {% endif %}
-                        </div>
-                    </div>
-                </section>
-            </aside>
+            <div class="ws-stat-card">
+                <span class="ws-stat-label">Action Required By</span>
+                <span class="ws-stat-value" style="color: #059669;">{{ primary_task_label }}</span>
+            </div>
+            <div class="ws-stat-card">
+                <span class="ws-stat-label">Escrow Balance</span>
+                <span class="ws-stat-value">KES {{ current_escrow_balance|floatformat:2|intcomma }}</span>
+            </div>
         </div>
     </div>
-</section>
+
+    <!-- Legal Progress Section (if legal transaction exists) -->
+    {% if legal_transaction %}
+    <div class="ws-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+                <h4 style="margin: 0; font-size: 1rem;">
+                    <i class="fas fa-gavel me-2" style="color: var(--ws-legal);"></i>
+                    Legal Transaction Progress
+                </h4>
+                <p style="margin: 0.25rem 0 0 0; font-size: 0.8rem; color: var(--ws-muted);">
+                    {{ legal_transaction.get_stage_display }}
+                </p>
+            </div>
+            <div style="flex: 1; max-width: 300px;">
+                <div class="legal-progress-label">
+                    <span>Stage Progress</span>
+                    <span>{{ legal_progress_percentage|default:0 }}%</span>
+                </div>
+                <div class="legal-progress-bar">
+                    <div class="legal-progress-fill" style="width: {{ legal_progress_percentage|default:0 }}%;"></div>
+                </div>
+            </div>
+            <a href="{{ legal_workspace_url }}" class="ws-btn ws-btn-legal" style="padding: 0.5rem 1rem;">
+                <i class="fas fa-external-link-alt me-1"></i>Open Legal Workspace
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Main Content Area -->
+    <div class="ws-layout">
+        
+        <!-- Left Column: Action Area -->
+        <div class="ws-main">
+            {% if viewing_historical_step %}
+            <div class="ws-alert ws-alert-warning">
+                <strong>Viewing Historical Record</strong><br>
+                This step is already complete. The active task is <strong>{{ timeline_current_step.display_title }}</strong>.
+                {% if current_workspace_step_url %}
+                <br><a href="{{ current_workspace_step_url }}" class="ws-btn ws-btn-primary mt-3">Go to Active Task</a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div class="ws-card">
+                <div class="ws-card-header">
+                    <h2 class="ws-card-title">{{ step.display_title }}</h2>
+                </div>
+                
+                <div class="ws-alert ws-alert-info">
+                    <strong>{{ step.action_headline }}</strong><br>
+                    <span style="font-size: 0.9rem;">{{ step.buyer_instruction }}</span>
+                </div>
+
+                <!-- Missing Legal Documents Alert & Upload -->
+                {% if missing_legal_docs or pending_legal_docs %}
+                <div class="ws-alert ws-alert-warning" style="margin-bottom: 2rem;">
+                    {% if missing_legal_docs %}
+                    <div style="margin-bottom: 1rem;">
+                        <strong><i class="fas fa-file-alt me-2"></i>Legal Documents Required First</strong>
+                        <p style="margin-top: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                            Please upload the following required legal documents before completing this payment step.
+                        </p>
+                        <ul style="margin: 0.5rem 0 0 1.5rem; font-size: 0.9rem; font-weight: 600; color: #92400e;">
+                            {% for doc in missing_legal_docs %}
+                            <li>{{ doc }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    {% if pending_legal_docs %}
+                    <div style="margin-bottom: 1rem; padding: 0.75rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 0.5rem;">
+                        <strong style="color: #1e3a8a;"><i class="fas fa-clock me-2"></i>Pending Admin Verification</strong>
+                        <ul style="margin: 0.5rem 0 0 1.5rem; font-size: 0.85rem; color: #1e3a8a;">
+                            {% for doc in pending_legal_docs %}
+                            <li>{{ doc }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    {% if missing_legal_docs and legal_upload_form and legal_transaction %}
+                    <div style="background: white; border-radius: 0.75rem; padding: 1.25rem; border: 1px solid #fde68a; margin-top: 1rem;">
+                        <h4 style="font-size: 0.95rem; margin-bottom: 1rem; color: #92400e;">Upload Document</h4>
+                        <form method="post" action="{% url 'transactions:upload_document' legal_transaction.pk %}" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.path }}">
+                            
+                            {% for field in legal_upload_form %}
+                            <div class="ws-form-group" style="margin-bottom: 1rem;">
+                                <label for="{{ field.id_for_label }}" style="font-size: 0.8rem; font-weight: 600; color: #4b5563; margin-bottom: 0.4rem; display: block;">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <small style="display: block; margin-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">{{ field.help_text }}</small>
+                                {% endif %}
+                                {% if field.errors %}
+                                <div style="color: #dc2626; font-size: 0.75rem; margin-top: 0.25rem;">{{ field.errors }}</div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                            
+                            <button type="submit" class="ws-btn ws-btn-primary" style="margin-top: 0.5rem;">
+                                <i class="fas fa-upload me-2"></i> Upload Document
+                            </button>
+                        </form>
+                    </div>
+                    {% else %}
+                        {% if legal_workspace_url and missing_legal_docs %}
+                        <a href="{{ legal_workspace_url }}" class="ws-btn ws-btn-secondary" style="margin-top: 0.75rem;">
+                            <i class="fas fa-upload me-2"></i>Go to Legal Workspace
+                        </a>
+                        {% endif %}
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Admin/Advocate Only Verbose Information -->
+                {% if user.is_staff or is_finance_admin or not is_payment_buyer and not is_payment_seller %}
+                    <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 1rem; padding: 1.5rem; margin-bottom: 2rem;">
+                        <h4 style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ws-muted); margin: 0 0 1rem 0;">Admin / Advocate Details</h4>
+                        
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                            {% for item in actor_access_summary %}
+                            <div style="background: white; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid var(--ws-border);">
+                                <small style="display: block; color: var(--ws-muted); font-size: 0.75rem;">{{ item.label }}</small>
+                                <strong style="font-size: 0.9rem;">{{ item.value }}</strong>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Legal Transaction Info for Admin -->
+                        {% if legal_transaction %}
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Legal Transaction Details:</strong>
+                            <ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem; font-size: 0.9rem;">
+                                <li>Stage: {{ legal_transaction.get_stage_display }}</li>
+                                <li>Agreed Price: KES {{ legal_transaction.agreed_price|floatformat:2|intcomma }}</li>
+                                <li>Deposit Paid: KES {{ legal_transaction.deposit_paid|floatformat:2|intcomma }}</li>
+                                <li>Balance Due: KES {{ legal_transaction.balance_due|floatformat:2|intcomma }}</li>
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if step_action_checklist %}
+                        <div style="margin-bottom: 1rem;">
+                            <strong>Confirmation Checklist:</strong>
+                            <ul style="margin: 0.5rem 0 0 0; padding-left: 1.5rem; font-size: 0.9rem;">
+                                {% for item in step_action_checklist %}
+                                <li>{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        {% if step.code == "agreement" and payment.generated_lease_agreement_text %}
+                        <div>
+                            <strong>Digital Agreement Draft:</strong>
+                            <pre style="background: white; padding: 1rem; border-radius: 0.5rem; border: 1px solid var(--ws-border); font-size: 0.8rem; margin-top: 0.5rem; max-height: 200px; overflow-y: auto; white-space: pre-wrap;">{{ payment.generated_lease_agreement_text }}</pre>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                <!-- Action Forms -->
+                {% if step.code == "payment_security" and step_payment_url and step_is_current and can_start_inline_step_checkout %}
+                    <!-- Payment Checkout -->
+                    <div style="background: linear-gradient(135deg, #064e3b, #047857); color: white; border-radius: 1rem; padding: 2rem;">
+                        <h3 style="margin: 0 0 0.5rem 0; color: white;">Complete Security Deposit</h3>
+                        <p style="margin: 0 0 1.5rem 0; opacity: 0.9; font-size: 0.95rem;">Pay securely via M-Pesa. An STK push will be sent to your phone.</p>
+                        
+                        <form method="post" action="{% url 'payments:closing_step_stk_push' payment.pk step.pk %}" id="workspace-stk-form" data-status-url-template="{% url 'payments:payment_status_poll' payment.workflow_anchor_payment.pk 0 %}">
+                            {% csrf_token %}
+                            <div class="ws-form-group" style="margin-bottom: 1rem;">
+                                <label for="workspace-mpesa-number" style="color: white;">M-Pesa Number</label>
+                                <input type="text" id="workspace-mpesa-number" name="phone_number" value="{{ checkout_phone_initial }}" placeholder="2547XXXXXXXX" required style="background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); color: white;">
+                            </div>
+                            <button type="submit" class="ws-btn ws-btn-primary" id="workspace-stk-submit" style="width: 100%; background: #10b981; color: white;">
+                                Start Checkout {% if step_payment_amount %}· KES {{ step_payment_amount|floatformat:2|intcomma }}{% endif %}
+                            </button>
+                            <div id="workspace-stk-status" style="margin-top: 1rem; padding: 1rem; border-radius: 0.5rem; background: rgba(0,0,0,0.2); text-align: center; font-size: 0.9rem;" hidden></div>
+                        </form>
+                    </div>
+
+                {% elif step.code == "payment_security" and step_is_current and not can_start_inline_step_checkout %}
+                    <div class="ws-alert ws-alert-warning">
+                        <strong>Checkout Locked</strong><br>
+                        {{ step_checkout_reason }}
+                    </div>
+
+                {% elif can_update_current_closing_step and step_is_current %}
+                    <!-- Standard Step Form (Agreement Uploads, Confirmations) -->
+                    <form method="post" action="{% url 'payments:update_closing_step' payment.pk step.pk %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        <div class="ws-form-grid">
+                            {% for field in closing_step_form %}
+                                <div class="ws-form-group">
+                                    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                    <small style="color: var(--ws-muted); display: block; margin-top: 0.25rem;">{{ field.help_text }}</small>
+                                    {% endif %}
+                                    {% for error in field.errors %}
+                                    <small style="color: #ef4444; display: block; margin-top: 0.25rem; font-weight: 600;">{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <button type="submit" class="ws-btn ws-btn-secondary" name="action" value="mark_in_progress">Save Progress</button>
+                            <button type="submit" class="ws-btn ws-btn-primary" name="action" value="mark_completed">Mark Complete</button>
+                            <button type="submit" class="ws-btn ws-btn-secondary" name="action" value="mark_blocked">Mark Blocked</button>
+                            <a href="{% url 'payments:detail' payment.pk %}" class="ws-btn ws-btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+
+                {% elif missing_legal_docs %}
+                    <div class="ws-alert ws-alert-warning" style="margin-bottom: 0;">
+                        <strong>Legal Documents Required First</strong><br>
+                        Please upload the required legal documents before completing this payment step.
+                        {% if legal_workspace_url %}
+                        <div style="margin-top: 0.75rem;">
+                            <a href="{{ legal_workspace_url }}" class="ws-btn ws-btn-secondary">Go to Legal Workspace</a>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                {% else %}
+                    <div class="ws-alert {% if step_requires_admin_action %}ws-alert-warning{% else %}ws-alert-info{% endif %}" style="margin-bottom: 0;">
+                        <strong>{% if step_requires_admin_action %}Admin Action Required{% else %}Action Locked{% endif %}</strong><br>
+                        {{ current_closing_step_update_reason|default:step_update_reason }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Right Column: Timeline & Info -->
+        <div class="ws-sidebar">
+            <div class="ws-card">
+                <h3 class="ws-card-title" style="margin-bottom: 1rem;">Transaction Timeline</h3>
+                
+                {% if timeline_current_step %}
+                <div class="ws-timeline-item active">
+                    <div class="ws-timeline-title">{{ timeline_current_step.display_title }}</div>
+                    <div class="ws-timeline-meta">Pending: {{ timeline_current_step.responsible_party_label }}</div>
+                </div>
+                {% endif %}
+
+                {% for item in completed_stages %}
+                <div class="ws-timeline-item done">
+                    <div class="ws-timeline-title">{{ item.display_title }}</div>
+                    <div class="ws-timeline-meta" style="color: #059669;"><i class="fa-solid fa-check me-1"></i> Completed</div>
+                    <a href="{% url 'payments:closing_step_workspace' payment.pk item.pk %}" style="font-size: 0.75rem; color: var(--ws-primary); text-decoration: none; margin-top: 0.25rem; display: inline-block;">View Details</a>
+                </div>
+                {% endfor %}
+                
+                <a href="{% url 'payments:detail' payment.pk %}" class="ws-btn ws-btn-secondary" style="width: 100%; margin-top: 1rem;">View Full Tracker</a>
+            </div>
+
+            <div class="ws-card">
+                <h3 class="ws-card-title" style="margin-bottom: 1rem;">Quick Details</h3>
+                
+                <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid var(--ws-border);">
+                        <span style="color: var(--ws-muted); font-size: 0.9rem;">Paid by Buyer</span>
+                        <span style="font-weight: 600;">KES {{ total_paid_by_buyer|floatformat:2|intcomma }}</span>
+                    </div>
+                    
+                    {% if payment.transaction_type == 'lease' %}
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid var(--ws-border);">
+                        <span style="color: var(--ws-muted); font-size: 0.9rem;">Lease Starts</span>
+                        <span style="font-weight: 600;">{% if payment.lease_start_date %}{{ payment.lease_start_date|date:"M d, Y" }}{% else %}-{% endif %}</span>
+                    </div>
+                    {% else %}
+                    <div style="display: flex; justify-content: space-between; padding-bottom: 0.75rem; border-bottom: 1px solid var(--ws-border);">
+                        <span style="color: var(--ws-muted); font-size: 0.9rem;">Purchase Value</span>
+                        <span style="font-weight: 600;">KES {{ payment.sale_price_value|floatformat:2|intcomma }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Legal Transaction Summary -->
+                {% if legal_transaction %}
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--ws-border);">
+                    <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ws-muted); margin-bottom: 0.75rem;">
+                        🏛️ Legal Pipeline Status
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                        <span style="color: var(--ws-muted); font-size: 0.8rem;">Current Stage</span>
+                        <span style="font-size: 0.8rem; font-weight: 700; background: #ecfdf5; color: #065f46; border-radius: 0.4rem; padding: 0.1rem 0.5rem;">{{ legal_transaction.get_stage_display }}</span>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span style="color: var(--ws-muted); font-size: 0.8rem;">Legal Progress</span>
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--ws-text);">{{ legal_progress_percentage }}%</span>
+                    </div>
+                    <div style="height: 6px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin-bottom: 0.75rem;">
+                        <div style="height: 100%; width: {{ legal_progress_percentage }}%; background: var(--ws-primary); border-radius: 6px; transition: width 1s ease;"></div>
+                    </div>
+
+                    {% if missing_legal_docs %}
+                    <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 0.5rem; padding: 0.6rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: #92400e;">
+                        <strong>⚠ {{ missing_legal_docs|length }} document{{ missing_legal_docs|length|pluralize }} needed:</strong>
+                        <ul style="margin: 0.3rem 0 0 1rem; padding: 0;">
+                            {% for doc in missing_legal_docs %}
+                            <li>{{ doc }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    {% else %}
+                    <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 0.5rem; padding: 0.5rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: #166534;">
+                        ✅ All legal documents verified for this stage.
+                    </div>
+                    {% endif %}
+
+                    {% if legal_workspace_url %}
+                    <a href="{{ legal_workspace_url }}" class="ws-btn ws-btn-secondary" style="width: 100%; font-size: 0.85rem; padding: 0.5rem 0.75rem;">
+                        <i class="fas fa-landmark me-1"></i> Open Legal Workspace
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                {% if payment.seller|contact_email %}
+                <a href="mailto:{{ payment.seller|contact_email }}?subject=AgriPlot%20support%20for%20{{ payment.internal_reference }}" class="ws-btn ws-btn-secondary" style="width: 100%; margin-top: 1rem; font-size: 0.85rem;">
+                    <i class="fa-regular fa-envelope me-2"></i> Contact Counterparty
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -846,9 +760,7 @@
 <script>
 document.addEventListener("DOMContentLoaded", function () {
     const stkForm = document.getElementById("workspace-stk-form");
-    if (!stkForm) {
-        return;
-    }
+    if (!stkForm) return;
 
     const submitButton = document.getElementById("workspace-stk-submit");
     const statusBox = document.getElementById("workspace-stk-status");
@@ -856,30 +768,25 @@ document.addEventListener("DOMContentLoaded", function () {
     let pollTimer = null;
 
     function showStatus(message, isError) {
-        if (!statusBox) {
-            return;
-        }
+        if (!statusBox) return;
         statusBox.hidden = false;
         statusBox.textContent = message;
-        statusBox.classList.toggle("error", Boolean(isError));
+        statusBox.style.color = isError ? "#fca5a5" : "#a7f3d0";
+        statusBox.style.background = isError ? "rgba(220,38,38,0.2)" : "rgba(16,185,129,0.2)";
     }
 
     function setBusy(isBusy) {
-        if (!submitButton) {
-            return;
-        }
+        if (!submitButton) return;
         submitButton.disabled = isBusy;
-        submitButton.textContent = isBusy ? "Sending STK push..." : (submitButton.dataset.defaultLabel || "Start checkout");
+        submitButton.textContent = isBusy ? "Sending STK push..." : "Start Checkout";
+        submitButton.style.opacity = isBusy ? "0.7" : "1";
     }
 
     function startPolling(paymentId) {
-        if (!statusUrlTemplate || !paymentId) {
-            return;
-        }
+        if (!statusUrlTemplate || !paymentId) return;
         const pollUrl = statusUrlTemplate.replace(/0\/$/, paymentId + "/");
-        if (pollTimer) {
-            window.clearInterval(pollTimer);
-        }
+        if (pollTimer) window.clearInterval(pollTimer);
+        
         pollTimer = window.setInterval(async function () {
             try {
                 const response = await fetch(pollUrl, {
@@ -887,37 +794,32 @@ document.addEventListener("DOMContentLoaded", function () {
                     credentials: "same-origin",
                 });
                 const payload = await response.json();
+                
                 if (!response.ok || !payload.ok) {
-                    showStatus(payload.message || "Could not verify payment status yet.", true);
+                    showStatus(payload.message || "Checking payment status...", false);
                     return;
                 }
+                
                 if (payload.state === "paid") {
-                    showStatus(payload.message || "Payment detected. Refreshing this stage...", false);
+                    showStatus("Payment successful! Refreshing page...", false);
                     window.clearInterval(pollTimer);
-                    window.setTimeout(function () {
-                        window.location.reload();
-                    }, 1200);
+                    window.setTimeout(() => window.location.reload(), 1500);
                 } else if (payload.state === "failed") {
-                    showStatus(payload.message || "The payment did not complete successfully.", true);
+                    showStatus("Payment failed or was cancelled.", true);
                     window.clearInterval(pollTimer);
                     setBusy(false);
-                } else {
-                    showStatus(payload.message || "Waiting for Safaricom payment confirmation...", false);
                 }
             } catch (error) {
-                showStatus("Still waiting for payment confirmation from Safaricom...", false);
+                // Keep polling silently
             }
         }, 4000);
-    }
-
-    if (submitButton) {
-        submitButton.dataset.defaultLabel = submitButton.textContent;
     }
 
     stkForm.addEventListener("submit", async function (event) {
         event.preventDefault();
         setBusy(true);
-        showStatus("Sending a prompt to the provided number...", false);
+        showStatus("Sending prompt to your phone...", false);
+        
         try {
             const response = await fetch(stkForm.action, {
                 method: "POST",
@@ -926,15 +828,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 credentials: "same-origin",
             });
             const payload = await response.json();
+            
             if (!response.ok || !payload.ok) {
-                showStatus(payload.message || "Could not start the STK push.", true);
+                showStatus(payload.message || "Failed to start STK push.", true);
                 setBusy(false);
                 return;
             }
-            showStatus(payload.message || "STK push sent. Complete it on your phone.", false);
+            
+            showStatus("STK push sent. Please enter your M-Pesa PIN on your phone.", false);
             startPolling(payload.payment_id);
         } catch (error) {
-            showStatus("Could not start the STK push right now. Please try again.", true);
+            showStatus("Network error. Please try again.", true);
             setBusy(false);
         }
     });

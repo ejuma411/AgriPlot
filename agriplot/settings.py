@@ -392,7 +392,6 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "notifications.context_processors.nav_activity",
-                "payments.context_processors.payment_admin_nav",
                 "security.context_processors.contact_verification_banner",
                 'payments.context_processors.wallet_balance',
             ],

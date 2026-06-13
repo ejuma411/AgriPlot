@@ -215,7 +215,19 @@ class PaymentRequest(models.Model):
     def save(self, *args, **kwargs):
         if not self.internal_reference:
             self.internal_reference = self.generate_reference()
+        if not self.seller:
+            self.seller = self._resolve_counterparty_user()
         super().save(*args, **kwargs)
+
+    def _resolve_counterparty_user(self):
+        if self.seller:
+            return self.seller
+        if self.plot:
+            if self.plot.landowner_id and self.plot.landowner.user_id:
+                return self.plot.landowner.user
+            if self.plot.agent_id and self.plot.agent.user_id:
+                return self.plot.agent.user
+        return None
 
     def _money(self, value):
         if value in (None, ""):
@@ -999,12 +1011,11 @@ class PaymentRequest(models.Model):
 
     @property
     def counterparty_label(self):
-        if self.seller:
-            return self.seller.get_full_name() or self.seller.username
-        if self.plot and self.plot.landowner:
-            return self.plot.landowner.user.get_full_name() or self.plot.landowner.user.username
-        if self.plot and self.plot.agent:
-            return self.plot.agent.user.get_full_name() or self.plot.agent.user.username
+        counterparty_user = self._resolve_counterparty_user()
+        if counterparty_user:
+            return counterparty_user.get_full_name() or counterparty_user.username
+        if self.plot and self.plot.registry_owner_name:
+            return self.plot.registry_owner_name
         return "Unassigned seller"
 
     @property

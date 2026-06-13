@@ -19,8 +19,8 @@ from accounts.access_control import (
 )
 from listings.models import Plot, UserInterest
 from payments.models import (
-    PaymentClosingStep,
     PaymentRequest,
+    PaymentClosingStep,
     Wallet,
     WalletDepositRequest,
     WalletTransaction,
@@ -406,6 +406,44 @@ def staff_dashboard(request):
     context["primary_queue_title"] = queue_title
     context["primary_queue_description"] = queue_description
 
+    queue_items = []
+    stamp_duty_items = []
+    registration_items = []
+
+    if access_profile.can("finance.view_escrow"):
+        from transactions.models import TransactionDocument
+        pending_docs = TransactionDocument.objects.filter(status='pending').select_related('transaction__plot', 'uploaded_by').order_by('uploaded_at')
+        
+        for doc in pending_docs:
+            item = {
+                "title": doc.get_document_type_display(),
+                "reference": f"TRX-{doc.transaction.id} ({doc.transaction.plot.title})",
+                "status": "Pending Verification",
+                "url": reverse("transactions:detail", args=[doc.transaction.id]),
+                "doc_id": doc.id,
+                "doc_url": doc.file.url if doc.file else None,
+            }
+            
+            if doc.document_type in [
+                TransactionDocument.DocType.STAMP_DUTY_ASSESSMENT,
+                TransactionDocument.DocType.STAMP_DUTY_RECEIPT,
+                TransactionDocument.DocType.VALUATION_REPORT,
+                TransactionDocument.DocType.CGT_RECEIPT
+            ]:
+                stamp_duty_items.append(item)
+            elif doc.document_type in [
+                TransactionDocument.DocType.TRANSFER_FORM,
+                TransactionDocument.DocType.ORIGINAL_TITLE_DEED,
+                TransactionDocument.DocType.NEW_TITLE_DEED
+            ]:
+                registration_items.append(item)
+            else:
+                queue_items.append(item)
+                
+    context["queue_items"] = queue_items
+    context["stamp_duty_items"] = stamp_duty_items
+    context["registration_items"] = registration_items
+
     task_filter = Q(assigned_to=request.user, status__in=["pending", "in_progress"])
     if can_manage_task_queue:
         task_filter |= Q(
@@ -561,9 +599,19 @@ def staff_dashboard(request):
     if active_section == "settings":
         context.update(_build_profile_context(request.user))
 
-    logger.info("Dashboard loaded in %.2f seconds", time.time() - start_time)
-    return render(request, "accounts/dashboard/dashboard.html", context)
+    template_map = {
+        "overview": "accounts/dashboard/overview.html",
+        "tasks": "accounts/dashboard/tasks.html",
+        "wallet": "accounts/dashboard/wallet.html",
+        "profile": "accounts/dashboard/profile.html",
+        "settings": "accounts/dashboard/settings.html",
+    }
+    # For any section not specifically mapped, we fall back to the general overview layout
+    # which can dynamically display context data (like portfolio, finance, audit, etc).
+    template_name = template_map.get(active_section, "accounts/dashboard/overview.html")
 
+    logger.info("Dashboard loaded in %.2f seconds", time.time() - start_time)
+    return render(request, template_name, context)
 
 @login_required
 def my_plots(request):

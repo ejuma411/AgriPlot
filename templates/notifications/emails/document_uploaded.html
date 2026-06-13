@@ -1,0 +1,21 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block header_title %}Document Uploaded{% endblock %}
+
+{% block content %}
+<h2>New Legal Document Uploaded</h2>
+<p>Hello {{ user.first_name|default:user.username }},</p>
+
+<p>A new document has been uploaded for the property <strong>{{ transaction.plot.title }}</strong> by {{ uploader.get_full_name|default:uploader.username }}.</p>
+
+<div style="background-color: #f8f9fa; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0;">
+    <h3 style="margin-top: 0; color: #3b82f6;">Document: {{ doc_type }}</h3>
+    <p style="margin-bottom: 0;">This document is now pending verification by our legal team.</p>
+</div>
+
+<p>You can view this document in your transaction workspace.</p>
+{% endblock %}
+
+{% block cta %}
+<a href="{{ transaction_url }}" class="button">Go to Workspace</a>
+{% endblock %}

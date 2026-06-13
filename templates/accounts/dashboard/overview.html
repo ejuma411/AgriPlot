@@ -1,0 +1,170 @@
+{% extends "accounts/dashboard/base_dashboard.html" %}
+{% load humanize %}
+
+{% block dash_page_title %}Overview{% endblock %}
+{% block dash_page_subtitle %}Here's what's happening with your agricultural land journey today.{% endblock %}
+
+{% block dashboard_content %}
+<!-- Stats Grid -->
+<div class="dash-grid-4 mb-4">
+    <div class="dash-card">
+        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
+            <div style="background: rgba(16, 185, 129, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent-primary); font-size: 1.25rem;">
+                <i class="fa-solid fa-map-location-dot"></i>
+            </div>
+        </div>
+        <div>
+            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ total_plots|default:0 }}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Total Plots</p>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
+            <div style="background: rgba(59, 130, 246, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 1.25rem;">
+                <i class="fa-solid fa-certificate"></i>
+            </div>
+        </div>
+        <div>
+            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ verified_plots|default:0 }}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Verified Plots</p>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
+            <div style="background: rgba(239, 68, 68, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1.25rem;">
+                <i class="fa-solid fa-heart"></i>
+            </div>
+        </div>
+        <div>
+            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ saved_plots_count|default:0 }}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Saved Plots</p>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
+            <div style="background: rgba(245, 158, 11, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #f59e0b; font-size: 1.25rem;">
+                <i class="fa-solid fa-envelope-open-text"></i>
+            </div>
+        </div>
+        <div>
+            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">{{ recent_interests_count|default:0 }}</h3>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">New Inquiries</p>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Grid -->
+<div class="dash-grid-3 mb-4">
+    
+    <!-- Primary Queue / Recent Activity (Spans 2 columns) -->
+    <div class="dash-card" style="grid-column: span 2;">
+        <div class="dash-card-header">
+            <h3 class="dash-card-title">{{ primary_queue_title|default:"Recent Activity" }}</h3>
+            {% if primary_queue|length > 3 %}
+                <a href="#" class="ap-btn ap-btn-ghost btn-sm" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">View All</a>
+            {% endif %}
+        </div>
+        
+        {% if primary_queue %}
+            <div style="display: flex; flex-direction: column; gap: 1rem;">
+                {% for item in primary_queue|slice:":5" %}
+                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; border: 1px solid #f1f5f9; border-radius: 0.75rem; background: white;">
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
+                                <i class="fa-solid fa-file-signature"></i>
+                            </div>
+                            <div>
+                                <h4 style="font-size: 0.95rem; font-weight: 600; margin: 0; color: var(--text-primary);">{{ item.title }}</h4>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">{{ item.subtitle }}</p>
+                            </div>
+                        </div>
+                        {% if item.url %}
+                            <a href="{{ item.url }}" style="padding: 0.25rem 0.75rem; border-radius: 2rem; background: var(--accent-light); color: var(--accent-hover); font-size: 0.75rem; font-weight: 600; text-decoration: none;">{{ item.status }}</a>
+                        {% else %}
+                            <span style="padding: 0.25rem 0.75rem; border-radius: 2rem; background: #f1f5f9; color: var(--text-secondary); font-size: 0.75rem; font-weight: 600;">{{ item.status }}</span>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 3rem 1rem;">
+                <div style="font-size: 2.5rem; color: #cbd5e1; margin-bottom: 1rem;">
+                    <i class="fa-solid fa-inbox"></i>
+                </div>
+                <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">All caught up!</h4>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;">No pending tasks or activities.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="dash-card">
+        <h3 class="dash-card-title mb-4">Quick Actions</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <a href="{% url 'listings:home' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; text-decoration: none; background: white; transition: all 0.2s ease;">
+                <div style="color: var(--accent-primary); font-size: 1.2rem; width: 24px; text-align: center;">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                </div>
+                <div>
+                    <h4 style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0;">Browse Listings</h4>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">Find verified agricultural land</p>
+                </div>
+            </a>
+
+            {% if is_agent or is_landowner %}
+            <a href="{% url 'listings:add_plot' %}" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; text-decoration: none; background: white; transition: all 0.2s ease;">
+                <div style="color: var(--accent-primary); font-size: 1.2rem; width: 24px; text-align: center;">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <div>
+                    <h4 style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0;">Add New Plot</h4>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">List your agricultural land</p>
+                </div>
+            </a>
+            {% endif %}
+
+            <a href="{% url 'listings:dashboard_router' %}?section=settings" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; text-decoration: none; background: white; transition: all 0.2s ease;">
+                <div style="color: var(--accent-primary); font-size: 1.2rem; width: 24px; text-align: center;">
+                    <i class="fa-solid fa-gear"></i>
+                </div>
+                <div>
+                    <h4 style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0;">Account Settings</h4>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">Manage your profile</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+{% if portfolio_plots %}
+<!-- Recent Plots -->
+<div class="dash-card mb-4">
+    <div class="dash-card-header">
+        <h3 class="dash-card-title">Your Recent Plots</h3>
+        <a href="{% url 'listings:dashboard_router' %}?section=portfolio" class="ap-btn ap-btn-ghost btn-sm" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">Manage Portfolio</a>
+    </div>
+    
+    <div class="dash-grid-3">
+        {% for plot in portfolio_plots|slice:":3" %}
+        <div style="border: 1px solid #f1f5f9; border-radius: 1rem; overflow: hidden; background: white; transition: transform 0.2s ease; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+            <div style="padding: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+                    <div style="background: rgba(16, 185, 129, 0.1); width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--accent-hover);">
+                        <i class="fa-solid fa-map"></i>
+                    </div>
+                    <span style="background: #f1f5f9; padding: 0.25rem 0.75rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">{{ plot.get_listing_type_display }}</span>
+                </div>
+                <h4 style="font-size: 1rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.25rem 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ plot.title }}</h4>
+                <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 1rem 0;"><i class="fa-solid fa-location-dot me-1"></i> {{ plot.location }}</p>
+                <a href="{{ plot.get_absolute_url }}" class="ap-btn ap-btn-outline" style="width: 100%; text-align: center;">View Details</a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

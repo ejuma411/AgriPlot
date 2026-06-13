@@ -11,7 +11,7 @@ from datetime import timedelta
 from verification.models import VerificationStatus  # Add this import
 
 from listings.models import Plot
-from payments.models import PaymentRequest, PaymentClosingStep, LeaseWaitlistEntry
+from payments.models import PaymentRequest, LeaseWaitlistEntry
 from django.contrib.auth import get_user_model
 from django.conf import settings
 

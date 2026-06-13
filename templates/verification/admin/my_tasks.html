@@ -4,248 +4,194 @@
 {% block admin_title %}Operational Workspace{% endblock %}
 
 {% block admin_content %}
-<!-- Task Overview Stats -->
-<div class="stat-grid mb-4">
+<!-- Stats Cards -->
+<div class="stats-row">
     <div class="stat-card">
-        <div class="stat-label">Active Tasks</div>
-        <div class="stat-value">{{ my_tasks|length }}</div>
-        <div class="stat-trend">Currently assigned to you</div>
+        <div class="stat-number">{{ my_tasks|length|default:"0" }}</div>
+        <div class="stat-label">ACTIVE TASKS</div>
+        <div class="stat-hint">Currently assigned to you</div>
     </div>
     {% if can_manage_task_queue %}
     <div class="stat-card">
-        <div class="stat-label">Unassigned Reviews</div>
-        <div class="stat-value text-primary">{{ pending_admin_tasks|length }}</div>
-        <div class="stat-trend">Awaiting ownership</div>
+        <div class="stat-number">{{ pending_admin_tasks|length|default:"0" }}</div>
+        <div class="stat-label">UNASSIGNED REVIEWS</div>
+        <div class="stat-hint">Awaiting ownership</div>
     </div>
     <div class="stat-card">
-        <div class="stat-label">Pending Approval</div>
-        <div class="stat-value text-warning">{{ admin_review_plots|length }}</div>
-        <div class="stat-trend">Awaiting final decision</div>
+        <div class="stat-number">{{ admin_review_plots|length|default:"0" }}</div>
+        <div class="stat-label">PENDING APPROVAL</div>
+        <div class="stat-hint">Awaiting final decision</div>
     </div>
     {% endif %}
     <div class="stat-card">
-        <div class="stat-label">Total Completed</div>
-        <div class="stat-value text-success">{{ completed_tasks|length }}</div>
-        <div class="stat-trend">Last 10 events shown</div>
+        <div class="stat-number">{{ completed_tasks|length|default:"0" }}</div>
+        <div class="stat-label">TOTAL COMPLETED</div>
+        <div class="stat-hint">Last 10 events shown</div>
     </div>
 </div>
 
+<!-- Quick Plot Lookup -->
 {% if officer or surveyor %}
-<div class="admin-card mb-4">
-    <div class="admin-card-header">
-        <h2 class="admin-card-title"><i class="fas fa-search me-2"></i>Plot Quick Lookup</h2>
+<div class="lookup-card">
+    <div class="lookup-header">
+        <i class="fas fa-search"></i>
+        <span>Plot Quick Lookup</span>
     </div>
-    <div class="admin-card-body">
+    <div class="lookup-body">
         <form method="post" action="{% if officer %}{% url 'verification:extension_find_plot' %}{% else %}{% url 'verification:surveyor_find_plot' %}{% endif %}">
             {% csrf_token %}
-            <div class="row g-3">
-                <div class="col-md-9">
-                    <input type="text" name="parcel_number" class="form-control" placeholder="Enter full parcel number (e.g., REGISTRY/BLOCK/PARCEL)" required>
-                </div>
-                <div class="col-md-3">
-                    <button type="submit" class="admin-btn admin-btn-primary w-100">
-                        <i class="fas fa-folder-open me-2"></i>Open Record
-                    </button>
-                </div>
+            <div class="lookup-row">
+                <input type="text" name="parcel_number" class="lookup-input" placeholder="Enter full parcel number (e.g., REGISTRY/BLOCK/PARCEL)" required>
+                <button type="submit" class="lookup-btn">Open Record</button>
             </div>
         </form>
     </div>
 </div>
 {% endif %}
 
-{% if can_manage_task_queue %}
-<!-- Unassigned Task Queue -->
-<div class="admin-card mb-4">
-    <div class="admin-card-header">
-        <h2 class="admin-card-title"><i class="fas fa-file-signature me-2"></i>Available Reviews</h2>
-        <span class="badge bg-light border text-dark">{{ pending_admin_tasks|length }} pending</span>
+<!-- Available Reviews (Unassigned Tasks) -->
+{% if can_manage_task_queue and pending_admin_tasks %}
+<div class="section-card">
+    <div class="section-header">
+        <div class="section-title">Available Reviews</div>
+        <div class="section-badge">{{ pending_admin_tasks|length }} pending</div>
     </div>
-    <div class="admin-card-body">
-        {% if pending_admin_tasks %}
-            <div class="row g-4">
-                {% for task in pending_admin_tasks %}
-                    <div class="col-md-6 col-lg-4">
-                        <div class="workspace-task-card border rounded-3 p-3 h-100 d-flex flex-column">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="badge bg-info-soft text-info">Document Review</span>
-                                <small class="text-muted">{{ task.assigned_at|timesince }} ago</small>
-                            </div>
-                            <h5 class="mb-3"><a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank" class="text-dark fw-bold text-decoration-none">{{ task.plot.title|truncatechars:40 }}</a></h5>
-                            <div class="mb-4 small text-muted">
-                                <div class="mb-1"><i class="fas fa-map-marker-alt me-2"></i>{{ task.plot.county|default:task.plot.location|truncatechars:25 }}</div>
-                                <div><i class="fas fa-tag me-2"></i>{{ task.plot.get_land_type_display }}</div>
-                            </div>
-                            <button class="admin-btn admin-btn-outline w-100 mt-auto assign-to-me-btn" data-task-id="{{ task.id }}">
-                                <i class="fas fa-user-plus me-2"></i>Assign to Me
-                            </button>
-                        </div>
+    <div class="section-body">
+        <div class="reviews-list">
+            {% for task in pending_admin_tasks %}
+            <div class="review-item">
+                <div class="review-info">
+                    <span class="review-badge">Document Review</span>
+                    <span class="review-title">{{ task.plot.title|truncatechars:60 }}</span>
+                    <div class="review-meta">
+                        <span>{{ task.plot.county|default:task.plot.location|truncatechars:40 }}</span>
+                        <span>{{ task.plot.get_land_type_display }}</span>
                     </div>
-                {% endfor %}
+                </div>
+                <div class="review-action">
+                    <button class="assign-btn" data-task-id="{{ task.id }}">Assign to Me</button>
+                </div>
             </div>
-        {% else %}
-            <div class="text-center py-5 opacity-50">
-                <i class="fas fa-check-double fa-3x mb-3"></i>
-                <h5>Queue is empty</h5>
-                <p class="mb-0">All document reviews are currently assigned or completed.</p>
-            </div>
-        {% endif %}
-    </div>
-</div>
-
-<!-- Awaiting Decision -->
-<div class="admin-card mb-4">
-    <div class="admin-card-header">
-        <h2 class="admin-card-title"><i class="fas fa-gavel me-2"></i>Final Administrative Review</h2>
-        <span class="badge bg-warning-soft text-warning border border-warning">{{ admin_review_plots|length }} active</span>
-    </div>
-    <div class="admin-card-body">
-        {% if admin_review_plots %}
-            <div class="row g-4">
-                {% for plot in admin_review_plots %}
-                    <div class="col-md-6 col-lg-4">
-                        <div class="workspace-task-card border border-warning rounded-3 p-3 h-100 d-flex flex-column" style="background: rgba(255, 193, 7, 0.02);">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="badge bg-warning-soft text-warning">Decision Pending</span>
-                                <small class="text-muted">Awaiting Action</small>
-                            </div>
-                            <h5 class="mb-3"><a href="{% url 'listings:plot_detail' plot.id %}" target="_blank" class="text-dark fw-bold text-decoration-none">{{ plot.title|truncatechars:40 }}</a></h5>
-                            <div class="mb-4 small text-muted">
-                                <div class="mb-1"><i class="fas fa-map-marker-alt me-2"></i>{{ plot.county|default:plot.location|truncatechars:25 }}</div>
-                                <div><i class="fas fa-ruler-combined me-2"></i>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</div>
-                            </div>
-                            <a href="{% url 'verification:review_plot' plot.id %}" class="admin-btn admin-btn-primary w-100 mt-auto text-center">
-                                <i class="fas fa-clipboard-check me-2"></i>Open Review
-                            </a>
-                        </div>
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="text-center py-5 opacity-50">
-                <i class="fas fa-clipboard-check fa-3x mb-3"></i>
-                <h5>No pending decisions</h5>
-                <p class="mb-0">No plots are currently awaiting final administrative approval.</p>
-            </div>
-        {% endif %}
+            {% endfor %}
+        </div>
     </div>
 </div>
 {% endif %}
 
-<!-- Your Active Tasks -->
-<div class="admin-card mb-4">
-    <div class="admin-card-header">
-        <h2 class="admin-card-title"><i class="fas fa-user-clock me-2"></i>My Active Assignments</h2>
-        <span class="badge bg-primary px-3">{{ my_tasks|length }} tasks</span>
+<!-- Final Administrative Review -->
+{% if can_manage_task_queue and admin_review_plots %}
+<div class="section-card">
+    <div class="section-header">
+        <div class="section-title">Final Administrative Review</div>
+        <div class="section-badge warning">{{ admin_review_plots|length }} active</div>
     </div>
-    <div class="admin-card-body">
-        {% if my_tasks %}
-            <div class="row g-4">
-                {% for task in my_tasks %}
-                    <div class="col-md-6 col-lg-4">
-                        <div class="workspace-task-card border rounded-3 p-3 h-100 d-flex flex-column shadow-sm">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="badge 
-                                    {% if task.verification_type == 'registry_search' %}bg-secondary-soft text-secondary
-                                    {% elif task.verification_type == 'document_review' %}bg-info-soft text-info
-                                    {% elif task.verification_type == 'extension_review' %}bg-success-soft text-success
-                                    {% elif task.verification_type == 'surveyor_inspection' %}bg-warning-soft text-warning
-                                    {% endif %}">{{ task.get_verification_type_display }}</span>
-                                <small class="text-muted">{{ task.assigned_at|timesince }} ago</small>
-                            </div>
-                            
-                            <h5 class="mb-3"><a href="{% url 'listings:plot_detail' task.plot.id %}" target="_blank" class="text-dark fw-bold text-decoration-none">{{ task.plot.title|truncatechars:40 }}</a></h5>
-                            
-                            <div class="mb-3 small text-muted flex-grow-1">
-                                <div class="mb-1"><i class="fas fa-map-marker-alt me-2"></i>{{ task.plot.county|default:task.plot.location|truncatechars:25 }}</div>
-                                <div class="mb-1"><i class="fas fa-ruler-combined me-2"></i>{{ task.plot.area }} {{ task.plot.get_area_unit_display|default:"Acres" }}</div>
-                                {% if task.deadline_at %}
-                                <div class="text-danger mt-2"><i class="fas fa-hourglass-end me-2"></i>Due: {{ task.deadline_at|date:"M d, H:i" }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="mb-3 py-2 px-3 bg-light rounded-2">
-                                <small class="text-muted d-block mb-1 fw-bold">Documents:</small>
-                                <div class="d-flex gap-2">
-                                    <i class="fas fa-file-contract {% if task.plot.title_deed %}text-success{% else %}text-danger opacity-25{% endif %}" title="Title Deed"></i>
-                                    <i class="fas fa-search {% if task.plot.official_search %}text-success{% else %}text-danger opacity-25{% endif %}" title="Official Search"></i>
-                                    <i class="fas fa-id-card {% if task.plot.landowner_id_doc %}text-success{% else %}text-danger opacity-25{% endif %}" title="ID Document"></i>
-                                    <i class="fas fa-file-invoice {% if task.plot.kra_pin %}text-success{% else %}text-danger opacity-25{% endif %}" title="KRA PIN"></i>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-auto pt-3 border-top d-flex flex-column gap-2">
-                                {% if task.confirmation_status != 'confirmed' %}
-                                    {% if task.verification_type == 'extension_review' %}
-                                        <a href="{% url 'verification:confirm_extension_task' task.id %}" class="admin-btn admin-btn-outline w-100 text-center">Confirm Arrival</a>
-                                    {% elif task.verification_type == 'surveyor_inspection' %}
-                                        <a href="{% url 'verification:confirm_surveyor_task' task.id %}" class="admin-btn admin-btn-outline w-100 text-center">Confirm Arrival</a>
-                                    {% endif %}
-                                {% endif %}
-
-                                {% if task.verification_type == 'registry_search' %}
-                                    <button class="admin-btn admin-btn-outline w-100" disabled>Processing...</button>
-                                {% elif task.verification_type == 'extension_review' %}
-                                    <a href="{% url 'verification:conduct_extension_review' task.id %}" class="admin-btn admin-btn-primary w-100 text-center">Conduct Review</a>
-                                {% elif task.verification_type == 'surveyor_inspection' %}
-                                    <a href="{% url 'verification:conduct_surveyor_inspection' task.id %}" class="admin-btn admin-btn-primary w-100 text-center">Perform Inspection</a>
-                                {% else %}
-                                    <a href="{% url 'verification:complete_task' task.id %}" class="admin-btn admin-btn-primary w-100 text-center">Complete Task</a>
-                                {% endif %}
-                            </div>
-                        </div>
+    <div class="section-body">
+        <div class="reviews-list">
+            {% for plot in admin_review_plots %}
+            <div class="review-item warning">
+                <div class="review-info">
+                    <span class="review-badge warning">Decision Pending</span>
+                    <span class="review-title">{{ plot.title|truncatechars:60 }}</span>
+                    <div class="review-meta">
+                        <span>{{ plot.county|default:plot.location|truncatechars:40 }}</span>
+                        <span>{{ plot.area }} {{ plot.get_area_unit_display|default:"Acres" }}</span>
                     </div>
+                </div>
+                <div class="review-action">
+                    <a href="{% url 'verification:review_plot' plot.id %}" class="review-btn">Open Review</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- My Active Tasks Section -->
+<div class="section-card">
+    <div class="section-header">
+        <div class="section-title">My Active Assignments</div>
+        <div class="section-badge">{{ my_tasks|length }} tasks</div>
+    </div>
+    <div class="section-body">
+        {% if my_tasks %}
+            <div class="tasks-list">
+                {% for task in my_tasks %}
+                <div class="task-item">
+                    <div class="task-header">
+                        <span class="task-type task-type-{{ task.verification_type }}">
+                            {{ task.get_verification_type_display }}
+                        </span>
+                        <span class="task-date">{{ task.assigned_at|date:"M d, Y" }}</span>
+                    </div>
+                    <div class="task-title">{{ task.plot.title|truncatechars:70 }}</div>
+                    <div class="task-details">
+                        <span><i class="fas fa-map-marker-alt"></i> {{ task.plot.county|default:task.plot.location|truncatechars:40 }}</span>
+                        <span><i class="fas fa-ruler-combined"></i> {{ task.plot.area }} {{ task.plot.get_area_unit_display|default:"Acres" }}</span>
+                        {% if task.deadline_at %}
+                        <span class="task-deadline"><i class="fas fa-hourglass-end"></i> Due {{ task.deadline_at|date:"M d, Y" }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="task-actions">
+                        {% if task.verification_type == 'extension_review' %}
+                            <a href="{% url 'verification:conduct_extension_review' task.id %}" class="task-btn primary">Conduct Review →</a>
+                        {% elif task.verification_type == 'surveyor_inspection' %}
+                            <a href="{% url 'verification:conduct_surveyor_inspection' task.id %}" class="task-btn primary">Perform Inspection →</a>
+                        {% elif task.verification_type != 'registry_search' %}
+                            <a href="{% url 'verification:complete_task' task.id %}" class="task-btn primary">Complete Task →</a>
+                        {% else %}
+                            <span class="task-btn disabled">Processing...</span>
+                        {% endif %}
+                    </div>
+                </div>
                 {% endfor %}
             </div>
         {% else %}
-            <div class="text-center py-5 opacity-50">
-                <i class="fas fa-clipboard-check fa-4x mb-3 text-success"></i>
-                <h5>All tasks completed</h5>
-                <p class="mb-0">You have no active assignments. New tasks will appear here when assigned.</p>
+            <div class="empty-state">
+                <div class="empty-icon">✅</div>
+                <div class="empty-text">All tasks completed</div>
+                <div class="empty-sub">You have no active assignments. New tasks will appear here when assigned.</div>
             </div>
         {% endif %}
     </div>
 </div>
 
+<!-- Completed Audit Table -->
 {% if completed_tasks %}
-<!-- Recently Completed -->
-<div class="admin-card">
-    <div class="admin-card-header">
-        <h2 class="admin-card-title"><i class="fas fa-history me-2"></i>Completed Audit</h2>
+<div class="section-card">
+    <div class="section-header">
+        <div class="section-title">Completed Audit</div>
     </div>
-    <div class="admin-table-wrapper">
-        <table class="admin-table">
+    <div class="table-wrapper">
+        <table class="data-table">
             <thead>
                 <tr>
-                    <th>Task Type</th>
-                    <th>Plot Information</th>
-                    <th>Completed</th>
-                    <th>Result</th>
-                    <th class="text-end">Actions</th>
+                    <th>TASK TYPE</th>
+                    <th>PLOT INFORMATION</th>
+                    <th>COMPLETED</th>
+                    <th>RESULT</th>
+                    <th>ACTIONS</th>
                 </tr>
             </thead>
             <tbody>
                 {% for task in completed_tasks %}
                 <tr>
+                    <td><span class="type-badge">{{ task.get_verification_type_display }}</span></td>
                     <td>
-                        <span class="badge bg-light border text-dark">{{ task.get_verification_type_display }}</span>
+                        <div class="plot-name">{{ task.plot.title|truncatechars:45 }}</div>
+                        <div class="plot-ref">#{{ task.plot.id }} • {{ task.plot.county|default:"Location TBD" }}</div>
                     </td>
-                    <td>
-                        <div class="fw-bold text-dark">{{ task.plot.title|truncatechars:40 }}</div>
-                        <small class="text-muted">#{{ task.plot.id }} • {{ task.plot.county }}</small>
-                    </td>
-                    <td><small class="text-muted">{{ task.completed_at|timesince }} ago</small></td>
+                    <td>{{ task.completed_at|timesince }} ago</td>
                     <td>
                         {% if task.approved == True %}
-                            <span class="badge bg-success-soft text-success">Approved</span>
+                            <span class="result-badge approved">Approved</span>
                         {% elif task.approved == False %}
-                            <span class="badge bg-danger-soft text-danger">Flagged</span>
+                            <span class="result-badge flagged">Flagged</span>
                         {% else %}
-                            <span class="badge bg-light border text-muted">Finished</span>
+                            <span class="result-badge finished">Finished</span>
                         {% endif %}
                     </td>
-                    <td class="text-end">
-                        <a href="{% url 'verification:review_plot' task.plot.id %}" class="admin-btn admin-btn-outline py-1 px-3">View</a>
-                    </td>
+                    <td><a href="{% url 'verification:review_plot' task.plot.id %}" class="action-link">View →</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -255,78 +201,658 @@
 {% endif %}
 
 <style>
-    .bg-info-soft { background: rgba(13, 202, 240, 0.1); }
-    .bg-warning-soft { background: rgba(255, 193, 7, 0.1); }
-    .bg-success-soft { background: rgba(25, 135, 84, 0.1); }
-    .bg-danger-soft { background: rgba(220, 53, 69, 0.1); }
-    .bg-secondary-soft { background: rgba(108, 117, 125, 0.1); }
-    
-    .workspace-task-card {
-        background: white;
-        border: 1px solid var(--ag-border);
-        border-radius: 12px;
-        transition: var(--ag-transition);
-        display: flex;
+    /* =====================================================
+   MODERN OPERATIONAL WORKSPACE
+   Enterprise Dashboard Design
+===================================================== */
+
+:root {
+    --primary: #0f5c3f;
+    --primary-dark: #0a3d28;
+
+    --success: #16a34a;
+    --warning: #f59e0b;
+    --danger: #dc2626;
+    --info: #2563eb;
+
+    --bg: #f4f7fb;
+    --card: #ffffff;
+
+    --border: #e5e7eb;
+    --border-light: #eef2f7;
+
+    --text: #0f172a;
+    --text-muted: #64748b;
+
+    --shadow-sm: 0 1px 3px rgba(0,0,0,.05);
+    --shadow-md: 0 8px 24px rgba(0,0,0,.06);
+
+    --radius: 16px;
+}
+
+/* =====================================================
+   PAGE
+===================================================== */
+
+.admin-content,
+.workspace-container {
+    background: var(--bg);
+}
+
+body {
+    background: var(--bg);
+}
+
+/* =====================================================
+   KPI CARDS
+===================================================== */
+
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border-light);
+
+    position: relative;
+    overflow: hidden;
+
+    transition: .25s ease;
+}
+
+.stat-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    width: 5px;
+    height: 100%;
+    background: var(--primary);
+}
+
+.stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.stat-number {
+    font-size: 2.3rem;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1;
+}
+
+.stat-label {
+    margin-top: .5rem;
+    font-size: .8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+}
+
+.stat-hint {
+    margin-top: .35rem;
+    font-size: .75rem;
+    color: #94a3b8;
+}
+
+/* =====================================================
+   LOOKUP SECTION
+===================================================== */
+
+.lookup-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 2rem;
+}
+
+.lookup-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-light);
+
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+
+    font-weight: 600;
+    color: var(--text);
+}
+
+.lookup-body {
+    padding: 1.5rem;
+}
+
+.lookup-row {
+    display: flex;
+    gap: 1rem;
+}
+
+.lookup-input {
+    flex: 1;
+
+    height: 50px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+
+    padding: 0 1rem;
+
+    font-size: .95rem;
+    background: white;
+}
+
+.lookup-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(15,92,63,.12);
+}
+
+.lookup-btn {
+    height: 50px;
+
+    padding: 0 1.5rem;
+
+    border: none;
+    border-radius: 12px;
+
+    background: var(--primary);
+    color: white;
+
+    font-weight: 600;
+    cursor: pointer;
+
+    transition: .25s;
+}
+
+.lookup-btn:hover {
+    background: var(--primary-dark);
+}
+
+/* =====================================================
+   SECTIONS
+===================================================== */
+
+.section-card {
+    background: var(--card);
+    border-radius: var(--radius);
+
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-sm);
+
+    margin-bottom: 2rem;
+    overflow: hidden;
+}
+
+.section-header {
+    padding: 1.25rem 1.5rem;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    background: white;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.section-badge {
+    background: #f1f5f9;
+    color: #475569;
+
+    padding: .4rem .85rem;
+    border-radius: 999px;
+
+    font-size: .75rem;
+    font-weight: 600;
+}
+
+.section-badge.warning {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.section-body {
+    padding: 1.5rem;
+}
+
+/* =====================================================
+   REVIEW CARDS
+===================================================== */
+
+.reviews-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.review-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 1rem 1.25rem;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    transition: .25s;
+}
+
+.review-item:hover {
+    border-color: #cbd5e1;
+    background: #fafafa;
+}
+
+.review-item.warning {
+    border-left: 4px solid var(--warning);
+}
+
+.review-title {
+    display: block;
+    margin-top: .35rem;
+
+    font-size: .95rem;
+    font-weight: 600;
+
+    color: var(--text);
+}
+
+.review-meta {
+    margin-top: .4rem;
+
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    color: var(--text-muted);
+    font-size: .8rem;
+}
+
+.review-badge {
+    display: inline-flex;
+    align-items: center;
+
+    padding: .3rem .75rem;
+    border-radius: 999px;
+
+    background: #eef2ff;
+    color: #3730a3;
+
+    font-size: .7rem;
+    font-weight: 600;
+}
+
+/* =====================================================
+   BUTTONS
+===================================================== */
+
+.assign-btn,
+.review-btn,
+.task-btn.primary {
+    border: none;
+
+    background: var(--primary);
+    color: white;
+
+    border-radius: 10px;
+
+    padding: .7rem 1rem;
+
+    font-size: .8rem;
+    font-weight: 600;
+
+    text-decoration: none;
+    cursor: pointer;
+
+    transition: .25s;
+}
+
+.assign-btn:hover,
+.review-btn:hover,
+.task-btn.primary:hover {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+}
+
+/* =====================================================
+   TASKS
+===================================================== */
+
+.tasks-list {
+    display: grid;
+    gap: 1rem;
+}
+
+.task-item {
+    background: white;
+
+    border: 1px solid var(--border);
+    border-radius: 14px;
+
+    padding: 1.25rem;
+
+    transition: .25s;
+}
+
+.task-item:hover {
+    box-shadow: var(--shadow-md);
+    border-color: #dbe2ea;
+}
+
+.task-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.task-title {
+    margin: .75rem 0;
+
+    font-size: 1rem;
+    font-weight: 600;
+
+    color: var(--text);
+}
+
+.task-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+
+    color: var(--text-muted);
+    font-size: .82rem;
+}
+
+.task-date {
+    color: #94a3b8;
+    font-size: .8rem;
+}
+
+.task-actions {
+    margin-top: 1rem;
+}
+
+/* =====================================================
+   TASK TYPE PILLS
+===================================================== */
+
+.task-type {
+    padding: .35rem .75rem;
+    border-radius: 999px;
+
+    font-size: .72rem;
+    font-weight: 600;
+}
+
+.task-type-extension_review {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.task-type-surveyor_inspection {
+    background: #ffedd5;
+    color: #c2410c;
+}
+
+.task-type-document_review {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.task-type-registry_search {
+    background: #f3e8ff;
+    color: #7e22ce;
+}
+
+/* =====================================================
+   EMPTY STATE
+===================================================== */
+
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.empty-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.empty-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.empty-sub {
+    margin-top: .5rem;
+    color: var(--text-muted);
+}
+
+/* =====================================================
+   TABLE
+===================================================== */
+
+.table-wrapper {
+    overflow-x: auto;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.data-table th {
+    background: #f8fafc;
+
+    text-align: left;
+
+    padding: 1rem;
+
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+
+    color: #64748b;
+
+    border-bottom: 1px solid var(--border);
+}
+
+.data-table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.data-table tbody tr:hover {
+    background: #fafcff;
+}
+
+.type-badge,
+.result-badge {
+    padding: .35rem .75rem;
+    border-radius: 999px;
+
+    font-size: .72rem;
+    font-weight: 600;
+}
+
+.result-badge.approved {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.result-badge.flagged {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.result-badge.finished {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.action-link {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+/* =====================================================
+   RESPONSIVE
+===================================================== */
+
+@media (max-width: 992px) {
+
+    .lookup-row,
+    .review-item {
         flex-direction: column;
-        height: 100%;
-    }
-    
-    .workspace-task-card:hover {
-        border-color: var(--ag-green-700);
-        box-shadow: var(--ag-shadow-soft);
-        transform: translateY(-2px);
+        align-items: stretch;
     }
 
-    .doc-status-indicator {
-        display: flex;
-        gap: 0.5rem;
-        padding: 0.75rem;
-        background: var(--ag-sand-100);
-        border-radius: 8px;
+    .task-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .75rem;
+    }
+}
+
+@media (max-width: 768px) {
+
+    .stats-row {
+        grid-template-columns: 1fr;
     }
 
-    @media (max-width: 576px) {
-        .stat-grid { grid-template-columns: 1fr; }
-        .workspace-task-card { padding: 1rem !important; }
+    .task-details {
+        flex-direction: column;
+        gap: .5rem;
     }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .75rem;
+    }
+}
 </style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.assign-to-me-btn').forEach(btn => {
+    // CSRF Token Helper
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value || 
+               document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
+    }
+    
+    // Show Toast Notification
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+            <button class="toast-close">&times;</button>
+        `;
+        toast.style.cssText = `
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: ${type === 'success' ? '#0f5c3f' : '#dc2626'};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            z-index: 10000;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            animation: slideIn 0.3s ease;
+        `;
+        
+        const closeBtn = toast.querySelector('.toast-close');
+        closeBtn.style.cssText = `
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0 4px;
+        `;
+        closeBtn.onclick = () => toast.remove();
+        
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+    
+    // Assign Task AJAX
+    document.querySelectorAll('.assign-btn').forEach(btn => {
         btn.addEventListener('click', async function() {
             const taskId = this.dataset.taskId;
-            const csrfToken = '{{ csrf_token }}';
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning...';
             this.disabled = true;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Assigning...';
             
             try {
-                const res = await fetch('{% url "verification:ajax_assign_task" %}', {
+                const response = await fetch('/verify/tasks/assign/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
+                        'X-CSRFToken': getCsrfToken()
                     },
-                    body: JSON.stringify({
-                        task_id: taskId,
-                        user_id: '{{ request.user.id }}'
-                    })
+                    body: JSON.stringify({ task_id: taskId })
                 });
-                const data = await res.json();
+                const data = await response.json();
+                
                 if (data.success) {
-                    window.location.reload();
+                    showToast('Task assigned successfully!');
+                    setTimeout(() => location.reload(), 1000);
                 } else {
-                    alert(data.message || 'Failed to assign task.');
+                    showToast(data.message || 'Failed to assign task', 'error');
+                    this.innerHTML = originalText;
                     this.disabled = false;
-                    this.innerHTML = '<i class="fas fa-user-plus me-2"></i>Assign to Me';
                 }
-            } catch (err) {
-                alert('An error occurred. Please try again.');
+            } catch (error) {
+                showToast('An error occurred', 'error');
+                this.innerHTML = originalText;
                 this.disabled = false;
-                this.innerHTML = '<i class="fas fa-user-plus me-2"></i>Assign to Me';
             }
         });
     });
+    
+    // Table Row Click
+    document.querySelectorAll('.data-table tbody tr').forEach(row => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', (e) => {
+            if (e.target.closest('.action-link')) return;
+            const link = row.querySelector('.action-link');
+            if (link) window.location.href = link.href;
+        });
+    });
+    
+    // Add animation styles
+    const style = document.createElement('style');
+    style.textContent = `@keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }`;
+    document.head.appendChild(style);
 });
 </script>
 {% endblock %}

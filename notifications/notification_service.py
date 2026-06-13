@@ -528,6 +528,51 @@ class NotificationService:
                     },
                 )
 
+    @staticmethod
+    def notify_transaction_updated(transaction, action, amount):
+        """Notify buyer and seller when a payment is made on a transaction."""
+        if action == "deposit_paid":
+            title = f"Deposit Received: {transaction.plot.title}"
+            message = (f"An agreement deposit of KES {amount:,.2f} has been received. "
+                       f"Total deposit is now KES {transaction.deposit_paid:,.2f}. "
+                       f"Remaining balance: KES {transaction.balance_due:,.2f}.")
+        elif action == "completion_paid":
+            title = f"Balance Received: {transaction.plot.title}"
+            message = (f"A completion payment of KES {amount:,.2f} has been received. "
+                       f"Total paid is now KES {transaction.deposit_paid:,.2f}. "
+                       f"Remaining balance: KES {transaction.balance_due:,.2f}.")
+        else:
+            title = f"Transaction Updated: {transaction.plot.title}"
+            message = f"Transaction updated with payment of KES {amount:,.2f}."
+
+        for recipient in [transaction.buyer, transaction.seller]:
+            if not recipient:
+                continue
+                
+            NotificationService.notify_user(
+                user=recipient,
+                notification_type="transaction_update",
+                title=title,
+                message=message,
+                plot=transaction.plot,
+            )
+            
+            if recipient.email:
+                try:
+                    transaction_url = settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk])
+                except Exception:
+                    transaction_url = ""
+                
+                NotificationService.send_email(
+                    recipient=recipient.email,
+                    subject=title,
+                    template="plain",
+                    context={
+                        "message": f"{message}\n\nView details here: {transaction_url}",
+                        "user": recipient,
+                    },
+                )
+
 
     @staticmethod
     def notify_plot_submitted(plot):
@@ -898,6 +943,202 @@ class NotificationService:
                 "domain": settings.SITE_URL.split("://")[-1] if "://" in settings.SITE_URL else settings.SITE_URL,
             },
         )
+
+    @staticmethod
+    def notify_transaction_advanced(transaction):
+        """Notify buyer and seller that the transaction advanced to the next stage"""
+        title = f"Transaction Advanced: {transaction.get_stage_display()}"
+        message = f"Transaction for {transaction.plot.title} has progressed to {transaction.get_stage_display()}."
+        
+        context = {
+            "transaction": transaction,
+            "stage_display": transaction.get_stage_display(),
+            "plot_title": transaction.plot.title,
+            "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
+        }
+
+        # Notify Buyer
+        if transaction.buyer and transaction.buyer.email:
+            NotificationService.notify_user(
+                user=transaction.buyer,
+                notification_type="transaction_advanced",
+                title=title,
+                message=message,
+                plot=transaction.plot
+            )
+            NotificationService.send_email(
+                recipient=transaction.buyer.email,
+                subject=title,
+                template="notifications/emails/transaction_advanced",
+                context={**context, "user": transaction.buyer}
+            )
+
+        # Notify Seller
+        if transaction.seller and transaction.seller.email:
+            NotificationService.notify_user(
+                user=transaction.seller,
+                notification_type="transaction_advanced",
+                title=title,
+                message=message,
+                plot=transaction.plot
+            )
+            NotificationService.send_email(
+                recipient=transaction.seller.email,
+                subject=title,
+                template="notifications/emails/transaction_advanced",
+                context={**context, "user": transaction.seller}
+            )
+
+    @staticmethod
+    def notify_transaction_completed(transaction):
+        """Notify buyer and seller that the transaction is fully complete"""
+        title = f"Transaction Completed: {transaction.plot.title}"
+        message = f"Congratulations! The transaction for {transaction.plot.title} is now successfully completed and title transferred."
+        
+        context = {
+            "transaction": transaction,
+            "plot_title": transaction.plot.title,
+            "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
+        }
+
+        # Notify Buyer
+        if transaction.buyer and transaction.buyer.email:
+            NotificationService.notify_user(
+                user=transaction.buyer,
+                notification_type="transaction_completed",
+                title=title,
+                message=message,
+                plot=transaction.plot
+            )
+            NotificationService.send_email(
+                recipient=transaction.buyer.email,
+                subject=title,
+                template="notifications/emails/transaction_completed",
+                context={**context, "user": transaction.buyer}
+            )
+
+        # Notify Seller
+        if transaction.seller and transaction.seller.email:
+            NotificationService.notify_user(
+                user=transaction.seller,
+                notification_type="transaction_completed",
+                title=title,
+                message=message,
+                plot=transaction.plot
+            )
+            NotificationService.send_email(
+                recipient=transaction.seller.email,
+                subject=title,
+                template="notifications/emails/transaction_completed",
+                context={**context, "user": transaction.seller}
+            )
+
+    @staticmethod
+    def notify_document_uploaded(document):
+        """Notify the counterparty and admin when a document is uploaded"""
+        transaction = document.transaction
+        uploader = document.uploaded_by
+        counterparty = transaction.buyer if uploader == transaction.seller else transaction.seller
+        
+        title = f"New Document Uploaded: {document.get_document_type_display()}"
+        message = f"{uploader.get_full_name() or uploader.username} uploaded a new document for {transaction.plot.title}."
+        
+        context = {
+            "document": document,
+            "transaction": transaction,
+            "uploader": uploader,
+            "doc_type": document.get_document_type_display(),
+            "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
+        }
+
+        # Notify counterparty
+        if counterparty and counterparty.email:
+            NotificationService.notify_user(
+                user=counterparty,
+                notification_type="document_uploaded",
+                title=title,
+                message=message,
+                plot=transaction.plot
+            )
+            NotificationService.send_email(
+                recipient=counterparty.email,
+                subject=title,
+                template="notifications/emails/document_uploaded",
+                context={**context, "user": counterparty}
+            )
+
+        # Notify Admins
+        for admin in User.objects.filter(is_staff=True):
+            NotificationService.create_notification(
+                user=admin,
+                notification_type="document_uploaded",
+                title=title,
+                message=message,
+                plot=transaction.plot
+            )
+
+    @staticmethod
+    def notify_document_verified(document):
+        """Notify uploader that their document was verified"""
+        transaction = document.transaction
+        uploader = document.uploaded_by
+        
+        title = f"Document Verified: {document.get_document_type_display()}"
+        message = f"Your document for {transaction.plot.title} has been verified."
+        
+        context = {
+            "document": document,
+            "transaction": transaction,
+            "doc_type": document.get_document_type_display(),
+            "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
+        }
+
+        if uploader and uploader.email:
+            NotificationService.notify_user(
+                user=uploader,
+                notification_type="document_verified",
+                title=title,
+                message=message,
+                plot=transaction.plot
+            )
+            NotificationService.send_email(
+                recipient=uploader.email,
+                subject=title,
+                template="notifications/emails/document_verified",
+                context={**context, "user": uploader}
+            )
+
+    @staticmethod
+    def notify_document_rejected(document):
+        """Notify uploader that their document was rejected"""
+        transaction = document.transaction
+        uploader = document.uploaded_by
+        
+        title = f"Action Required: Document Rejected"
+        message = f"Your document {document.get_document_type_display()} for {transaction.plot.title} was rejected."
+        
+        context = {
+            "document": document,
+            "transaction": transaction,
+            "doc_type": document.get_document_type_display(),
+            "rejection_reason": document.rejection_reason,
+            "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
+        }
+
+        if uploader and uploader.email:
+            NotificationService.notify_user(
+                user=uploader,
+                notification_type="document_rejected",
+                title=title,
+                message=message,
+                plot=transaction.plot
+            )
+            NotificationService.send_email(
+                recipient=uploader.email,
+                subject=title,
+                template="notifications/emails/document_rejected",
+                context={**context, "user": uploader}
+            )
 
     # ------------------------------------------------------------------
     # Read helpers

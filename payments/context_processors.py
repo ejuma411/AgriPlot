@@ -1,44 +1,6 @@
-from payments.models import PaymentClosingStep, PaymentRequest
-from payments.permissions import step_requires_admin_action, user_is_finance_admin
+from payments.models import PaymentRequest
+from django.db.models import Q, Sum
 
-
-def payment_admin_nav(request):
-    user = getattr(request, "user", None)
-    if not user_is_finance_admin(user):
-        return {
-            "show_payment_admin_nav": False,
-            "payment_admin_task_count": 0,
-        }
-
-    payment_queryset = (
-        PaymentRequest.objects.prefetch_related("closing_steps")
-        .filter(
-            transaction_type__in=[
-                PaymentRequest.TransactionType.PURCHASE,
-                PaymentRequest.TransactionType.LEASE,
-            ]
-        )
-        .exclude(
-            status__in=[
-                PaymentRequest.Status.REFUNDED,
-                PaymentRequest.Status.CANCELLED,
-                PaymentRequest.Status.FAILED,
-            ]
-        )
-    )
-
-    task_count = 0
-    for payment in payment_queryset:
-        for step in payment.closing_steps.exclude(
-            status=PaymentClosingStep.Status.COMPLETED
-        ):
-            if step_requires_admin_action(step):
-                task_count += 1
-
-    return {
-        "show_payment_admin_nav": True,
-        "payment_admin_task_count": task_count,
-    }
 
 def wallet_balance(request):
     """Add wallet balance to template context"""
@@ -58,3 +20,58 @@ def wallet_balance(request):
             logger.error(f"Wallet balance error: {e}")
             return {}
     return {}
+
+
+
+def payment_notifications(request):
+    """
+    Context processor for payment-related notifications in the navbar.
+    Shows pending payments and document verification status.
+    """
+    if not request.user.is_authenticated:
+        return {}
+    
+    try:
+        notifications = []
+        
+        # Check for payments awaiting action
+        pending_payments = PaymentRequest.objects.filter(
+            Q(buyer=request.user) | Q(seller=request.user),
+            status='pending'
+        ).count()
+        
+        if pending_payments > 0:
+            notifications.append({
+                'type': 'pending_payment',
+                'message': f'You have {pending_payments} pending payment(s)',
+                'url': '/payments/dashboard/',
+                'icon': 'fa-credit-card',
+            })
+        
+        # Check for unverified documents (if legal transaction exists)
+        try:
+            from transactions.models import Transaction
+            legal_txs = Transaction.objects.filter(
+                Q(buyer=request.user) | Q(seller=request.user),
+                payment_request__isnull=False
+            )
+            
+            for tx in legal_txs:
+                pending_docs = tx.documents.filter(status='pending').count()
+                if pending_docs > 0:
+                    notifications.append({
+                        'type': 'pending_documents',
+                        'message': f'Legal documents awaiting verification for transaction #{tx.id}',
+                        'url': f'/transactions/{tx.id}/',
+                        'icon': 'fa-file-alt',
+                    })
+        except Exception:
+            pass
+        
+        return {'payment_notifications': notifications[:5]}
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Payment notifications context processor error: {e}")
+        return {}

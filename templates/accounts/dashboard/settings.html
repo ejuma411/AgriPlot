@@ -1,0 +1,99 @@
+{% extends "accounts/dashboard/base_dashboard.html" %}
+
+{% block dash_page_title %}Settings{% endblock %}
+{% block dash_page_subtitle %}Manage your security preferences and account settings.{% endblock %}
+
+{% block dashboard_content %}
+<div class="dash-grid-2">
+    <!-- Security Settings -->
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <h3 class="dash-card-title">Change Password</h3>
+            <div style="background: rgba(59, 130, 246, 0.1); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #3b82f6;">
+                <i class="fa-solid fa-key"></i>
+            </div>
+        </div>
+        
+        <form method="post" action="{% url 'listings:account_settings' %}">
+            {% csrf_token %}
+            <input type="hidden" name="section" value="change_password">
+            
+            <div class="dash-form-group">
+                <label class="dash-form-label" for="current_password">Current Password</label>
+                <input type="password" name="current_password" id="current_password" class="dash-form-control" required>
+            </div>
+            
+            <div class="dash-form-group">
+                <label class="dash-form-label" for="new_password">New Password</label>
+                <input type="password" name="new_password" id="new_password" class="dash-form-control" required minlength="8">
+                <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Must be at least 8 characters long.</small>
+            </div>
+
+            <div class="dash-form-group">
+                <label class="dash-form-label" for="confirm_password">Confirm New Password</label>
+                <input type="password" name="confirm_password" id="confirm_password" class="dash-form-control" required minlength="8">
+            </div>
+
+            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                <button type="submit" class="ap-btn ap-btn-primary">Update Password</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Two-Factor Authentication -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3 class="dash-card-title">Two-Factor Authentication (2FA)</h3>
+                <div style="background: {% if two_factor_enabled %}rgba(16, 185, 129, 0.1); color: var(--accent-hover);{% else %}rgba(239, 68, 68, 0.1); color: #ef4444;{% endif %} width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                {% if two_factor_enabled %}
+                    <div style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 0.75rem; margin-bottom: 1rem;">
+                        <i class="fa-solid fa-circle-check" style="color: var(--accent-hover); font-size: 1.25rem;"></i>
+                        <div>
+                            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">2FA is Enabled</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary);">Your account is protected with an additional layer of security.</p>
+                        </div>
+                    </div>
+                    <a href="{% url 'listings:two_factor_setup' %}" class="ap-btn ap-btn-outline" style="width: 100%; text-align: center;">Manage 2FA Settings</a>
+                {% else %}
+                    <div style="display: flex; align-items: center; gap: 0.75rem; padding: 1rem; background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 0.75rem; margin-bottom: 1rem;">
+                        <i class="fa-solid fa-circle-exclamation" style="color: #ef4444; font-size: 1.25rem;"></i>
+                        <div>
+                            <h4 style="margin: 0; font-size: 0.95rem; font-weight: 600; color: var(--text-primary);">2FA is Disabled</h4>
+                            <p style="margin: 0; font-size: 0.8rem; color: var(--text-secondary);">We highly recommend enabling 2FA to secure your account.</p>
+                        </div>
+                    </div>
+                    <a href="{% url 'listings:two_factor_setup' %}" class="ap-btn ap-btn-primary" style="width: 100%; text-align: center; justify-content: center;">Enable 2FA Now</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="dash-card">
+            <div class="dash-card-header">
+                <h3 class="dash-card-title">Account Status</h3>
+                <i class="fa-solid fa-circle-info text-muted"></i>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;">Member Since</span>
+                    <span style="font-weight: 600; color: var(--text-primary);">{{ user.date_joined|date:"F Y" }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;">Profile Type</span>
+                    <span style="font-weight: 600; color: var(--text-primary);">{{ profile_type|default:"Buyer" }}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;">Account State</span>
+                    <span style="background: var(--accent-light); color: var(--accent-hover); padding: 0.25rem 0.75rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600;">Active</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

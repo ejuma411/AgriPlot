@@ -1051,7 +1051,9 @@
             }
         }
     </style>
+    
     {% block head %}{% endblock %}
+    
 </head>
 <body>
     <div class="ap-shell">
@@ -1071,24 +1073,9 @@
                     <a class="ap-nav-link" href="{% url 'listings:home' %}">
                         <i class="fa-solid fa-magnifying-glass"></i> Marketplace
                     </a>
-                    <a class="ap-nav-link" href="{% url 'listings:how_it_works' %}">
-                        <i class="fa-solid fa-route"></i> How it works
-                    </a>
-                    <a class="ap-nav-link" href="{% url 'listings:contact_us' %}">
-                        <i class="fa-solid fa-headset"></i> Support
-                    </a>
                     {% if user.is_authenticated %}
                         <a class="ap-nav-link" href="{% url 'listings:dashboard_router' %}">
                             <i class="fa-solid fa-table-columns"></i> Workspace
-                        </a>
-                        <a class="ap-nav-link" href="{% url 'listings:notifications_inbox' %}">
-                            <i class="fa-regular fa-bell"></i> Inbox
-                        </a>
-                        <a class="ap-nav-link" href="{% url 'listings:profile_management' %}">
-                            <i class="fa-solid fa-user-circle"></i> Profile
-                        </a>
-                        <a class="ap-nav-link" href="{% url 'listings:account_settings' %}">
-                            <i class="fa-solid fa-gears"></i> Settings
                         </a>
                     {% endif %}
                 </div>
@@ -1129,30 +1116,10 @@
                     <a class="ap-nav-link" href="{% url 'listings:home' %}">
                         <i class="fa-solid fa-magnifying-glass"></i> Marketplace
                     </a>
-                    <a class="ap-nav-link" href="{% url 'listings:how_it_works' %}">
-                        <i class="fa-solid fa-route"></i> How it works
-                    </a>
-                    <a class="ap-nav-link" href="{% url 'listings:contact_us' %}">
-                        <i class="fa-solid fa-headset"></i> Support
-                    </a>
                     {% if user.is_authenticated %}
                         <a class="ap-nav-link" href="{% url 'listings:dashboard_router' %}">
                             <i class="fa-solid fa-table-columns"></i> Workspace
                         </a>
-                        <a class="ap-nav-link" href="{% url 'listings:notifications_inbox' %}">
-                            <i class="fa-regular fa-bell"></i> Inbox
-                        </a>
-                        <a class="ap-nav-link" href="{% url 'listings:profile_management' %}">
-                            <i class="fa-solid fa-user-circle"></i> Profile
-                        </a>
-                        <a class="ap-nav-link" href="{% url 'listings:account_settings' %}">
-                            <i class="fa-solid fa-gears"></i> Settings
-                        </a>
-                        {% if user.agent or user.is_staff or user.landownerprofile %}
-                            <a class="ap-btn ap-btn-ghost" href="{% url 'listings:add_plot' %}">
-                                <i class="fa-solid fa-plus"></i> Add Plot
-                            </a>
-                        {% endif %}
                         <form class="ap-logout-form" method="post" action="{% url 'listings:logout' %}">
                             {% csrf_token %}
                             <button class="ap-btn ap-btn-primary" type="submit">
@@ -1194,10 +1161,12 @@
             <div class="ap-footer-inner">
                 <div>&copy; {% now "Y" %} AgriPlot Connect. Built for trusted land transactions.</div>
                 <div class="ap-footer-links">
-                    <a href="{% url 'listings:about_us' %}">About</a>
-                    <a href="{% url 'listings:terms' %}">Terms</a>
-                    <a href="{% url 'listings:privacy' %}">Privacy</a>
+                    <a href="{% url 'listings:about_us' %}">About Us</a>
+                    <a href="{% url 'listings:terms' %}">Terms of Service</a>
+                    <a href="{% url 'listings:privacy' %}">Privacy Policy</a>
                     <a href="{% url 'listings:faq' %}">FAQ</a>
+                    <a href="{% url 'listings:contact_us' %}">Help Centre</a>
+                    <a href="{% url 'listings:how_it_works' %}">How it Works</a>
                 </div>
             </div>
         </footer>

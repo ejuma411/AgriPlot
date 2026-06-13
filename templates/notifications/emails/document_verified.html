@@ -1,0 +1,21 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block header_title %}Document Verified{% endblock %}
+
+{% block content %}
+<h2>Document Successfully Verified</h2>
+<p>Hello {{ user.first_name|default:user.username }},</p>
+
+<p>Good news! Your recently uploaded document for the property <strong>{{ transaction.plot.title }}</strong> has been verified by our legal team.</p>
+
+<div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 15px; margin: 20px 0;">
+    <h3 style="margin-top: 0; color: #16a34a;">Document: {{ doc_type }}</h3>
+    <p style="margin-bottom: 0;">This document meets all statutory requirements and has been added to the official transaction record.</p>
+</div>
+
+<p>Thank you for keeping the transaction moving forward!</p>
+{% endblock %}
+
+{% block cta %}
+<a href="{{ transaction_url }}" class="button">Go to Workspace</a>
+{% endblock %}

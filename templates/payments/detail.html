@@ -724,60 +724,35 @@
                     </div>
                     {% endif %}
                 </div>
-                
-                <!-- Transaction Milestones -->
-                {% if transaction_stage_matrix %}
-                <div class="info-card">
-                    <h3 class="card-title">
-                        <i class="fas fa-list-check"></i>
-                        Clearing-House Process
-                    </h3>
-                    <div class="milestone-list">
-                        {% for stage in transaction_stage_matrix %}
-                        <div class="milestone-item">
-                            <div class="milestone-number">{{ forloop.counter }}</div>
-                            <div class="milestone-content">
-                                <div class="milestone-title">{{ stage.stage }}</div>
-                                <div class="milestone-status">
-                                    <i class="fas fa-money-bill-wave"></i> {{ stage.money_required }}
-                                </div>
-                                <div class="milestone-desc">
-                                    <strong>Document:</strong> {{ stage.form_document }}<br>
-                                    <strong>Required:</strong> {{ stage.required_information }}
-                                </div>
-                                <div class="milestone-meta">
-                                    <i class="fas fa-user"></i> {{ stage.who_provides }}
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
+
                 
                 <!-- Closing Steps Tracker -->
                 {% if closing_steps %}
                 <div class="info-card">
                     <h3 class="card-title">
-                        <i class="fas fa-chart-line"></i>
-                        Transaction Tracker
-                        <span class="ms-auto" style="font-size: 0.85rem;">{{ payment.closing_progress_value }}%</span>
+                        <i class="fas fa-tasks"></i>
+                        Legal Closing Tracker
                     </h3>
-                    <div class="progress-track mb-3">
-                        <span class="progress-fill" style="width: {{ payment.closing_progress_value }}%;"></span>
-                    </div>
                     <div class="milestone-list">
                         {% for step in closing_steps %}
                         <div class="milestone-item">
-                            <div class="milestone-number">{{ step.sequence }}</div>
+                            <div class="milestone-number">{{ forloop.counter }}</div>
                             <div class="milestone-content">
                                 <div class="milestone-title">{{ step.display_title }}</div>
                                 <div class="milestone-status">
-                                    {{ step.get_status_display }} • Assigned to: {{ step.responsible_party_label }}
+                                    {% if step.status == 'completed' %}
+                                    <span class="status-badge status-success"><i class="fas fa-check-circle"></i> Completed</span>
+                                    {% elif step.status == 'in_progress' %}
+                                    <span class="status-badge status-info"><i class="fas fa-spinner fa-pulse"></i> In Progress</span>
+                                    {% elif step.status == 'blocked' %}
+                                    <span class="status-badge status-danger"><i class="fas fa-ban"></i> Blocked</span>
+                                    {% else %}
+                                    <span class="status-badge status-warning"><i class="fas fa-clock"></i> Pending</span>
+                                    {% endif %}
                                 </div>
-                                {% if step.display_guidance %}
-                                <div class="milestone-desc">{{ step.display_guidance|truncatechars:100 }}</div>
-                                {% endif %}
+                                <div class="milestone-desc">
+                                    <strong>Responsible:</strong> {{ step.responsible_party_label }}
+                                </div>
                                 <div class="milestone-meta">
                                     <a href="{% url 'payments:closing_step_workspace' payment.pk step.pk %}" class="text-link">
                                         <i class="fas fa-external-link-alt"></i> Open step workspace
@@ -959,7 +934,7 @@
                         <i class="fas fa-gavel"></i>
                         Open Dispute
                     </h3>
-                    <form method="post" action="{% url 'payments:open_dispute' payment.pk %}" class="payment-form">
+                    <form method="post" action="#" class="payment-form">
                         {% csrf_token %}
                         <div class="form-group">
                             <label class="form-label">Reason</label>

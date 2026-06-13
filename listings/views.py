@@ -34,6 +34,19 @@ from django.contrib.contenttypes.models import ContentType
 from registry_mock.services import verify_with_registry
 from notifications.notification_service import NotificationService
 from .recommendation import RecommendationService
+import traceback
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import IntegrityError, DatabaseError
+from django.utils import timezone
+from django.contrib.contenttypes.models import ContentType
+from .forms import PlotForm
+from .models import Plot, Agent, LandownerProfile, VerificationTask, VerificationStatus, VerificationLog
+from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES, KENYA_WARDS
+from .utils import log_audit
+from verification.verification_service import VerificationService
 
 logger = logging.getLogger(__name__)
 
@@ -439,12 +452,10 @@ def plot_detail(request, id):
                     PaymentRequest.Status.FAILED,
                 ]
             )
-            .prefetch_related("closing_steps")
             .order_by("-created_at")
             .first()
         )
         if active_payment_deal:
-            active_payment_deal.ensure_closing_steps()
             current_buyer_deal = active_payment_deal
 
     from payments.models import LeaseWaitlistEntry, PaymentRequest
@@ -659,25 +670,9 @@ def recommendations_api(request):
             "results": RecommendationService.serialize(plots),
         }
     )
+
+
 # ============ PLOT MANAGEMENT ============
-
-import json
-import logging
-import traceback
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
-from django.utils import timezone
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
-from django.db import IntegrityError, DatabaseError
-from .forms import PlotForm
-from .models import Plot, VerificationStatus, Agent, LandownerProfile
-from registry_mock.models import RegistryMismatchAttempt
-from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES, KENYA_WARDS, KENYA_WARDS
-
-from .utils import log_audit
-
 # Get loggers
 logger = logging.getLogger(__name__)
 validation_logger = logging.getLogger('listings.validation')
@@ -1100,22 +1095,6 @@ def registry_lookup(request):
         'has_encumbrances': bool(record.is_charged or record.has_caution),
     }
     return JsonResponse(data)
-
-import json
-import logging
-import traceback
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect, get_object_or_404
-from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import IntegrityError, DatabaseError
-from django.utils import timezone
-from django.contrib.contenttypes.models import ContentType
-from .forms import PlotForm
-from .models import Plot, Agent, LandownerProfile, VerificationTask, VerificationStatus, VerificationLog
-from .kenya_data import KENYA_COUNTIES, KENYA_SUB_COUNTIES, KENYA_WARDS
-from .utils import log_audit
-from verification.verification_service import VerificationService
 
 # Get loggers
 logger = logging.getLogger(__name__)

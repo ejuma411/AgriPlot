@@ -608,6 +608,10 @@ class Plot(models.Model):
         return self.listing_type == "both"
 
     @property
+    def is_matrimonial_property(self):
+        return self.spousal_consent
+
+    @property
     def purchase_checkout_open(self):
         if self.market_status == "sold":
             return False

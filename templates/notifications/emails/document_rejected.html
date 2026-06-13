@@ -1,0 +1,22 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block header_title %}Document Rejected{% endblock %}
+
+{% block content %}
+<h2>Action Required: Document Rejected</h2>
+<p>Hello {{ user.first_name|default:user.username }},</p>
+
+<p>Unfortunately, the document you uploaded for the property <strong>{{ transaction.plot.title }}</strong> has been rejected by our legal team.</p>
+
+<div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 15px; margin: 20px 0;">
+    <h3 style="margin-top: 0; color: #ef4444;">Document: {{ doc_type }}</h3>
+    <p style="margin-bottom: 5px;"><strong>Reason for Rejection:</strong></p>
+    <p style="margin-bottom: 0;">{{ rejection_reason }}</p>
+</div>
+
+<p>Please log in to your transaction workspace to upload a corrected version of this document so the transaction can proceed.</p>
+{% endblock %}
+
+{% block cta %}
+<a href="{{ transaction_url }}" class="button">Go to Workspace</a>
+{% endblock %}

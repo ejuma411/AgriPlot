@@ -91,12 +91,27 @@ def _send_email_now(
             + "</div></body></html>"
         )
 
+    def _hydrate_context(ctx):
+        if isinstance(ctx, dict):
+            if "_model" in ctx and "id" in ctx:
+                from django.apps import apps
+                try:
+                    model_class = apps.get_model(ctx["_model"])
+                    return model_class.objects.get(pk=ctx["id"])
+                except Exception:
+                    return ctx
+            return {k: _hydrate_context(v) for k, v in ctx.items()}
+        elif isinstance(ctx, list):
+            return [_hydrate_context(v) for v in ctx]
+        return ctx
+
     html_message = None
     plain_message = message
 
     if template and template != "plain" and context:
+        hydrated_context = _hydrate_context(context)
         try:
-            html_message = render_to_string(f"{template}.html", context)
+            html_message = render_to_string(f"{template}.html", hydrated_context)
             plain_message = strip_tags(html_message)
         except Exception as exc:
             logger.warning(

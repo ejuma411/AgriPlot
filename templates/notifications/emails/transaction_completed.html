@@ -1,0 +1,21 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block header_title %}Transaction Completed{% endblock %}
+
+{% block content %}
+<h2>Congratulations!</h2>
+<p>Hello {{ user.first_name|default:user.username }},</p>
+
+<p>The transaction for the property <strong>{{ plot_title }}</strong> has been officially marked as <strong>Completed</strong>.</p>
+
+<div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 15px; margin: 20px 0;">
+    <h3 style="margin-top: 0; color: #16a34a;">Title Transferred & Funds Disbursed</h3>
+    <p style="margin-bottom: 0;">All legal documents are verified, the title deed has been transferred at the Land Registry, and the escrow funds have been authorized for final payout via Jenga API.</p>
+</div>
+
+<p>Thank you for using AgriPlot to securely manage your land transaction!</p>
+{% endblock %}
+
+{% block cta %}
+<a href="{{ transaction_url }}" class="button">View Final Documents</a>
+{% endblock %}

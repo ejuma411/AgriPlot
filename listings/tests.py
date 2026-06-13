@@ -34,7 +34,7 @@ class ListingsRegressionTests(TestCase):
             email="buyer@example.com",
             password="safe-pass-456",
         )
-        Profile.objects.create(user=self.buyer, role="buyer", intent="buyer")
+        Profile.objects.update_or_create(user=self.buyer, defaults={"role": "buyer", "intent": "buyer"})
         self.plot = Plot.objects.create(
             agent=self.agent,
             title="Test Plot",

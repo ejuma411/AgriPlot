@@ -3,106 +3,521 @@
 
 {% block admin_title %}Verification Queue{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* ========================================
+       VERIFICATION QUEUE STYLES
+       Professional AgriPlot Design
+    ======================================== */
+    
+    /* Stats Row */
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        transition: all 0.2s;
+    }
+    
+    .stat-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+    
+    .stat-icon {
+        width: 48px;
+        height: 48px;
+        background: #f8fafc;
+        border-radius: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .stat-icon i {
+        font-size: 1.5rem;
+        color: #0f5c3f;
+    }
+    
+    .stat-info h3 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin: 0;
+        color: #0f172a;
+    }
+    
+    .stat-info p {
+        font-size: 0.7rem;
+        margin: 0;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Filter Tabs */
+    .filter-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .filter-tab {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 2rem;
+        color: #64748b;
+        text-decoration: none;
+        font-size: 0.875rem;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+    
+    .filter-tab i {
+        font-size: 0.8rem;
+    }
+    
+    .filter-tab:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+    }
+    
+    .filter-tab.active {
+        background: #0f5c3f;
+        border-color: #0f5c3f;
+        color: white;
+    }
+    
+    .filter-tab.active i {
+        color: white;
+    }
+    
+    .filter-badge {
+        background: #e2e8f0;
+        color: #475569;
+        padding: 0.125rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    
+    .filter-tab.active .filter-badge {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+    
+    /* Table Styles */
+    .table-container {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+    
+    .table-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    
+    .table-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+    }
+    
+    .table-badge {
+        background: #e2e8f0;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #475569;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .data-table th {
+        text-align: left;
+        padding: 0.875rem 1rem;
+        background: #f8fafc;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    
+    .data-table td {
+        padding: 0.875rem 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        color: #334155;
+        font-size: 0.875rem;
+    }
+    
+    .data-table tr:last-child td {
+        border-bottom: none;
+    }
+    
+    .data-table tr:hover td {
+        background: #f8fafc;
+    }
+    
+    /* Status Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    
+    .status-badge.approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    
+    .status-badge.rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    
+    .status-badge.pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .status-badge.in-progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    .status-badge.document-uploaded {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    
+    .status-badge.default {
+        background: #f1f5f9;
+        color: #475569;
+    }
+    
+    /* Document Icons */
+    .doc-icons {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .doc-icon {
+        font-size: 1rem;
+    }
+    
+    .doc-icon.present {
+        color: #10b981;
+    }
+    
+    .doc-icon.missing {
+        color: #cbd5e1;
+    }
+    
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    
+    .action-btn.primary {
+        background: #0f5c3f;
+        color: white;
+    }
+    
+    .action-btn.primary:hover {
+        background: #0a3d28;
+    }
+    
+    .action-btn.outline {
+        background: white;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+    }
+    
+    .action-btn.outline:hover {
+        border-color: #0f5c3f;
+        color: #0f5c3f;
+    }
+    
+    /* Plot Link */
+    .plot-link {
+        font-weight: 600;
+        color: #0f172a;
+        text-decoration: none;
+        transition: color 0.2s;
+    }
+    
+    .plot-link:hover {
+        color: #0f5c3f;
+        text-decoration: underline;
+    }
+    
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 3rem;
+    }
+    
+    .empty-icon {
+        font-size: 3rem;
+        color: #cbd5e1;
+        margin-bottom: 1rem;
+    }
+    
+    .empty-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 0.5rem;
+    }
+    
+    .empty-desc {
+        font-size: 0.875rem;
+        color: #64748b;
+        margin-bottom: 0;
+    }
+    
+    /* Responsive */
+    @media (max-width: 1024px) {
+        .stats-row {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .stats-row {
+            grid-template-columns: 1fr;
+        }
+        
+        .filter-tabs {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 0.5rem;
+        }
+        
+        .filter-tab span {
+            white-space: nowrap;
+        }
+        
+        .data-table {
+            font-size: 0.8rem;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 0.625rem 0.75rem;
+        }
+        
+        .action-buttons {
+            flex-direction: column;
+        }
+        
+        .action-btn {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block admin_content %}
-<!-- Filter Tabs -->
-<div class="admin-card mb-4">
-    <div class="admin-nav p-0 flex-row flex-wrap border-0">
-        <a href="?filter=all" class="{% if current_filter == 'all' %}is-active{% endif %}">
-            <i class="fas fa-list"></i> <span>All</span>
-        </a>
-        <a href="?filter=pending" class="{% if current_filter == 'pending' %}is-active{% endif %}">
-            <i class="fas fa-clock"></i> <span>Documents Uploaded</span>
-            {% if stats.pending_review %}<span class="badge bg-danger ms-2">{{ stats.pending_review }}</span>{% endif %}
-        </a>
-        <a href="?filter=in_progress" class="{% if current_filter == 'in_progress' %}is-active{% endif %}">
-            <i class="fas fa-sync-alt"></i> <span>In Progress</span>
-        </a>
-        <a href="?filter=approved" class="{% if current_filter == 'approved' %}is-active{% endif %}">
-            <i class="fas fa-check-circle"></i> <span>Approved</span>
-        </a>
-        <a href="?filter=rejected" class="{% if current_filter == 'rejected' %}is-active{% endif %}">
-            <i class="fas fa-times-circle"></i> <span>Rejected</span>
-        </a>
+<!-- Stats Row -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-chart-line"></i>
+        </div>
+        <div class="stat-info">
+            <h3>{{ stats.total|default:0 }}</h3>
+            <p>Total Plots</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-clock"></i>
+        </div>
+        <div class="stat-info">
+            <h3>{{ stats.pending_review|default:0 }}</h3>
+            <p>Pending Review</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-check-circle"></i>
+        </div>
+        <div class="stat-info">
+            <h3>{{ stats.approved|default:0 }}</h3>
+            <p>Approved</p>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">
+            <i class="fas fa-times-circle"></i>
+        </div>
+        <div class="stat-info">
+            <h3>{{ stats.rejected|default:0 }}</h3>
+            <p>Rejected</p>
+        </div>
     </div>
 </div>
 
+<!-- Filter Tabs -->
+<div class="filter-tabs">
+    <a href="?filter=all" class="filter-tab {% if current_filter == 'all' %}active{% endif %}">
+        <i class="fas fa-list"></i>
+        <span>All Plots</span>
+        {% if stats.total %}<span class="filter-badge">{{ stats.total }}</span>{% endif %}
+    </a>
+    <a href="?filter=pending" class="filter-tab {% if current_filter == 'pending' %}active{% endif %}">
+        <i class="fas fa-clock"></i>
+        <span>Pending Review</span>
+        {% if stats.pending_review %}<span class="filter-badge">{{ stats.pending_review }}</span>{% endif %}
+    </a>
+    <a href="?filter=in_progress" class="filter-tab {% if current_filter == 'in_progress' %}active{% endif %}">
+        <i class="fas fa-sync-alt"></i>
+        <span>In Progress</span>
+        {% if stats.in_progress %}<span class="filter-badge">{{ stats.in_progress }}</span>{% endif %}
+    </a>
+    <a href="?filter=approved" class="filter-tab {% if current_filter == 'approved' %}active{% endif %}">
+        <i class="fas fa-check-circle"></i>
+        <span>Approved</span>
+        {% if stats.approved %}<span class="filter-badge">{{ stats.approved }}</span>{% endif %}
+    </a>
+    <a href="?filter=rejected" class="filter-tab {% if current_filter == 'rejected' %}active{% endif %}">
+        <i class="fas fa-times-circle"></i>
+        <span>Rejected</span>
+        {% if stats.rejected %}<span class="filter-badge">{{ stats.rejected }}</span>{% endif %}
+    </a>
+</div>
+
 <!-- Queue Table -->
-<div class="admin-card">
-    <div class="admin-card-header">
-        <h2 class="admin-card-title">
+<div class="table-container">
+    <div class="table-header">
+        <h3 class="table-title">
             {% if current_filter == 'all' %}All Plots
             {% elif current_filter == 'pending' %}Documents Uploaded
             {% elif current_filter == 'in_progress' %}In Progress
             {% elif current_filter == 'approved' %}Approved Plots
             {% elif current_filter == 'rejected' %}Rejected Plots
+            {% else %}Verification Queue
             {% endif %}
-        </h2>
-        <span class="badge bg-light border text-dark">{{ plots|length }} items</span>
+        </h3>
+        <span class="table-badge">{{ plots|length }} items</span>
     </div>
     
-    <div class="admin-table-wrapper">
-        <table class="admin-table">
+    <div class="legal-table-wrapper">
+        <table class="data-table">
             <thead>
                 <tr>
                     <th>ID</th>
                     <th>Plot Title</th>
                     <th>Location</th>
-                    <th>Seller</th>
+                    <th>Owner/Agent</th>
                     <th>Submitted</th>
-                    <th>Stage</th>
-                    <th>Docs</th>
+                    <th>Status</th>
+                    <th>Documents</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for plot in plots %}
                 <tr>
-                    <td><code>#{{ plot.id }}</code></td>
                     <td>
-                        <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank" class="fw-bold text-decoration-none">
-                            {{ plot.title|truncatechars:30 }}
+                        <code style="background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">#{{ plot.id }}</code>
+                    </td>
+                    <td>
+                        <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank" class="plot-link">
+                            {{ plot.title|truncatechars:35 }}
                         </a>
                     </td>
-                    <td>{{ plot.county|default:plot.location|truncatechars:20 }}</td>
                     <td>
-                        {% if plot.agent and plot.agent.user %}
-                            {{ plot.agent.user|display_name }}
-                        {% elif plot.landowner and plot.landowner.user %}
-                            {{ plot.landowner.user|display_name }}
-                        {% else %}
-                            <span class="text-muted">Unknown</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <small class="text-muted d-block">{{ plot.created_at|date:"Y-m-d" }}</small>
-                        <small>{{ plot.created_at|timesince }} ago</small>
-                    </td>
-                    <td>
-                        {% if plot.verification_status %}
-                            <span class="badge 
-                                {% if plot.verification_status.current_stage == 'approved' %}bg-success
-                                {% elif plot.verification_status.current_stage == 'rejected' %}bg-danger
-                                {% elif plot.verification_status.current_stage == 'document_uploaded' %}bg-warning
-                                {% else %}bg-info{% endif %}">
-                                {{ plot.verification_status.get_current_stage_display }}
-                            </span>
-                        {% else %}
-                            <span class="badge bg-secondary">No Status</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="d-flex gap-1">
-                            <i class="fas fa-file-contract {% if plot.title_deed %}text-success{% else %}text-danger opacity-25{% endif %}" title="Title Deed"></i>
-                            <i class="fas fa-search {% if plot.official_search %}text-success{% else %}text-danger opacity-25{% endif %}" title="Official Search"></i>
-                            <i class="fas fa-id-card {% if plot.landowner_id_doc %}text-success{% else %}text-danger opacity-25{% endif %}" title="ID Doc"></i>
+                        <div class="d-flex align-items-center gap-1">
+                            <i class="fas fa-map-marker-alt" style="font-size: 0.7rem; color: #94a3b8;"></i>
+                            <span>{{ plot.county|default:plot.location|truncatechars:25 }}</span>
                         </div>
                     </td>
                     <td>
-                        <div class="d-flex gap-2">
-                            <a href="{% url 'verification:review_plot' plot.id %}" class="admin-btn admin-btn-primary py-1 px-2" title="Review">
+                        {% if plot.agent and plot.agent.user %}
+                            {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
+                        {% elif plot.landowner and plot.landowner.user %}
+                            {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div>{{ plot.created_at|date:"M d, Y" }}</div>
+                        <small class="text-muted">{{ plot.created_at|timesince }} ago</small>
+                    </td>
+                    <td>
+                        {% if plot.verification_status %}
+                            <span class="status-badge 
+                                {% if plot.verification_status.current_stage == 'approved' %}approved
+                                {% elif plot.verification_status.current_stage == 'rejected' %}rejected
+                                {% elif plot.verification_status.current_stage == 'document_uploaded' %}pending
+                                {% elif plot.verification_status.current_stage == 'in_progress' %}in-progress
+                                {% else %}default{% endif %}">
+                                {{ plot.verification_status.get_current_stage_display|default:plot.verification_status.current_stage|title }}
+                            </span>
+                        {% else %}
+                            <span class="status-badge default">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="doc-icons">
+                            <i class="fas fa-file-contract doc-icon {% if plot.title_deed %}present{% else %}missing{% endif %}" title="Title Deed"></i>
+                            <i class="fas fa-search doc-icon {% if plot.official_search %}present{% else %}missing{% endif %}" title="Official Search"></i>
+                            <i class="fas fa-id-card doc-icon {% if plot.landowner_id_doc %}present{% else %}missing{% endif %}" title="ID Document"></i>
+                            <i class="fas fa-file-invoice doc-icon {% if plot.kra_pin %}present{% else %}missing{% endif %}" title="KRA PIN"></i>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{% url 'verification:review_plot' plot.id %}" class="action-btn primary" title="Review Plot">
                                 <i class="fas fa-search"></i>
                             </a>
-                            <a href="{% url 'verification:verification_history' plot.id %}" class="admin-btn admin-btn-outline py-1 px-2" title="History">
+                            <a href="{% url 'verification:verification_history' plot.id %}" class="action-btn outline" title="View History">
                                 <i class="fas fa-history"></i>
                             </a>
                         </div>
@@ -110,10 +525,14 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center py-5">
-                        <div class="text-muted mb-3"><i class="fas fa-check-circle fa-3x opacity-25"></i></div>
-                        <h5>Queue is empty</h5>
-                        <p class="text-muted mb-0">No plots match the current filter criteria.</p>
+                    <td colspan="8" class="text-center">
+                        <div class="empty-state">
+                            <div class="empty-icon">
+                                <i class="fas fa-inbox"></i>
+                            </div>
+                            <div class="empty-title">Queue is empty</div>
+                            <div class="empty-desc">No plots match the current filter criteria.</div>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
