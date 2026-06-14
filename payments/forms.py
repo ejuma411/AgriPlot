@@ -11,11 +11,11 @@ from listings.models import Plot
 
 from .models import (
     PaymentRequest,
-    PaymentMilestone,      # ADD THIS
-    PaymentDispute,        # ADD THIS
-    PaymentClosingStep,    # ADD THIS
+    PaymentMilestone,
+    PaymentDispute,
+    PaymentClosingStep,
 )
-from .permissions import user_is_finance_admin
+from .permissions import user_is_finance_admin, user_is_escrow_admin
 
 
 class DateTimePickerInput(forms.DateTimeInput):
@@ -29,20 +29,17 @@ class PaymentRequestForm(forms.ModelForm):
         (PaymentRequest.TransactionType.LEASE, "Lease"),
     ]
     DIRECT_CATEGORY_CHOICES = [
-        (PaymentRequest.Category.COMMITMENT_FEE, "Verification Fee"),
-        (PaymentRequest.Category.RESERVATION_DEPOSIT, "Reservation Deposit"),
         (PaymentRequest.Category.AGREEMENT_DEPOSIT, "10% Escrow Deposit"),
-        (PaymentRequest.Category.ESCROW_DEPOSIT, "Escrow Deposit"),
-        (PaymentRequest.Category.STAMP_DUTY, "Stamp Duty"),
+        (PaymentRequest.Category.ESCROW_DEPOSIT, "Full Escrow Deposit"),
+        (PaymentRequest.Category.STAMP_DUTY, "Stamp Duty (Pay to KRA)"),
         (PaymentRequest.Category.COMPLETION_BALANCE, "90% Escrow Balance"),
     ]
     DEFAULT_DUE_WINDOWS = {
-        PaymentRequest.Category.COMMITMENT_FEE: timedelta(hours=24),
         PaymentRequest.Category.RESERVATION_DEPOSIT: timedelta(hours=48),
         PaymentRequest.Category.AGREEMENT_DEPOSIT: timedelta(hours=72),
         PaymentRequest.Category.VERIFICATION_PACKAGE: timedelta(hours=72),
         PaymentRequest.Category.ESCROW_DEPOSIT: timedelta(hours=72),
-        PaymentRequest.Category.STAMP_DUTY: timedelta(days=7),
+        PaymentRequest.Category.STAMP_DUTY: timedelta(days=30),  # 30 days for KRA payment
         PaymentRequest.Category.COMPLETION_BALANCE: timedelta(days=14),
         PaymentRequest.Category.SERVICE_FEE: timedelta(hours=48),
     }
@@ -71,6 +68,7 @@ class PaymentRequestForm(forms.ModelForm):
     }
     PLOT_REQUIRED_CATEGORIES = PaymentRequest.PLOT_REQUIRED_CATEGORIES
 
+    # Payment method detail fields
     mpesa_reference = forms.CharField(
         required=False,
         widget=forms.TextInput(
@@ -152,7 +150,7 @@ class PaymentRequestForm(forms.ModelForm):
         widgets = {
             "plot": forms.Select(attrs={"class": "form-select"}),
             "transaction_type": forms.Select(attrs={"class": "form-select"}),
-            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "Reservation deposit for Plot A"}),
+            "title": forms.TextInput(attrs={"class": "form-control", "placeholder": "Agreement deposit for Plot A"}),
             "description": forms.Textarea(
                 attrs={
                     "class": "form-control",
@@ -221,7 +219,7 @@ class PaymentRequestForm(forms.ModelForm):
         self.fields["subject_to_sale"].required = False
         self.fields["transaction_type"].choices = self.DIRECT_TRANSACTION_CHOICES
         self.fields["category"].choices = self.DIRECT_CATEGORY_CHOICES
-        self.fields["category"].initial = PaymentRequest.Category.COMMITMENT_FEE
+        self.fields["category"].initial = PaymentRequest.Category.AGREEMENT_DEPOSIT
         self.fields["method"].required = False
         self.fields["method"].initial = PaymentRequest.Method.MPESA_STK
         self.fields["method"].widget = forms.HiddenInput()
@@ -238,12 +236,23 @@ class PaymentRequestForm(forms.ModelForm):
         self.fields["category"].label = "Payment stage"
         self.fields["amount"].label = "Calculated amount (KES)"
         self.fields["phone_number"].label = "M-Pesa number"
-        self.fields["category"].help_text = (
-            "Choose the stage you are paying for right now."
-        )
-        self.fields["amount"].help_text = (
-            "AgriPlot calculates this automatically from the selected payment stage and the plot sale price."
-        )
+        
+        # Special help text for stamp duty
+        if self.forced_category == PaymentRequest.Category.STAMP_DUTY:
+            self.fields["category"].help_text = (
+                "Stamp duty is paid directly to KRA via iTax. After payment, upload the receipt for verification."
+            )
+            self.fields["amount"].help_text = (
+                "Estimated stamp duty (2% rural / 4% urban). Actual amount determined by KRA."
+            )
+        else:
+            self.fields["category"].help_text = (
+                "Choose the stage you are paying for right now."
+            )
+            self.fields["amount"].help_text = (
+                "AgriPlot calculates this automatically from the selected payment stage and the plot sale price."
+            )
+        
         self.fields["amount"].widget.attrs["readonly"] = True
         self.fields["amount"].widget.attrs["data-fixed-amount"] = "true"
         self.fields["intended_use"].help_text = "State how the tenant plans to use the land so the lease can match the agricultural purpose."
@@ -252,10 +261,12 @@ class PaymentRequestForm(forms.ModelForm):
         self.fields["good_husbandry_required"].help_text = "Keep the land in good farming condition and avoid soil damage."
         self.fields["soil_exit_test_required"].help_text = "Require a soil or land-condition exit test before final release."
         self.fields["subject_to_sale"].help_text = "For plots listed for both sale and lease, the lease stays subject to a later sale."
+        
         if self.forced_category:
             self.fields["category"].initial = self.forced_category
             self.fields["category"].widget = forms.HiddenInput()
             self.fields["category"].help_text = ""
+        
         if self.active_deal and self.active_deal.transaction_type == PaymentRequest.TransactionType.LEASE:
             lease_initials = {
                 "lease_start_date": self.active_deal.lease_start_date,
@@ -270,6 +281,7 @@ class PaymentRequestForm(forms.ModelForm):
             for field_name, value in lease_initials.items():
                 if field_name in self.fields and value not in {None, ""}:
                     self.fields[field_name].initial = value
+        
         if selected_plot is not None:
             self.fields["plot"].initial = selected_plot
             self.fields["plot"].help_text = (
@@ -287,15 +299,18 @@ class PaymentRequestForm(forms.ModelForm):
                 ]
             if selected_plot.listing_type == "both":
                 self.fields["subject_to_sale"].initial = True
+        
         if self.instance and self.instance.pk:
             metadata = self.instance.metadata or {}
             for field_name in self.METHOD_DETAIL_FIELDS:
                 if field_name in metadata:
                     self.fields[field_name].initial = metadata.get(field_name)
+        
         if user and user.is_authenticated:
             profile = getattr(user, "profile", None)
             if profile and profile.phone:
                 self.fields["phone_number"].initial = profile.phone
+        
         default_amount = self.forced_amount if self.forced_amount is not None else self.calculate_amount(
             selected_plot or self.initial.get("plot"),
             self.fields["transaction_type"].initial or self.initial.get("transaction_type"),
@@ -311,6 +326,7 @@ class PaymentRequestForm(forms.ModelForm):
                 self.fields["amount"].help_text = (
                     "This is the exact agreed amount for the current deal stage and cannot be changed here."
                 )
+        
         if not self.allow_due_at_override:
             self.fields["due_at"].initial = self.calculate_due_at(
                 self.fields["transaction_type"].initial or self.initial.get("transaction_type"),
@@ -368,7 +384,12 @@ class PaymentRequestForm(forms.ModelForm):
     def calculate_amount(cls, plot, transaction_type, category):
         """
         Calculate payment amount based on backend business rules stored on the model.
+        For stamp duty, returns None (paid directly to KRA, not collected by platform)
         """
+        # Stamp duty is paid directly to KRA - platform never collects
+        if category == PaymentRequest.Category.STAMP_DUTY:
+            return None
+        
         amount = PaymentRequest.calculate_stage_amount(plot, transaction_type, category)
         return cls.normalize_amount(amount) if amount not in {None, ""} else None
 
@@ -435,39 +456,51 @@ class PaymentRequestForm(forms.ModelForm):
             method = PaymentRequest.Method.MPESA_STK
         cleaned_data["method"] = method
         self.instance.method = method
-        if category in self.PLOT_REQUIRED_CATEGORIES and not plot:
-            self.add_error(
-                "plot",
-                "Select a plot before creating commitment, reservation, agreement, escrow, stamp duty, or completion payments.",
-            )
-        amount = cleaned_data.get("amount")
-        calculated_amount = self.forced_amount if self.forced_amount is not None else self.calculate_amount(plot, transaction_type, category)
-        if transaction_type in {
-            PaymentRequest.TransactionType.PURCHASE,
-            PaymentRequest.TransactionType.LEASE,
-        }:
-            if calculated_amount in {None, ""}:
-                self.add_error("amount", "AgriPlot could not calculate the amount for this checkout stage.")
-            else:
-                cleaned_data["amount"] = calculated_amount
-                self.instance.amount = calculated_amount
+        
+        # Special handling for stamp duty
+        if category == PaymentRequest.Category.STAMP_DUTY:
+            # Stamp duty is paid directly to KRA, not through platform
+            # We don't collect amount, just track verification
+            cleaned_data["amount"] = Decimal("0.00")
+            self.instance.amount = Decimal("0.00")
+            cleaned_data["escrow_enabled"] = False
+            self.instance.escrow_enabled = False
         else:
-            if amount in {None, ""}:
-                self.add_error("amount", "Enter the amount you want to test with.")
-            else:
-                normalized_amount = self.normalize_amount(amount)
-                if normalized_amount <= Decimal("0.00"):
-                    self.add_error("amount", "Amount must be greater than zero.")
-                cleaned_data["amount"] = normalized_amount
-                self.instance.amount = normalized_amount
-
-        payment_amount = cleaned_data.get("amount")
-        if method in {PaymentRequest.Method.MPESA_STK, PaymentRequest.Method.MPESA_PAYBILL}:
-            if not self.mpesa_allowed_for_amount(payment_amount):
+            if category in self.PLOT_REQUIRED_CATEGORIES and not plot:
                 self.add_error(
-                    "method",
-                    "M-Pesa is only available for payments up to KES 50,000. Please use bank transfer, card, or wallet.",
+                    "plot",
+                    "Select a plot before creating this payment.",
                 )
+            
+            amount = cleaned_data.get("amount")
+            calculated_amount = self.forced_amount if self.forced_amount is not None else self.calculate_amount(plot, transaction_type, category)
+            
+            if transaction_type in {
+                PaymentRequest.TransactionType.PURCHASE,
+                PaymentRequest.TransactionType.LEASE,
+            }:
+                if calculated_amount in {None, ""}:
+                    self.add_error("amount", "AgriPlot could not calculate the amount for this checkout stage.")
+                else:
+                    cleaned_data["amount"] = calculated_amount
+                    self.instance.amount = calculated_amount
+            else:
+                if amount in {None, ""}:
+                    self.add_error("amount", "Enter the amount you want to test with.")
+                else:
+                    normalized_amount = self.normalize_amount(amount)
+                    if normalized_amount <= Decimal("0.00"):
+                        self.add_error("amount", "Amount must be greater than zero.")
+                    cleaned_data["amount"] = normalized_amount
+                    self.instance.amount = normalized_amount
+
+            payment_amount = cleaned_data.get("amount")
+            if method in {PaymentRequest.Method.MPESA_STK, PaymentRequest.Method.MPESA_PAYBILL}:
+                if not self.mpesa_allowed_for_amount(payment_amount):
+                    self.add_error(
+                        "method",
+                        "M-Pesa is only available for payments up to KES 50,000. Please use bank transfer, card, or wallet.",
+                    )
 
         method_requirements = {
             PaymentRequest.Method.MPESA_STK: ["phone_number"],
@@ -511,14 +544,18 @@ class PaymentRequestForm(forms.ModelForm):
         self.instance.due_at = computed_due_at
         cleaned_data["title"] = self.build_title(plot, transaction_type, category)
         cleaned_data["description"] = (
-            f"M-Pesa checkout for {dict(PaymentRequest.Category.choices).get(category, 'payment').lower()}."
+            f"Checkout for {dict(PaymentRequest.Category.choices).get(category, 'payment').lower()}."
         )
+        
+        # Only enable escrow for deposit and balance payments (not stamp duty)
         cleaned_data["escrow_enabled"] = category in {
             PaymentRequest.Category.RESERVATION_DEPOSIT,
             PaymentRequest.Category.AGREEMENT_DEPOSIT,
             PaymentRequest.Category.ESCROW_DEPOSIT,
             PaymentRequest.Category.VERIFICATION_PACKAGE,
+            PaymentRequest.Category.COMPLETION_BALANCE,
         }
+        
         if transaction_type == PaymentRequest.TransactionType.LEASE:
             if self.active_deal:
                 active_values = {
@@ -535,6 +572,7 @@ class PaymentRequestForm(forms.ModelForm):
                     if cleaned_data.get(field_name) in {None, ""} and value not in {None, ""}:
                         cleaned_data[field_name] = value
                         setattr(self.instance, field_name, value)
+            
             if self.allow_lease_term_entry:
                 if not cleaned_data.get("lease_start_date"):
                     self.add_error("lease_start_date", "Lease start date is required for this lease checkout.")
@@ -583,6 +621,7 @@ class PaymentRequestForm(forms.ModelForm):
                 cleaned_data["lease_end_date"] = None
                 self.instance.lease_start_date = None
                 self.instance.lease_end_date = None
+        
         self.instance.title = cleaned_data["title"]
         self.instance.description = cleaned_data["description"]
         self.instance.escrow_enabled = cleaned_data["escrow_enabled"]
@@ -608,6 +647,7 @@ class PaymentRequestForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
 
 class PaymentMilestoneForm(forms.ModelForm):
     class Meta:
@@ -709,6 +749,14 @@ class PaymentClosingStepForm(forms.ModelForm):
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
     )
     
+    # Stamp duty specific - note that platform never holds stamp duty
+    stamp_duty_paid_to_kra = forms.BooleanField(
+        required=False,
+        label="I confirm that stamp duty has been paid directly to KRA via iTax",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        help_text="Platform does not collect stamp duty. You must pay KRA directly and upload the receipt."
+    )
+    
     not_applicable = forms.BooleanField(
         required=False,
         label="Not Applicable",
@@ -752,11 +800,12 @@ class PaymentClosingStepForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["notes"].required = False
         self.can_set_status = user_is_finance_admin(self.user)
+        self.can_disburse_funds = user_is_escrow_admin(self.user)
         self.agreement_role = None
         step = self.instance if getattr(self.instance, "pk", None) else None
+        
         allowed_field_map = {
             "offer": {"status", "notes", "document", "submitter_name", "submitter_phone", "submitter_role", "submitter_organisation"},
-            "commitment": {"status", "notes", "document", "submitter_name", "submitter_phone", "submitter_role", "submitter_organisation"},
             "due_diligence": {"status", "notes"},
             "agreement": {
                 "status",
@@ -805,6 +854,7 @@ class PaymentClosingStepForm(forms.ModelForm):
                 "submitter_phone",
                 "submitter_role",
                 "submitter_organisation",
+                "stamp_duty_paid_to_kra",
             },
             "completion_docs": {
                 "status",
@@ -826,6 +876,18 @@ class PaymentClosingStepForm(forms.ModelForm):
                 "submitter_role",
                 "submitter_organisation",
             },
+            "disbursement": {
+                "status",
+                "notes",
+                "submitter_name",
+                "submitter_phone",
+                "submitter_role",
+                "submitter_organisation",
+            },
+            "reports": {
+                "status",
+                "notes",
+            },
             "payment_security": {"status", "notes", "document"},
             "handover": {"status", "notes", "document"},
         }
@@ -834,6 +896,7 @@ class PaymentClosingStepForm(forms.ModelForm):
             metadata = dict(step.payment.metadata or {})
             actor_is_buyer = self.user and self.user == step.payment.buyer
             actor_is_seller = self.user and self.user == step.payment.seller
+            
             if actor_is_buyer:
                 self.agreement_role = "buyer"
             elif actor_is_seller:
@@ -843,6 +906,12 @@ class PaymentClosingStepForm(forms.ModelForm):
             else:
                 self.agreement_role = "viewer"
 
+            # Add special handling for disbursement step (only escrow admins)
+            if step.code == "disbursement" and not self.can_disburse_funds:
+                self.fields["status"].widget = forms.HiddenInput()
+                self.fields["status"].initial = step.status
+                self.fields["status"].disabled = True
+
             for field_name in {
                 "buyer_advocate_name",
                 "buyer_advocate_phone",
@@ -850,6 +919,7 @@ class PaymentClosingStepForm(forms.ModelForm):
                 "seller_advocate_phone",
             }:
                 self.fields[field_name].initial = metadata.get(field_name, "")
+            
             submitter_details = (metadata.get("step_submitters") or {}).get(step.code, {})
             for field_name in {
                 "submitter_name",
@@ -858,64 +928,43 @@ class PaymentClosingStepForm(forms.ModelForm):
                 "submitter_organisation",
             }:
                 self.fields[field_name].initial = submitter_details.get(field_name, "")
+            
             allowed_fields = set(allowed_field_map.get(step.code, {"status", "notes", "document"}))
+            
             if not self.can_set_status:
                 self.fields["status"].widget = forms.HiddenInput()
                 self.fields["status"].required = False
                 allowed_fields.add("status")
+            
             if step.code == "agreement":
                 self.fields["buyer_accepts_agreement"].initial = bool(step.buyer_confirmed_at)
                 self.fields["seller_accepts_agreement"].initial = bool(step.seller_confirmed_at)
 
-                if step.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
-                    if self.can_set_status:
-                        allowed_fields.update(
-                            {
-                                "document",
-                                "submitter_name",
-                                "submitter_phone",
-                                "submitter_role",
-                                "submitter_organisation",
-                                "buyer_accepts_agreement",
-                                "seller_accepts_agreement",
-                                "seller_advocate_name",
-                                "seller_advocate_phone",
-                            }
-                        )
-                    elif actor_is_seller:
-                        allowed_fields.update(
-                            {
-                                "document",
-                                "submitter_name",
-                                "submitter_phone",
-                                "submitter_role",
-                                "submitter_organisation",
-                                "seller_advocate_name",
-                                "seller_advocate_phone",
-                                "seller_accepts_agreement",
-                            }
-                        )
-                    elif actor_is_buyer:
-                        allowed_fields.update({"buyer_accepts_agreement"})
-                else:
-                    if self.can_set_status:
-                        allowed_fields.update(
-                            {
-                                "document",
-                                "submitter_name",
-                                "submitter_phone",
-                                "submitter_role",
-                                "submitter_organisation",
-                                "buyer_accepts_agreement",
-                                "seller_accepts_agreement",
-                                "seller_advocate_name",
-                                "seller_advocate_phone",
-                            }
-                        )
-                    elif actor_is_buyer:
-                        allowed_fields.update({"buyer_accepts_agreement"})
-                    elif actor_is_seller:
-                        allowed_fields.update({"seller_accepts_agreement"})
+                # Both buyer and seller can confirm the agreement
+                if self.can_set_status:
+                    allowed_fields.update({
+                        "document",
+                        "submitter_name",
+                        "submitter_phone",
+                        "submitter_role",
+                        "submitter_organisation",
+                        "buyer_advocate_name",
+                        "buyer_advocate_phone",
+                        "seller_advocate_name",
+                        "seller_advocate_phone",
+                        "buyer_accepts_agreement",
+                        "seller_accepts_agreement",
+                    })
+                elif actor_is_buyer:
+                    allowed_fields.update({"buyer_accepts_agreement"})
+                elif actor_is_seller:
+                    allowed_fields.update({"seller_accepts_agreement"})
+            
+            # Stamp duty step special handling
+            if step.code == "stamp_duty":
+                # Set initial value for KRA payment confirmation
+                self.fields["stamp_duty_paid_to_kra"].initial = bool(step.document)
+            
             for name in list(self.fields.keys()):
                 if name not in allowed_fields:
                     self.fields.pop(name)
@@ -959,6 +1008,15 @@ class PaymentClosingStepForm(forms.ModelForm):
                     self.add_error(field_name, exc)
 
         requested_completion = cleaned_data.get("status") == PaymentClosingStep.Status.COMPLETED
+        
+        # Disbursement step requires escrow admin
+        if step.code == "disbursement" and requested_completion:
+            if not user_is_escrow_admin(self.user):
+                self.add_error(
+                    "status",
+                    "Only escrow administrators can mark fund disbursement as complete."
+                )
+        
         if not self.can_set_status:
             cleaned_data["status"] = (
                 step.status if step.status != PaymentClosingStep.Status.PENDING else PaymentClosingStep.Status.IN_PROGRESS
@@ -968,34 +1026,32 @@ class PaymentClosingStepForm(forms.ModelForm):
         if not requested_completion:
             return cleaned_data
 
-        if step.code in {"offer", "commitment", "agreement", "registration"} and not (
+        # Document validation based on step type
+        if step.code in {"offer", "registration"} and not (
             cleaned_data.get("document") or step.document
-        ) and not (
-            step.code == "agreement"
-            and step.payment.transaction_type == PaymentRequest.TransactionType.LEASE
         ):
             self.add_error("document", "Upload the supporting document before marking this step complete.")
 
+        # Agreement step validation - both parties must confirm
         if step.code == "agreement":
             if step.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+                # Only require document for purchase (lease agreement is generated)
                 if not (step.document or cleaned_data.get("document")):
                     self.add_error("document", "Upload the executed sale agreement before completing this step.")
+                
+                # Both buyer and seller must confirm
                 if not (step.buyer_confirmed_at or cleaned_data.get("buyer_accepts_agreement")):
                     self.add_error("buyer_accepts_agreement", "The buyer must digitally confirm the sale agreement.")
                 if not (step.seller_confirmed_at or cleaned_data.get("seller_accepts_agreement")):
                     self.add_error("seller_accepts_agreement", "The seller must digitally confirm the sale agreement.")
-                for field_name, label in [
-                    ("seller_advocate_name", "seller advocate name"),
-                    ("seller_advocate_phone", "seller advocate phone"),
-                ]:
-                    if field_name in self.fields and not cleaned_data.get(field_name):
-                        self.add_error(field_name, f"Enter the {label} before completing this step.")
             else:
+                # Lease agreement - both parties confirm
                 if not (step.buyer_confirmed_at or cleaned_data.get("buyer_accepts_agreement")):
                     self.add_error("buyer_accepts_agreement", "The tenant must digitally confirm the lease agreement.")
                 if not (step.seller_confirmed_at or cleaned_data.get("seller_accepts_agreement")):
                     self.add_error("seller_accepts_agreement", "The landowner must digitally confirm the lease agreement.")
 
+        # LCB Consent validation
         if step.code == "lcb_consent":
             required_fields = [
                 ("submitter_name", "lawyer / officer name"),
@@ -1004,7 +1060,6 @@ class PaymentClosingStepForm(forms.ModelForm):
                 ("submitter_organisation", "law firm / office"),
                 ("meeting_date", "LCB meeting date"),
                 ("consent_reference_number", "LCB consent reference number"),
-                ("document", "LCB consent document"),
             ]
 
             for field_name, label in required_fields:
@@ -1014,110 +1069,44 @@ class PaymentClosingStepForm(forms.ModelForm):
             if not (cleaned_data.get("document") or step.document):
                 self.add_error("document", "Upload the LCB consent documents before completing this step.")
 
-            if not cleaned_data.get("meeting_date"):
-                self.add_error("meeting_date", "Enter the Land Control Board meeting date.")
-
-            if not cleaned_data.get("consent_reference_number"):
-                self.add_error("consent_reference_number", "Enter the Land Control Board consent number.")
-
-
-        if step.code == "consents_clearances":
-            transaction_type = getattr(step.payment, "transaction_type", None)
-            is_leasehold = transaction_type == PaymentRequest.TransactionType.LEASE
-
-            required_submitter_fields = [
-                ("submitter_name", "lawyer / officer name"),
-                ("submitter_phone", "lawyer / officer phone"),
-                ("submitter_role", "lawyer / officer role"),
-                ("submitter_organisation", "law firm / office"),
-            ]
-
-            for field_name, label in required_submitter_fields:
-                if not cleaned_data.get(field_name):
-                    self.add_error(field_name, f"Enter the {label} before completing this step.")
-
-            # document requirement (conditional for freehold non-agricultural)
-            document = cleaned_data.get("document") or step.document
-            notes = cleaned_data.get("notes")
-
-            if is_leasehold:
-                # leasehold MUST have consent reference number
-                if not cleaned_data.get("consent_reference_number"):
-                    self.add_error(
-                        "consent_reference_number",
-                        "Enter the consent reference number for leasehold clearance."
-                    )
-
-                if not document:
-                    self.add_error(
-                        "document",
-                        "Upload the consent or clearance document for leasehold transactions."
-                    )
-
-            else:
-                # freehold non-agricultural:
-                # document OR notes == "N/A"
-                if not document and notes != "N/A":
-                    self.add_error(
-                        "document",
-                        "Upload a clearance document or set notes to 'N/A' if not applicable."
-                    )
-
-            # notes always required
-            if not notes:
-                self.add_error(
-                    "notes",
-                    "Provide clearance details or mark as 'N/A' if not applicable."
-                )
-        
-               
-        if step.code == "consents_clearances":
-            for field_name, label in [
-                ("submitter_name", "lawyer / officer name"),
-                ("submitter_phone", "lawyer / officer phone"),
-                ("submitter_role", "lawyer / officer role"),
-                ("submitter_organisation", "law firm / office"),
-                ("consent_reference_number", "consent or clearance reference number"),
-                ("document", "consent or clearance document"),
-                ("notes", "consent details"),
-            ]:
-                if not cleaned_data.get(field_name):
-                    self.add_error(
-                        field_name,
-                        f"Enter the {label} before completing this step."
-                    )
-
-            na_selected = cleaned_data.get("not_applicable", False)
-
-            if not na_selected:
-                if not (cleaned_data.get("document") or step.document):
-                    self.add_error(
-                        "document",
-                        "Upload the consent or clearance document before completing this step."
-                    )
-
-            if not cleaned_data.get("notes"):
-                self.add_error(
-                    "notes",
-                    "Provide consent details or explain why the step is not applicable."
-                )
-        
+        # Stamp Duty validation (paid directly to KRA)
         if step.code == "stamp_duty":
-            for field_name, label in [
+            # Verify buyer confirmed payment to KRA
+            if not cleaned_data.get("stamp_duty_paid_to_kra"):
+                self.add_error(
+                    "stamp_duty_paid_to_kra",
+                    "You must confirm that stamp duty has been paid directly to KRA via iTax."
+                )
+            
+            required_fields = [
                 ("submitter_name", "valuer / tax handler name"),
                 ("submitter_phone", "valuer / tax handler phone"),
                 ("submitter_role", "valuer / tax handler role"),
                 ("submitter_organisation", "valuer / office / firm"),
-            ]:
+            ]
+
+            for field_name, label in required_fields:
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, f"Enter the {label} before completing this step.")
+            
             if not (cleaned_data.get("document") or step.document):
-                self.add_error("document", "Upload the stamp duty receipt before completing this step.")
+                self.add_error("document", "Upload the KRA stamp duty receipt before completing this step.")
+            
             if cleaned_data.get("official_market_value") in {None, ""}:
                 self.add_error("official_market_value", "Enter the official market value before completing this step.")
+            else:
+                official_value = cleaned_data.get("official_market_value")
+                if official_value <= 0:
+                    self.add_error("official_market_value", "Official market value must be greater than zero.")
+            
             if cleaned_data.get("assessed_stamp_duty") in {None, ""}:
-                self.add_error("assessed_stamp_duty", "Enter the assessed stamp duty before completing this step.")
+                self.add_error("assessed_stamp_duty", "Enter the assessed stamp duty from KRA before completing this step.")
+            else:
+                assessed_duty = cleaned_data.get("assessed_stamp_duty")
+                if assessed_duty <= 0:
+                    self.add_error("assessed_stamp_duty", "Assessed stamp duty must be greater than zero.")
 
+        # Completion Docs validation
         if step.code == "completion_docs":
             for field_name, label in [
                 ("submitter_name", "buyer advocate / handler name"),
@@ -1127,6 +1116,7 @@ class PaymentClosingStepForm(forms.ModelForm):
             ]:
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, f"Enter the {label} before completing this step.")
+            
             for field_name, label in [
                 ("original_title_received", "original title"),
                 ("seller_id_copy_received", "seller ID / KRA copies"),
@@ -1135,6 +1125,7 @@ class PaymentClosingStepForm(forms.ModelForm):
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, f"Confirm the {label} before completing this step.")
 
+        # Registration validation
         if step.code == "registration":
             for field_name, label in [
                 ("submitter_name", "registrar / lawyer name"),
@@ -1144,6 +1135,36 @@ class PaymentClosingStepForm(forms.ModelForm):
             ]:
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, f"Enter the {label} before completing this step.")
+            
+            if not (cleaned_data.get("document") or step.document):
+                self.add_error("document", "Upload the new title deed or registration proof before completing this step.")
+
+        # Disbursement validation (automatic, but can be manually completed by escrow admin)
+        if step.code == "disbursement" and requested_completion:
+            # Check if all conditions for disbursement are met
+            payment = step.payment
+            if not payment.purchase_registration_complete:
+                self.add_error(
+                    "status",
+                    "Cannot disburse funds: Registration not complete. The new title deed must be issued first."
+                )
+            
+            stamp_duty_complete = payment.closing_steps.filter(
+                code="stamp_duty",
+                status=PaymentClosingStep.Status.COMPLETED
+            ).exists()
+            
+            if not stamp_duty_complete:
+                self.add_error(
+                    "status",
+                    "Cannot disburse funds: Stamp duty payment to KRA not verified."
+                )
+            
+            if not payment.metadata.get('deposit_paid') or not payment.metadata.get('balance_paid'):
+                self.add_error(
+                    "status",
+                    "Cannot disburse funds: Not all funds have been received in escrow."
+                )
 
         # ============================================================
         # LEGAL DOCUMENT VALIDATION - INTEGRATION WITH TRANSACTION MODEL
@@ -1165,12 +1186,11 @@ class PaymentClosingStepForm(forms.ModelForm):
             legal_requirements = {
                 'due_diligence': ['OFFICIAL_SEARCH', 'SURVEY_MAP'],
                 'offer': ['LETTER_OF_OFFER'],
-                'commitment': ['LETTER_OF_OFFER'],
                 'agreement': ['SALE_AGREEMENT'],
                 'lcb_consent': ['LCB_CONSENT', 'SPOUSAL_CONSENT'],
-                'completion_docs': ['NEW_TITLE_DEED', 'TRANSFER_FORM'],
-                'stamp_duty': ['STAMP_DUTY_RECEIPT', 'VALUATION_REPORT', 'CGT_RECEIPT'],
-                'registration': ['NEW_TITLE_DEED', 'TRANSFER_FORM'],
+                'completion_docs': ['TRANSFER_FORM', 'ORIGINAL_TITLE_DEED'],
+                'stamp_duty': ['STAMP_DUTY_RECEIPT', 'VALUATION_REPORT'],
+                'registration': ['NEW_TITLE_DEED'],
             }
             
             required_docs = legal_requirements.get(step.code, [])
@@ -1195,23 +1215,28 @@ class PaymentClosingStepForm(forms.ModelForm):
                 
                 # Also check if legal stage is sufficiently advanced
                 legal_stage_required = {
-                    'due_diligence': Transaction.Stage.DUE_DILIGENCE,
-                    'offer': Transaction.Stage.COMMITMENT,
-                    'commitment': Transaction.Stage.COMMITMENT,
-                    'agreement': Transaction.Stage.CONTRACTS,
-                    'lcb_consent': Transaction.Stage.STATUTORY_CONSENTS,
-                    'completion_docs': Transaction.Stage.STATUTORY_CONSENTS,
-                    'stamp_duty': Transaction.Stage.TAXATION,
-                    'registration': Transaction.Stage.REGISTRATION,
+                    'due_diligence': 'due_diligence',
+                    'offer': 'commitment',
+                    'agreement': 'contracts',
+                    'lcb_consent': 'statutory_consents',
+                    'completion_docs': 'statutory_consents',
+                    'stamp_duty': 'taxation',
+                    'registration': 'registration',
                 }
                 
                 required_stage = legal_stage_required.get(step.code)
-                if required_stage and legal_tx.stage != required_stage:
-                    raise ValidationError(
-                        f"Cannot complete this payment step. The legal transaction must be at the '{dict(Transaction.Stage.choices).get(required_stage)}' stage. "
-                        f"Current legal stage: '{dict(Transaction.Stage.choices).get(legal_tx.stage)}'. "
-                        "Please advance the legal workspace first."
-                    )
+                if required_stage:
+                    stage_order = ['due_diligence', 'commitment', 'contracts', 'statutory_consents', 'taxation', 'registration']
+                    if legal_tx.stage in stage_order and required_stage in stage_order:
+                        current_idx = stage_order.index(legal_tx.stage)
+                        required_idx = stage_order.index(required_stage)
+                        
+                        if current_idx < required_idx:
+                            raise ValidationError(
+                                f"Cannot complete this payment step. The legal transaction must be at the '{required_stage.replace('_', ' ').title()}' stage. "
+                                f"Current legal stage: '{legal_tx.get_stage_display()}'. "
+                                "Please advance the legal workspace first."
+                            )
 
         return cleaned_data
 
@@ -1219,6 +1244,7 @@ class PaymentClosingStepForm(forms.ModelForm):
         instance = super().save(commit=False)
         payment = instance.payment
         metadata = dict(payment.metadata or {})
+        
         for field_name in [
             "buyer_advocate_name",
             "buyer_advocate_phone",
@@ -1227,6 +1253,7 @@ class PaymentClosingStepForm(forms.ModelForm):
         ]:
             if field_name in self.cleaned_data:
                 metadata[field_name] = self.cleaned_data.get(field_name, "")
+        
         step_submitters = dict(metadata.get("step_submitters") or {})
         step_submitters[instance.code] = {
             field_name: self.cleaned_data.get(field_name, "")
@@ -1239,6 +1266,7 @@ class PaymentClosingStepForm(forms.ModelForm):
             if field_name in self.cleaned_data and self.cleaned_data.get(field_name)
         }
         metadata["step_submitters"] = step_submitters
+        
         if instance.code == "agreement":
             agreement_acceptance = dict(metadata.get("agreement_acceptance") or {})
             if self.cleaned_data.get("buyer_accepts_agreement") and self.user == payment.buyer and not instance.buyer_confirmed_at:
@@ -1249,6 +1277,7 @@ class PaymentClosingStepForm(forms.ModelForm):
                 agreement_acceptance["buyer_confirmed_at"] = instance.buyer_confirmed_at.isoformat()
             if instance.seller_confirmed_at:
                 agreement_acceptance["seller_confirmed_at"] = instance.seller_confirmed_at.isoformat()
+            
             agreement_participants = dict(metadata.get("agreement_participants") or {})
             agreement_participants[instance.code] = {
                 "buyer_advocate_name": self.cleaned_data.get("buyer_advocate_name", metadata.get("buyer_advocate_name", "")),
@@ -1261,6 +1290,12 @@ class PaymentClosingStepForm(forms.ModelForm):
             }
             metadata["agreement_acceptance"] = agreement_acceptance
             metadata["agreement_participants"] = agreement_participants
+        
+        # Track stamp duty KRA payment confirmation
+        if instance.code == "stamp_duty":
+            if self.cleaned_data.get("stamp_duty_paid_to_kra"):
+                metadata["stamp_duty_confirmed_at"] = timezone.now().isoformat()
+                metadata["stamp_duty_confirmed_by"] = self.user.id if self.user else None
         
         consent_metadata = dict(
             metadata.get("consent_clearances") or {}
@@ -1280,4 +1315,12 @@ class PaymentClosingStepForm(forms.ModelForm):
         if commit:
             payment.save(update_fields=["metadata", "updated_at"])
             instance.save()
+        
+        # If this is the registration step being completed, trigger disbursement check
+        if instance.code == "registration" and instance.status == PaymentClosingStep.Status.COMPLETED:
+            from django.db import transaction
+            from .models import PaymentRequest
+            
+            transaction.on_commit(lambda: payment.apply_transition("disburse_to_seller", actor=self.user))
+        
         return instance

@@ -1,7 +1,9 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
 import logging
+
+from transactions.models import Transaction, TransactionMilestone
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +13,12 @@ def auto_start_transaction(sender, instance, **kwargs):
     """
     Automatically creates or updates a Transaction record when a Purchase payment is confirmed.
     Integrates with payment stages (agreement deposit, completion balance, etc.)
+    
+    Platform Escrow Model Integration:
+    - Agreement Deposit (10%) → Held in escrow, recorded in transaction
+    - Completion Balance (90%) → Held in escrow, recorded in transaction
+    - Stamp Duty → NOT recorded here (paid directly to KRA)
+    - Disbursement → Handled separately after registration
     """
     from payments.models import PaymentRequest
     from .models import Transaction, TransactionMilestone, TransactionDocument
@@ -68,11 +76,19 @@ def auto_start_transaction(sender, instance, **kwargs):
             seller=seller_user,
             agreed_price=agreed_price,
             deposit_paid=0,
+            balance_paid=0,
             stage=Transaction.Stage.DUE_DILIGENCE,
             payment_request=instance,
             transaction_type=Transaction.TransactionType.PURCHASE,
         )
         created = True
+        
+        # Add event for transaction creation
+        transaction.add_event(
+            'transaction_created',
+            f"Legal transaction created from payment {instance.internal_reference}",
+            actor=instance.buyer
+        )
     
     # If transaction already exists but not linked to payment, link it
     if not created and not transaction.payment_request:
@@ -82,78 +98,118 @@ def auto_start_transaction(sender, instance, **kwargs):
     
     # Track payment amount based on category
     previous_deposit = transaction.deposit_paid
+    previous_balance = transaction.balance_paid
     
     if instance.category == PaymentRequest.Category.AGREEMENT_DEPOSIT:
-        # This is the 10% agreement deposit
+        # This is the 10% agreement deposit held in escrow
         transaction.deposit_paid = instance.amount
-        transaction.balance_due = transaction.agreed_price - transaction.deposit_paid
+        transaction.deposit_held_in_escrow_at = timezone.now()
+        transaction.balance_due = transaction.agreed_price - (transaction.deposit_paid + transaction.balance_paid)
         
-        # If this is the first payment and transaction was just created, advance to COMMITMENT or CONTRACTS
+        # If this is the first payment and transaction was just created, advance to DUE_DILIGENCE or COMMITMENT
         if created:
-            # After commitment fee, transaction should be at DUE_DILIGENCE or COMMITMENT
-            # We don't auto-advance here - user must upload documents first
             milestone_notes = (
-                f"Payment received: {instance.get_category_display()} of KES {instance.amount:,.2f}. "
+                f"10% Agreement deposit of KES {instance.amount:,.2f} received and held in escrow. "
                 f"Reference: {instance.internal_reference}. "
-                f"Legal transaction created. Please upload required documents to proceed."
+                f"Legal transaction created. Please upload required due diligence documents to proceed."
             )
             TransactionMilestone.objects.create(
                 transaction=transaction,
                 milestone_type=TransactionMilestone.MilestoneType.DUE_DILIGENCE,
+                achieved_by=instance.buyer,
                 notes=milestone_notes
             )
             logger.info(f"Created legal transaction {transaction.id} for payment {instance.internal_reference}")
         
-        transaction.save(update_fields=["deposit_paid", "balance_due", "updated_at"])
+        transaction.save(update_fields=["deposit_paid", "deposit_held_in_escrow_at", "balance_due", "updated_at"])
         
         # Add milestone for deposit payment
         milestone_notes = (
-            f"Agreement deposit of KES {instance.amount:,.2f} paid. "
+            f"10% Agreement deposit of KES {instance.amount:,.2f} paid and held in escrow. "
             f"Reference: {instance.internal_reference}. "
-            f"Total deposit now: KES {transaction.deposit_paid:,.2f}. "
+            f"Total deposit in escrow: KES {transaction.deposit_paid:,.2f}. "
             f"Remaining balance: KES {transaction.balance_due:,.2f}."
         )
         TransactionMilestone.objects.create(
             transaction=transaction,
             milestone_type=TransactionMilestone.MilestoneType.CONTRACTS,
+            achieved_by=instance.buyer,
             notes=milestone_notes
         )
         
+        # Update payment metadata to reflect deposit is in escrow
+        payment_metadata = dict(instance.metadata or {})
+        payment_metadata['deposit_paid'] = True
+        payment_metadata['deposit_paid_at'] = timezone.now().isoformat()
+        payment_metadata['transaction_id'] = transaction.id
+        instance.metadata = payment_metadata
+        instance.save(update_fields=['metadata', 'updated_at'])
+        
         # Send notification to buyer and seller
         from notifications.notification_service import NotificationService
-        NotificationService.notify_transaction_updated(transaction, "deposit_paid", instance.amount)
+        NotificationService.create_notification(
+            user=transaction.buyer,
+            notification_type="deposit_held",
+            title=f"10% Deposit Held in Escrow - {transaction.plot.title}",
+            message=f"Your deposit of KES {instance.amount:,.2f} is now securely held in escrow pending registration."
+        )
+        NotificationService.create_notification(
+            user=transaction.seller,
+            notification_type="deposit_received",
+            title=f"Deposit Received in Escrow - {transaction.plot.title}",
+            message=f"Buyer has paid KES {instance.amount:,.2f} into escrow. Funds will be released after registration."
+        )
         
-        logger.info(f"Agreement deposit recorded for transaction {transaction.id}: KES {instance.amount:,.2f}")
+        logger.info(f"Agreement deposit recorded in escrow for transaction {transaction.id}: KES {instance.amount:,.2f}")
         
     elif instance.category == PaymentRequest.Category.COMPLETION_BALANCE:
-        # This is the 90% completion balance
-        transaction.deposit_paid += instance.amount
-        if transaction.deposit_paid > transaction.agreed_price:
-            transaction.deposit_paid = transaction.agreed_price
-        transaction.balance_due = transaction.agreed_price - transaction.deposit_paid
-        transaction.save(update_fields=["deposit_paid", "balance_due", "updated_at"])
+        # This is the 90% completion balance held in escrow
+        transaction.balance_paid = instance.amount
+        transaction.balance_held_in_escrow_at = timezone.now()
+        transaction.balance_due = transaction.agreed_price - (transaction.deposit_paid + transaction.balance_paid)
+        transaction.save(update_fields=["balance_paid", "balance_held_in_escrow_at", "balance_due", "updated_at"])
         
         # Add milestone for balance payment
         milestone_notes = (
-            f"Completion balance of KES {instance.amount:,.2f} paid. "
+            f"90% Completion balance of KES {instance.amount:,.2f} paid and held in escrow. "
             f"Reference: {instance.internal_reference}. "
-            f"Total paid: KES {transaction.deposit_paid:,.2f}. "
+            f"Total held in escrow: KES {transaction.deposit_paid + transaction.balance_paid:,.2f}. "
             f"Remaining balance: KES {transaction.balance_due:,.2f}."
         )
         TransactionMilestone.objects.create(
             transaction=transaction,
             milestone_type=TransactionMilestone.MilestoneType.TAXATION,
+            achieved_by=instance.buyer,
             notes=milestone_notes
         )
         
+        # Update payment metadata to reflect balance is in escrow
+        payment_metadata = dict(instance.metadata or {})
+        payment_metadata['balance_paid'] = True
+        payment_metadata['balance_paid_at'] = timezone.now().isoformat()
+        payment_metadata['transaction_id'] = transaction.id
+        instance.metadata = payment_metadata
+        instance.save(update_fields=['metadata', 'updated_at'])
+        
         # Send notification
         from notifications.notification_service import NotificationService
-        NotificationService.notify_transaction_updated(transaction, "completion_paid", instance.amount)
+        NotificationService.create_notification(
+            user=transaction.buyer,
+            notification_type="balance_held",
+            title=f"90% Balance Held in Escrow - {transaction.plot.title}",
+            message=f"Your balance payment of KES {instance.amount:,.2f} is now securely held in escrow. Proceed with registration."
+        )
+        NotificationService.create_notification(
+            user=transaction.seller,
+            notification_type="balance_received",
+            title=f"Balance Received in Escrow - {transaction.plot.title}",
+            message=f"Buyer has paid the 90% balance of KES {instance.amount:,.2f} into escrow. Complete registration to receive funds."
+        )
         
-        logger.info(f"Completion balance recorded for transaction {transaction.id}: KES {instance.amount:,.2f}")
+        logger.info(f"Completion balance recorded in escrow for transaction {transaction.id}: KES {instance.amount:,.2f}")
         
     elif instance.category == PaymentRequest.Category.COMMITMENT_FEE:
-        # Commitment fee - creates transaction but no deposit recorded
+        # Commitment fee - creates transaction but no deposit recorded (not held in escrow)
         milestone_notes = (
             f"Commitment fee of KES {instance.amount:,.2f} paid. "
             f"Reference: {instance.internal_reference}. "
@@ -162,24 +218,234 @@ def auto_start_transaction(sender, instance, **kwargs):
         TransactionMilestone.objects.create(
             transaction=transaction,
             milestone_type=TransactionMilestone.MilestoneType.DUE_DILIGENCE,
+            achieved_by=instance.buyer,
             notes=milestone_notes
         )
         logger.info(f"Commitment fee recorded for transaction {transaction.id}: KES {instance.amount:,.2f}")
     
-    # If deposit is fully paid (100%), automatically advance to TAXATION stage
-    if transaction.deposit_paid >= transaction.agreed_price and transaction.stage == Transaction.Stage.CONTRACTS:
+    # Stamp duty is NOT recorded here - paid directly to KRA
+    # Stamp duty verification is handled separately
+    
+    # If both deposit and balance are fully paid (100%), ensure transaction is ready for registration
+    total_paid = transaction.deposit_paid + transaction.balance_paid
+    if total_paid >= transaction.agreed_price and transaction.stage == Transaction.Stage.CONTRACTS:
+        # Check if all required documents for TAXATION are uploaded
         try:
-            transaction.advance_stage(actor=instance.buyer)
-            logger.info(f"Transaction {transaction.id} auto-advanced to TAXATION after full payment")
+            can_advance, message = transaction.can_advance_to_next_stage()
+            if can_advance:
+                transaction.advance_stage(actor=instance.buyer)
+                logger.info(f"Transaction {transaction.id} auto-advanced to TAXATION after full payment")
+            else:
+                logger.info(f"Transaction {transaction.id} cannot advance to TAXATION: {message}")
         except Exception as e:
             logger.warning(f"Could not auto-advance transaction {transaction.id}: {e}")
     
     # Add event to payment
     instance.add_event(
         "legal_transaction_updated",
-        f"Legal transaction {transaction.id} updated. Deposit paid: KES {transaction.deposit_paid:,.2f}, "
+        f"Legal transaction {transaction.id} updated. Deposit in escrow: KES {transaction.deposit_paid:,.2f}, "
+        f"Balance in escrow: KES {transaction.balance_paid:,.2f}, "
         f"Balance due: KES {transaction.balance_due:,.2f}",
         actor=instance.buyer
     )
 
 
+@receiver(post_save, sender="payments.PaymentRequest")
+def auto_update_transaction_on_disbursement(sender, instance, **kwargs):
+    """
+    When a payment request is disbursed (funds released to seller),
+    update the associated legal transaction.
+    """
+    from payments.models import PaymentRequest
+    from .models import Transaction
+    
+    if instance.transaction_type != PaymentRequest.TransactionType.PURCHASE:
+        return
+    
+    # Check if this is the disbursement event
+    if instance.disbursed_at and instance.metadata.get('disbursement_triggered'):
+        transaction = Transaction.objects.filter(payment_request=instance).first()
+        
+        if transaction and transaction.stage != Transaction.Stage.DISBURSEMENT:
+            try:
+                # Advance to disbursement stage if not already there
+                if transaction.stage == Transaction.Stage.REGISTRATION:
+                    transaction.advance_stage(actor=instance.buyer)
+                elif transaction.stage != Transaction.Stage.DISBURSEMENT:
+                    # Force update to disbursement stage
+                    transaction.stage = Transaction.Stage.DISBURSEMENT
+                    transaction.disbursed_at = instance.disbursed_at
+                    transaction.platform_fee_deducted_at = instance.platform_fee_deducted_at
+                    transaction.platform_fee_amount = instance.platform_fee_amount
+                    transaction.seller_net_amount = instance.seller_net_amount
+                    transaction.save(update_fields=[
+                        'stage', 'disbursed_at', 'platform_fee_deducted_at',
+                        'platform_fee_amount', 'seller_net_amount', 'updated_at'
+                    ])
+                    
+                    TransactionMilestone.objects.create(
+                        transaction=transaction,
+                        milestone_type=TransactionMilestone.MilestoneType.DISBURSEMENT,
+                        achieved_by=instance.buyer,
+                        notes=(
+                            f"Funds disbursed to seller. Platform fee: KES {instance.platform_fee_amount:,.2f}, "
+                            f"Seller net: KES {instance.seller_net_amount:,.2f}"
+                        )
+                    )
+                    
+                    logger.info(f"Transaction {transaction.id} updated to DISBURSEMENT stage")
+                    
+            except Exception as e:
+                logger.warning(f"Could not update transaction on disbursement: {e}")
+
+
+@receiver(post_save, sender="transactions.Transaction")
+def sync_transaction_stage_to_payment(sender, instance, **kwargs):
+    """
+    When a legal transaction advances stage, sync relevant information back to payment.
+    This ensures payment and legal workflows stay aligned.
+    """
+    if not instance.payment_request:
+        return
+    
+    payment = instance.payment_request
+    payment_metadata = dict(payment.metadata or {})
+    
+    # Map transaction stage to payment metadata
+    stage_mapping = {
+        Transaction.Stage.DUE_DILIGENCE: 'legal_due_diligence_completed',
+        Transaction.Stage.COMMITMENT: 'legal_commitment_completed',
+        Transaction.Stage.CONTRACTS: 'legal_contracts_completed',
+        Transaction.Stage.STATUTORY_CONSENTS: 'legal_consents_completed',
+        Transaction.Stage.TAXATION: 'legal_taxation_completed',
+        Transaction.Stage.REGISTRATION: 'legal_registration_completed',
+        Transaction.Stage.DISBURSEMENT: 'legal_disbursement_completed',
+        Transaction.Stage.COMPLETED: 'legal_completed',
+    }
+    
+    if instance.stage in stage_mapping:
+        payment_metadata[stage_mapping[instance.stage]] = timezone.now().isoformat()
+    
+    # Sync stamp duty verification (paid to KRA)
+    if instance.stamp_duty_receipt_verified_at:
+        payment_metadata['stamp_duty_receipt_verified_at'] = instance.stamp_duty_receipt_verified_at.isoformat()
+        payment_metadata['stamp_duty_receipt_number'] = instance.stamp_duty_receipt_number
+    
+    # Sync disbursement information
+    if instance.disbursed_at:
+        payment_metadata['disbursed_at'] = instance.disbursed_at.isoformat()
+        payment_metadata['platform_fee_amount'] = str(instance.platform_fee_amount)
+        payment_metadata['seller_net_amount'] = str(instance.seller_net_amount)
+    
+    payment.metadata = payment_metadata
+    payment.save(update_fields=['metadata', 'updated_at'])
+    
+    logger.info(f"Synced transaction {instance.id} stage {instance.stage} to payment {payment.internal_reference}")
+
+
+@receiver(post_save, sender="transactions.TransactionDocument")
+def sync_document_verification_to_payment(sender, instance, **kwargs):
+    """
+    When a legal document is verified, update the associated payment's closing step.
+    This links legal document verification with payment step completion.
+    """
+    if not instance.transaction or not instance.transaction.payment_request:
+        return
+    
+    payment = instance.transaction.payment_request
+    
+    # Map document type to payment closing step
+    doc_to_step = {
+        'OFFICIAL_SEARCH': 'due_diligence',
+        'SURVEY_MAP': 'due_diligence',
+        'LETTER_OF_OFFER': 'offer',
+        'SALE_AGREEMENT': 'agreement',
+        'LCB_CONSENT': 'lcb_consent',
+        'SPOUSAL_CONSENT': 'lcb_consent',
+        'STAMP_DUTY_RECEIPT': 'stamp_duty',
+        'VALUATION_REPORT': 'stamp_duty',
+        'TRANSFER_FORM': 'completion_docs',
+        'ORIGINAL_TITLE_DEED': 'completion_docs',
+        'NEW_TITLE_DEED': 'registration',
+    }
+    
+    step_code = doc_to_step.get(instance.document_type)
+    if step_code and instance.status == 'verified':
+        from payments.models import PaymentClosingStep
+        closing_step = payment.closing_steps.filter(code=step_code).first()
+        if closing_step and closing_step.status != PaymentClosingStep.Status.COMPLETED:
+            # Check if all documents for this step are verified
+            required_docs = instance.transaction.get_required_documents_for_stage()
+            all_verified = True
+            
+            for doc_type in required_docs:
+                doc = instance.transaction.documents.filter(
+                    document_type=doc_type,
+                    status='verified'
+                ).first()
+                if not doc:
+                    all_verified = False
+                    break
+            
+            if all_verified:
+                try:
+                    closing_step.set_status(
+                        PaymentClosingStep.Status.COMPLETED,
+                        actor=instance.verified_by,
+                        notes=f"All legal documents verified for {closing_step.display_title}"
+                    )
+                    logger.info(f"Auto-completed payment step {step_code} for {payment.internal_reference}")
+                except Exception as e:
+                    logger.warning(f"Could not auto-complete payment step: {e}")
+
+
+@receiver(post_save, sender="transactions.Transaction")
+def auto_trigger_payment_disbursement(sender, instance, **kwargs):
+    """
+    When a legal transaction reaches the REGISTRATION stage (new title issued),
+    automatically trigger the payment disbursement.
+    
+    This is the key integration point between legal and payment workflows:
+    - Registration complete → Disburse funds to seller
+    """
+    from .models import Transaction
+    
+    # Check if we just advanced to REGISTRATION stage
+    if not hasattr(instance, '_previous_stage'):
+        try:
+            original = Transaction.objects.get(pk=instance.pk)
+            previous_stage = original.stage
+        except Transaction.DoesNotExist:
+            previous_stage = None
+    else:
+        previous_stage = getattr(instance, '_previous_stage', None)
+    
+    # If we just advanced to REGISTRATION stage, trigger disbursement
+    if (instance.stage == Transaction.Stage.REGISTRATION and 
+        previous_stage != Transaction.Stage.REGISTRATION and
+        instance.payment_request):
+        
+        payment = instance.payment_request
+        
+        # Check if both deposit and balance are in escrow
+        deposit_paid = payment.metadata.get('deposit_paid', False)
+        balance_paid = payment.metadata.get('balance_paid', False)
+        
+        if deposit_paid and balance_paid and not payment.disbursed_at:
+            from payments.models import PaymentRequest
+            
+            logger.info(f"Registration complete for transaction {instance.id}, triggering disbursement for {payment.internal_reference}")
+            
+            try:
+                # Mark stamp duty as verified if receipt exists
+                if instance.stamp_duty_receipt_number and not payment.stamp_duty_receipt_verified_at:
+                    payment.stamp_duty_receipt_verified_at = timezone.now()
+                    payment.stamp_duty_receipt_number = instance.stamp_duty_receipt_number
+                    payment.save(update_fields=['stamp_duty_receipt_verified_at', 'stamp_duty_receipt_number', 'updated_at'])
+                
+                # Trigger disbursement
+                payment.apply_transition("disburse_to_seller", actor=instance.buyer)
+                logger.info(f"Auto-disbursement triggered for {payment.internal_reference}")
+                
+            except Exception as e:
+                logger.error(f"Failed to auto-disburse for {payment.internal_reference}: {e}")

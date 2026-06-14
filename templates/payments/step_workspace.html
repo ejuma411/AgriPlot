@@ -16,6 +16,10 @@
         --ws-primary-light: #d1fae5;
         --ws-legal: #8b5cf6;
         --ws-legal-light: #ede9fe;
+        --ws-stamp-duty: #f59e0b;
+        --ws-stamp-duty-light: #fef3c7;
+        --ws-disbursement: #059669;
+        --ws-disbursement-light: #d1fae5;
     }
 
     body {
@@ -58,6 +62,16 @@
         text-transform: uppercase;
         letter-spacing: 0.05em;
         margin-bottom: 1rem;
+    }
+
+    .ws-stamp-duty-badge {
+        background: var(--ws-stamp-duty-light);
+        color: #92400e;
+    }
+
+    .ws-disbursement-badge {
+        background: var(--ws-disbursement-light);
+        color: #064e3b;
     }
 
     .ws-legal-badge {
@@ -175,6 +189,12 @@
         color: #5b21b6;
     }
 
+    .ws-alert-stamp-duty {
+        background: var(--ws-stamp-duty-light);
+        border-left-color: var(--ws-stamp-duty);
+        color: #92400e;
+    }
+
     /* Form Styles */
     .ws-form-grid {
         display: grid;
@@ -254,6 +274,20 @@
         color: white;
     }
 
+    .ws-btn-stamp-duty {
+        background: var(--ws-stamp-duty);
+        color: white;
+    }
+
+    .ws-btn-stamp-duty:hover {
+        background: #d97706;
+    }
+
+    .ws-btn-disbursement {
+        background: var(--ws-disbursement);
+        color: white;
+    }
+
     /* Timeline */
     .ws-timeline-item {
         padding: 1rem;
@@ -313,6 +347,32 @@
         transition: width 0.3s ease;
     }
 
+    /* KRA Link Button */
+    .kra-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: #1e40af;
+        color: white;
+        padding: 0.75rem 1.25rem;
+        border-radius: 0.5rem;
+        text-decoration: none;
+        font-weight: 600;
+        margin-top: 1rem;
+    }
+
+    .kra-link:hover {
+        background: #1e3a8a;
+        color: white;
+    }
+
+    /* Active Step Highlight */
+    .milestone-item.active-step {
+        background: #ecfdf5;
+        border: 1px solid #10b981;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+    }
+
     @media (max-width: 992px) {
         .ws-layout {
             grid-template-columns: 1fr;
@@ -347,7 +407,9 @@
     <!-- Hero Section -->
     <div class="ws-hero">
         <div class="ws-hero-left">
-            <span class="ws-kicker">
+            <span class="ws-kicker 
+                {% if step.code == 'stamp_duty' %}ws-stamp-duty-badge{% endif %}
+                {% if step.code == 'disbursement' %}ws-disbursement-badge{% endif %}">
                 {{ section_kicker }}
                 {% if legal_transaction %}
                 <span class="ws-legal-badge">
@@ -368,6 +430,31 @@
                     <i class="fa-solid fa-user me-1 mt-2"></i> Account: {{ payment.buyer|display_name:"Pending user" }}
                 {% endif %}
             </div>
+
+            <!-- Stamp Duty Specific Alert -->
+            {% if step.code == 'stamp_duty' and stamp_duty_status %}
+            <div class="ws-alert ws-alert-stamp-duty" style="margin-bottom: 1rem;">
+                <strong><i class="fas fa-landmark me-2"></i>Important: Stamp Duty Payment</strong><br>
+                {{ stamp_duty_status.instructions|default:"Stamp duty must be paid directly to KRA via iTax, not through the platform." }}
+                {% if not stamp_duty_status.receipt_verified %}
+                <div style="margin-top: 0.75rem;">
+                    <a href="https://itax.kra.go.ke" target="_blank" class="kra-link">
+                        <i class="fas fa-external-link-alt me-2"></i> Pay Stamp Duty on KRA iTax Portal
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <!-- Disbursement Specific Alert -->
+            {% if step.code == 'disbursement' and disbursement_schedule %}
+            <div class="ws-alert ws-alert-success" style="margin-bottom: 1rem;">
+                <strong><i class="fas fa-money-bill-wave me-2"></i>Fund Disbursement</strong><br>
+                Platform fee: <strong>{{ disbursement_schedule.platform_fee.amount }}</strong> ({{ disbursement_schedule.platform_fee.percentage }})<br>
+                Seller receives: <strong>{{ disbursement_schedule.seller_payout.amount }}</strong><br>
+                <small>{{ disbursement_schedule.seller_payout.trigger }}</small>
+            </div>
+            {% endif %}
 
             <!-- Legal Status Alert -->
             {% if legal_status_summary and legal_status_summary.action_required %}
@@ -471,6 +558,27 @@
                     <span style="font-size: 0.9rem;">{{ step.buyer_instruction }}</span>
                 </div>
 
+                <!-- Stamp Duty Specific Instructions -->
+                {% if step.code == 'stamp_duty' and not stamp_duty_status.receipt_verified %}
+                <div class="ws-alert ws-alert-stamp-duty" style="margin-bottom: 1.5rem;">
+                    <strong><i class="fas fa-info-circle me-2"></i>How to Pay Stamp Duty to KRA</strong>
+                    <ol style="margin: 0.75rem 0 0 1.25rem; font-size: 0.9rem;">
+                        <li>Go to <a href="https://itax.kra.go.ke" target="_blank">KRA iTax Portal</a></li>
+                        <li>Log in with your KRA PIN</li>
+                        <li>Navigate to "Stamp Duty" under Returns & Payments</li>
+                        <li>Enter the property details and agreed purchase price</li>
+                        <li>Generate the assessment and pay via M-Pesa, Bank, or Card</li>
+                        <li>Download the payment receipt (Format: KRA-YYYYMMDD-XXXXXX)</li>
+                        <li>Upload the receipt below for verification</li>
+                    </ol>
+                    <div style="margin-top: 1rem;">
+                        <a href="https://itax.kra.go.ke" target="_blank" class="kra-link">
+                            <i class="fas fa-external-link-alt me-2"></i> Go to KRA iTax Portal
+                        </a>
+                    </div>
+                </div>
+                {% endif %}
+
                 <!-- Missing Legal Documents Alert & Upload -->
                 {% if missing_legal_docs or pending_legal_docs %}
                 <div class="ws-alert ws-alert-warning" style="margin-bottom: 2rem;">
@@ -556,6 +664,7 @@
                                 <li>Stage: {{ legal_transaction.get_stage_display }}</li>
                                 <li>Agreed Price: KES {{ legal_transaction.agreed_price|floatformat:2|intcomma }}</li>
                                 <li>Deposit Paid: KES {{ legal_transaction.deposit_paid|floatformat:2|intcomma }}</li>
+                                <li>Balance Paid: KES {{ legal_transaction.balance_paid|floatformat:2|intcomma }}</li>
                                 <li>Balance Due: KES {{ legal_transaction.balance_due|floatformat:2|intcomma }}</li>
                             </ul>
                         </div>
@@ -627,9 +736,25 @@
                             {% endfor %}
                         </div>
 
+                        <!-- Special Stamp Duty Notice for Admin -->
+                        {% if step.code == 'stamp_duty' and is_finance_admin %}
+                        <div class="ws-alert ws-alert-stamp-duty" style="margin-top: 1rem;">
+                            <strong><i class="fas fa-shield-alt me-2"></i>Admin: Verify Stamp Duty</strong>
+                            <p style="margin-top: 0.5rem; margin-bottom: 0;">Ensure the uploaded receipt is from KRA iTax and matches the format <code>KRA-YYYYMMDD-XXXXXX</code>. The platform does not collect stamp duty funds.</p>
+                        </div>
+                        {% endif %}
+
+                        <!-- Special Disbursement Notice for Escrow Admin -->
+                        {% if step.code == 'disbursement' and is_escrow_admin %}
+                        <div class="ws-alert ws-alert-success" style="margin-top: 1rem;">
+                            <strong><i class="fas fa-shield-alt me-2"></i>Escrow Admin: Authorize Disbursement</strong>
+                            <p style="margin-top: 0.5rem; margin-bottom: 0;">Verify that the new title deed has been issued before authorizing disbursement. Platform fee will be deducted automatically.</p>
+                        </div>
+                        {% endif %}
+
                         <div style="margin-top: 2rem; display: flex; gap: 1rem; flex-wrap: wrap;">
                             <button type="submit" class="ws-btn ws-btn-secondary" name="action" value="mark_in_progress">Save Progress</button>
-                            <button type="submit" class="ws-btn ws-btn-primary" name="action" value="mark_completed">Mark Complete</button>
+                            <button type="submit" class="ws-btn {% if step.code == 'stamp_duty' %}ws-btn-stamp-duty{% elif step.code == 'disbursement' %}ws-btn-disbursement{% else %}ws-btn-primary{% endif %}" name="action" value="mark_completed">Mark Complete</button>
                             <button type="submit" class="ws-btn ws-btn-secondary" name="action" value="mark_blocked">Mark Blocked</button>
                             <a href="{% url 'payments:detail' payment.pk %}" class="ws-btn ws-btn-secondary">Cancel</a>
                         </div>

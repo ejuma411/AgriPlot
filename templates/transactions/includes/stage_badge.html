@@ -1,0 +1,39 @@
+{% load humanize %}
+
+<span class="badge 
+    {% if stage == 'due_diligence' %}bg-primary
+    {% elif stage == 'commitment' %}bg-info
+    {% elif stage == 'contracts' %}bg-purple
+    {% elif stage == 'statutory_consents' %}bg-warning
+    {% elif stage == 'taxation' %}bg-secondary
+    {% elif stage == 'registration' %}bg-teal
+    {% elif stage == 'disbursement' %}bg-success
+    {% elif stage == 'completed' %}bg-dark-green
+    {% elif stage == 'cancelled' %}bg-danger
+    {% else %}bg-secondary{% endif %} 
+    text-white px-2 py-1" style="font-size: 0.7rem;">
+    <i class="fa-solid 
+        {% if stage == 'due_diligence' %}fa-magnifying-glass
+        {% elif stage == 'commitment' %}fa-file-signature
+        {% elif stage == 'contracts' %}fa-file-contract
+        {% elif stage == 'statutory_consents' %}fa-gavel
+        {% elif stage == 'taxation' %}fa-landmark
+        {% elif stage == 'registration' %}fa-certificate
+        {% elif stage == 'disbursement' %}fa-money-bill-wave
+        {% elif stage == 'completed' %}fa-check-circle
+        {% else %}fa-circle{% endif %} 
+        me-1"></i>
+    {{ stage|title }}
+</span>
+
+<style>
+    .bg-purple {
+        background-color: #8b5cf6;
+    }
+    .bg-teal {
+        background-color: #14b8a6;
+    }
+    .bg-dark-green {
+        background-color: #065f46;
+    }
+</style>

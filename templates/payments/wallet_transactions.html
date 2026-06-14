@@ -60,19 +60,73 @@
         --bs-table-bg: var(--ap-surface-muted);
         --bs-table-border-color: var(--ap-border);
     }
+
+    /* Escrow transaction badge */
+    .badge-escrow {
+        background: #8b5cf6;
+        color: white;
+    }
+
+    .badge-fee {
+        background: #f59e0b;
+        color: white;
+    }
+
+    /* Filter buttons */
+    .filter-buttons {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-btn {
+        padding: 0.4rem 1rem;
+        border-radius: 2rem;
+        font-size: 0.8rem;
+        font-weight: 500;
+        background: var(--ap-surface-muted);
+        border: 1px solid var(--ap-border);
+        color: var(--ap-muted);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .filter-btn.active {
+        background: var(--ap-green);
+        border-color: var(--ap-green);
+        color: white;
+    }
+
+    .filter-btn:hover:not(.active) {
+        background: var(--ap-border);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="wallet-page py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
             <h2 class="mb-0">Wallet Transactions</h2>
-            <p class="text-muted mb-0">View all your wallet activity</p>
+            <p class="text-muted mb-0">View all your wallet activity including deposits, payments, and escrow releases</p>
         </div>
-        <a href="{% url 'payments:wallet_dashboard' %}" class="btn btn-outline-primary">
-            <i class="fas fa-arrow-left me-2"></i>Back to Wallet
-        </a>
+        <div class="d-flex gap-2">
+            <a href="{% url 'payments:wallet_dashboard' %}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-2"></i>Back to Wallet
+            </a>
+            <button class="btn btn-outline-primary" onclick="loadTransactions()">
+                <i class="fas fa-sync-alt me-2"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div class="mb-3 filter-buttons">
+        <button class="filter-btn active" data-filter="all">All Transactions</button>
+        <button class="filter-btn" data-filter="CREDIT">Deposits & Credits</button>
+        <button class="filter-btn" data-filter="DEBIT">Payments & Debits</button>
+        <button class="filter-btn" data-filter="ESCROW">Escrow Transactions</button>
+        <button class="filter-btn" data-filter="FEE">Platform Fees</button>
     </div>
     
     <div class="card wallet-card">
@@ -114,9 +168,36 @@
 </div>
 
 <script>
+let currentFilter = 'all';
+let allTransactions = [];
+
+function getChannelBadge(channel) {
+    if (!channel) return '';
+    
+    const channelMap = {
+        'MPESA': 'M-Pesa',
+        'BANK_TRANSFER': 'Bank Transfer',
+        'CARD': 'Card',
+        'WALLET': 'Wallet Transfer',
+        'ESCROW': 'Escrow Release',
+        'REFUND': 'Refund',
+        'FEE': 'Platform Fee',
+        'DEPOSIT': 'Deposit'
+    };
+    
+    const display = channelMap[channel] || channel;
+    
+    if (channel === 'ESCROW') {
+        return `<span class="badge badge-escrow ms-1"><i class="fas fa-lock me-1"></i>${display}</span>`;
+    } else if (channel === 'FEE') {
+        return `<span class="badge badge-fee ms-1">${display}</span>`;
+    }
+    return '';
+}
+
 async function loadTransactions() {
     try {
-        const response = await fetch("{% url 'payments:wallet_transactions' %}?limit=100", {
+        const response = await fetch("{% url 'payments:wallet_transactions' %}?limit=200", {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest'
             }
@@ -124,78 +205,8 @@ async function loadTransactions() {
         const data = await response.json();
         
         if (data.success && data.transactions) {
-            const tbody = document.getElementById('transactionsBody');
-            tbody.innerHTML = '';
-            
-            if (data.transactions.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="7" class="text-center py-5 text-muted">
-                            <i class="fas fa-wallet fa-3x mb-3 opacity-50"></i>
-                            <p>No transactions yet</p>
-                            <small>Your first deposit will appear here</small>
-                        </td>
-                    </tr>
-                `;
-                return;
-            }
-            
-            data.transactions.forEach(t => {
-                // Determine badge colors
-                let typeBadgeClass = '';
-                let typeIcon = '';
-                
-                if (t.type_code === 'CREDIT') {
-                    typeBadgeClass = 'bg-success';
-                    typeIcon = 'fa-arrow-down';
-                } else {
-                    typeBadgeClass = 'bg-warning text-dark';
-                    typeIcon = 'fa-arrow-up';
-                }
-                
-                let statusBadgeClass = '';
-                if (t.status_code === 'SUCCESS') {
-                    statusBadgeClass = 'bg-success';
-                } else if (t.status_code === 'PENDING') {
-                    statusBadgeClass = 'bg-warning text-dark';
-                } else if (t.status_code === 'FAILED') {
-                    statusBadgeClass = 'bg-danger';
-                } else {
-                    statusBadgeClass = 'bg-secondary';
-                }
-                
-                const row = `
-                    <tr>
-                        <td class="text-nowrap">
-                            <small class="text-muted">${t.date}</small>
-                        </td>
-                        <td>
-                            <code class="small">${t.reference}</code>
-                            ${t.mpesa_receipt ? `<br><small class="text-muted">M-Pesa: ${t.mpesa_receipt}</small>` : ''}
-                        </td>
-                        <td>${escapeHtml(t.description || '-')}</td>
-                        <td>
-                            <span class="badge ${typeBadgeClass}">
-                                <i class="fas ${typeIcon} me-1"></i>${t.type_display}
-                            </span>
-                        </td>
-                        <td class="${t.type_code === 'CREDIT' ? 'text-success fw-bold' : 'text-danger fw-bold'}">
-                            ${t.type_code === 'CREDIT' ? '+' : '-'} KES ${t.amount.toLocaleString()}
-                        </td>
-                        <td>
-                            <span class="badge ${statusBadgeClass}">${t.status}</span>
-                        </td>
-                        <td>
-                            ${t.mpesa_receipt ? `
-                                <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${t.mpesa_receipt}')" title="Copy receipt number">
-                                    <i class="fas fa-copy"></i>
-                                </button>
-                            ` : '-'}
-                        </td>
-                    </tr>
-                `;
-                tbody.innerHTML += row;
-            });
+            allTransactions = data.transactions;
+            renderTransactions(allTransactions);
         } else {
             showError('Failed to load transactions');
         }
@@ -203,6 +214,113 @@ async function loadTransactions() {
         console.error('Error loading transactions:', error);
         showError('Error loading transactions. Please refresh the page.');
     }
+}
+
+function renderTransactions(transactions) {
+    const tbody = document.getElementById('transactionsBody');
+    tbody.innerHTML = '';
+    
+    if (transactions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="text-center py-5 text-muted">
+                    <i class="fas fa-wallet fa-3x mb-3 opacity-50"></i>
+                    <p>No transactions found</p>
+                    <small>${currentFilter === 'all' ? 'Your first deposit will appear here' : 'Try a different filter'}</small>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    transactions.forEach(t => {
+        // Determine badge colors
+        let typeBadgeClass = '';
+        let typeIcon = '';
+        
+        if (t.type_code === 'CREDIT') {
+            typeBadgeClass = 'bg-success';
+            typeIcon = 'fa-arrow-down';
+        } else {
+            typeBadgeClass = 'bg-warning text-dark';
+            typeIcon = 'fa-arrow-up';
+        }
+        
+        let statusBadgeClass = '';
+        let statusIcon = '';
+        if (t.status_code === 'SUCCESS') {
+            statusBadgeClass = 'bg-success';
+            statusIcon = 'fa-check-circle';
+        } else if (t.status_code === 'PENDING') {
+            statusBadgeClass = 'bg-warning text-dark';
+            statusIcon = 'fa-clock';
+        } else if (t.status_code === 'FAILED') {
+            statusBadgeClass = 'bg-danger';
+            statusIcon = 'fa-times-circle';
+        } else if (t.status_code === 'FROZEN') {
+            statusBadgeClass = 'bg-info';
+            statusIcon = 'fa-lock';
+        } else {
+            statusBadgeClass = 'bg-secondary';
+            statusIcon = 'fa-question-circle';
+        }
+        
+        // Get channel badge if available
+        const channelBadge = getChannelBadge(t.channel);
+        
+        const row = `
+            <tr>
+                <td class="text-nowrap">
+                    <small class="text-muted">${t.date}</small>
+                </td>
+                <td>
+                    <code class="small">${escapeHtml(t.reference)}</code>
+                    ${t.mpesa_receipt ? `<br><small class="text-muted">M-Pesa: ${t.mpesa_receipt}</small>` : ''}
+                </td>
+                <td>
+                    ${escapeHtml(t.description || '-')}
+                    ${channelBadge}
+                </td>
+                <td>
+                    <span class="badge ${typeBadgeClass}">
+                        <i class="fas ${typeIcon} me-1"></i>${t.type_display}
+                    </span>
+                </td>
+                <td class="${t.type_code === 'CREDIT' ? 'text-success fw-bold' : 'text-danger fw-bold'}">
+                    ${t.type_code === 'CREDIT' ? '+' : '-'} KES ${t.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+                <td>
+                    <span class="badge ${statusBadgeClass}">
+                        <i class="fas ${statusIcon} me-1"></i>${t.status}
+                    </span>
+                </td>
+                <td>
+                    ${t.mpesa_receipt ? `
+                        <button class="btn btn-sm btn-outline-secondary" onclick="copyToClipboard('${t.mpesa_receipt}')" title="Copy receipt number">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    ` : '-'}
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function filterTransactions() {
+    let filtered = [...allTransactions];
+    
+    if (currentFilter === 'CREDIT') {
+        filtered = filtered.filter(t => t.type_code === 'CREDIT');
+    } else if (currentFilter === 'DEBIT') {
+        filtered = filtered.filter(t => t.type_code === 'DEBIT');
+    } else if (currentFilter === 'ESCROW') {
+        filtered = filtered.filter(t => t.channel === 'ESCROW');
+    } else if (currentFilter === 'FEE') {
+        filtered = filtered.filter(t => t.channel === 'FEE');
+    }
+    
+    renderTransactions(filtered);
 }
 
 function escapeHtml(text) {
@@ -229,25 +347,44 @@ function showError(message) {
 
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
-        // Show temporary toast or alert
+        // Show temporary toast
         const toast = document.createElement('div');
         toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success';
         toast.style.zIndex = '9999';
+        toast.style.animation = 'fadeInOut 2s ease';
         toast.innerHTML = '<i class="fas fa-check-circle me-2"></i>Receipt number copied!';
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 2000);
     });
 }
 
+// Filter button event listeners
+document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        currentFilter = this.dataset.filter;
+        filterTransactions();
+    });
+});
+
 // Auto-refresh every 30 seconds
-let refreshInterval = setInterval(loadTransactions, 30000);
+let refreshInterval = setInterval(() => {
+    if (!document.hidden) {
+        loadTransactions();
+    }
+}, 30000);
 
 // Stop auto-refresh when page is hidden
 document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
         clearInterval(refreshInterval);
     } else {
-        refreshInterval = setInterval(loadTransactions, 30000);
+        refreshInterval = setInterval(() => {
+            if (!document.hidden) {
+                loadTransactions();
+            }
+        }, 30000);
         loadTransactions(); // Refresh immediately when tab becomes visible
     }
 });
@@ -274,6 +411,27 @@ code {
     background: var(--ap-surface-muted);
     padding: 2px 6px;
     border-radius: 4px;
+}
+
+.badge-escrow {
+    background: #8b5cf6;
+    color: white;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.badge-fee {
+    background: #f59e0b;
+    color: white;
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+}
+
+@keyframes fadeInOut {
+    0% { opacity: 0; transform: translateY(20px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(20px); }
 }
 </style>
 {% endblock %}

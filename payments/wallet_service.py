@@ -14,6 +14,7 @@ from accounts.validators import validate_kenyan_phone
 from .daraja import daraja_ready, initiate_stk_push
 from .models import (
     PaymentRequest,
+    PaymentDisbursement,
     Wallet,
     WalletDepositRequest,
     WalletTransaction,
@@ -25,10 +26,10 @@ logger = logging.getLogger(__name__)
 
 
 class WalletService:
-    """Service layer for wallet operations."""
+    """Service layer for wallet operations with escrow integration."""
     
     # ============================================================
-    # CORE WALLET OPERATIONS (Your existing methods)
+    # CORE WALLET OPERATIONS
     # ============================================================
     
     @staticmethod
@@ -119,7 +120,7 @@ class WalletService:
         return wallet.available_balance >= amount
 
     # ============================================================
-    # DEPOSIT OPERATIONS (Your existing methods enhanced)
+    # DEPOSIT OPERATIONS
     # ============================================================
     
     @staticmethod
@@ -554,6 +555,150 @@ class WalletService:
         }
 
     # ============================================================
+    # ESCROW TO WALLET INTEGRATION (NEW - Enhanced)
+    # ============================================================
+    
+    @staticmethod
+    def release_escrow_to_wallet(user, amount, payment_request, description=""):
+        """
+        Release escrow funds directly to user's wallet.
+        Used for:
+        - Seller receiving payment for land sale (after platform fee deduction)
+        - Agent receiving commission
+        - Landlord receiving lease payments
+        
+        This method should be called AFTER platform fee has been deducted.
+        """
+        wallet = WalletService.get_or_create_wallet(user)
+        
+        with transaction.atomic():
+            # Lock wallet row
+            wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+            
+            # Create credit transaction
+            transaction_record = wallet.credit(
+                amount=amount,
+                description=description or f"Funds released from {payment_request.internal_reference}",
+            )
+            transaction_record.related_payment = payment_request
+            transaction_record.payment_request = payment_request
+            transaction_record.channel = WalletTransaction.CHANNEL_ESCROW
+            transaction_record.status = WalletTransaction.STATUS_SUCCESS
+            transaction_record.completed_at = timezone.now()
+            transaction_record.save(
+                update_fields=[
+                    'payment_request',
+                    'related_payment',
+                    'channel',
+                    'status',
+                    'completed_at',
+                ]
+            )
+            
+            # Update disbursement record if exists
+            disbursement = payment_request.disbursements.filter(
+                code__in=['seller_disbursement', 'landlord_disbursement']
+            ).first()
+            if disbursement:
+                disbursement.status = PaymentDisbursement.Status.RELEASED
+                disbursement.released_at = timezone.now()
+                disbursement.save(update_fields=['status', 'released_at', 'updated_at'])
+            
+            # Update payment metadata for escrow release
+            payment_metadata = dict(payment_request.metadata or {})
+            payment_metadata['escrow_released_to_wallet'] = True
+            payment_metadata['escrow_released_at'] = timezone.now().isoformat()
+            payment_metadata['escrow_released_amount'] = str(amount)
+            payment_request.metadata = payment_metadata
+            payment_request.save(update_fields=['metadata', 'updated_at'])
+            
+        # Send notification
+        WalletService._send_escrow_release_notification(user, amount, payment_request)
+        
+        return {
+            'success': True,
+            'transaction_reference': transaction_record.reference,
+            'new_balance': wallet.balance,
+            'message': f"KES {amount:,.2f} credited to your wallet from escrow"
+        }
+    
+    @staticmethod
+    def _send_escrow_release_notification(user, amount, payment_request):
+        """Send notification when escrow funds are released to wallet"""
+        try:
+            from notifications.notification_service import NotificationService
+            
+            NotificationService.create_notification(
+                user=user,
+                notification_type="escrow_released",
+                title="Escrow Funds Released to Your Wallet",
+                message=(
+                    f"KES {amount:,.2f} from transaction {payment_request.title} has been released to your wallet. "
+                    f"Reference: {payment_request.internal_reference}"
+                ),
+                metadata={
+                    'payment_id': payment_request.id,
+                    'amount': str(amount)
+                }
+            )
+        except Exception as e:
+            logger.warning(f"Failed to send escrow release notification: {e}")
+    
+    @staticmethod
+    def hold_funds_in_escrow_from_wallet(user, amount, payment_request, description=""):
+        """
+        Hold funds from wallet into escrow (for deposit payments).
+        Funds are frozen in the wallet until escrow release.
+        """
+        wallet = WalletService.get_or_create_wallet(user)
+        
+        if not wallet.can_debit(amount):
+            raise ValidationError(f"Insufficient balance. Available: KES {wallet.available_balance:,.2f}")
+        
+        with transaction.atomic():
+            # Lock wallet row
+            wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
+            
+            # Double-check balance
+            if not wallet.can_debit(amount):
+                raise ValidationError(f"Insufficient balance. Available: KES {wallet.available_balance:,.2f}")
+            
+            # Create frozen transaction (held in escrow)
+            transaction_record = wallet.debit(
+                amount=amount,
+                description=description or f"Escrow hold for {payment_request.internal_reference}",
+            )
+            transaction_record.related_payment = payment_request
+            transaction_record.payment_request = payment_request
+            transaction_record.channel = WalletTransaction.CHANNEL_ESCROW
+            transaction_record.status = WalletTransaction.STATUS_FROZEN
+            transaction_record.save(
+                update_fields=[
+                    'payment_request',
+                    'related_payment',
+                    'channel',
+                    'status',
+                ]
+            )
+            
+            # Update payment metadata
+            payment_metadata = dict(payment_request.metadata or {})
+            if payment_request.category == PaymentRequest.Category.AGREEMENT_DEPOSIT:
+                payment_metadata['deposit_paid'] = True
+                payment_metadata['deposit_paid_from_wallet'] = True
+            elif payment_request.category == PaymentRequest.Category.COMPLETION_BALANCE:
+                payment_metadata['balance_paid'] = True
+                payment_metadata['balance_paid_from_wallet'] = True
+            payment_request.metadata = payment_metadata
+            payment_request.save(update_fields=['metadata', 'updated_at'])
+            
+        return {
+            'success': True,
+            'transaction_reference': transaction_record.reference,
+            'message': f"KES {amount:,.2f} held in escrow from your wallet"
+        }
+
+    # ============================================================
     # TRANSACTION HISTORY & REPORTS
     # ============================================================
     
@@ -594,7 +739,10 @@ class WalletService:
         except Exception as e:
             logger.warning(f"Failed to send deposit notification email: {e}")
 
-    # JENGA INTEGRATION METHODS (for C2B deposits via Jenga)
+    # ============================================================
+    # JENGA INTEGRATION METHODS (for C2B deposits)
+    # ============================================================
+    
     @staticmethod
     def initiate_jenga_deposit(user, amount, phone_number, payment_request=None, reference=None):
         """Initiate a wallet deposit via Jenga C2B checkout"""
@@ -610,7 +758,7 @@ class WalletService:
             phone_number=phone_number,
             payment_method=PaymentRequest.Method.BANK_TRANSFER,
             reference=ref,
-            payment_request=payment_request,  # Link to payment request
+            payment_request=payment_request,
             status='pending',
             expires_at=timezone.now() + timedelta(minutes=30)
         )
@@ -730,45 +878,28 @@ class WalletService:
         }
 
     # ============================================================
-    # ESCROW TO WALLET INTEGRATION
+    # ESCROW ADMIN OPERATIONS
     # ============================================================
     
     @staticmethod
-    def release_escrow_to_wallet(user, amount, payment_request, description=""):
+    def get_escrow_balance():
         """
-        Release escrow funds directly to user's wallet.
-        Used for:
-        - Seller receiving payment for land sale
-        - Agent receiving commission
-        - Landlord receiving lease payments
+        Get total funds held in escrow across all payments.
+        For admin dashboard.
         """
-        wallet = WalletService.get_or_create_wallet(user)
+        from .models import PaymentRequest
         
-        with transaction.atomic():
-            # Lock wallet row
-            wallet = Wallet.objects.select_for_update().get(pk=wallet.pk)
-            
-            # Create credit transaction
-            transaction_record = wallet.credit(
-                amount=amount,
-                description=description or f"Funds released from {payment_request.internal_reference}",
-            )
-            transaction_record.related_payment = payment_request
-            transaction_record.payment_request = payment_request
-            transaction_record.status = WalletTransaction.STATUS_SUCCESS
-            transaction_record.completed_at = timezone.now()
-            transaction_record.save(
-                update_fields=[
-                    'payment_request',
-                    'related_payment',
-                    'status',
-                    'completed_at',
-                ]
-            )
-            
+        total_in_escrow = PaymentRequest.objects.filter(
+            status__in=['paid', 'in_escrow', 'partially_released'],
+            disbursed_at__isnull=True
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        
         return {
-            'success': True,
-            'transaction_reference': transaction_record.reference,
-            'new_balance': wallet.balance,
-            'message': f"KES {amount:,.2f} credited to your wallet"
+            'total_escrow_held': total_in_escrow,
+            'pending_disbursement_count': PaymentRequest.objects.filter(
+                status='in_escrow',
+                disbursed_at__isnull=True,
+                closing_steps__code='registration',
+                closing_steps__status='completed'
+            ).count()
         }

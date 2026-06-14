@@ -3,16 +3,18 @@ from django.urls import path
 from payments import views_jenga_webhook
 from . import views
 from .views import (
+    AdvanceStageView,
+    LegalWorkflowView,
     PaymentDashboardView,
     DarajaCallbackView,
     PaymentFlowOverviewView,
     PaymentRequestCreateView,
     PaymentRequestDetailView,
+    PaymentStagePaymentView,
     PaymentStatusPollView,
     PaymentTransitionView,
     PaymentClosingStepWorkspaceView,
-    PaymentClosingStepUpdateView,
-    PaymentClosingStepStkPushView,
+    UploadDocumentView,
 )
 
 
@@ -62,4 +64,9 @@ urlpatterns = [
     path('jenga/c2b-webhook/', views_jenga_webhook.jenga_c2b_webhook, name='jenga_c2b_webhook'),
     path('jenga/b2c-webhook/', views_jenga_webhook.jenga_b2c_webhook, name='jenga_b2c_webhook'),
     path('jenga/b2b-webhook/', views_jenga_webhook.jenga_b2b_webhook, name='jenga_b2b_webhook'),
+    
+    path('legal/<int:pk>/', LegalWorkflowView.as_view(), name='legal_workflow'),
+    path('api/advance-stage/<int:pk>/', AdvanceStageView.as_view(), name='advance_stage'),
+    path('api/upload-document/<int:pk>/', UploadDocumentView.as_view(), name='upload_document'),
+    path('api/stage-payment/<int:pk>/', PaymentStagePaymentView.as_view(), name='stage_payment'),
 ]

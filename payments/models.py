@@ -10,13 +10,23 @@ from dateutil.relativedelta import relativedelta
 
 
 class PaymentRequest(models.Model):
+    # Fee defaults
     DEFAULT_OFFICIAL_SEARCH_FEE = Decimal("1000.00")
     DEFAULT_SURVEY_SEARCH_FEE = Decimal("500.00")
     DEFAULT_LCB_FEE = Decimal("3000.00")
     DEFAULT_TRANSFER_FEE = Decimal("1000.00")
     DEFAULT_TITLE_FEE = Decimal("2500.00")
     DEFAULT_SOIL_BASELINE_FEE = Decimal("2500.00")
-    DEFAULT_PLATFORM_ESCROW_RATE = Decimal("0.0075")
+    
+    # Platform fee: 1-3% based on property value (tiered)
+    DEFAULT_PLATFORM_FEE_PERCENTAGE = Decimal("0.02")  # 2% default
+    PLATFORM_FEE_TIERS = [
+        (Decimal("0"), Decimal("0.03")),      # 0 - 1M: 3%
+        (Decimal("1000000"), Decimal("0.025")), # 1M - 5M: 2.5%
+        (Decimal("5000000"), Decimal("0.02")),  # 5M - 10M: 2%
+        (Decimal("10000000"), Decimal("0.015")), # 10M+: 1.5%
+    ]
+    
     DEFAULT_AGENT_COMMISSION_RATE = Decimal("0.03")
     DEFAULT_VERIFICATION_MARKUP_RATE = Decimal("0.20")
     DEFAULT_RESERVATION_DEPOSIT_RATE = Decimal("0.05")
@@ -32,7 +42,7 @@ class PaymentRequest(models.Model):
         AGREEMENT_DEPOSIT = "agreement_deposit", "Agreement Deposit"
         VERIFICATION_PACKAGE = "verification_package", "Verification Package"
         ESCROW_DEPOSIT = "escrow_deposit", "Escrow Deposit"
-        STAMP_DUTY = "stamp_duty", "Stamp Duty"
+        STAMP_DUTY = "stamp_duty", "Stamp Duty (Paid to KRA)"
         COMPLETION_BALANCE = "completion_balance", "Completion Balance"
         SERVICE_FEE = "service_fee", "Service Fee"
 
@@ -62,7 +72,6 @@ class PaymentRequest(models.Model):
         Category.RESERVATION_DEPOSIT,
         Category.AGREEMENT_DEPOSIT,
         Category.ESCROW_DEPOSIT,
-        Category.STAMP_DUTY,
         Category.COMPLETION_BALANCE,
     }
 
@@ -79,6 +88,7 @@ class PaymentRequest(models.Model):
         Status.FAILED: set(),
     }
 
+    # Core fields
     buyer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -100,6 +110,15 @@ class PaymentRequest(models.Model):
         blank=True,
         related_name="payment_requests",
     )
+    legal_transaction = models.OneToOneField(
+        'transactions.Transaction',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='related_payment',
+        help_text="Associated legal transaction for conveyancing"
+    )
+    
     title = models.CharField(max_length=180)
     description = models.TextField(blank=True)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
@@ -120,6 +139,8 @@ class PaymentRequest(models.Model):
     escrow_enabled = models.BooleanField(default=True)
     provider_reference = models.CharField(max_length=120, blank=True)
     internal_reference = models.CharField(max_length=24, unique=True, editable=False)
+    
+    # Lease-specific fields
     lease_start_date = models.DateField(null=True, blank=True)
     lease_end_date = models.DateField(null=True, blank=True)
     intended_use = models.CharField(max_length=180, blank=True)
@@ -128,9 +149,31 @@ class PaymentRequest(models.Model):
     good_husbandry_required = models.BooleanField(default=True)
     soil_exit_test_required = models.BooleanField(default=True)
     subject_to_sale = models.BooleanField(default=False)
+    
+    # Timestamps
     due_at = models.DateTimeField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
     released_at = models.DateTimeField(null=True, blank=True)
+    disbursed_at = models.DateTimeField(null=True, blank=True, help_text="When funds were released to seller")
+    reports_sent_at = models.DateTimeField(null=True, blank=True, help_text="When transaction reports were emailed")
+    
+    # Escrow tracking
+    deposit_received_at = models.DateTimeField(null=True, blank=True)
+    balance_received_at = models.DateTimeField(null=True, blank=True)
+    platform_fee_deducted_at = models.DateTimeField(null=True, blank=True)
+    
+    # Stamp duty tracking (platform never holds, just verifies)
+    stamp_duty_receipt_uploaded_at = models.DateTimeField(null=True, blank=True)
+    stamp_duty_receipt_verified_at = models.DateTimeField(null=True, blank=True)
+    stamp_duty_verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="payment_stamp_duty_verifications",
+        help_text="Finance/Legal admin who verified KRA receipt"
+    )
+    
     metadata = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -151,6 +194,7 @@ class PaymentRequest(models.Model):
             raise ValidationError(
                 {"phone_number": "A phone number is required for mobile money payments."}
             )
+        
         if self.transaction_type == self.TransactionType.LEASE:
             lease_terms_required = bool((self.metadata or {}).get("lease_terms_required"))
             if self.lease_start_date or self.lease_end_date:
@@ -177,13 +221,16 @@ class PaymentRequest(models.Model):
                 raise ValidationError(
                     {"notice_period_days": "Vacation notice should be at least 30 days."}
                 )
+        
         if self.transaction_type == self.TransactionType.PURCHASE:
             if self.lease_start_date or self.lease_end_date:
                 raise ValidationError("Purchase transactions should not include lease dates.")
+        
         if self.category in self.PLOT_REQUIRED_CATEGORIES and not self.plot:
             raise ValidationError(
-                {"plot": "A plot is required for commitment, reservation, agreement, escrow, stamp duty, and completion payments."}
+                {"plot": "A plot is required for this payment category."}
             )
+        
         if self.plot:
             if self.transaction_type == self.TransactionType.PURCHASE and self.plot.market_status == "sold":
                 raise ValidationError("This plot has already been sold.")
@@ -283,7 +330,6 @@ class PaymentRequest(models.Model):
                 related.append(candidate)
         return related
 
-    
     @property
     def workflow_total_paid_amount(self):
         paid_statuses = {
@@ -294,7 +340,7 @@ class PaymentRequest(models.Model):
         }
         return sum(
             (payment.amount for payment in self.workflow_related_payments if payment.status in paid_statuses),
-            start=0,
+            start=Decimal("0.00"),
         )
 
     @property
@@ -306,6 +352,18 @@ class PaymentRequest(models.Model):
             or self.plot.price
             or self.amount
         )
+
+    def calculate_platform_fee_percentage(self):
+        """Calculate platform fee percentage based on property value (tiered)"""
+        value = self.sale_price_value
+        for threshold, rate in reversed(self.PLATFORM_FEE_TIERS):
+            if value >= threshold:
+                return rate
+        return self.DEFAULT_PLATFORM_FEE_PERCENTAGE
+
+    @property
+    def platform_fee_percentage(self):
+        return self._metadata_rate("platform_fee_percentage", self.calculate_platform_fee_percentage())
 
     @property
     def lease_contract_value(self):
@@ -334,10 +392,6 @@ class PaymentRequest(models.Model):
     @property
     def agent_commission_rate(self):
         return self._metadata_rate("agent_commission_rate", self.DEFAULT_AGENT_COMMISSION_RATE)
-
-    @property
-    def platform_escrow_rate(self):
-        return self._metadata_rate("platform_escrow_rate", self.DEFAULT_PLATFORM_ESCROW_RATE)
 
     @property
     def verification_markup_rate(self):
@@ -369,6 +423,7 @@ class PaymentRequest(models.Model):
 
     @property
     def purchase_stamp_duty_estimate(self):
+        """Estimated stamp duty - actual paid to KRA directly"""
         if self.transaction_type != self.TransactionType.PURCHASE:
             return Decimal("0.00")
         stamp_step = self.closing_steps.filter(code="stamp_duty").first()
@@ -382,7 +437,7 @@ class PaymentRequest(models.Model):
             if payment.category == category:
                 return payment
         return None
-
+    
     @property
     def agreement_deposit_amount(self):
         related = self._related_payment_for_category(self.Category.AGREEMENT_DEPOSIT)
@@ -404,7 +459,18 @@ class PaymentRequest(models.Model):
         return lease_base if lease_base is not None else self._money(self.amount)
 
     @property
+    def platform_fee_amount(self):
+        base = self.sale_price_value if self.transaction_type == self.TransactionType.PURCHASE else self.lease_contract_value
+        return (base * self.platform_fee_percentage).quantize(Decimal("0.01"))
+
+    @property
+    def seller_net_amount(self):
+        """Amount seller receives after platform fee deduction"""
+        return max(self.amount - self.platform_fee_amount, Decimal("0.00"))
+
+    @property
     def seller_total_payout_amount(self):
+        """Total to pay seller after all deductions (platform fee already included)"""
         if self.transaction_type == self.TransactionType.PURCHASE:
             gross = self.sale_price_value
         elif self.transaction_type == self.TransactionType.LEASE:
@@ -414,18 +480,13 @@ class PaymentRequest(models.Model):
         if self.plot and self.plot.agent_id:
             gross -= self.agent_commission_amount
         return max(gross - self.platform_fee_amount, Decimal("0.00"))
-
+        
     @property
     def agent_commission_amount(self):
         if not self.plot or not self.plot.agent_id:
             return Decimal("0.00")
         base = self.sale_price_value if self.transaction_type == self.TransactionType.PURCHASE else self.lease_contract_value
         return (base * self.agent_commission_rate).quantize(Decimal("0.01"))
-
-    @property
-    def platform_fee_amount(self):
-        base = self.sale_price_value if self.transaction_type == self.TransactionType.PURCHASE else self.lease_contract_value
-        return (base * self.platform_escrow_rate).quantize(Decimal("0.01"))
 
     @property
     def verification_markup_amount(self):
@@ -486,13 +547,7 @@ class PaymentRequest(models.Model):
                 return sale_price
             return cls._lease_base_amount(plot)
         if category == cls.Category.STAMP_DUTY:
-            if transaction_type == cls.TransactionType.PURCHASE:
-                sale_price = cls._sale_price_value(plot)
-                if sale_price is None:
-                    return None
-                market_zone = getattr(plot, "market_zone", "")
-                rate = Decimal("0.02") if market_zone == "rural" else Decimal("0.04")
-                return (sale_price * rate).quantize(Decimal("0.01"))
+            # Stamp duty is paid to KRA directly, not collected by platform
             return None
         if category == cls.Category.COMPLETION_BALANCE:
             if transaction_type == cls.TransactionType.PURCHASE:
@@ -527,13 +582,18 @@ class PaymentRequest(models.Model):
 
     @classmethod
     def normalize_amount(cls, value):
-        """
-        Normalize a decimal amount to 2 decimal places.
-        """
         from decimal import Decimal, ROUND_HALF_UP
         if value is None:
             return Decimal('0.00')
         return Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+    @classmethod
+    def _money_static(cls, value):
+        if value in (None, ""):
+            return Decimal("0.00")
+        if isinstance(value, Decimal):
+            return value.quantize(Decimal("0.01"))
+        return Decimal(str(value)).quantize(Decimal("0.01"))
 
     @classmethod
     def _calculate_due_diligence_pack_amount(cls, plot):
@@ -545,13 +605,13 @@ class PaymentRequest(models.Model):
         markup = (base * cls.DEFAULT_VERIFICATION_MARKUP_RATE).quantize(Decimal("0.01"))
         return (base + markup).quantize(Decimal("0.01"))
 
-    @staticmethod
-    def _money_static(value):
-        if value in (None, ""):
-            return Decimal("0.00")
-        if isinstance(value, Decimal):
-            return value.quantize(Decimal("0.01"))
-        return Decimal(str(value)).quantize(Decimal("0.01"))
+    def ensure_transaction_artifacts(self):
+        anchor = self.workflow_anchor_payment
+        if anchor.pk != self.pk:
+            return anchor.ensure_transaction_artifacts()
+        anchor.ensure_closing_steps()
+        anchor._ensure_default_certificates()
+        anchor._ensure_default_disbursements()
 
     def _certificate_statuses(self):
         active_payment_statuses = {
@@ -595,19 +655,13 @@ class PaymentRequest(models.Model):
             "renewal_exit_notice": PaymentCertificate.Status.READY if self.lease_end_date else PaymentCertificate.Status.PENDING,
         }
 
-    def ensure_transaction_artifacts(self):
-        anchor = self.workflow_anchor_payment
-        if anchor.pk != self.pk:
-            return anchor.ensure_transaction_artifacts()
-        anchor.ensure_closing_steps()
-        anchor._ensure_default_certificates()
-        anchor._ensure_default_disbursements()
-
     def _ensure_default_certificates(self):
-        from .models import PaymentCertificate  # Import here to avoid circular imports
+        from .models import PaymentCertificate
+        
         statuses = self._certificate_statuses()
         search_result = getattr(self.plot, "search_result", None) if self.plot else None
         registration_step = self.closing_steps.filter(code="registration").first()
+        
         if self.transaction_type == self.TransactionType.PURCHASE:
             templates = [
                 {
@@ -729,232 +783,12 @@ class PaymentRequest(models.Model):
                 certificate.save(update_fields=update_fields)
 
     def _ensure_default_disbursements(self):
-        from .models import PaymentDisbursement  # Import here to avoid circular imports
+        from .models import PaymentDisbursement
+        
         if self.transaction_type == self.TransactionType.PURCHASE:
-            templates = [
-                {
-                    "code": "registry_search_fee",
-                    "recipient_role": PaymentDisbursement.RecipientRole.OFFICER,
-                    "recipient_user": None,
-                    "recipient_name": "Registry / Lands Office",
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.official_search_fee,
-                    "release_trigger": "Release after the official search evidence is uploaded and accepted.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="due_diligence", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "due_diligence",
-                    "notes": "Buyer-funded official search fee managed through AgriPlot.",
-                },
-                {
-                    "code": "survey_search_fee",
-                    "recipient_role": PaymentDisbursement.RecipientRole.OFFICER,
-                    "recipient_user": None,
-                    "recipient_name": "Survey Office / Licensed Surveyor",
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.survey_search_fee,
-                    "release_trigger": "Release after survey or beacon evidence is uploaded.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="due_diligence", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "due_diligence",
-                    "notes": "Buyer-funded survey or map verification fee.",
-                },
-                {
-                    "code": "platform_verification_markup",
-                    "recipient_role": PaymentDisbursement.RecipientRole.PLATFORM,
-                    "recipient_user": None,
-                    "recipient_name": "AgriPlot",
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.verification_markup_amount,
-                    "release_trigger": "Earned when AgriPlot coordinates and delivers the verified due-diligence pack.",
-                    "status": PaymentDisbursement.Status.READY
-                    if self.closing_steps.filter(code="due_diligence", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.PLANNED,
-                    "stage_code": "due_diligence",
-                    "notes": "Platform markup on verification coordination.",
-                },
-                {
-                    "code": "seller_deposit_release",
-                    "recipient_role": PaymentDisbursement.RecipientRole.SELLER,
-                    "recipient_user": self.seller,
-                    "recipient_name": self.counterparty_label,
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.agreement_deposit_amount,
-                    "release_trigger": "Release after the sale agreement is signed and the agreement milestone is completed.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="agreement", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "agreement",
-                    "notes": "The 10% deposit remains in escrow until the agreement milestone is satisfied.",
-                },
-                {
-                    "code": "stamp_duty_payment",
-                    "recipient_role": PaymentDisbursement.RecipientRole.GOVERNMENT,
-                    "recipient_user": None,
-                    "recipient_name": "KRA / eCitizen",
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.purchase_stamp_duty_estimate,
-                    "release_trigger": "Release once the valuation and stamp-duty payment receipt are uploaded.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="stamp_duty", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "stamp_duty",
-                    "notes": "Government tax clearance component.",
-                },
-                {
-                    "code": "registry_transfer_fees",
-                    "recipient_role": PaymentDisbursement.RecipientRole.GOVERNMENT,
-                    "recipient_user": None,
-                    "recipient_name": "Lands Registry",
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.transfer_fee_amount + self.title_fee_amount,
-                    "release_trigger": "Release at the filing stage when registration documents are lodged.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.purchase_registration_complete
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "registration",
-                    "notes": "Transfer filing and new-title fees.",
-                },
-                {
-                    "code": "platform_escrow_fee",
-                    "recipient_role": PaymentDisbursement.RecipientRole.PLATFORM,
-                    "recipient_user": None,
-                    "recipient_name": "AgriPlot",
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.platform_fee_amount,
-                    "release_trigger": "Earned when the deal reaches final completion through AgriPlot escrow.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.purchase_registration_complete
-                    else PaymentDisbursement.Status.READY,
-                    "stage_code": "registration",
-                    "notes": "Platform escrow facilitation fee.",
-                },
-                {
-                    "code": "agent_commission",
-                    "recipient_role": PaymentDisbursement.RecipientRole.AGENT,
-                    "recipient_user": self.plot.agent.user if self.plot and self.plot.agent_id else None,
-                    "recipient_name": (
-                        self.plot.agent.user.get_full_name() or self.plot.agent.user.username
-                        if self.plot and self.plot.agent_id
-                        else "No agent on this deal"
-                    ),
-                    "paid_by_side": PaymentDisbursement.PaidBy.SELLER,
-                    "amount": self.agent_commission_amount,
-                    "release_trigger": "Deduct from the seller's final payout when registration is complete.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.purchase_registration_complete and self.agent_commission_amount > 0
-                    else PaymentDisbursement.Status.PLANNED,
-                    "stage_code": "registration",
-                    "notes": "Agent commission deducted from seller proceeds.",
-                },
-                {
-                    "code": "seller_final_payout",
-                    "recipient_role": PaymentDisbursement.RecipientRole.SELLER,
-                    "recipient_user": self.seller,
-                    "recipient_name": self.counterparty_label,
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.seller_total_payout_amount,
-                    "release_trigger": "Release only after title registration is evidenced and the deal is marked complete.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.purchase_registration_complete
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "registration",
-                    "notes": "Final seller payout after deductions.",
-                },
-            ]
+            templates = self._get_purchase_disbursement_templates()
         else:
-            templates = [
-                {
-                    "code": "tenant_security_receipt",
-                    "recipient_role": PaymentDisbursement.RecipientRole.SELLER,
-                    "recipient_user": self.seller,
-                    "recipient_name": self.counterparty_label,
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self._money(self.lease_security_deposit or self.amount),
-                    "release_trigger": "Held until the lease agreement, consent, and handover steps are complete.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="handover", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "payment_security",
-                    "notes": "Lease security or first rent payout to landlord.",
-                },
-                {
-                    "code": "lcb_processing_fee",
-                    "recipient_role": PaymentDisbursement.RecipientRole.OFFICER,
-                    "recipient_user": None,
-                    "recipient_name": "Land Control Board / Consent Office",
-                    "paid_by_side": PaymentDisbursement.PaidBy.SELLER,
-                    "amount": self.lcb_fee_amount,
-                    "release_trigger": "Release after the consent pack is uploaded and approved.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="lcb_consent", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "lcb_consent",
-                    "notes": "Statutory consent-processing cost for agricultural lease deals.",
-                },
-                {
-                    "code": "soil_baseline_fee",
-                    "recipient_role": PaymentDisbursement.RecipientRole.OFFICER,
-                    "recipient_user": None,
-                    "recipient_name": "Extension Officer / Soil Professional",
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.soil_baseline_fee_amount,
-                    "release_trigger": "Release after the soil baseline or entry-condition report is uploaded.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="soil_health_baseline", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "soil_health_baseline",
-                    "notes": "Professional baseline report paid through the platform.",
-                },
-                {
-                    "code": "platform_lease_fee",
-                    "recipient_role": PaymentDisbursement.RecipientRole.PLATFORM,
-                    "recipient_user": None,
-                    "recipient_name": "AgriPlot",
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.platform_fee_amount,
-                    "release_trigger": "Earned after the lease handover is complete and the lease goes live.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="handover", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.READY,
-                    "stage_code": "handover",
-                    "notes": "Platform lease administration fee.",
-                },
-                {
-                    "code": "agent_commission",
-                    "recipient_role": PaymentDisbursement.RecipientRole.AGENT,
-                    "recipient_user": self.plot.agent.user if self.plot and self.plot.agent_id else None,
-                    "recipient_name": (
-                        self.plot.agent.user.get_full_name() or self.plot.agent.user.username
-                        if self.plot and self.plot.agent_id
-                        else "No agent on this deal"
-                    ),
-                    "paid_by_side": PaymentDisbursement.PaidBy.SELLER,
-                    "amount": self.agent_commission_amount,
-                    "release_trigger": "Deduct from the landlord's released lease proceeds once the lease activates.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="handover", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    and self.agent_commission_amount > 0
-                    else PaymentDisbursement.Status.PLANNED,
-                    "stage_code": "handover",
-                    "notes": "Agent commission on lease proceeds.",
-                },
-                {
-                    "code": "landlord_net_payout",
-                    "recipient_role": PaymentDisbursement.RecipientRole.SELLER,
-                    "recipient_user": self.seller,
-                    "recipient_name": self.counterparty_label,
-                    "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
-                    "amount": self.seller_total_payout_amount,
-                    "release_trigger": "Release after agreement, consent, and handover are all complete.",
-                    "status": PaymentDisbursement.Status.RELEASED
-                    if self.closing_steps.filter(code="handover", status=PaymentClosingStep.Status.COMPLETED).exists()
-                    else PaymentDisbursement.Status.HELD,
-                    "stage_code": "handover",
-                    "notes": "Net landlord payout after AgriPlot and agent deductions.",
-                },
-            ]
+            templates = self._get_lease_disbursement_templates()
 
         for template in templates:
             disbursement, _ = PaymentDisbursement.objects.get_or_create(
@@ -988,6 +822,131 @@ class PaymentRequest(models.Model):
             if update_fields:
                 update_fields.append("updated_at")
                 disbursement.save(update_fields=update_fields)
+
+    def _get_purchase_disbursement_templates(self):
+        """Disbursement templates for purchase with platform escrow"""
+        is_registration_complete = self.purchase_registration_complete
+        is_agreement_complete = self.closing_steps.filter(code="agreement", status=PaymentClosingStep.Status.COMPLETED).exists()
+        is_due_diligence_complete = self.closing_steps.filter(code="due_diligence", status=PaymentClosingStep.Status.COMPLETED).exists()
+        is_stamp_duty_complete = self.closing_steps.filter(code="stamp_duty", status=PaymentClosingStep.Status.COMPLETED).exists()
+        
+        return [
+            {
+                "code": "deposit_held",
+                "recipient_role": PaymentDisbursement.RecipientRole.PLATFORM,
+                "recipient_user": None,
+                "recipient_name": "AgriPlot Escrow",
+                "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
+                "amount": self.agreement_deposit_amount,
+                "release_trigger": "Held in escrow until new title deed is verified",
+                "status": PaymentDisbursement.Status.HELD if not is_registration_complete else PaymentDisbursement.Status.RELEASED,
+                "stage_code": "agreement",
+                "notes": "10% deposit held in platform escrow account",
+            },
+            {
+                "code": "balance_held",
+                "recipient_role": PaymentDisbursement.RecipientRole.PLATFORM,
+                "recipient_user": None,
+                "recipient_name": "AgriPlot Escrow",
+                "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
+                "amount": self.completion_balance_amount,
+                "release_trigger": "Held in escrow until new title deed is verified",
+                "status": PaymentDisbursement.Status.HELD if not is_registration_complete else PaymentDisbursement.Status.RELEASED,
+                "stage_code": "completion_docs",
+                "notes": "90% balance held in platform escrow account",
+            },
+            {
+                "code": "platform_fee",
+                "recipient_role": PaymentDisbursement.RecipientRole.PLATFORM,
+                "recipient_user": None,
+                "recipient_name": "AgriPlot",
+                "paid_by_side": PaymentDisbursement.PaidBy.SELLER,
+                "amount": self.platform_fee_amount,
+                "release_trigger": "Deducted from escrow before seller disbursement",
+                "status": PaymentDisbursement.Status.READY if is_registration_complete else PaymentDisbursement.Status.PLANNED,
+                "stage_code": "disbursement",
+                "notes": f"Platform fee ({self.platform_fee_percentage * 100}%) deducted from seller proceeds",
+            },
+            {
+                "code": "seller_disbursement",
+                "recipient_role": PaymentDisbursement.RecipientRole.SELLER,
+                "recipient_user": self.seller,
+                "recipient_name": self.counterparty_label,
+                "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
+                "amount": self.seller_net_amount,
+                "release_trigger": "Released to seller ONLY after new title deed is verified",
+                "status": PaymentDisbursement.Status.READY if is_registration_complete else PaymentDisbursement.Status.HELD,
+                "stage_code": "disbursement",
+                "notes": f"Final seller payout after {self.platform_fee_percentage * 100}% platform fee deduction",
+            },
+            {
+                "code": "official_search_fee",
+                "recipient_role": PaymentDisbursement.RecipientRole.GOVERNMENT,
+                "recipient_user": None,
+                "recipient_name": "eCitizen / Lands Registry",
+                "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
+                "amount": self.official_search_fee,
+                "release_trigger": "Paid directly by buyer via eCitizen",
+                "status": PaymentDisbursement.Status.RELEASED if is_due_diligence_complete else PaymentDisbursement.Status.PLANNED,
+                "stage_code": "due_diligence",
+                "notes": "Official search fee - paid directly to government (platform does not hold)",
+            },
+            {
+                "code": "stamp_duty",
+                "recipient_role": PaymentDisbursement.RecipientRole.GOVERNMENT,
+                "recipient_user": None,
+                "recipient_name": "KRA (iTax)",
+                "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
+                "amount": Decimal("0.00"),
+                "release_trigger": "Paid directly by buyer to KRA via iTax",
+                "status": PaymentDisbursement.Status.RELEASED if is_stamp_duty_complete else PaymentDisbursement.Status.PLANNED,
+                "stage_code": "stamp_duty",
+                "notes": "Stamp duty - buyer pays KRA directly. Platform only verifies receipt.",
+            },
+        ]
+
+    def _get_lease_disbursement_templates(self):
+        """Disbursement templates for lease with platform escrow"""
+        is_handover_complete = self.closing_steps.filter(code="handover", status=PaymentClosingStep.Status.COMPLETED).exists()
+        
+        return [
+            {
+                "code": "lease_deposit_held",
+                "recipient_role": PaymentDisbursement.RecipientRole.PLATFORM,
+                "recipient_user": None,
+                "recipient_name": "AgriPlot Escrow",
+                "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
+                "amount": self.lease_security_deposit or self.amount,
+                "release_trigger": "Held in escrow until handover complete",
+                "status": PaymentDisbursement.Status.HELD if not is_handover_complete else PaymentDisbursement.Status.RELEASED,
+                "stage_code": "payment_security",
+                "notes": "Lease security deposit held in platform escrow",
+            },
+            {
+                "code": "platform_lease_fee",
+                "recipient_role": PaymentDisbursement.RecipientRole.PLATFORM,
+                "recipient_user": None,
+                "recipient_name": "AgriPlot",
+                "paid_by_side": PaymentDisbursement.PaidBy.SELLER,
+                "amount": self.platform_fee_amount,
+                "release_trigger": "Deducted from escrow before landlord disbursement",
+                "status": PaymentDisbursement.Status.READY if is_handover_complete else PaymentDisbursement.Status.PLANNED,
+                "stage_code": "handover",
+                "notes": f"Platform fee ({self.platform_fee_percentage * 100}%) deducted from landlord proceeds",
+            },
+            {
+                "code": "landlord_disbursement",
+                "recipient_role": PaymentDisbursement.RecipientRole.SELLER,
+                "recipient_user": self.seller,
+                "recipient_name": self.counterparty_label,
+                "paid_by_side": PaymentDisbursement.PaidBy.BUYER,
+                "amount": self.seller_net_amount,
+                "release_trigger": "Released to landlord ONLY after handover complete",
+                "status": PaymentDisbursement.Status.READY if is_handover_complete else PaymentDisbursement.Status.HELD,
+                "stage_code": "handover",
+                "notes": f"Landlord payout after {self.platform_fee_percentage * 100}% platform fee deduction",
+            },
+        ]
 
     @staticmethod
     def generate_reference():
@@ -1034,7 +993,7 @@ class PaymentRequest(models.Model):
         }
         return progress.get(self.status, 0)
 
-    # Closing Steps Templates
+    # Closing Steps Templates - Updated for platform escrow model with clear milestones and document requirements
     PURCHASE_LEGAL_STEPS = [
         (
             "due_diligence",
@@ -1050,9 +1009,9 @@ class PaymentRequest(models.Model):
         ),
         (
             "agreement",
-            "Sale Agreement",
+            "Sale Agreement & 10% Deposit",
             "Executed sale agreement",
-            "Upload the signed sale agreement once both sides and their advocates finish execution.",
+            "Upload the signed sale agreement. Buyer pays 10% deposit to platform escrow.",
         ),
         (
             "lcb_consent",
@@ -1061,112 +1020,70 @@ class PaymentRequest(models.Model):
             "Capture Land Control Board approval or the equivalent seller clearances and supporting consents required for transfer.",
         ),
         (
-            "completion_docs",
-            "Completion Documents",
-            "Completion document checklist",
-            "Confirm the title, signed transfer forms, and seller identification documents are all in place before the valuation and tax stage.",
+            "stamp_duty",
+            "Stamp Duty (Pay KRA Directly)",
+            "KRA stamp duty receipt",
+            "Pay stamp duty directly to KRA via iTax and upload the receipt for verification.",
         ),
         (
-            "stamp_duty",
-            "Valuation & Stamp Duty",
-            "Government valuation and stamp duty receipt",
-            "Record the valuation outcome, assessed duty, and proof of payment before registration.",
+            "completion_docs",
+            "Completion Documents & 90% Balance",
+            "Completion document checklist",
+            "Buyer pays 90% balance to escrow. Seller provides original title, signed transfer forms, and clearances.",
         ),
         (
             "registration",
             "Title Registration",
-            "Fresh registry proof / new search",
-            "Upload the final registry evidence showing the transfer has been lodged or completed.",
+            "Fresh registry proof / new title",
+            "Upload the new title deed issued in buyer's name. This triggers automatic fund disbursement.",
+        ),
+        (
+            "disbursement",
+            "Fund Disbursement to Seller",
+            "Disbursement confirmation",
+            "Platform deducts fee and automatically disburses funds to seller after title verification.",
+        ),
+        (
+            "reports",
+            "Transaction Reports",
+            "Final transaction reports",
+            "Platform emails comprehensive transaction reports to both parties.",
+        ),
+        (
+            "handover",
+            "Possession & Handover",
+            "Handover certificate",
+            "Confirm physical possession and handover of the property.",
         ),
     ]
 
-    # Agricultural land leases
     LEASE_LEGAL_STEPS_AGRICULTURAL = [
-        (
-            "offer",
-            "Letter of Offer",
-            "Issue and accept lease offer."
-        ),
-        (
-            "lcb_consent",
-            "Land Control Board & Family Consents",
-            "Obtain Land Control Board consent and any required family/spousal consents."
-        ),
-        (
-            "agreement",
-            "Lease Agreement",
-            "Prepare and execute lease agreement."
-        ),
-        (
-            "registration",
-            "Registration",
-            "Register lease where applicable."
-        ),
-        (
-            "handover",
-            "Possession & Handover",
-            "Grant possession and complete handover."
-        ),
+        ("offer", "Letter of Offer", "Issue and accept lease offer."),
+        ("lcb_consent", "Land Control Board & Family Consents", "Obtain Land Control Board consent and any required family/spousal consents."),
+        ("agreement", "Lease Agreement & Deposit", "Prepare and execute lease agreement. Tenant pays deposit to escrow."),
+        ("registration", "Registration", "Register lease where applicable."),
+        ("disbursement", "Fund Disbursement", "Platform deducts fee and disburses to landlord."),
+        ("handover", "Possession & Handover", "Grant possession and complete handover."),
     ]
-       
-    # Leasehold non-agricultural land
+    
     LEASE_LEGAL_STEPS_LEASEHOLD_NON_AG = [
-        (
-            "offer",
-            "Letter of Offer",
-            "Issue and accept lease offer."
-        ),
-        (
-            "consents_clearances",
-            "Head Lessor & Spousal Consents",
-            "Sublease consent from head lessor, county government, NLC or other superior interest holder where applicable. Obtain spousal consent if matrimonial property."
-        ),
-        (
-            "agreement",
-            "Lease Agreement",
-            "Prepare and execute lease agreement."
-        ),
-        (
-            "registration",
-            "Registration",
-            "Register lease where applicable."
-        ),
-        (
-            "handover",
-            "Possession & Handover",
-            "Grant possession and complete handover."
-        ),
-    ] 
-     
-    # Freehold non-agricultural land
-    LEASE_LEGAL_STEPS_FREEHOLD_NON_AG = [
-        (
-            "offer",
-            "Letter of Offer",
-            "Issue and accept lease offer."
-        ),
-        (
-            "consents_clearances",
-            "Spousal & Estate Consents",
-            "Record spousal consent under the Matrimonial Property Act where applicable, or estate approvals if the owner is deceased. Mark N/A if not required."
-        ),
-        (
-            "agreement",
-            "Lease Agreement",
-            "Prepare and execute lease agreement."
-        ),
-        (
-            "registration",
-            "Registration",
-            "Register lease where applicable."
-        ),
-        (
-            "handover",
-            "Possession & Handover",
-            "Grant possession and complete handover."
-        ),
+        ("offer", "Letter of Offer", "Issue and accept lease offer."),
+        ("consents_clearances", "Head Lessor & Spousal Consents", "Sublease consent from head lessor, county government, NLC or other superior interest holder where applicable. Obtain spousal consent if matrimonial property."),
+        ("agreement", "Lease Agreement & Deposit", "Prepare and execute lease agreement. Tenant pays deposit to escrow."),
+        ("registration", "Registration", "Register lease where applicable."),
+        ("disbursement", "Fund Disbursement", "Platform deducts fee and disburses to landlord."),
+        ("handover", "Possession & Handover", "Grant possession and complete handover."),
     ]
-       
+    
+    LEASE_LEGAL_STEPS_FREEHOLD_NON_AG = [
+        ("offer", "Letter of Offer", "Issue and accept lease offer."),
+        ("consents_clearances", "Spousal & Estate Consents", "Record spousal consent under the Matrimonial Property Act where applicable, or estate approvals if the owner is deceased. Mark N/A if not required."),
+        ("agreement", "Lease Agreement & Deposit", "Prepare and execute lease agreement. Tenant pays deposit to escrow."),
+        ("registration", "Registration", "Register lease where applicable."),
+        ("disbursement", "Fund Disbursement", "Platform deducts fee and disburses to landlord."),
+        ("handover", "Possession & Handover", "Grant possession and complete handover."),
+    ]
+
     @classmethod
     def closing_step_templates(cls, transaction_type, plot=None):
         if transaction_type == cls.TransactionType.PURCHASE:
@@ -1188,42 +1105,35 @@ class PaymentRequest(models.Model):
         )
 
     def _release_blocking_reason(self):
+        """Check if funds can be released to seller"""
         if self.transaction_type == self.TransactionType.PURCHASE:
-            required_codes = {
-                "agreement",
-                "lcb_consent",
-                "stamp_duty",
-                "completion_docs",
-                "registration",
-            }
-            completed_codes = set(
-                self.closing_steps.filter(status=PaymentClosingStep.Status.COMPLETED).values_list("code", flat=True)
-            )
-            missing = required_codes - completed_codes
-            if missing:
-                titles = list(
-                    self.closing_steps.filter(code__in=missing).order_by("sequence").values_list("title", flat=True)
-                )
-                blocking_steps = ", ".join(titles) if titles else ", ".join(sorted(missing))
-                return (
-                    "Purchase funds cannot be released yet. Complete these legal steps first: "
-                    f"{blocking_steps}."
-                )
+            # Must have new title deed verified
+            new_title_verified = self.closing_steps.filter(
+                code="registration",
+                status=PaymentClosingStep.Status.COMPLETED
+            ).exists()
+            
+            if not new_title_verified:
+                return "Funds cannot be released yet. New title deed must be issued and verified first."
+            
+            # Must have stamp duty receipt verified (KRA payment)
+            stamp_duty_verified = self.closing_steps.filter(
+                code="stamp_duty",
+                status=PaymentClosingStep.Status.COMPLETED
+            ).exists()
+            
+            if not stamp_duty_verified:
+                return "Stamp duty payment to KRA must be verified before fund release."
+        
         if self.transaction_type == self.TransactionType.LEASE:
-            required_codes = {"agreement", "handover"}
-            completed_codes = set(
-                self.closing_steps.filter(status=PaymentClosingStep.Status.COMPLETED).values_list("code", flat=True)
-            )
-            missing = required_codes - completed_codes
-            if missing:
-                titles = list(
-                    self.closing_steps.filter(code__in=missing).order_by("sequence").values_list("title", flat=True)
-                )
-                blocking_steps = ", ".join(titles) if titles else ", ".join(sorted(missing))
-                return (
-                    "Lease funds cannot be released yet. Complete these steps first: "
-                    f"{blocking_steps}."
-                )
+            handover_complete = self.closing_steps.filter(
+                code="handover",
+                status=PaymentClosingStep.Status.COMPLETED
+            ).exists()
+            
+            if not handover_complete:
+                return "Funds cannot be released yet. Lease handover must be completed first."
+        
         return ""
 
     def apply_transition(self, action, actor=None):
@@ -1240,14 +1150,17 @@ class PaymentRequest(models.Model):
             "dispute": (self.Status.DISPUTED, "Payment moved into dispute review."),
             "cancel": (self.Status.CANCELLED, "Payment request cancelled."),
             "fail": (self.Status.FAILED, "Payment failed before settlement."),
+            "disburse_to_seller": (self.Status.RELEASED, "Funds disbursed to seller after registration."),
         }
+        
         if action not in transition_map:
             raise ValidationError(f"Unsupported payment action: {action}")
         if action not in self.allowed_transitions:
             raise ValidationError(
                 f"Action '{action}' is not allowed while payment is in '{self.status}'."
             )
-        if action == "release":
+        
+        if action in ["release", "disburse_to_seller"]:
             blocking_reason = self._release_blocking_reason()
             if blocking_reason:
                 raise ValidationError(blocking_reason)
@@ -1258,34 +1171,34 @@ class PaymentRequest(models.Model):
 
         if action == "mark_paid" and not self.paid_at:
             self.paid_at = now
-        if action in {"release", "partial_release"}:
+        
+        if action in ["release", "disburse_to_seller"]:
             self.released_at = now
+            self.disbursed_at = now
+            
+            # Mark platform fee as deducted
+            self.platform_fee_deducted_at = now
+            
+            # Auto-trigger report generation after disbursement
+            if not self.reports_sent_at:
+                self._send_transaction_reports()
 
-        self.save(update_fields=["status", "paid_at", "released_at", "updated_at"])
+        self.save(update_fields=["status", "paid_at", "released_at", "disbursed_at", 
+                                  "platform_fee_deducted_at", "reports_sent_at", "updated_at"])
         self.sync_plot_market_state()
         self.ensure_transaction_artifacts()
 
-        if action in {"release", "partial_release"}:
-            try:
-                from .bank_transfer_service import BankTransferService
-
-                eligible_roles = {
-                    PaymentDisbursement.RecipientRole.SELLER,
-                    PaymentDisbursement.RecipientRole.AGENT,
-                    PaymentDisbursement.RecipientRole.PLATFORM,
-                }
-                for disbursement in self.disbursements.filter(
-                    recipient_role__in=eligible_roles,
-                    status=PaymentDisbursement.Status.RELEASED,
-                ):
-                    try:
-                        BankTransferService.queue_disbursement(disbursement, created_by=actor)
-                    except ValidationError:
-                        continue
-            except Exception:
-                pass
-
         self.add_event(action, message, actor=actor)
+
+    def _send_transaction_reports(self):
+        """Internal method to trigger report generation and email"""
+        from notifications.notification_service import NotificationService
+        
+        self.reports_sent_at = timezone.now()
+        self.save(update_fields=["reports_sent_at", "updated_at"])
+        
+        # Queue report generation and email
+        NotificationService.send_transaction_completion_reports(self)
 
     @property
     def allowed_transitions(self):
@@ -1293,9 +1206,11 @@ class PaymentRequest(models.Model):
 
     def ensure_closing_steps(self):
         from .models import PaymentClosingStep
+        
         anchor = self.workflow_anchor_payment
         if anchor.pk != self.pk:
             return anchor.ensure_closing_steps()
+        
         templates = self.closing_step_templates(self.transaction_type, self.plot)
         if not templates:
             return
@@ -1305,6 +1220,7 @@ class PaymentRequest(models.Model):
             for step in self.closing_steps.all()
         }
         to_create = []
+        
         for sequence, template in enumerate(templates, start=1):
             if len(template) == 4:
                 code, title, document_name, guidance = template
@@ -1312,9 +1228,8 @@ class PaymentRequest(models.Model):
                 code, title, guidance = template
                 document_name = title
             else:
-                raise ValueError(
-                    "Closing step templates must define either 3 or 4 values per step."
-                )
+                raise ValueError("Closing step templates must define either 3 or 4 values per step.")
+            
             step = existing_steps.get(code)
             if step:
                 changed = False
@@ -1330,6 +1245,7 @@ class PaymentRequest(models.Model):
                 if changed:
                     step.save(update_fields=["sequence", "title", "document_name", "guidance", "updated_at"])
                 continue
+            
             to_create.append(
                 PaymentClosingStep(
                     payment=self,
@@ -1340,6 +1256,7 @@ class PaymentRequest(models.Model):
                     guidance=guidance,
                 )
             )
+        
         if to_create:
             PaymentClosingStep.objects.bulk_create(to_create)
 
@@ -1359,7 +1276,7 @@ class PaymentRequest(models.Model):
         if next_step:
             return f"Next legal step: {next_step.title}"
         if self.transaction_type == self.TransactionType.PURCHASE:
-            return "All legal transfer steps are complete. The sale can now be treated as fully registered."
+            return "All legal transfer steps are complete. Funds have been disbursed to the seller."
         if self.transaction_type == self.TransactionType.LEASE:
             return "All lease handover steps are complete."
         return "No closing tracker is required for this payment."
@@ -1367,66 +1284,63 @@ class PaymentRequest(models.Model):
     @property
     def transfer_status_label(self):
         if self.transaction_type == self.TransactionType.PURCHASE:
+            if self.purchase_registration_complete and self.disbursed_at:
+                return "Completed - Funds Disbursed"
             if self.purchase_registration_complete:
-                return "Legally transferred"
+                return "Registered - Awaiting Disbursement"
             if self.status == self.Status.RELEASED:
                 return "Awaiting registry transfer"
             if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED}:
-                return "Reserved pending closing"
+                return "Funds in Escrow"
             if self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
                 return "Transfer stopped"
             return "Awaiting buyer payment"
+        
         if self.transaction_type == self.TransactionType.LEASE:
             if self.lease_currently_active:
                 return "Lease active"
             if self.lease_ready_for_use:
                 return "Approved - awaiting start date"
             if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED}:
-                return "Lease being secured"
+                return "Funds in Escrow"
             if self.status == self.Status.RELEASED:
                 return "Lease approved"
             if self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
                 return "Lease stopped"
             return "Awaiting tenant payment"
+        
         return self.get_status_display()
 
     @property
-    def transfer_status_detail(self):
-        if self.transaction_type == self.TransactionType.PURCHASE:
-            if self.purchase_registration_complete:
-                return "The registry transfer step is complete and the plot can now be treated as sold."
-            if self.status == self.Status.RELEASED:
-                return "Funds are released, but the plot stays reserved until the final registration step is completed."
-            if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED}:
-                return "Buyer funds have been committed, so the plot is reserved while legal closing continues."
-            if self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
-                return "This purchase did not complete, so the plot can return to the market."
-            return "No reservation is in place until the buyer successfully pays."
-        if self.transaction_type == self.TransactionType.LEASE:
-            if self.lease_currently_active:
-                if self.plot and self.plot.listing_type == "both":
-                    return "The lease is active on AgriPlot and the land remains available for sale subject to the active tenancy terms."
-                return "The lease is active on AgriPlot for the approved period."
-            if self.lease_ready_for_use:
-                return (
-                    f"All lease approvals are complete and the tenant may occupy the land from "
-                    f"{self._format_lease_date(self.lease_start_date)} until {self._format_lease_date(self.lease_end_date)}."
-                )
-            if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED}:
-                return "Lease payment is underway and the plot is being held for this lease flow."
-            if self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
-                return "This lease flow did not complete, so the hold can be removed."
-            return "No lease hold is active until the payment succeeds."
-        return ""
-
-    @property
     def purchase_registration_complete(self):
+        """Check if registration is complete (new title issued)"""
         if self.transaction_type != self.TransactionType.PURCHASE:
             return False
         return self.closing_steps.filter(
             code="registration",
             status=PaymentClosingStep.Status.COMPLETED,
         ).exists()
+
+    @property
+    def funds_ready_for_disbursement(self):
+        """Check if all conditions for fund disbursement are met"""
+        if self.transaction_type != self.TransactionType.PURCHASE:
+            return False
+        
+        # Must have new title deed verified
+        registration_complete = self.purchase_registration_complete
+        
+        # Must have stamp duty receipt verified
+        stamp_duty_complete = self.closing_steps.filter(
+            code="stamp_duty",
+            status=PaymentClosingStep.Status.COMPLETED
+        ).exists()
+        
+        # Must have both deposit and balance in escrow
+        deposit_paid = self.metadata.get('deposit_paid', False)
+        balance_paid = self.metadata.get('balance_paid', False)
+        
+        return registration_complete and stamp_duty_complete and deposit_paid and balance_paid
 
     @property
     def lease_all_steps_completed(self):
@@ -1480,205 +1394,6 @@ class PaymentRequest(models.Model):
         return f"{step.display_title} is now assigned to {step.responsible_party_label}."
 
     @property
-    def buyer_journey_steps(self):
-        if self.transaction_type not in {self.TransactionType.PURCHASE, self.TransactionType.LEASE}:
-            return []
-
-        is_purchase = self.transaction_type == self.TransactionType.PURCHASE
-        is_agricultural = bool(self.plot and self.plot.land_type == "agricultural")
-
-        def grouped_status(codes):
-            steps = list(self.closing_steps.filter(code__in=codes))
-            if not steps:
-                return "pending"
-            statuses = {step.status for step in steps}
-            if all(status == PaymentClosingStep.Status.COMPLETED for status in statuses):
-                return "completed"
-            if PaymentClosingStep.Status.BLOCKED in statuses:
-                return "blocked"
-            if PaymentClosingStep.Status.IN_PROGRESS in statuses or PaymentClosingStep.Status.COMPLETED in statuses:
-                return "in_progress"
-            return "pending"
-
-        if is_purchase:
-            consent_title = (
-                "LCB Consent Obtained"
-                if is_agricultural
-                else "Transfer Consents Obtained"
-            )
-            consent_summary = (
-                "LCB consent and any required spousal approvals are secured before the transfer can proceed."
-                if is_agricultural
-                else "Required transfer consents, rates/rent clearances, and other seller approvals are secured."
-            )
-            return [
-                {
-                    "status": grouped_status(["due_diligence"]),
-                    "title": "Search & Survey Verified",
-                    "summary": (
-                        "The commitment fee locks the plot and AgriPlot delivers the official search plus survey and soil evidence for review."
-                        if is_agricultural
-                        else "The commitment fee locks the plot and AgriPlot delivers the official search plus verified site documents for review."
-                    ),
-                },
-                {
-                    "status": grouped_status(["offer", "commitment"]),
-                    "title": "Letter of Offer Confirmed",
-                    "summary": "The buyer has issued or confirmed the letter of offer before the formal sale agreement is drafted.",
-                },
-                {
-                    "title": "Sale Agreement Signed",
-                    "status": grouped_status(["agreement"]),
-                    "summary": "The agreement is signed and the 10% deposit is secured under the legal framework.",
-                },
-                {
-                    "title": consent_title,
-                    "status": grouped_status(["lcb_consent"]),
-                    "summary": consent_summary,
-                },
-                {
-                    "title": "Completion Docs Exchanged",
-                    "status": grouped_status(["completion_docs"]),
-                    "summary": "The completion pack is exchanged and the remaining balance can now be released safely.",
-                },
-                {
-                    "title": "Government Valuation & Stamp Duty",
-                    "status": grouped_status(["stamp_duty"]),
-                    "summary": "Government valuation is completed and stamp duty is paid through the official channels.",
-                },
-                {
-                    "title": "Title Registered",
-                    "status": grouped_status(["registration"]),
-                    "summary": "A fresh registry result confirms the buyer as the new owner and the plot can finally flip to sold.",
-                },
-            ]
-
-        return [
-            {
-                "status": grouped_status(["offer"]),
-                "title": "Lease Offer Confirmed",
-                "summary": "Confirm the lease intent, dates, and intended use before the agreement is drafted.",
-            },
-            {
-                "title": "LCB & Family Consents",
-                "status": grouped_status(["lcb_consent"]),
-                "summary": "Capture Land Control Board approval and any spousal or family consents before the lease goes live.",
-            },
-            {
-                "title": "Lease Agreement",
-                "status": grouped_status(["agreement"]),
-                "summary": "Agree the lease terms, notice rules, good husbandry clause, and subject-to-sale rules where applicable.",
-            },
-            {
-                "title": "Payment & Security",
-                "status": grouped_status(["payment_security"]),
-                "summary": "Confirm the agreed security deposit or rent commitment through the AgriPlot escrow workflow.",
-            },
-            {
-                "title": "Registry & Soil Baseline",
-                "status": grouped_status(["lease_registration", "soil_health_baseline"]),
-                "summary": "Protect long leases at the registry where needed and set the soil or land condition baseline before possession.",
-            },
-            {
-                "title": "Handover & Activation",
-                "status": grouped_status(["handover"]),
-                "summary": "Record possession, handover details, and activate the lease on AgriPlot.",
-            },
-        ]
-
-    @property
-    def buyer_journey_title(self):
-        if self.transaction_type == self.TransactionType.PURCHASE:
-            if self.plot and self.plot.land_type == "agricultural":
-                return "Simple agricultural purchase journey"
-            return "Simple purchase journey"
-        if self.transaction_type == self.TransactionType.LEASE:
-            if self.plot and self.plot.land_type == "agricultural":
-                return "Simple agricultural lease journey"
-            return "Simple lease journey"
-        return "Buyer journey"
-
-    @property
-    def buyer_journey_intro(self):
-        if self.transaction_type == self.TransactionType.PURCHASE:
-            return "A plain-language view of the real path from checkout to title transfer. The detailed legal tracker stays below."
-        if self.transaction_type == self.TransactionType.LEASE:
-            return "A plain-language view of the lease journey from application to consent, escrow security, handover, and renewal or exit. The detailed legal tracker stays below."
-        return "A simple view of the transaction journey."
-
-    @property
-    def buyer_journey_progress_value(self):
-        steps = self.buyer_journey_steps
-        if not steps:
-            return 0
-        completed = sum(1 for step in steps if step["status"] == "completed")
-        return int((completed / len(steps)) * 100)
-
-    @property
-    def due_diligence_lock_expires_at(self):
-        if self.transaction_type != self.TransactionType.PURCHASE:
-            return None
-        lock_value = (self.metadata or {}).get("due_diligence_lock_expires_at")
-        if lock_value:
-            parsed = datetime.fromisoformat(lock_value)
-            if timezone.is_naive(parsed):
-                parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
-            return parsed
-        if self.paid_at:
-            return self.paid_at + timedelta(days=7)
-        return None
-
-    @property
-    def due_diligence_lock_message(self):
-        lock_expires_at = self.due_diligence_lock_expires_at
-        if not lock_expires_at:
-            return ""
-        return (
-            "This plot is under the due-diligence lock and is being held for this buyer "
-            f"until {timezone.localtime(lock_expires_at):%b %d, %Y %I:%M %p}."
-        )
-
-    @property
-    def due_diligence_documents(self):
-        plot = self.plot
-        if not plot:
-            return []
-        documents = []
-        if getattr(plot, "official_search", None):
-            documents.append(
-                {
-                    "title": "Official Search",
-                    "note": "Registry search showing the current ownership and registered interests.",
-                    "url": plot.official_search.url,
-                }
-            )
-        if getattr(plot, "survey_map", None):
-            documents.append(
-                {
-                    "title": "Survey / Beacon Report",
-                    "note": "Survey map or beacon evidence used during the verification stage.",
-                    "url": plot.survey_map.url,
-                }
-            )
-        if getattr(plot, "soil_report", None):
-            documents.append(
-                {
-                    "title": "Soil / Land Use Report",
-                    "note": "Extension or soil verification evidence for farming-fit review.",
-                    "url": plot.soil_report.url,
-                }
-            )
-        if getattr(plot, "title_deed", None):
-            documents.append(
-                {
-                    "title": "Title Deed Copy",
-                    "note": "Title document supplied during the verification process.",
-                    "url": plot.title_deed.url,
-                }
-            )
-        return documents
-
-    @property
     def search_result_summary(self):
         plot = self.plot
         search_result = getattr(plot, "search_result", None) if plot else None
@@ -1722,532 +1437,95 @@ class PaymentRequest(models.Model):
         )
 
     @property
-    def advocate_details(self):
-        metadata = self.metadata or {}
-        return {
-            "buyer_name": metadata.get("buyer_advocate_name", ""),
-            "buyer_phone": metadata.get("buyer_advocate_phone", ""),
-            "seller_name": metadata.get("seller_advocate_name", ""),
-            "seller_phone": metadata.get("seller_advocate_phone", ""),
-        }
-
-    @property
-    def dashboard_process_steps(self):
-        if self.transaction_type != self.TransactionType.PURCHASE:
-            steps = [
+    def due_diligence_documents(self):
+        plot = self.plot
+        if not plot:
+            return []
+        documents = []
+        if getattr(plot, "official_search", None):
+            documents.append(
                 {
-                    "sequence": "01",
-                    "title": "Confirm Lease Need",
-                    "caption": "Choose the plot and confirm the lease purpose.",
-                    "icon": "01",
-                    "status": "completed" if self.plot_id else "pending",
-                },
+                    "title": "Official Search",
+                    "note": "Registry search showing the current ownership and registered interests.",
+                    "url": plot.official_search.url,
+                }
+            )
+        if getattr(plot, "survey_map", None):
+            documents.append(
                 {
-                    "sequence": "02",
-                    "title": "Connect with AgriPlot",
-                    "caption": "Buyer and seller open the guided lease workspace.",
-                    "icon": "02",
-                    "status": "completed" if self.seller_id else "pending",
-                },
+                    "title": "Survey / Beacon Report",
+                    "note": "Survey map or beacon evidence used during the verification stage.",
+                    "url": plot.survey_map.url,
+                }
+            )
+        if getattr(plot, "soil_report", None):
+            documents.append(
                 {
-                    "sequence": "03",
-                    "title": "Visit the Land",
-                    "caption": "Confirm access, use, and site condition before signing.",
-                    "icon": "03",
-                    "status": "completed" if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED, self.Status.RELEASED} else "pending",
-                },
+                    "title": "Soil / Land Use Report",
+                    "note": "Extension or soil verification evidence for farming-fit review.",
+                    "url": plot.soil_report.url,
+                }
+            )
+        if getattr(plot, "title_deed", None):
+            documents.append(
                 {
-                    "sequence": "04",
-                    "title": "Pay the Commitment",
-                    "caption": "Complete the M-Pesa commitment that opens the lease tracker.",
-                    "icon": "04",
-                    "status": "completed" if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED, self.Status.RELEASED} else "pending",
-                },
-                {
-                    "sequence": "05",
-                    "title": "Review the Lease Pack",
-                    "caption": "Check the verified documents and lease details in AgriPlot.",
-                    "icon": "05",
-                    "status": self._dashboard_status_for_codes(["offer"]),
-                },
-                {
-                    "sequence": "06",
-                    "title": "Secure LCB Approval",
-                    "caption": "Record Land Control Board and family approvals before the lease goes live.",
-                    "icon": "06",
-                    "status": self._dashboard_status_for_codes(["lcb_consent"]),
-                },
-                {
-                    "sequence": "07",
-                    "title": "Sign the Lease Agreement",
-                    "caption": "Upload the executed lease agreement and supporting proof.",
-                    "icon": "07",
-                    "status": self._dashboard_status_for_codes(["agreement"]),
-                },
-                {
-                    "sequence": "08",
-                    "title": "Clear the Lease Security",
-                    "caption": "Complete the rent security or deposit commitment.",
-                    "icon": "08",
-                    "status": self._dashboard_status_for_codes(["payment_security"]),
-                },
-                {
-                    "sequence": "09",
-                    "title": "Protect the Lease Record",
-                    "caption": "Register long leases and lock the baseline soil condition where needed.",
-                    "icon": "09",
-                    "status": self._dashboard_status_for_codes(["lease_registration", "soil_health_baseline"]),
-                },
-                {
-                    "sequence": "10",
-                    "title": "Get Your Handover",
-                    "caption": "Record possession, boundaries, and activation of the lease.",
-                    "icon": "10",
-                    "status": self._dashboard_status_for_codes(["handover"]),
-                },
-                {
-                    "sequence": "11",
-                    "title": "Use the Land",
-                    "caption": "The lease is active and the property is ready for use.",
-                    "icon": "11",
-                    "status": "completed" if self.lease_currently_active else "pending",
-                },
-            ]
-            return self._normalize_dashboard_steps(steps)
-
-        payment_started = self.status in {
-            self.Status.PENDING,
-            self.Status.PAID,
-            self.Status.IN_ESCROW,
-            self.Status.PARTIALLY_RELEASED,
-            self.Status.RELEASED,
-            self.Status.DISPUTED,
-        }
-        commitment_paid = self.status in {
-            self.Status.PAID,
-            self.Status.IN_ESCROW,
-            self.Status.PARTIALLY_RELEASED,
-            self.Status.RELEASED,
-        }
-        due_diligence_status = self._dashboard_status_for_codes(["due_diligence"])
-        agreement_status = self._dashboard_status_for_codes(["agreement"])
-        completion_run_status = self._dashboard_status_for_codes(
-            ["lcb_consent", "stamp_duty", "completion_docs"]
-        )
-        registration_status = self._dashboard_status_for_codes(["registration"])
-
-        steps = [
-            {
-                "sequence": "01",
-                "title": "Identify Your Plot",
-                "caption": "Choose the verified plot that matches your farming or investment goals.",
-                "icon": "01",
-                "status": "completed" if self.plot_id else "pending",
-            },
-            {
-                "sequence": "02",
-                "title": "Connect with AgriPlot",
-                "caption": "Open the legal escrow workflow with the seller, agent, and support team before any commitment fee is paid.",
-                "icon": "02",
-                "status": "completed" if payment_started else "pending",
-            },
-            {
-                "sequence": "03",
-                "title": "Book Site Visit",
-                "caption": "Visit the land and confirm the physical reality before committing fully.",
-                "icon": "03",
-                "status": "completed" if due_diligence_status in {"completed", "current"} else "pending",
-            },
-            {
-                "sequence": "04",
-                "title": "Deposit Booking Fee",
-                "caption": "Pay the commitment fee so the plot is locked and the due-diligence pack is released.",
-                "icon": "04",
-                "status": "completed" if commitment_paid else ("current" if payment_started else "pending"),
-            },
-            {
-                "sequence": "05",
-                "title": "Do Your Due Diligence",
-                "caption": "Review the official search, beacon report, and verification records in your dashboard.",
-                "icon": "05",
-                "status": due_diligence_status,
-            },
-            {
-                "sequence": "06",
-                "title": "Sign Agreement for Sale",
-                "caption": "Seller advocate uploads the agreement and both sides secure the 10% deposit arrangement.",
-                "icon": "06",
-                "status": agreement_status,
-            },
-            {
-                "sequence": "07",
-                "title": "Clear the Remaining Balance",
-                "caption": "Work through the approvals, stamp duty, and completion exchange so the final balance and handover happen in order.",
-                "icon": "07",
-                "status": completion_run_status,
-            },
-            {
-                "sequence": "08",
-                "title": "Get Your Title Deed",
-                "caption": "Registration is completed and the fresh registry proof shows you as the new owner.",
-                "icon": "08",
-                "status": registration_status,
-            },
-            {
-                "sequence": "09",
-                "title": "Develop Your Property",
-                "caption": "The title is in your name and the land is ready for development or productive use.",
-                "icon": "09",
-                "status": "completed" if self.purchase_registration_complete else "pending",
-            },
-        ]
-        return self._normalize_dashboard_steps(steps)
-
-    def _normalize_dashboard_steps(self, steps):
-        normalized = []
-        current_found = False
-        for index, step in enumerate(steps):
-            step_copy = dict(step)
-            step_copy["state_label"] = {
-                "completed": "Completed",
-                "current": "Current",
-                "blocked": "Blocked",
-                "pending": "Pending",
-            }.get(step_copy["status"], "Pending")
-            if current_found:
-                if step_copy["status"] != "completed":
-                    step_copy["status"] = "pending"
-                    step_copy["state_label"] = "Pending"
-                normalized.append(step_copy)
-                continue
-
-            if step_copy["status"] == "completed":
-                normalized.append(step_copy)
-                continue
-
-            if step_copy["status"] == "blocked":
-                current_found = True
-                normalized.append(step_copy)
-                continue
-
-            step_copy["status"] = "current"
-            step_copy["state_label"] = "Current"
-            current_found = True
-            normalized.append(step_copy)
-
-        if not current_found:
-            return normalized
-
-        first_current_index = next(
-            (idx for idx, item in enumerate(normalized) if item["status"] in {"current", "blocked"}),
-            None,
-        )
-        if first_current_index is None:
-            return normalized
-
-        for idx in range(first_current_index + 1, len(normalized)):
-            if normalized[idx]["status"] != "completed":
-                normalized[idx]["status"] = "pending"
-                normalized[idx]["state_label"] = "Pending"
-        return normalized
-
-    def _dashboard_status_for_codes(self, codes):
-        steps = list(self.closing_steps.filter(code__in=codes))
-        if not steps:
-            return "pending"
-        statuses = {step.status for step in steps}
-        if all(status == PaymentClosingStep.Status.COMPLETED for status in statuses):
-            return "completed"
-        if PaymentClosingStep.Status.IN_PROGRESS in statuses or PaymentClosingStep.Status.COMPLETED in statuses:
-            return "current"
-        return "pending"
-
-    @property
-    def _dashboard_site_visit_status(self):
-        if self.transaction_type != self.TransactionType.PURCHASE:
-            return "pending"
-        if self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED, self.Status.RELEASED}:
-            if self.next_closing_step and self.next_closing_step.code == "due_diligence":
-                return "current"
-            return "completed"
-        return "pending"
-
-    @property
-    def buyer_next_step_summary(self):
-        if self.transaction_type not in {self.TransactionType.PURCHASE, self.TransactionType.LEASE}:
-            return "Follow the payment milestones in this workspace."
-        next_step = self.next_closing_step
-        if next_step:
-            return f"Next step: {next_step.display_title}"
-        if self.transaction_type == self.TransactionType.PURCHASE:
-            return "All legal transfer steps are complete."
-        return "All lease handover steps are complete."
-
-    @property
-    def buyer_next_step_instruction(self):
-        if self.transaction_type not in {self.TransactionType.PURCHASE, self.TransactionType.LEASE}:
-            return "Use the payment timeline below for the next action."
-        next_step = self.next_closing_step
-        if not next_step:
-            if self.transaction_type == self.TransactionType.PURCHASE:
-                return "Keep the stamped transfer documents and final search result for your records."
-            return "Keep the signed lease documents and handover record for your records."
-        return (
-            f"Open the guided workspace for '{next_step.display_title}'. "
-            f"{next_step.buyer_instruction}"
-        )
-
-    @property
-    def checkout_guidance_title(self):
-        if self.transaction_type == self.TransactionType.PURCHASE:
-            if self.plot and self.plot.land_type == "agricultural":
-                return "Agricultural land purchase journey"
-            return "Land purchase journey"
-        if self.transaction_type == self.TransactionType.LEASE:
-            if self.plot and self.plot.land_type == "agricultural":
-                return "Agricultural land lease journey"
-            return "Land lease journey"
-        return "Transaction journey"
-
-    @property
-    def checkout_guidance_steps(self):
-        if self.transaction_type == self.TransactionType.PURCHASE:
-            if self.plot and self.plot.land_type == "agricultural":
-                return [
-                    "Pay the commitment fee so AgriPlot can lock the plot and release the verified search and survey pack.",
-                    "Review the due diligence documents, then work with the seller's lawyer on the sale agreement and deposit.",
-                    "Use the tracker for LCB consent, stamp duty, completion, and final registration.",
-                ]
-            return [
-                "Pay the commitment fee so AgriPlot can lock the plot and release the verified search pack.",
-                "Review the due diligence documents, then move to the sale agreement and deposit stage.",
-                "Use the tracker for consents or clearances, stamp duty, completion, and final registration.",
-            ]
-        if self.transaction_type == self.TransactionType.LEASE:
-            if self.plot and self.plot.land_type == "agricultural":
-                return [
-                    "Confirm the verified farming details and intended lease use.",
-                    "Visit the land and verify access, boundaries, and handover expectations.",
-                    "Use the lease tracker to sign the agreement, confirm payment, and complete handover.",
-                ]
-            return [
-                "Confirm the verified site details and intended lease use.",
-                "Visit the site and agree the handover expectations with the owner or agent.",
-                "Use the lease tracker to sign the agreement, confirm payment, and complete handover.",
-            ]
-        return []
-
-    def _validate_market_state_transition(self, status, start=None, end=None):
-        valid_statuses = {choice[0] for choice in self.plot._meta.get_field("market_status").choices}
-        if status not in valid_statuses:
-            raise ValidationError(f"Invalid market_status '{status}'. Must be one of: {', '.join(sorted(valid_statuses))}")
+                    "title": "Title Deed Copy",
+                    "note": "Title document supplied during the verification process.",
+                    "url": plot.title_deed.url,
+                }
+            )
+        return documents
 
     def sync_plot_market_state(self):
+        """Update plot market status based on payment state"""
         if self.workflow_anchor_payment.pk != self.pk:
             return
         if not self.plot:
             return
+        
         if self.transaction_type == self.TransactionType.PURCHASE:
-            purchase_payment_active_statuses = {
-                self.Status.PAID,
-                self.Status.IN_ESCROW,
-                self.Status.PARTIALLY_RELEASED,
-                self.Status.RELEASED,
-            }
-            settled_related_payments = [
-                related
-                for related in self.workflow_related_payments
-                if related.status in purchase_payment_active_statuses
-            ]
-            latest_settled_payment = settled_related_payments[-1] if settled_related_payments else None
-            lock_message = ""
-            if self.due_diligence_lock_expires_at:
-                lock_message = (
-                    f" Due-diligence lock runs until "
-                    f"{timezone.localtime(self.due_diligence_lock_expires_at):%b %d, %Y %I:%M %p}."
-                )
-            if self.status == self.Status.RELEASED:
-                new_status = "sold" if self.purchase_registration_complete else "reserved"
-                self._validate_market_state_transition(new_status)
-                self.plot.market_status = new_status
-                self.plot.lease_start_date = None
-                self.plot.lease_end_date = None
+            if self.purchase_registration_complete and self.disbursed_at:
+                self.plot.market_status = "sold"
                 self.plot.availability_notes = (
-                    f"Marked sold via payment {self.internal_reference} after registry transfer."
-                    if self.purchase_registration_complete
-                    else (
-                        f"Reserved for legal completion via payment {self.internal_reference}. "
-                        "Awaiting the statutory closing checklist before final transfer."
-                    )
+                    f"Sold via payment {self.internal_reference}. New title issued and funds disbursed."
                 )
             elif self.status in {self.Status.PAID, self.Status.IN_ESCROW, self.Status.PARTIALLY_RELEASED}:
-                self._validate_market_state_transition("reserved")
                 self.plot.market_status = "reserved"
-                self.plot.lease_start_date = None
-                self.plot.lease_end_date = None
                 self.plot.availability_notes = (
-                    f"Reserved under active purchase transaction {self.internal_reference}.{lock_message}"
-                )
-            elif settled_related_payments:
-                self._validate_market_state_transition("reserved")
-                self.plot.market_status = "reserved"
-                self.plot.lease_start_date = None
-                self.plot.lease_end_date = None
-                self.plot.availability_notes = (
-                    f"Reserved under active purchase transaction {(latest_settled_payment or self).internal_reference}."
-                    f"{lock_message}"
+                    f"Reserved for purchase via payment {self.internal_reference}. Funds held in escrow."
                 )
             elif self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
-                self._validate_market_state_transition("available")
                 self.plot.market_status = "available"
-                self.plot.lease_start_date = None
-                self.plot.lease_end_date = None
-                self.plot.availability_notes = (
-                    f"Purchase transaction {self.internal_reference} closed without transfer."
-                )
+                self.plot.availability_notes = f"Purchase transaction {self.internal_reference} closed without transfer."
             else:
                 return
-            self.plot.save(
-                update_fields=[
-                    "market_status",
-                    "lease_start_date",
-                    "lease_end_date",
-                    "availability_notes",
-                ]
-            )
+            
+            self.plot.save(update_fields=["market_status", "availability_notes", "updated_at"])
             return
-
+        
         if self.transaction_type == self.TransactionType.LEASE:
-            lease_payment_active_statuses = {
-                self.Status.PAID,
-                self.Status.IN_ESCROW,
-                self.Status.PARTIALLY_RELEASED,
-                self.Status.RELEASED,
-            }
-            settled_related_payments = [
-                related
-                for related in self.workflow_related_payments
-                if related.status in lease_payment_active_statuses
-            ]
-            latest_settled_payment = settled_related_payments[-1] if settled_related_payments else None
-
             if self.lease_currently_active:
-                self._validate_market_state_transition("leased")
                 self.plot.market_status = "leased"
                 self.plot.lease_start_date = self.lease_start_date
                 self.plot.lease_end_date = self.lease_end_date
-                if self.plot.listing_type == "both":
-                    self.plot.availability_notes = (
-                        f"Lease activated via payment {self.internal_reference}. "
-                        "This land remains on the market for sale subject to the active tenancy and notice terms."
-                    )
-                else:
-                    self.plot.availability_notes = (
-                        f"Lease activated via payment {self.internal_reference} after handover completion."
-                    )
+                self.plot.availability_notes = f"Lease active via payment {self.internal_reference}"
             elif self.lease_ready_for_use:
-                self._validate_market_state_transition("reserved")
                 self.plot.market_status = "reserved"
                 self.plot.lease_start_date = self.lease_start_date
                 self.plot.lease_end_date = self.lease_end_date
-                self.plot.availability_notes = (
-                    f"Lease approved via payment {self.internal_reference}. "
-                    f"Tenant occupation may begin on {self._format_lease_date(self.lease_start_date)} and ends on {self._format_lease_date(self.lease_end_date)}."
-                )
-            elif settled_related_payments:
-                self._validate_market_state_transition("reserved")
+                self.plot.availability_notes = f"Lease approved via payment {self.internal_reference}"
+            elif self.status in {self.Status.PAID, self.Status.IN_ESCROW}:
                 self.plot.market_status = "reserved"
-                self.plot.lease_start_date = self.lease_start_date
-                self.plot.lease_end_date = self.lease_end_date
-                self.plot.availability_notes = (
-                    f"Lease in progress via payment {(latest_settled_payment or self).internal_reference}. "
-                    "The commitment has been paid and the land is no longer open for a competing tenant while handover is pending."
-                )
+                self.plot.availability_notes = f"Lease in progress via payment {self.internal_reference}"
             elif self.status in {self.Status.REFUNDED, self.Status.CANCELLED, self.Status.FAILED}:
-                self._validate_market_state_transition("available")
                 self.plot.market_status = "available"
                 self.plot.lease_start_date = None
                 self.plot.lease_end_date = None
-                self.plot.availability_notes = (
-                    f"Lease transaction {self.internal_reference} closed without activation."
-                )
+                self.plot.availability_notes = f"Lease transaction {self.internal_reference} closed without activation"
             else:
                 return
-
-            self.plot.save(
-                update_fields=[
-                    "market_status",
-                    "lease_start_date",
-                    "lease_end_date",
-                    "availability_notes",
-                ]
-            )
-            # LeaseWaitlistEntry update removed to avoid circular import
-
-    @property
-    def lease_duration_days(self):
-        if self.transaction_type != self.TransactionType.LEASE or not self.lease_start_date or not self.lease_end_date:
-            return 0
-        return (self.lease_end_date - self.lease_start_date).days
-
-    @property
-    def requires_registry_protection(self):
-        return self.transaction_type == self.TransactionType.LEASE and self.lease_duration_days > 730
-
-    @property
-    def vacation_notice_date(self):
-        if self.transaction_type != self.TransactionType.LEASE or not self.lease_end_date:
-            return None
-        return self.lease_end_date - timedelta(days=self.notice_period_days)
-
-    @property
-    def public_lease_summary(self):
-        if self.transaction_type != self.TransactionType.LEASE or not self.lease_start_date or not self.lease_end_date:
-            return ""
-        summary = (
-            f"Occupied from {self._format_lease_date(self.lease_start_date)} to {self._format_lease_date(self.lease_end_date)}. "
-            f"Vacation notice window starts on {self._format_lease_date(self.vacation_notice_date)}."
-        )
-        if self.subject_to_sale:
-            summary += " This lease is subject to sale, so a buyer may inherit the tenancy or trigger the contractual notice process."
-        return summary
-
-    @property
-    def generated_lease_agreement_terms(self):
-        if self.transaction_type != self.TransactionType.LEASE or not self.plot:
-            return []
-
-        terms = [
-            f"Parties: tenant {self.buyer.get_full_name() or self.buyer.username if self.buyer else 'to be confirmed'} and landlord {self.counterparty_label}.",
-            f"Premises: {self.plot.title} in {self.plot.location}.",
-            f"Term: {self._format_lease_date(self.lease_start_date)} to {self._format_lease_date(self.lease_end_date)}.",
-            f"Intended use: {self.intended_use or 'Agricultural use as agreed by the parties'}.",
-            f"Security deposit: KES {self.lease_security_deposit or 0:,.2f}.",
-            f"Vacation notice: {self.notice_period_days} days before the lease end date.",
-        ]
-        if self.good_husbandry_required:
-            terms.append(
-                "Good husbandry: the tenant must conserve the soil, avoid waste, and return the land in the same or better productive condition."
-            )
-        if self.soil_exit_test_required:
-            terms.append(
-                "Soil exit test: the tenant must cooperate with the exit soil and land-condition inspection before final handover."
-            )
-        if self.subject_to_sale:
-            terms.append(
-                "Subject to sale: the land remains on the market for sale, and any buyer must either honour this lease or follow the agreed notice and attornment process."
-            )
-        if self.requires_registry_protection:
-            terms.append(
-                "Registry protection: this lease should be protected through the Lands Registry because the agreed term exceeds two years."
-            )
-        return terms
-
-    @property
-    def generated_lease_agreement_text(self):
-        if self.transaction_type != self.TransactionType.LEASE:
-            return ""
-        return "\n".join(f"{index}. {term}" for index, term in enumerate(self.generated_lease_agreement_terms, start=1))
+            
+            self.plot.save(update_fields=["market_status", "lease_start_date", "lease_end_date", "availability_notes", "updated_at"])
 
 
 # ============================================================
@@ -2723,28 +2001,30 @@ class PaymentClosingStep(models.Model):
         code = self.workflow_code
         purchase_map = {
             "due_diligence": "Buyer",
-            "offer": "Buyer / Seller",
-            "commitment": "Buyer / Seller",
-            "agreement": "Seller Advocate",
-            "lcb_consent": "Admin / Lawyer",
-            "completion_docs": "Buyer Advocate",
-            "stamp_duty": "Buyer / Admin",
-            "registration": "Registrar / Admin",
-        }
-        lease_map = {
-            "offer": "Buyer / Tenant",
-            "lcb_consent": "Seller / Admin",
-            "agreement": "Buyer + Seller",
-            "payment_security": "Buyer / Tenant",
-            "lease_registration": "Admin / Lawyer",
-            "soil_health_baseline": "Buyer + Seller",
-            "handover": "Seller / Landowner",
+            "offer": "Buyer",
+            "agreement": "Both Parties",
+            "lcb_consent": "Seller",
+            "completion_docs": "Both Advocates",
+            "stamp_duty": "Buyer",
+            "registration": "Buyer Advocate",
+            "disbursement": "Platform (Automatic)",
+            "handover": "Both Parties",
+            "reports": "System",
         }
         if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
-            return purchase_map.get(code, "Operations")
+            return purchase_map.get(code, "Both Parties")
         if self.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
-            return lease_map.get(code, "Operations")
-        return "Operations"
+            lease_map = {
+                "offer": "Tenant",
+                "lcb_consent": "Landlord",
+                "agreement": "Both Parties",
+                "payment_security": "Tenant",
+                "lease_registration": "Landlord",
+                "soil_health_baseline": "Both Parties",
+                "handover": "Both Parties",
+            }
+            return lease_map.get(code, "Both Parties")
+        return "Both Parties"
 
     @property
     def action_summary(self):
@@ -2761,14 +2041,6 @@ class PaymentClosingStep(models.Model):
                 "support_label": "Do not move to the sale agreement until the verified search and survey evidence make sense for this deal.",
             },
             "offer": {
-                "headline": "Upload the letter of offer and let the seller confirm it.",
-                "where": "Draft and upload the letter of offer or reservation terms, then let the seller or their advocate countersign the same step in the system.",
-                "document": "Letter of offer / reservation terms",
-                "platform_role": "AgriPlot records the buyer's intent, then lets the seller side confirm the signed offer before the agreement stage opens.",
-                "cta_label": "Upload Offer",
-                "support_label": "This step should be completed by the buyer first and then confirmed by the seller or their advocate.",
-            },
-            "commitment": {
                 "headline": "Upload the letter of offer and let the seller confirm it.",
                 "where": "Draft and upload the letter of offer or reservation terms, then let the seller or their advocate countersign the same step in the system.",
                 "document": "Letter of offer / reservation terms",
@@ -2922,7 +2194,6 @@ class PaymentClosingStep(models.Model):
         purchase_map = {
             "due_diligence": "Review the verified search, survey, and registry pack on AgriPlot before moving into the sale agreement stage.",
             "offer": "Upload the letter of offer, then let the seller or their advocate confirm the signed copy in the system.",
-            "commitment": "Upload the letter of offer, then let the seller or their advocate confirm the signed copy in the system.",
             "agreement": "Review the sale agreement with your advocate and confirm once the seller-side upload is ready.",
             "lcb_consent": "Coordinate with the seller for the Land Control Board meeting and carry your ID documents.",
             "completion_docs": "Wait for the completion pack to be exchanged, then confirm it is complete before the balance and tax stages move on.",
@@ -2953,21 +2224,20 @@ class PaymentClosingStep(models.Model):
         purchase_map = {
             "due_diligence": "Buyer review confirmation",
             "offer": "Buyer offer upload / seller confirmation",
-            "commitment": "Buyer offer upload / seller confirmation",
-            "agreement": "Seller-side legal upload and buyer confirmation",
-            "lcb_consent": "Admin / lawyer evidence upload",
-            "completion_docs": "Buyer advocate completion pack upload",
-            "stamp_duty": "Buyer and admin tax evidence upload",
-            "registration": "Registrar / admin proof upload",
+            "agreement": "Both parties confirmation",
+            "lcb_consent": "Seller evidence upload",
+            "completion_docs": "Both advocates exchange",
+            "stamp_duty": "Buyer tax evidence upload",
+            "registration": "Buyer advocate proof upload",
         }
         lease_map = {
-            "offer": "Buyer confirmation",
-            "lcb_consent": "Seller or admin consent upload",
-            "agreement": "Both parties / admin upload",
-            "payment_security": "Tenant escrow payment confirmation",
-            "lease_registration": "Admin registry evidence upload",
-            "soil_health_baseline": "Joint baseline upload",
-            "handover": "Seller handover confirmation",
+            "offer": "Tenant confirmation",
+            "lcb_consent": "Landlord consent upload",
+            "agreement": "Both parties confirmation",
+            "payment_security": "Tenant payment confirmation",
+            "lease_registration": "Landlord registry proof",
+            "soil_health_baseline": "Both parties baseline upload",
+            "handover": "Both parties handover",
         }
         if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
             return purchase_map.get(code, "Evidence-backed update")
@@ -2980,8 +2250,7 @@ class PaymentClosingStep(models.Model):
         code = self.workflow_code
         requirement_map = {
             "offer": ["Letter of offer uploaded"],
-            "commitment": ["Letter of offer uploaded"],
-            "agreement": ["Executed sale agreement uploaded"],
+            "agreement": ["Executed sale agreement uploaded", "Buyer confirmed", "Seller confirmed"],
             "lcb_consent": ["Consent number entered", "Meeting date entered", "LCB / spousal consent upload"],
             "completion_docs": ["Original title received", "Seller ID / KRA copies received", "Transfer forms signed"],
             "stamp_duty": ["Official market value entered", "Calculated stamp duty entered", "Stamp duty receipt uploaded"],
@@ -2992,6 +2261,7 @@ class PaymentClosingStep(models.Model):
             ],
             "lease_registration": ["Lease registry proof uploaded"],
             "soil_health_baseline": ["Baseline soil or condition report uploaded"],
+            "handover": ["Handover certificate uploaded"],
         }
         return requirement_map.get(code, [])
 
@@ -3033,7 +2303,7 @@ class PaymentClosingStep(models.Model):
             )
         if code in {"lease_registration", "soil_health_baseline", "handover"}:
             return bool(self.document)
-        if code in {"offer", "commitment"}:
+        if code == "offer":
             return bool(self.notes or self.document)
         return True
 
@@ -3042,8 +2312,15 @@ class PaymentClosingStep(models.Model):
             return ""
         if self.code == "agreement":
             if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
-                return "The executed sale agreement must be uploaded and both the buyer and seller must digitally confirm it before this step can be completed."
-            return "Both the tenant and the landlord must digitally confirm the generated lease agreement before this step can be completed."
+                missing = []
+                if not self.document:
+                    missing.append("executed sale agreement")
+                if not self.buyer_confirmed_at:
+                    missing.append("buyer confirmation")
+                if not self.seller_confirmed_at:
+                    missing.append("seller confirmation")
+                return f"This step needs: {', '.join(missing)} before it can be completed."
+            return "Both the tenant and the landlord must digitally confirm the lease agreement before this step can be completed."
         requirement_text = ", ".join(self.completion_requirements)
         return f"This step needs more evidence before it can be completed: {requirement_text}."
 

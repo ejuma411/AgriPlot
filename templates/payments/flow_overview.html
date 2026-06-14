@@ -229,10 +229,10 @@
         font-size: 1.1rem;
     }
     
-    /* Journey Grid */
+    /* Journey Grid - Updated for 8 stages */
     .journey-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 1.5rem;
     }
     
@@ -266,7 +266,7 @@
     }
     
     .journey-card h3 {
-        font-size: 1.25rem;
+        font-size: 1.1rem;
         font-weight: 600;
         color: var(--ap-text);
         margin-bottom: 0.75rem;
@@ -274,8 +274,35 @@
     
     .journey-card p {
         color: var(--ap-muted);
-        font-size: 0.9rem;
+        font-size: 0.85rem;
         line-height: 1.5;
+    }
+    
+    /* Escrow Info Banner */
+    .escrow-banner {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        color: white;
+    }
+    
+    .escrow-banner h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .escrow-banner p {
+        color: rgba(255,255,255,0.8);
+        font-size: 0.9rem;
+    }
+    
+    .escrow-banner .highlight {
+        color: #10b981;
+        font-weight: 600;
     }
     
     /* Two Column Layout */
@@ -313,6 +340,16 @@
         font-weight: 500;
         font-size: 0.9rem;
         border-left: 3px solid var(--ap-green);
+    }
+    
+    .stamp-duty-chip {
+        border-left-color: #f59e0b;
+        background: #fff8e7;
+    }
+    
+    .disbursement-chip {
+        border-left-color: #10b981;
+        background: #eef8f1;
     }
     
     .rule-list {
@@ -380,6 +417,12 @@
     }
     
     /* Responsive Breakpoints */
+    @media (max-width: 1200px) {
+        .journey-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
     @media (max-width: 1024px) {
         .hero-grid {
             grid-template-columns: 1fr;
@@ -388,10 +431,6 @@
         
         .hero-panel {
             max-width: 500px;
-        }
-        
-        .journey-grid {
-            grid-template-columns: repeat(2, 1fr);
         }
         
         .two-columns {
@@ -496,6 +535,10 @@
             width: 100%;
             justify-content: center;
         }
+        
+        .escrow-banner {
+            padding: 1rem;
+        }
     }
     
     @media (max-width: 480px) {
@@ -531,11 +574,11 @@
         }
         
         .journey-card h3 {
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
         
         .journey-card p {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
         }
         
         .rule-number {
@@ -555,11 +598,11 @@
             <div class="hero-content">
                 <span class="hero-badge">🔒 Legal Escrow Workflow</span>
                 <h1>Secure Land Transfer Made Simple</h1>
-                <p class="hero-lead">AgriPlot's guided Kenyan land-transfer path starts after a buyer expresses serious intent. The commitment fee opens due diligence first, then the deal moves through agreement, consents, tax, completion, and final registration.</p>
+                <p class="hero-lead">AgriPlot's guided Kenyan land-transfer path follows the statutory pipeline: due diligence, letter of offer, sale agreement with 10% deposit, LCB consent, stamp duty (paid directly to KRA), completion with 90% balance, registration, and final disbursement.</p>
                 <div class="hero-buttons">
                     <a href="{{ workflow_start_url }}" class="btn btn-primary">
                         <i class="fas fa-file-signature"></i>
-                        {% if selected_plot %}Proceed to Commitment Fee{% else %}Start Legal Workflow{% endif %}
+                        {% if selected_plot %}Proceed to Start Workflow{% else %}Start Legal Workflow{% endif %}
                     </a>
                 </div>
             </div>
@@ -567,7 +610,7 @@
                 <div class="hero-panel-card">
                     <span class="panel-label">✨ Why this matters</span>
                     <strong>Checkout opens legal due diligence, not a blind money request</strong>
-                    <p>AgriPlot uses the commitment fee to lock the plot, deliver the due diligence pack, and then move the buyer through the real closing sequence.</p>
+                    <p>AgriPlot follows the statutory pipeline: due diligence first, then agreement deposit, consents, stamp duty, completion balance, registration, and disbursement.</p>
                 </div>
                 <div class="hero-panel-card">
                     <span class="panel-label">📍 This plot</span>
@@ -590,44 +633,64 @@
     </div>
 </section>
 
-<!-- Journey Section -->
+<!-- Escrow Info Banner -->
+<section class="section-light" style="padding: 0 0 2rem 0;">
+    <div class="container">
+        <div class="escrow-banner">
+            <h3><i class="fas fa-lock"></i> Platform Escrow Model</h3>
+            <p>Your funds are held securely in a licensed escrow account. The <span class="highlight">10% deposit</span> and <span class="highlight">90% balance</span> are only released to the seller <strong>AFTER</strong> the new title deed is issued in your name. <span class="highlight">Stamp duty is paid directly to KRA via iTax</span> (2% rural / 4% urban) — the platform never collects it.</p>
+        </div>
+    </div>
+</section>
+
+<!-- Journey Section - 8 Stages -->
 <section class="section section-light" id="journey">
     <div class="container">
         <div class="section-header">
             <span class="section-badge">📋 The Journey</span>
-            <h2>6 Legal Steps from Commitment to Title Handover</h2>
+            <h2>8 Legal Steps from Due Diligence to Title Handover</h2>
             <p>The buyer should understand this flow before any payment begins.</p>
         </div>
         <div class="journey-grid">
             <div class="journey-card">
                 <div class="step-number">01</div>
-                <h3>Due Diligence Lock</h3>
-                <p>Buyer pays the commitment fee, AgriPlot locks the plot for 7 days, and the official search plus survey or beacon pack is released for review.</p>
+                <h3>Due Diligence</h3>
+                <p>Buyer conducts official land search and physical beacon verification to confirm clean title.</p>
             </div>
             <div class="journey-card">
                 <div class="step-number">02</div>
-                <h3>Sale Agreement</h3>
-                <p>The seller's lawyer drafts the agreement, both sides capture advocate details, and the 10% deposit arrangement is secured in the legal framework.</p>
+                <h3>Letter of Offer</h3>
+                <p>Buyer issues a formal letter of offer with proposed price and payment terms to the seller.</p>
             </div>
             <div class="journey-card">
                 <div class="step-number">03</div>
-                <h3>LCB Consent</h3>
-                <p>For agricultural land, the Land Control Board consent and any spousal approvals must be uploaded before the process moves forward.</p>
+                <h3>Sale Agreement & 10% Deposit</h3>
+                <p>Seller's advocate drafts the agreement, both sides sign, and the 10% deposit is held in platform escrow.</p>
             </div>
             <div class="journey-card">
                 <div class="step-number">04</div>
-                <h3>Valuation & Stamp Duty</h3>
-                <p>The government valuation is recorded and the buyer uploads the KRA or eCitizen stamp duty receipt before the completion exchange can proceed.</p>
+                <h3>LCB Consent</h3>
+                <p>For agricultural land, the Land Control Board consent and any spousal approvals must be uploaded.</p>
             </div>
             <div class="journey-card">
                 <div class="step-number">05</div>
-                <h3>Completion Exchange</h3>
-                <p>The buyer clears the remaining balance to the legal side while the seller hands over the original title, signed transfer forms, and ID/KRA copies.</p>
+                <h3>Stamp Duty (Pay to KRA)</h3>
+                <p>Buyer pays stamp duty directly to KRA via iTax (2% rural / 4% urban) and uploads the receipt for verification.</p>
             </div>
             <div class="journey-card">
                 <div class="step-number">06</div>
-                <h3>Registration & Handover</h3>
-                <p>The lawyer lodges the transfer at the registry or Ardhisasa, and only a fresh registry result showing the buyer's name flips the plot to sold.</p>
+                <h3>Completion & 90% Balance</h3>
+                <p>Buyer pays the 90% balance into escrow. Seller provides original title, signed transfer forms, and ID/KRA copies.</p>
+            </div>
+            <div class="journey-card">
+                <div class="step-number">07</div>
+                <h3>Registration</h3>
+                <p>Advocate lodges transfer at the registry. New title deed is issued in buyer's name.</p>
+            </div>
+            <div class="journey-card">
+                <div class="step-number">08</div>
+                <h3>Disbursement & Handover</h3>
+                <p>Platform deducts fee, disburses net amount to seller. Buyer takes physical possession.</p>
             </div>
         </div>
     </div>
@@ -640,14 +703,16 @@
             <div class="info-card">
                 <h3>🔒 What stays blocked until evidence is uploaded</h3>
                 <div class="chip-list">
+                    <div class="info-chip">Due diligence documents must be uploaded before proceeding.</div>
                     <div class="info-chip">LCB consent step stays pending until the consent letter is uploaded.</div>
-                    <div class="info-chip">Stamp duty step stays pending until valuation and the tax receipt are both captured.</div>
-                    <div class="info-chip">Completion exchange stays pending until the title, RL1 forms, and seller identity pack are confirmed.</div>
-                    <div class="info-chip">Registration is the only step that can flip the plot to sold.</div>
+                    <div class="info-chip stamp-duty-chip">Stamp duty step stays pending until the KRA iTax receipt is uploaded and verified.</div>
+                    <div class="info-chip">Completion exchange stays pending until the 90% balance is in escrow and documents are confirmed.</div>
+                    <div class="info-chip disbursement-chip">Funds are only disbursed to seller AFTER the new title deed is verified.</div>
+                    <div class="info-chip">Platform fee is deducted from seller proceeds BEFORE disbursement.</div>
                 </div>
             </div>
             <div class="info-card">
-                <h3>🎯 What AgriPlot should do from this page</h3>
+                <h3>🎯 What AgriPlot does from this page</h3>
                 <div class="rule-list">
                     <div class="rule-card">
                         <span class="rule-number">01</span>
@@ -655,11 +720,19 @@
                     </div>
                     <div class="rule-card">
                         <span class="rule-number">02</span>
-                        <p>Only after this overview should the buyer continue to the commitment-fee checkout.</p>
+                        <p>Only after this overview should the buyer proceed with the agreement deposit payment.</p>
                     </div>
                     <div class="rule-card">
                         <span class="rule-number">03</span>
-                        <p>After payment success, AgriPlot should open the Due Diligence workspace, not a generic payment detail page.</p>
+                        <p>After payment success, AgriPlot opens the Due Diligence workspace, not a generic payment detail page.</p>
+                    </div>
+                    <div class="rule-card">
+                        <span class="rule-number">04</span>
+                        <p>The platform holds all escrow funds securely until registration completes.</p>
+                    </div>
+                    <div class="rule-card">
+                        <span class="rule-number">05</span>
+                        <p>Stamp duty is paid directly to KRA — platform only verifies the receipt.</p>
                     </div>
                 </div>
             </div>

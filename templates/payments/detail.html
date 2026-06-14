@@ -285,6 +285,48 @@
         color: var(--ap-green);
     }
     
+    /* Escrow Summary Card */
+    .escrow-summary {
+        background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        color: white;
+    }
+    
+    .escrow-summary .card-title {
+        color: white;
+        border-bottom-color: rgba(255,255,255,0.1);
+    }
+    
+    .escrow-summary .summary-item {
+        background: rgba(255,255,255,0.1);
+    }
+    
+    .escrow-summary .summary-value {
+        color: white;
+    }
+    
+    .escrow-amount {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #10b981;
+    }
+    
+    /* Stamp Duty Card */
+    .stamp-duty-card {
+        background: #fff8e7;
+        border-left: 4px solid #f59e0b;
+    }
+    
+    .stamp-duty-card .card-title {
+        color: #92400e;
+        border-bottom-color: #fde68a;
+    }
+    
+    /* Disbursement Card */
+    .disbursement-card {
+        background: #eef8f1;
+        border-left: 4px solid var(--ap-green);
+    }
+    
     /* Payment List */
     .payment-list {
         display: flex;
@@ -405,6 +447,15 @@
         box-shadow: 0 4px 15px rgba(47, 133, 90, 0.3);
     }
     
+    .btn-success {
+        background: #10b981;
+        color: white;
+    }
+    
+    .btn-success:hover {
+        background: #059669;
+    }
+    
     .btn-secondary {
         background: var(--ap-surface-muted);
         color: var(--ap-text);
@@ -426,13 +477,13 @@
     }
     
     .btn-danger {
-        background: var(--ap-danger);
+        background: #dc3545;
         color: white;
     }
     
     .btn-warning {
-        background: var(--ap-gold);
-        color: #2c3e2f;
+        background: #f59e0b;
+        color: white;
     }
     
     .w-100 {
@@ -503,7 +554,15 @@
     
     .warning-box {
         background: #fff7e1;
-        border-left: 4px solid var(--ap-gold);
+        border-left: 4px solid #f59e0b;
+        padding: 1rem;
+        border-radius: 12px;
+        margin-bottom: 1rem;
+    }
+    
+    .info-box {
+        background: #e8f0fe;
+        border-left: 4px solid #3b82f6;
         padding: 1rem;
         border-radius: 12px;
         margin-bottom: 1rem;
@@ -537,6 +596,43 @@
         margin-right: 0.45rem;
         animation: pulse 1.4s infinite ease-in-out;
     }
+    
+    .text-link {
+        color: var(--ap-green);
+        text-decoration: none;
+    }
+    
+    .text-link:hover {
+        text-decoration: underline;
+    }
+    
+    .text-warning {
+        color: #f59e0b;
+    }
+    
+    .text-success {
+        color: #10b981;
+    }
+    
+    .mt-2 {
+        margin-top: 0.5rem;
+    }
+    
+    .mt-3 {
+        margin-top: 1rem;
+    }
+    
+    .mb-0 {
+        margin-bottom: 0;
+    }
+    
+    .mb-2 {
+        margin-bottom: 0.5rem;
+    }
+    
+    .mb-3 {
+        margin-bottom: 1rem;
+    }
 
     @keyframes pulse {
         0% { transform: scale(0.9); opacity: 0.6; }
@@ -549,6 +645,13 @@
         text-align: center;
         padding: 2rem;
         color: var(--ap-muted);
+    }
+    
+    /* Active Step Highlight */
+    .milestone-item.active-step {
+        background: #ecfdf5;
+        border: 1px solid #10b981;
+        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
     }
     
     /* Responsive */
@@ -626,12 +729,17 @@
         <!-- Header Section -->
         <div class="payment-header">
             <div>
-                <div class="payment-badge">Payment Request</div>
+                <div class="payment-badge">
+                    {% if payment.transaction_type == 'purchase' %}Land Purchase{% else %}Lease{% endif %}
+                </div>
                 <h1 class="payment-title">{{ payment.title }}</h1>
                 <div class="payment-ref">
                     <i class="fas fa-hashtag"></i> {{ payment.internal_reference }}
                     {% if payment.plot %}
                     • <i class="fas fa-map-marker-alt"></i> {{ payment.plot.title }}
+                    {% endif %}
+                    {% if payment.legal_transaction %}
+                    • <i class="fas fa-gavel"></i> <a href="{% url 'transactions:detail' payment.legal_transaction.id %}" class="text-link">View Legal Workspace</a>
                     {% endif %}
                 </div>
             </div>
@@ -654,6 +762,15 @@
             <div class="progress-track">
                 <span class="progress-fill" style="width: {{ payment.progress_value }}%;"></span>
             </div>
+            {% if payment.current_assigned_step %}
+            <div class="mt-2">
+                <small class="text-muted">
+                    <i class="fas fa-tasks"></i> Current step: 
+                    <strong>{{ payment.current_assigned_step.display_title }}</strong> — 
+                    {{ payment.current_assignment_message }}
+                </small>
+            </div>
+            {% endif %}
         </div>
         
         <!-- Main Grid -->
@@ -681,7 +798,18 @@
                         </div>
                         <div class="summary-item">
                             <div class="summary-label">Escrow Status</div>
-                            <div class="summary-value">{% if payment.escrow_enabled %}Enabled{% else %}Disabled{% endif %}</div>
+                            <div class="summary-value">
+                                {% if payment.escrow_enabled %}
+                                    <span class="text-success">✓ Enabled</span>
+                                    {% if payment.metadata.deposit_paid and payment.metadata.balance_paid %}
+                                        <br><small class="text-muted">Full amount in escrow</small>
+                                    {% elif payment.metadata.deposit_paid %}
+                                        <br><small class="text-muted">Deposit (10%) in escrow</small>
+                                    {% endif %}
+                                {% else %}
+                                    Disabled
+                                {% endif %}
+                            </div>
                         </div>
                         <div class="summary-item">
                             <div class="summary-label">Phone Number</div>
@@ -713,7 +841,7 @@
                     {% if payment.transaction_type == 'purchase' %}
                     <div class="notice-box">
                         <div class="notice-title">⚖️ Legal Escrow Workflow</div>
-                        <div class="notice-text">This checkout opens the Kenyan land-transfer workflow rather than ending at payment. The plot is held for due diligence first, then the agreement, consents, stamp duty, completion exchange, and registry transfer must all be evidenced in order.</div>
+                        <div class="notice-text">This checkout opens the Kenyan land-transfer workflow rather than ending at payment. The plot is held for due diligence first, then the agreement, consents, stamp duty, completion exchange, and registry transfer must all be evidenced in order. Funds are held in escrow and released to the seller ONLY after title registration.</div>
                     </div>
                     {% endif %}
                     
@@ -725,8 +853,103 @@
                     {% endif %}
                 </div>
 
+                <!-- Stamp Duty Status Card - Only show when relevant -->
+                {% if stamp_duty_status and payment.transaction_type == 'purchase' and payment.category == 'stamp_duty' %}
+                <div class="info-card stamp-duty-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-landmark"></i>
+                        Stamp Duty (KRA iTax)
+                    </h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">Status</div>
+                            <div class="summary-value">
+                                {% if stamp_duty_status.receipt_verified %}
+                                    <span class="text-success">✓ Verified</span>
+                                    <br><small>Receipt: {{ stamp_duty_status.receipt_number }}</small>
+                                {% else %}
+                                    <span class="text-warning">⏳ Pending Verification</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Payment Method</div>
+                            <div class="summary-value">Direct to KRA via iTax</div>
+                        </div>
+                    </div>
+                    <div class="warning-box mt-2">
+                        <div class="notice-title">
+                            <i class="fas fa-info-circle"></i> Important
+                        </div>
+                        <div class="notice-text">
+                            Stamp duty is paid <strong>directly to KRA</strong> via iTax, not through the platform.
+                            {% if not stamp_duty_status.receipt_verified %}
+                            After payment, upload the receipt for verification.
+                            <a href="https://itax.kra.go.ke" target="_blank" class="text-link">Go to KRA iTax Portal →</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Upload Button - Only show if receipt not yet verified -->
+                    {% if not stamp_duty_status.receipt_verified %}
+                    <div class="mt-3">
+                        {% with stamp_duty_step=payment.closing_steps|dictsort:"sequence"|first %}
+                            {% for step in payment.closing_steps.all %}
+                                {% if step.code == 'stamp_duty' %}
+                                    <a href="{% url 'payments:closing_step_workspace' payment.pk step.pk %}" class="btn btn-primary w-100">
+                                        <i class="fas fa-upload me-2"></i> Upload Stamp Duty Receipt
+                                    </a>
+                                    <small class="text-muted d-block text-center mt-2">
+                                        Upload your KRA iTax receipt for verification
+                                    </small>
+                                {% endif %}
+                            {% endfor %}
+                        {% endwith %}
+                    </div>
+                    {% endif %}
+                    
+                    {% if stamp_duty_status.instructions %}
+                    <div class="mt-2">
+                        <small class="text-muted"><i class="fas fa-external-link-alt"></i> {{ stamp_duty_status.instructions }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- Disbursement Schedule Card -->
+                {% if disbursement_schedule %}
+                <div class="info-card disbursement-card">
+                    <h3 class="card-title">
+                        <i class="fas fa-money-bill-wave"></i>
+                        Disbursement Schedule
+                    </h3>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">Platform Fee</div>
+                            <div class="summary-value">{{ disbursement_schedule.platform_fee.amount }} ({{ disbursement_schedule.platform_fee.percentage }})</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Seller Payout</div>
+                            <div class="summary-value">{{ disbursement_schedule.seller_payout.amount }}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Status</div>
+                            <div class="summary-value">{{ disbursement_schedule.seller_payout.status }}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Method</div>
+                            <div class="summary-value">{{ disbursement_schedule.disbursement_method }}</div>
+                        </div>
+                    </div>
+                    {% if disbursement_schedule.seller_payout.trigger %}
+                    <div class="mt-2">
+                        <small class="text-muted"><i class="fas fa-clock"></i> Trigger: {{ disbursement_schedule.seller_payout.trigger }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
                 
-                <!-- Closing Steps Tracker -->
+                <!-- Legal Closing Tracker - Current & Next Steps -->
                 {% if closing_steps %}
                 <div class="info-card">
                     <h3 class="card-title">
@@ -735,38 +958,54 @@
                     </h3>
                     <div class="milestone-list">
                         {% for step in closing_steps %}
-                        <div class="milestone-item">
-                            <div class="milestone-number">{{ forloop.counter }}</div>
-                            <div class="milestone-content">
-                                <div class="milestone-title">{{ step.display_title }}</div>
-                                <div class="milestone-status">
-                                    {% if step.status == 'completed' %}
-                                    <span class="status-badge status-success"><i class="fas fa-check-circle"></i> Completed</span>
-                                    {% elif step.status == 'in_progress' %}
-                                    <span class="status-badge status-info"><i class="fas fa-spinner fa-pulse"></i> In Progress</span>
-                                    {% elif step.status == 'blocked' %}
-                                    <span class="status-badge status-danger"><i class="fas fa-ban"></i> Blocked</span>
-                                    {% else %}
-                                    <span class="status-badge status-warning"><i class="fas fa-clock"></i> Pending</span>
-                                    {% endif %}
+                            {% if step.status == 'in_progress' or step.status == 'pending' and forloop.counter <= payment.current_assigned_step.sequence|add:1 %}
+                                <div class="milestone-item {% if step.status == 'in_progress' %}active-step{% endif %}">
+                                    <div class="milestone-number">{{ forloop.counter }}</div>
+                                    <div class="milestone-content">
+                                        <div class="milestone-title">
+                                            {{ step.display_title }}
+                                            {% if step.status == 'in_progress' %}
+                                                <span class="badge bg-info text-white ms-2" style="font-size: 0.7rem;">Current</span>
+                                            {% elif step.status == 'pending' and forloop.counter == payment.current_assigned_step.sequence|add:1 %}
+                                                <span class="badge bg-secondary text-white ms-2" style="font-size: 0.7rem;">Next</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="milestone-status">
+                                            {% if step.status == 'completed' %}
+                                                <span class="text-success"><i class="fas fa-check-circle"></i> Completed</span>
+                                            {% elif step.status == 'in_progress' %}
+                                                <span class="text-info"><i class="fas fa-spinner fa-pulse"></i> In Progress</span>
+                                            {% elif step.status == 'blocked' %}
+                                                <span class="text-danger"><i class="fas fa-ban"></i> Blocked</span>
+                                            {% else %}
+                                                <span class="text-muted"><i class="fas fa-clock"></i> Pending</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="milestone-desc">
+                                            <strong>Responsible:</strong> {{ step.responsible_party_label }}
+                                        </div>
+                                        {% if step.user_can_update and step.status != 'completed' %}
+                                        <div class="milestone-meta mt-2">
+                                            <a href="{% url 'payments:closing_step_workspace' payment.pk step.pk %}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-external-link-alt"></i> Open Workspace
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
                                 </div>
-                                <div class="milestone-desc">
-                                    <strong>Responsible:</strong> {{ step.responsible_party_label }}
-                                </div>
-                                <div class="milestone-meta">
-                                    <a href="{% url 'payments:closing_step_workspace' payment.pk step.pk %}" class="text-link">
-                                        <i class="fas fa-external-link-alt"></i> Open step workspace
-                                    </a>
-                                </div>
-                                {% if step.completed_at %}
-                                <div class="milestone-meta">
-                                    <i class="fas fa-check-circle"></i> Completed {{ step.completed_at|date:"M d, Y H:i" }}
-                                </div>
-                                {% endif %}
-                            </div>
-                        </div>
+                            {% endif %}
                         {% endfor %}
                     </div>
+                    
+                    {% if payment.next_closing_step %}
+                    <div class="mt-3 pt-2 border-top">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle"></i> 
+                            {{ payment.closing_steps.count }} total steps. 
+                            <strong>{{ payment.closing_progress_value }}% complete</strong>
+                        </small>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
                 
@@ -777,14 +1016,14 @@
                         Activity Timeline
                     </h3>
                     <div class="timeline-list">
-                        {% for event in payment.events.all|slice:":10" %}
+                        {% for event in payment.events.all|slice:":15" %}
                         <div class="timeline-item">
                             <div class="timeline-dot"></div>
                             <div class="timeline-content">
                                 <div class="timeline-message">{{ event.message }}</div>
                                 <div class="timeline-date">
                                     {{ event.created_at|date:"M d, Y H:i" }}
-                                    {% if event.actor %} • {{ event.actor|display_name }}{% endif %}
+                                    {% if event.actor %} • {{ event.actor.get_full_name|default:event.actor.username }}{% endif %}
                                 </div>
                             </div>
                         </div>
@@ -804,6 +1043,15 @@
                         Quick Actions
                     </h3>
                     <div class="action-buttons">
+                        <!-- Upload Stamp Duty Receipt Button (only when stamp duty step is current) -->
+                        {% with stamp_duty_step=payment.current_assigned_step %}
+                            {% if stamp_duty_step and stamp_duty_step.code == 'stamp_duty' and not stamp_duty_status.receipt_verified %}
+                            <a href="{% url 'payments:closing_step_workspace' payment.pk stamp_duty_step.pk %}" class="btn btn-warning w-100">
+                                <i class="fas fa-upload me-2"></i> Upload Stamp Duty Receipt
+                            </a>
+                            {% endif %}
+                        {% endwith %}
+
                         {% if payment_provider == 'daraja' and payment.status == 'pending' %}
                         <div class="waiting-box" id="daraja-wait-box" data-poll-url="{{ payment_status_poll_url }}">
                             <strong><span class="pulse-dot"></span>Waiting for M-Pesa confirmation</strong>
@@ -820,10 +1068,22 @@
                         </div>
                         {% endif %}
                         
+                        <!-- Legal Workspace Link -->
+                        {% if payment.legal_transaction %}
+                        <a href="{% url 'transactions:detail' payment.legal_transaction.id %}" class="btn btn-primary w-100">
+                            <i class="fas fa-gavel"></i> Open Legal Workspace
+                        </a>
+                        {% endif %}
+                        
                         {% for action, label in transition_actions %}
                         <form method="post" action="{% url 'payments:transition' payment.pk action %}" class="w-100">
                             {% csrf_token %}
-                            <button type="submit" class="btn {% if action == 'release' %}btn-success{% elif action == 'refund' %}btn-danger{% elif action == 'dispute' %}btn-warning{% else %}btn-primary{% endif %} w-100">
+                            <button type="submit" class="btn 
+                                {% if action == 'release' %}btn-success
+                                {% elif action == 'refund' %}btn-danger
+                                {% elif action == 'dispute' %}btn-warning
+                                {% elif action == 'disburse_to_seller' %}btn-success
+                                {% else %}btn-primary{% endif %} w-100">
                                 <i class="fas fa-arrow-right"></i> {{ label }}
                             </button>
                         </form>
@@ -847,9 +1107,26 @@
                         <div class="milestone-item">
                             <div class="milestone-number">{{ forloop.counter }}</div>
                             <div class="milestone-content">
-                                <div class="milestone-title">{{ rule.officer }}</div>
-                                <div class="milestone-status">{{ rule.fee }} • Paid by {{ rule.paid_by }}</div>
-                                <div class="milestone-desc">{{ rule.purpose }}</div>
+                                <div class="milestone-title">{{ rule.service|default:"Service Payment" }}</div>
+                                <div class="milestone-status">
+                                    {% if rule.estimated_amount %}
+                                        {{ rule.estimated_amount }} • Paid by {{ rule.paid_by|default:"Buyer" }}
+                                    {% elif rule.amount %}
+                                        {{ rule.amount }} • Paid by {{ rule.paid_by|default:"Buyer" }}
+                                    {% else %}
+                                        Paid by {{ rule.paid_by|default:"Buyer" }}
+                                    {% endif %}
+                                </div>
+                                <div class="milestone-desc">{{ rule.legal_requirement|default:"Required for transaction completion" }}</div>
+                                {% if rule.payment_channel %}
+                                <div class="milestone-meta">
+                                    <i class="fas fa-credit-card"></i> {{ rule.payment_channel }}
+                                </div>
+                                {% elif rule.release_rule %}
+                                <div class="milestone-meta">
+                                    <i class="fas fa-info-circle"></i> {{ rule.release_rule }}
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                         {% endfor %}
@@ -871,7 +1148,7 @@
                             <div class="milestone-content">
                                 <div class="milestone-title">{{ revenue.label }}</div>
                                 <div class="milestone-status">{{ revenue.amount }}</div>
-                                <div class="milestone-desc">{{ revenue.detail }}</div>
+                                <div class="milestone-desc">{{ revenue.detail|truncatechars:100 }}</div>
                             </div>
                         </div>
                         {% endfor %}
@@ -908,7 +1185,7 @@
                         <i class="fas fa-plus-circle"></i>
                         Add Milestone
                     </h3>
-                    <form method="post" action="{% url 'payments:add_milestone' payment.pk %}" class="payment-form">
+                    <form method="post" action="#" class="payment-form">
                         {% csrf_token %}
                         <div class="form-group">
                             <label class="form-label">Title</label>
@@ -927,33 +1204,46 @@
                 </div>
                 {% endif %}
                 
-                <!-- Open Dispute -->
-                {% if can_open_dispute %}
-                <div class="info-card">
+                <!-- Escrow Summary Card -->
+                {% if escrow_summary %}
+                <div class="info-card escrow-summary">
                     <h3 class="card-title">
-                        <i class="fas fa-gavel"></i>
-                        Open Dispute
+                        <i class="fas fa-lock"></i>
+                        Escrow Summary
                     </h3>
-                    <form method="post" action="#" class="payment-form">
-                        {% csrf_token %}
-                        <div class="form-group">
-                            <label class="form-label">Reason</label>
-                            <select name="reason" class="form-control" required>
-                                <option value="">Select reason</option>
-                                <option value="seller_no_show">Seller No-show</option>
-                                <option value="missing_documents">Missing Documents</option>
-                                <option value="payment_not_recognized">Payment Not Recognized</option>
-                                <option value="fraud_signal">Fraud Signal</option>
-                                <option value="refund_request">Refund Request</option>
-                                <option value="other">Other</option>
-                            </select>
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">Total in Escrow</div>
+                            <div class="escrow-amount">{{ escrow_summary.total_escrowed }}</div>
                         </div>
-                        <div class="form-group">
-                            <label class="form-label">Details</label>
-                            <textarea name="details" class="form-control" rows="3" required></textarea>
+                        <div class="summary-item">
+                            <div class="summary-label">Deposit (10%)</div>
+                            <div class="summary-value">{% if escrow_summary.deposit_received %}✓ Received{% else %}Pending{% endif %}</div>
                         </div>
-                        <button type="submit" class="btn btn-danger w-100">Open Dispute</button>
-                    </form>
+                        <div class="summary-item">
+                            <div class="summary-label">Balance (90%)</div>
+                            <div class="summary-value">{% if escrow_summary.balance_received %}✓ Received{% else %}Pending{% endif %}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Status</div>
+                            <div class="summary-value">
+                                {% if escrow_summary.disbursed_to_seller %}
+                                    <span class="text-success">✓ Disbursed to Seller</span>
+                                {% elif escrow_summary.deposit_received and escrow_summary.balance_received %}
+                                    <span class="text-warning">⏳ Full Amount in Escrow</span>
+                                {% elif escrow_summary.deposit_received %}
+                                    <span class="text-info">💵 Deposit in Escrow</span>
+                                {% else %}
+                                    <span class="text-muted">Pending</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% if escrow_summary.disbursement_trigger %}
+                    <div class="mt-2">
+                        <small class="text-white-50"><i class="fas fa-info-circle"></i> {{ escrow_summary.disbursement_trigger }}</small>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
