@@ -38,14 +38,15 @@ class Transaction(models.Model):
     
     class Stage(models.TextChoices):
         DRAFT = 'draft', 'Draft'
-        DUE_DILIGENCE = 'due_diligence', 'Due Diligence (Official Search & Survey)'
-        COMMITMENT = 'commitment', 'Letter of Offer (Intent to Purchase)'
-        CONTRACTS = 'contracts', 'Sale Agreement & 10% Escrow Deposit (Platform Holds)'
-        STATUTORY_CONSENTS = 'statutory_consents', 'LCB Consent & Spousal Consent'
-        TAXATION = 'taxation', 'Stamp Duty (Paid Directly to KRA via iTax)'
-        REGISTRATION = 'registration', 'Title Registration & Transfer'
-        DISBURSEMENT = 'disbursement', 'Platform Fee Deduction & Seller Payout'
-        COMPLETED = 'completed', 'Completed & Reports Sent'
+        DUE_DILIGENCE = 'due_diligence', 'Due Diligence'
+        COMMITMENT = 'commitment', 'Offer Agreement (Negotiation & Drafting)'
+        CONTRACTS = 'contracts', 'Agreement Deposit (10% Escrow Payment)'
+        STATUTORY_CONSENTS = 'statutory_consents', 'Statutory Consents'
+        TAXATION = 'taxation', 'Stamp Duty Payment (Direct to KRA)'
+        COMPLETION = 'completion', 'Completion Balance (Final Payment)'
+        REGISTRATION = 'registration', 'Final Registration & Title Issuance'
+        DISBURSEMENT = 'disbursement', 'Disbursement & Completion'
+        COMPLETED = 'completed', 'Workflow Complete'
         CANCELLED = 'cancelled', 'Cancelled'
     
     class TransactionType(models.TextChoices):
@@ -148,6 +149,14 @@ class Transaction(models.Model):
     notes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='transactions_created',
+        help_text="User who initiated this transaction"
+    )
     
     class Meta:
         ordering = ['-created_at']
@@ -216,6 +225,7 @@ class Transaction(models.Model):
                 TransactionDocument.DocType.STAMP_DUTY_RECEIPT,
                 TransactionDocument.DocType.VALUATION_REPORT,
             ],
+            self.Stage.COMPLETION: [],
             self.Stage.REGISTRATION: [
                 TransactionDocument.DocType.ORIGINAL_TITLE_DEED,
                 TransactionDocument.DocType.TRANSFER_FORM,
@@ -237,11 +247,11 @@ class Transaction(models.Model):
         Return required deposit percentage for current stage.
         Under platform escrow model:
         - At CONTRACTS stage: 10% deposit must be in escrow
-        - At TAXATION stage: 100% (10% + 90%) must be in escrow
+        - At COMPLETION stage: 100% (10% + 90%) must be in escrow
         """
         if self.stage == self.Stage.CONTRACTS:
             return Decimal('0.10')
-        elif self.stage == self.Stage.TAXATION:
+        elif self.stage == self.Stage.COMPLETION:
             return Decimal('1.00')
         return Decimal('0.00')
     
@@ -260,14 +270,27 @@ class Transaction(models.Model):
         # Check required documents for current stage
         required_docs = self.get_required_documents_for_stage()
         for doc_type in required_docs:
-            has_doc = TransactionDocument.objects.filter(
+            doc_qs = TransactionDocument.objects.filter(
                 transaction=self,
                 document_type=doc_type,
-                status='verified'
-            ).exists()
-            if not has_doc:
-                doc_label = dict(TransactionDocument.DocType.choices).get(doc_type, doc_type)
-                return False, f"Missing required legal document: {doc_label}"
+            )
+            verified_doc = doc_qs.filter(status=TransactionDocument.Status.VERIFIED).first()
+            if verified_doc:
+                continue
+
+            pending_doc = doc_qs.filter(status=TransactionDocument.Status.PENDING).first()
+            rejected_doc = doc_qs.filter(status=TransactionDocument.Status.REJECTED).first()
+            doc_label = dict(TransactionDocument.DocType.choices).get(doc_type, doc_type)
+            if pending_doc:
+                return False, (
+                    f"{doc_label} has been uploaded but is still awaiting verification. "
+                    "Please ask an admin to verify it before advancing."
+                )
+            if rejected_doc:
+                return False, (
+                    f"{doc_label} was rejected. Please upload a new copy before advancing."
+                )
+            return False, f"Missing required legal document: {doc_label}"
         
         # Check deposit requirements (funds held in escrow)
         required_percentage = self.get_required_deposit_percentage()
@@ -316,9 +339,18 @@ class Transaction(models.Model):
             if not self.stamp_duty_receipt_verified_at:
                 return False, "Stamp duty receipt not verified. Please pay stamp duty directly to KRA via iTax and upload the receipt."
         
-        elif self.stage == self.Stage.REGISTRATION:
+        elif self.stage == self.Stage.COMPLETION:
             if not (self.deposit_paid >= self.ten_percent_deposit and self.balance_paid >= self.ninety_percent_balance):
                 return False, f"Full amount not in escrow. Deposit: KES {self.deposit_paid:,.2f}, Balance: KES {self.balance_paid:,.2f}"
+        
+        elif self.stage == self.Stage.REGISTRATION:
+            has_new_title = TransactionDocument.objects.filter(
+                transaction=self,
+                document_type=TransactionDocument.DocType.NEW_TITLE_DEED,
+                status='verified'
+            ).exists()
+            if not has_new_title:
+                return False, "New title deed not verified. Registration must complete before disbursement."
         
         elif self.stage == self.Stage.DISBURSEMENT:
             has_new_title = TransactionDocument.objects.filter(
@@ -339,6 +371,7 @@ class Transaction(models.Model):
             self.Stage.CONTRACTS,
             self.Stage.STATUTORY_CONSENTS,
             self.Stage.TAXATION,
+            self.Stage.COMPLETION,
             self.Stage.REGISTRATION,
             self.Stage.DISBURSEMENT,
             self.Stage.COMPLETED,
@@ -385,6 +418,7 @@ class Transaction(models.Model):
             self.Stage.CONTRACTS,
             self.Stage.STATUTORY_CONSENTS,
             self.Stage.TAXATION,
+            self.Stage.COMPLETION,
             self.Stage.REGISTRATION,
             self.Stage.DISBURSEMENT,
             self.Stage.COMPLETED,
@@ -660,6 +694,7 @@ class TransactionMilestone(models.Model):
         CONTRACTS = 'contracts', 'Sale Agreement Signed & 10% Escrow (LSK Conditions)'
         STATUTORY_CONSENTS = 'statutory_consents', 'LCB & Spousal Consents Obtained'
         TAXATION = 'taxation', 'Stamp Duty Paid to KRA (Tax Laws)'
+        COMPLETION = 'completion', 'Completion Balance Paid'
         REGISTRATION = 'registration', 'Title Transferred (LRA 2012)'
         DISBURSEMENT = 'disbursement', 'Funds Disbursed to Seller (Platform Fee Deducted)'
         COMPLETED = 'completed', 'Transaction Completed & Reports Sent'

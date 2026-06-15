@@ -608,19 +608,8 @@ def user_can_advance_payment_step(user, payment, step):
         legal_tx = payment.legal_transaction
         if legal_tx and payment.transaction_type == payment.TransactionType.PURCHASE:
             from transactions.models import TransactionDocument
-            
-            # Map payment step to required legal documents
-            step_to_docs = {
-                "due_diligence": ["OFFICIAL_SEARCH", "SURVEY_MAP"],
-                "offer": ["LETTER_OF_OFFER"],
-                "agreement": ["SALE_AGREEMENT"],
-                "lcb_consent": ["LCB_CONSENT", "SPOUSAL_CONSENT", "LAND_RATES", "LAND_RENT"],
-                "stamp_duty": ["STAMP_DUTY_RECEIPT"],
-                "completion_docs": ["TRANSFER_FORM", "ORIGINAL_TITLE_DEED"],
-                "registration": ["NEW_TITLE_DEED"],
-            }
-            
-            required_docs = step_to_docs.get(step.code, [])
+
+            required_docs = step.required_legal_document_types() if hasattr(step, "required_legal_document_types") else []
             missing_docs = []
             
             for doc_type in required_docs:

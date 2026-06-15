@@ -82,6 +82,8 @@ def auto_start_transaction(sender, instance, **kwargs):
             transaction_type=Transaction.TransactionType.PURCHASE,
         )
         created = True
+        PaymentRequest.objects.filter(pk=instance.pk).update(legal_transaction=transaction)
+        instance.legal_transaction = transaction
         
         # Add event for transaction creation
         transaction.add_event(
@@ -94,6 +96,8 @@ def auto_start_transaction(sender, instance, **kwargs):
     if not created and not transaction.payment_request:
         transaction.payment_request = instance
         transaction.save(update_fields=["payment_request", "updated_at"])
+        PaymentRequest.objects.filter(pk=instance.pk).update(legal_transaction=transaction)
+        instance.legal_transaction = transaction
         logger.info(f"Linked existing legal transaction {transaction.id} to payment {instance.internal_reference}")
     
     # Track payment amount based on category
@@ -208,21 +212,6 @@ def auto_start_transaction(sender, instance, **kwargs):
         
         logger.info(f"Completion balance recorded in escrow for transaction {transaction.id}: KES {instance.amount:,.2f}")
         
-    elif instance.category == PaymentRequest.Category.COMMITMENT_FEE:
-        # Commitment fee - creates transaction but no deposit recorded (not held in escrow)
-        milestone_notes = (
-            f"Commitment fee of KES {instance.amount:,.2f} paid. "
-            f"Reference: {instance.internal_reference}. "
-            f"Transaction initiated. Please upload due diligence documents to proceed."
-        )
-        TransactionMilestone.objects.create(
-            transaction=transaction,
-            milestone_type=TransactionMilestone.MilestoneType.DUE_DILIGENCE,
-            achieved_by=instance.buyer,
-            notes=milestone_notes
-        )
-        logger.info(f"Commitment fee recorded for transaction {transaction.id}: KES {instance.amount:,.2f}")
-    
     # Stamp duty is NOT recorded here - paid directly to KRA
     # Stamp duty verification is handled separately
     

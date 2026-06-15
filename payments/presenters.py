@@ -66,13 +66,13 @@ class PaymentPresenter:
         if not self._legal_transaction:
             return 0
         
-        # Updated stage order to match the 8-stage legal pipeline
+        # Keep the progress bar aligned to the canonical transaction stage enum.
         stage_order = [
             'due_diligence',
-            'offer_agreement',
-            'deposit',
+            'commitment',
+            'contracts',
             'statutory_consents',
-            'stamp_duty',
+            'taxation',
             'completion',
             'registration',
             'disbursement',
@@ -82,7 +82,31 @@ class PaymentPresenter:
         current_stage = self._legal_transaction.stage
         if current_stage in stage_order:
             current_index = stage_order.index(current_stage)
-            return int((current_index / len(stage_order)) * 100)
+            denominator = max(len(stage_order) - 1, 1)
+            return int((current_index / denominator) * 100)
+        return 0
+
+    @property
+    def legal_transaction_stage_index(self):
+        """Zero-based index of the current legal transaction stage."""
+        if not self._legal_transaction:
+            return 0
+
+        stage_order = [
+            'due_diligence',
+            'commitment',
+            'contracts',
+            'statutory_consents',
+            'taxation',
+            'completion',
+            'registration',
+            'disbursement',
+            'completed',
+        ]
+
+        current_stage = self._legal_transaction.stage
+        if current_stage in stage_order:
+            return stage_order.index(current_stage)
         return 0
 
     @property
@@ -196,97 +220,61 @@ class PaymentPresenter:
         
         return [
             {
-                "stage": "1. Official Land Search",
-                "step_code": "official_search",
+                "stage": "1. Due Diligence",
+                "step_code": "due_diligence",
                 "money_required": f"{self.payment._money_display(self.payment.official_search_fee)} (paid via eCitizen/Ardhisasa)",
                 "who_pays": "Buyer",
                 "payment_channel": "eCitizen (outside platform)",
-                "action": "Buyer obtains official search certificate from Ardhisasa showing ownership, encumbrances.",
+                "action": "Display land documents, ownership verification, title search results, and land control checks.",
                 "document_required": "Official Search Certificate (green card)",
                 "platform_role": "Upload and verify search certificate",
                 "payment_step": "due_diligence",
                 "funds_held_by": "N/A (paid directly to government)",
             },
             {
-                "stage": "2. Physical Beacon Verification",
-                "step_code": "beacon_verification",
-                "money_required": f"{self.payment._money_display(self.payment.survey_search_fee)}",
-                "who_pays": "Buyer",
-                "payment_channel": "Direct to licensed surveyor",
-                "action": "Licensed surveyor confirms ground boundaries match Registry Index Map (RIM).",
-                "document_required": "Surveyor's report and beacon certificate",
-                "platform_role": "Connect with surveyors, store report",
-                "payment_step": "due_diligence",
-                "funds_held_by": "N/A (paid directly to surveyor)",
-            },
-            {
-                "stage": "3. Letter of Offer",
-                "step_code": "letter_of_offer",
+                "stage": "2. Offer Agreement",
+                "step_code": "commitment",
                 "money_required": "No payment",
                 "who_pays": "N/A",
                 "payment_channel": "N/A",
-                "action": "Buyer issues letter of offer with proposed price and terms.",
-                "document_required": "Letter of Offer",
-                "platform_role": "Template generation, digital signing",
-                "payment_step": "offer",
+                "action": "Generate the offer letter / sale agreement for review, negotiation, and e-signing.",
+                "document_required": "Offer Letter / Sale Agreement",
+                "platform_role": "Template generation, change tracking, digital signing",
+                "payment_step": "offer_agreement",
                 "funds_held_by": "N/A",
             },
             {
-                "stage": "4. Sale Agreement & 10% Deposit to Platform",
-                "step_code": "deposit",
+                "stage": "3. Agreement Deposit",
+                "step_code": "contracts",
                 "money_required": f"{self.payment._money_display(deposit_10_percent)} (10% of {self.payment._money_display(total_price)})",
                 "who_pays": "Buyer",
                 "payment_channel": "Platform escrow (M-Pesa, bank, card)",
-                "action": "Both parties sign sale agreement. Buyer pays 10% deposit to platform escrow account.",
+                "action": "Buyer pays 10% agreement deposit after the sale agreement is accepted.",
                 "document_required": "Signed Sale Agreement",
                 "platform_role": "Hold deposit in licensed escrow, store agreement",
-                "payment_step": "agreement",
+                "payment_step": "agreement_deposit",
                 "funds_held_by": "PLATFORM ESCROW",
                 "disbursement_condition": "Released AFTER registration, with fee deducted",
             },
             {
-                "stage": "5. LCB Consent (Agricultural Land)",
-                "step_code": "lcb_consent",
-                "money_required": f"{self.payment._money_display(self.payment.lcb_fee_amount)}",
-                "who_pays": "Seller (by law)",
-                "payment_channel": "County government",
-                "action": "Seller applies to Land Control Board. Board meets monthly/quarterly.",
-                "document_required": "LCB Consent Certificate",
-                "platform_role": "Track application, store certificate",
-                "payment_step": "lcb_consent",
-                "funds_held_by": "N/A (paid directly to county)",
-            },
-            {
-                "stage": "6. Spousal Consent",
-                "step_code": "spousal_consent",
-                "money_required": "Nominal (if any)",
-                "who_pays": "Seller",
+                "stage": "4. Statutory Consents",
+                "step_code": "statutory_consents",
+                "money_required": "No payment to AgriPlot",
+                "who_pays": "N/A",
                 "payment_channel": "N/A",
-                "action": "Spouse signs formal consent form if land is matrimonial property.",
-                "document_required": "Spousal Consent Form",
-                "platform_role": "Store verified consent form",
-                "payment_step": "lcb_consent",
+                "action": "Land Control Board consent, county consent, spousal consent, and tax compliance are checked.",
+                "document_required": "LCB Consent / Supporting Clearances",
+                "platform_role": "Track consent status and store supporting documents",
+                "payment_step": "statutory_consents",
                 "funds_held_by": "N/A",
             },
             {
-                "stage": "7. Land Rates & Rent Clearance",
-                "step_code": "rates_clearance",
-                "money_required": "Outstanding rates + rent (seller pays)",
-                "who_pays": "Seller",
-                "payment_channel": "County government / NLC",
-                "action": "Seller obtains rates clearance from county and land rent clearance (if leasehold).",
-                "document_required": "Land Rates Clearance, Land Rent Clearance",
-                "platform_role": "Store clearance certificates",
-                "payment_step": "lcb_consent",
-                "funds_held_by": "N/A (paid directly to government)",
-            },
-            {
-                "stage": "8. Stamp Duty (Paid Directly to KRA iTax)",
-                "step_code": "stamp_duty",
-                "money_required": "2% (rural) or 4% (urban) of property value",
+                "stage": "5. Stamp Duty Payment",
+                "step_code": "taxation",
+                "money_required": "Calculated automatically and paid directly to KRA",
                 "who_pays": "Buyer",
-                "payment_channel": "KRA iTax ONLY (M-Pesa, bank, card)",
-                "action": "Buyer submits documents via iTax, KRA assesses duty. Buyer pays KRA directly and uploads receipt.",
+                "payment_channel": "KRA iTax ONLY",
+                "action": "Buyer pays stamp duty directly to KRA and uploads the receipt for verification.",
                 "document_required": "Stamp Duty Payment Receipt from KRA",
                 "platform_role": "Verify receipt, NEVER touch stamp duty funds",
                 "payment_step": "stamp_duty",
@@ -294,20 +282,20 @@ class PaymentPresenter:
                 "critical_note": "Platform does NOT collect stamp duty. Buyer pays KRA directly via iTax.",
             },
             {
-                "stage": "9. Completion Documents & 90% Balance to Platform",
+                "stage": "6. Completion Balance",
                 "step_code": "completion",
-                "money_required": f"{self.payment._money_display(balance_90_percent)} (90% balance)",
+                "money_required": f"{self.payment._money_display(balance_90_percent)} (90% of {self.payment._money_display(total_price)})",
                 "who_pays": "Buyer",
-                "payment_channel": "Platform escrow",
-                "action": "Buyer pays 90% balance to platform escrow. Seller advocate uploads: Original Title Deed, Transfer Form RL1, LCB Consent, KRA PIN copies, rates clearances.",
-                "document_required": "Original Title Deed, Transfer Form RL1, all consents",
-                "platform_role": "Hold balance in escrow, verify documents",
-                "payment_step": "completion_docs",
+                "payment_channel": "Platform escrow (M-Pesa, bank, card)",
+                "action": "Buyer pays the remaining 90% balance after consents and stamp duty are complete.",
+                "document_required": "Completion documents and transfer pack",
+                "platform_role": "Hold balance in escrow until final registration",
+                "payment_step": "completion_balance",
                 "funds_held_by": "PLATFORM ESCROW",
                 "disbursement_condition": "Released AFTER registration, with fee deducted",
             },
             {
-                "stage": "10. Registration at Land Registry",
+                "stage": "7. Final Registration",
                 "step_code": "registration",
                 "money_required": "Registration fees (KES 5,000-10,000)",
                 "who_pays": "Buyer",
@@ -320,7 +308,7 @@ class PaymentPresenter:
                 "critical_note": "Transaction NOT complete until new title issued.",
             },
             {
-                "stage": "11. Platform Fee Deduction & Automatic Disbursement to Seller",
+                "stage": "8. Platform Fee Deduction & Automatic Disbursement to Seller",
                 "step_code": "disbursement",
                 "money_required": f"Platform Fee: {self.payment._money_display(platform_fee)} ({self.platform_fee_percentage * 100}%)",
                 "who_pays": "Platform deducts from escrow",
@@ -333,7 +321,19 @@ class PaymentPresenter:
                 "critical_note": f"Platform fee: {self.platform_fee_percentage * 100}% of sale price. Seller net: {self.payment._money_display(seller_net)}",
             },
             {
-                "stage": "12. Transaction Reports Sent to Both Parties",
+                "stage": "9. Transaction Complete",
+                "step_code": "completed",
+                "money_required": "None",
+                "who_pays": "N/A",
+                "payment_channel": "Email (automated)",
+                "action": "The land transfer is complete, disbursement has been made, and the workflow is closed.",
+                "document_required": "Completion confirmation",
+                "platform_role": "Mark workflow complete and archive the file",
+                "payment_step": "completed",
+                "funds_held_by": "N/A",
+            },
+            {
+                "stage": "10. Transaction Reports Sent to Both Parties",
                 "step_code": "reports",
                 "money_required": "None",
                 "who_pays": "N/A",
@@ -354,7 +354,7 @@ class PaymentPresenter:
                 ],
             },
             {
-                "stage": "13. Possession & Handover",
+                "stage": "11. Possession & Handover",
                 "step_code": "handover",
                 "money_required": "None",
                 "who_pays": "N/A",
@@ -630,8 +630,8 @@ class PaymentPresenter:
             'SALE_AGREEMENT': 'Signed Sale Agreement',
             'LCB_CONSENT': 'LCB Consent Certificate',
             'SPOUSAL_CONSENT': 'Spousal Consent Form',
-            'LAND_RATES': 'Land Rates Clearance',
-            'LAND_RENT': 'Land Rent Clearance',
+            'RATES_CLEARANCE': 'Land Rates Clearance',
+            'RENT_CLEARANCE': 'Land Rent Clearance',
             'STAMP_DUTY_RECEIPT': 'Stamp Duty Payment Receipt (KRA)',
             'TRANSFER_FORM': 'Transfer Form RL1',
             'NEW_TITLE_DEED': 'New Title Deed (Buyer)',

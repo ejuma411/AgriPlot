@@ -68,7 +68,6 @@ class PaymentRequest(models.Model):
         FAILED = "failed", "Failed"
 
     PLOT_REQUIRED_CATEGORIES = {
-        Category.COMMITMENT_FEE,
         Category.RESERVATION_DEPOSIT,
         Category.AGREEMENT_DEPOSIT,
         Category.ESCROW_DEPOSIT,
@@ -2188,6 +2187,90 @@ class PaymentClosingStep(models.Model):
     def action_support_label(self):
         return self.action_summary.get("support_label", "Keep your documents and notes organised as this step progresses.")
 
+    def _linked_legal_transaction(self):
+        try:
+            return self.payment.legal_transaction
+        except Exception:
+            return None
+
+    def required_legal_document_types(self):
+        """
+        Return the legal-workspace document types that should satisfy this step.
+        This is the canonical mapping used for payment step validation.
+        """
+        purchase_map = {
+            "due_diligence": ["OFFICIAL_SEARCH", "SURVEY_MAP"],
+            "offer": ["LETTER_OF_OFFER"],
+            "agreement": ["SALE_AGREEMENT"],
+            "lcb_consent": ["LCB_CONSENT", "SPOUSAL_CONSENT"],
+            "stamp_duty": ["STAMP_DUTY_RECEIPT", "VALUATION_REPORT"],
+            "registration": ["NEW_TITLE_DEED"],
+        }
+        lease_map = {
+            "offer": ["LETTER_OF_OFFER"],
+            "agreement": [],
+            "lcb_consent": ["LCB_CONSENT", "SPOUSAL_CONSENT"],
+            "lease_registration": ["NEW_TITLE_DEED"],
+            "soil_health_baseline": [],
+            "handover": [],
+        }
+        if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
+            return purchase_map.get(self.workflow_code, [])
+        if self.payment.transaction_type == PaymentRequest.TransactionType.LEASE:
+            return lease_map.get(self.workflow_code, [])
+        return []
+
+    def _legal_doc_state(self, doc_type):
+        legal_tx = self._linked_legal_transaction()
+        if not legal_tx:
+            return None
+        from transactions.models import TransactionDocument
+
+        return legal_tx.documents.filter(document_type=doc_type).order_by("-uploaded_at").first()
+
+    def _legal_docs_ready(self):
+        doc_types = self.required_legal_document_types()
+        if not doc_types:
+            return True
+        return all(
+            self._legal_doc_state(doc_type) and self._legal_doc_state(doc_type).status == "verified"
+            for doc_type in doc_types
+        )
+
+    def _legal_docs_blocking_reason(self):
+        doc_types = self.required_legal_document_types()
+        if not doc_types:
+            return ""
+
+        from transactions.models import TransactionDocument
+
+        missing = []
+        pending = []
+        rejected = []
+        for doc_type in doc_types:
+            doc = self._legal_doc_state(doc_type)
+            doc_label = dict(TransactionDocument.DocType.choices).get(doc_type, doc_type)
+            if not doc:
+                missing.append(doc_label)
+            elif doc.status == "pending":
+                pending.append(doc_label)
+            elif doc.status == "rejected":
+                rejected.append(doc_label)
+
+        if missing:
+            if len(missing) == 1:
+                return f"Upload {missing[0]} in the Legal Workspace before advancing this step."
+            return f"Upload these documents in the Legal Workspace before advancing this step: {', '.join(missing)}."
+        if pending:
+            if len(pending) == 1:
+                return f"{pending[0]} has been uploaded but is still awaiting verification."
+            return f"These documents are uploaded but still awaiting verification: {', '.join(pending)}."
+        if rejected:
+            if len(rejected) == 1:
+                return f"{rejected[0]} was rejected. Please upload a new copy in the Legal Workspace."
+            return f"These documents were rejected. Please upload new copies in the Legal Workspace: {', '.join(rejected)}."
+        return ""
+
     @property
     def buyer_instruction(self):
         code = self.workflow_code
@@ -2274,18 +2357,18 @@ class PaymentClosingStep(models.Model):
             PaymentRequest.Status.RELEASED,
         }
         if code == "due_diligence":
-            return True
+            return bool(self.document or self._legal_docs_ready())
         if code == "agreement":
             if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
-                return bool(self.document and self.buyer_confirmed_at and self.seller_confirmed_at)
+                return bool((self.document or self._legal_docs_ready()) and self.buyer_confirmed_at and self.seller_confirmed_at)
             return bool(self.buyer_confirmed_at and self.seller_confirmed_at)
         if code == "registration":
-            return bool(self.document)
+            return bool(self.document or self._legal_docs_ready())
         if code == "lcb_consent":
-            return bool(self.document and self.consent_reference_number and self.meeting_date)
+            return bool((self.document or self._legal_docs_ready()) and self.consent_reference_number and self.meeting_date)
         if code == "stamp_duty":
             return bool(
-                self.document
+                (self.document or self._legal_docs_ready())
                 and self.official_market_value is not None
                 and self.assessed_stamp_duty is not None
             )
@@ -2302,9 +2385,9 @@ class PaymentClosingStep(models.Model):
                 for related_payment in self.payment.workflow_related_payments
             )
         if code in {"lease_registration", "soil_health_baseline", "handover"}:
-            return bool(self.document)
+            return bool(self.document or self._legal_docs_ready())
         if code == "offer":
-            return bool(self.notes or self.document)
+            return bool(self.notes or self.document or self._legal_docs_ready())
         return True
 
     def evidence_blocking_reason(self):
@@ -2313,16 +2396,35 @@ class PaymentClosingStep(models.Model):
         if self.code == "agreement":
             if self.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
                 missing = []
-                if not self.document:
-                    missing.append("executed sale agreement")
+                if not (self.document or self._legal_docs_ready()):
+                    missing.append(self._legal_docs_blocking_reason() or "executed sale agreement")
                 if not self.buyer_confirmed_at:
                     missing.append("buyer confirmation")
                 if not self.seller_confirmed_at:
                     missing.append("seller confirmation")
-                return f"This step needs: {', '.join(missing)} before it can be completed."
-            return "Both the tenant and the landlord must digitally confirm the lease agreement before this step can be completed."
+                if missing == ["buyer confirmation"]:
+                    return (
+                        "Buyer confirmation is still needed. The buyer should tick the confirmation box "
+                        "and submit this step."
+                    )
+                if missing == ["seller confirmation"]:
+                    return (
+                        "Seller confirmation is still needed. The seller should tick the confirmation box "
+                        "and submit this step."
+                    )
+                if len(missing) == 1 and "upload" in missing[0].lower():
+                    return missing[0]
+                return f"This step still needs: {', '.join(missing)}."
+            return (
+                "Both the tenant and the landlord must digitally confirm the lease agreement before this step can be completed."
+            )
+        legal_reason = self._legal_docs_blocking_reason()
+        if legal_reason:
+            return legal_reason
         requirement_text = ", ".join(self.completion_requirements)
-        return f"This step needs more evidence before it can be completed: {requirement_text}."
+        if requirement_text:
+            return f"This step still needs: {requirement_text}."
+        return "This step still needs more evidence before it can be completed."
 
     def set_status(self, status, actor=None, notes="", bypass_evidence=False):
         from notifications.notification_service import NotificationService

@@ -413,6 +413,20 @@ def staff_dashboard(request):
     if access_profile.can("finance.view_escrow"):
         from transactions.models import TransactionDocument
         pending_docs = TransactionDocument.objects.filter(status='pending').select_related('transaction__plot', 'uploaded_by').order_by('uploaded_at')
+
+        stamp_duty_doc_types = {
+            TransactionDocument.DocType.STAMP_DUTY_RECEIPT,
+            TransactionDocument.DocType.VALUATION_REPORT,
+        }
+        cgt_doc_type = getattr(TransactionDocument.DocType, "CGT_RECEIPT", None)
+        if cgt_doc_type:
+            stamp_duty_doc_types.add(cgt_doc_type)
+
+        registration_doc_types = {
+            TransactionDocument.DocType.TRANSFER_FORM,
+            TransactionDocument.DocType.ORIGINAL_TITLE_DEED,
+            TransactionDocument.DocType.NEW_TITLE_DEED,
+        }
         
         for doc in pending_docs:
             item = {
@@ -424,18 +438,9 @@ def staff_dashboard(request):
                 "doc_url": doc.file.url if doc.file else None,
             }
             
-            if doc.document_type in [
-                TransactionDocument.DocType.STAMP_DUTY_ASSESSMENT,
-                TransactionDocument.DocType.STAMP_DUTY_RECEIPT,
-                TransactionDocument.DocType.VALUATION_REPORT,
-                TransactionDocument.DocType.CGT_RECEIPT
-            ]:
+            if doc.document_type in stamp_duty_doc_types:
                 stamp_duty_items.append(item)
-            elif doc.document_type in [
-                TransactionDocument.DocType.TRANSFER_FORM,
-                TransactionDocument.DocType.ORIGINAL_TITLE_DEED,
-                TransactionDocument.DocType.NEW_TITLE_DEED
-            ]:
+            elif doc.document_type in registration_doc_types:
                 registration_items.append(item)
             else:
                 queue_items.append(item)

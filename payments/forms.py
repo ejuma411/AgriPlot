@@ -184,6 +184,7 @@ class PaymentRequestForm(forms.ModelForm):
         forced_category=None,
         active_deal=None,
         forced_amount=None,
+        start_workflow_only=False,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
@@ -192,6 +193,7 @@ class PaymentRequestForm(forms.ModelForm):
         self.forced_category = forced_category
         self.active_deal = active_deal
         self.forced_amount = self.normalize_amount(forced_amount) if forced_amount not in {None, ""} else None
+        self.start_workflow_only = start_workflow_only
         self.allow_amount_override = False
         self.allow_due_at_override = user_is_finance_admin(user)
         self.allow_lease_term_entry = bool(
@@ -205,6 +207,8 @@ class PaymentRequestForm(forms.ModelForm):
         self.simple_mpesa_checkout = True
         self.fields["plot"].queryset = Plot.objects.order_by("title")
         self.fields["plot"].required = False
+        self.fields["amount"].required = False
+        self.fields["category"].required = False
         self.fields["due_at"].required = False
         self.fields["phone_number"].required = False
         if "lease_start_date" in self.fields:
@@ -223,6 +227,14 @@ class PaymentRequestForm(forms.ModelForm):
         self.fields["method"].required = False
         self.fields["method"].initial = PaymentRequest.Method.MPESA_STK
         self.fields["method"].widget = forms.HiddenInput()
+        if self.start_workflow_only:
+            self.fields["plot"].widget = forms.HiddenInput()
+            self.fields["transaction_type"].widget = forms.HiddenInput()
+            self.fields["category"].widget = forms.HiddenInput()
+            self.fields["amount"].widget = forms.HiddenInput()
+            self.fields["phone_number"].widget = forms.HiddenInput()
+            self.fields["due_at"].widget = forms.HiddenInput()
+            self.fields["method"].widget = forms.HiddenInput()
         self.fields["title"].required = False
         self.fields["title"].widget = forms.HiddenInput()
         self.fields["description"].required = False
@@ -432,6 +444,9 @@ class PaymentRequestForm(forms.ModelForm):
         plot = cleaned_data.get("plot") or self.selected_plot
         transaction_type = cleaned_data.get("transaction_type")
         category = self.forced_category or cleaned_data.get("category")
+        if not self.start_workflow_only and not category:
+            self.add_error("category", "Select a payment stage.")
+            return cleaned_data
         cleaned_data["category"] = category
         selected_method = (
             self.data.get("payment_method")
@@ -442,6 +457,42 @@ class PaymentRequestForm(forms.ModelForm):
         )
         notice_days = cleaned_data.get("notice_period_days")
         plot = cleaned_data.get("plot")
+
+        if self.start_workflow_only:
+            plot = cleaned_data.get("plot") or self.selected_plot
+            if not plot:
+                self.add_error("plot", "A property is required to start the workflow.")
+                return cleaned_data
+
+            transaction_type = transaction_type or (
+                PaymentRequest.TransactionType.PURCHASE
+                if plot.listing_type == "sale"
+                else PaymentRequest.TransactionType.LEASE
+                if plot.listing_type == "lease"
+                else PaymentRequest.TransactionType.PURCHASE
+            )
+
+            cleaned_data["plot"] = plot
+            cleaned_data["transaction_type"] = transaction_type
+            cleaned_data["category"] = PaymentRequest.Category.AGREEMENT_DEPOSIT
+            cleaned_data["amount"] = Decimal("0.00")
+            cleaned_data["method"] = PaymentRequest.Method.WALLET
+            cleaned_data["phone_number"] = ""
+            cleaned_data["escrow_enabled"] = False
+            cleaned_data["due_at"] = None
+            self.instance.plot = plot
+            self.instance.transaction_type = transaction_type
+            self.instance.category = PaymentRequest.Category.AGREEMENT_DEPOSIT
+            self.instance.amount = Decimal("0.00")
+            self.instance.method = PaymentRequest.Method.WALLET
+            self.instance.phone_number = ""
+            self.instance.escrow_enabled = False
+            self.instance.due_at = None
+            metadata = dict(self.instance.metadata or {})
+            metadata["lease_terms_required"] = False
+            self.instance.metadata = metadata
+            return cleaned_data
+
         if notice_days is not None and plot:
             min_days = 90 if plot.land_type == "agricultural" else 30
             if notice_days < min_days:
@@ -1027,8 +1078,10 @@ class PaymentClosingStepForm(forms.ModelForm):
             return cleaned_data
 
         # Document validation based on step type
-        if step.code in {"offer", "registration"} and not (
-            cleaned_data.get("document") or step.document
+        legal_docs_ready = bool(getattr(step, "_legal_docs_ready", lambda: False)())
+
+        if step.code in {"due_diligence", "offer", "registration"} and not (
+            cleaned_data.get("document") or step.document or legal_docs_ready
         ):
             self.add_error("document", "Upload the supporting document before marking this step complete.")
 
@@ -1036,7 +1089,7 @@ class PaymentClosingStepForm(forms.ModelForm):
         if step.code == "agreement":
             if step.payment.transaction_type == PaymentRequest.TransactionType.PURCHASE:
                 # Only require document for purchase (lease agreement is generated)
-                if not (step.document or cleaned_data.get("document")):
+                if not (step.document or cleaned_data.get("document") or legal_docs_ready):
                     self.add_error("document", "Upload the executed sale agreement before completing this step.")
                 
                 # Both buyer and seller must confirm
@@ -1066,7 +1119,7 @@ class PaymentClosingStepForm(forms.ModelForm):
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, f"Enter the {label} before completing this step.")
 
-            if not (cleaned_data.get("document") or step.document):
+            if not (cleaned_data.get("document") or step.document or legal_docs_ready):
                 self.add_error("document", "Upload the LCB consent documents before completing this step.")
 
         # Stamp Duty validation (paid directly to KRA)
@@ -1089,7 +1142,7 @@ class PaymentClosingStepForm(forms.ModelForm):
                 if not cleaned_data.get(field_name):
                     self.add_error(field_name, f"Enter the {label} before completing this step.")
             
-            if not (cleaned_data.get("document") or step.document):
+            if not (cleaned_data.get("document") or step.document or legal_docs_ready):
                 self.add_error("document", "Upload the KRA stamp duty receipt before completing this step.")
             
             if cleaned_data.get("official_market_value") in {None, ""}:

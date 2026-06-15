@@ -580,16 +580,16 @@
                 {% endif %}
 
                 <!-- Missing Legal Documents Alert & Upload -->
-                {% if missing_legal_docs or pending_legal_docs %}
+                {% if required_legal_docs or pending_legal_docs %}
                 <div class="ws-alert ws-alert-warning" style="margin-bottom: 2rem;">
-                    {% if missing_legal_docs %}
+                    {% if required_legal_docs %}
                     <div style="margin-bottom: 1rem;">
-                        <strong><i class="fas fa-file-alt me-2"></i>Legal Documents Required First</strong>
+                        <strong><i class="fas fa-file-alt me-2"></i>Documents Needed For This Stage</strong>
                         <p style="margin-top: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">
-                            Please upload the following required legal documents before completing this payment step.
+                            Please upload these documents before completing this payment step.
                         </p>
                         <ul style="margin: 0.5rem 0 0 1.5rem; font-size: 0.9rem; font-weight: 600; color: #92400e;">
-                            {% for doc in missing_legal_docs %}
+                            {% for doc in required_legal_docs %}
                             <li>{{ doc }}</li>
                             {% endfor %}
                         </ul>
@@ -607,7 +607,7 @@
                     </div>
                     {% endif %}
                     
-                    {% if missing_legal_docs and legal_upload_form and legal_transaction %}
+                    {% if required_legal_docs and legal_upload_form and legal_transaction %}
                     <div style="background: white; border-radius: 0.75rem; padding: 1.25rem; border: 1px solid #fde68a; margin-top: 1rem;">
                         <h4 style="font-size: 0.95rem; margin-bottom: 1rem; color: #92400e;">Upload Document</h4>
                         <form method="post" action="{% url 'transactions:upload_document' legal_transaction.pk %}" enctype="multipart/form-data">
@@ -615,16 +615,20 @@
                             <input type="hidden" name="next" value="{{ request.path }}">
                             
                             {% for field in legal_upload_form %}
-                            <div class="ws-form-group" style="margin-bottom: 1rem;">
-                                <label for="{{ field.id_for_label }}" style="font-size: 0.8rem; font-weight: 600; color: #4b5563; margin-bottom: 0.4rem; display: block;">{{ field.label }}</label>
-                                {{ field }}
-                                {% if field.help_text %}
-                                <small style="display: block; margin-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">{{ field.help_text }}</small>
+                                {% if field.is_hidden %}
+                                    {{ field }}
+                                {% else %}
+                                    <div class="ws-form-group" style="margin-bottom: 1rem;">
+                                        <label for="{{ field.id_for_label }}" style="font-size: 0.8rem; font-weight: 600; color: #4b5563; margin-bottom: 0.4rem; display: block;">{{ field.label }}</label>
+                                        {{ field }}
+                                        {% if field.help_text %}
+                                            <small style="display: block; margin-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">{{ field.help_text }}</small>
+                                        {% endif %}
+                                        {% if field.errors %}
+                                            <div style="color: #dc2626; font-size: 0.75rem; margin-top: 0.25rem;">{{ field.errors }}</div>
+                                        {% endif %}
+                                    </div>
                                 {% endif %}
-                                {% if field.errors %}
-                                <div style="color: #dc2626; font-size: 0.75rem; margin-top: 0.25rem;">{{ field.errors }}</div>
-                                {% endif %}
-                            </div>
                             {% endfor %}
                             
                             <button type="submit" class="ws-btn ws-btn-primary" style="margin-top: 0.5rem;">
@@ -633,7 +637,7 @@
                         </form>
                     </div>
                     {% else %}
-                        {% if legal_workspace_url and missing_legal_docs %}
+                        {% if legal_workspace_url and required_legal_docs %}
                         <a href="{{ legal_workspace_url }}" class="ws-btn ws-btn-secondary" style="margin-top: 0.75rem;">
                             <i class="fas fa-upload me-2"></i>Go to Legal Workspace
                         </a>
@@ -760,9 +764,9 @@
                         </div>
                     </form>
 
-                {% elif missing_legal_docs %}
+                {% elif required_legal_docs %}
                     <div class="ws-alert ws-alert-warning" style="margin-bottom: 0;">
-                        <strong>Legal Documents Required First</strong><br>
+                        <strong>Documents Needed For This Stage</strong><br>
                         Please upload the required legal documents before completing this payment step.
                         {% if legal_workspace_url %}
                         <div style="margin-top: 0.75rem;">
@@ -845,11 +849,11 @@
                         <div style="height: 100%; width: {{ legal_progress_percentage }}%; background: var(--ws-primary); border-radius: 6px; transition: width 1s ease;"></div>
                     </div>
 
-                    {% if missing_legal_docs %}
+                    {% if required_legal_docs %}
                     <div style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 0.5rem; padding: 0.6rem 0.75rem; margin-bottom: 0.75rem; font-size: 0.8rem; color: #92400e;">
-                        <strong>⚠ {{ missing_legal_docs|length }} document{{ missing_legal_docs|length|pluralize }} needed:</strong>
+                        <strong>⚠ {{ required_legal_docs|length }} document{{ required_legal_docs|length|pluralize }} needed:</strong>
                         <ul style="margin: 0.3rem 0 0 1rem; padding: 0;">
-                            {% for doc in missing_legal_docs %}
+                            {% for doc in required_legal_docs %}
                             <li>{{ doc }}</li>
                             {% endfor %}
                         </ul>

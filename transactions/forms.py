@@ -27,39 +27,30 @@ class TransactionDocumentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         self.transaction = kwargs.pop('transaction', None)
         self.user = kwargs.pop('user', None)
+        self.required_document_types = []
         super().__init__(*args, **kwargs)
         
         if self.transaction:
-            # Get documents required for current stage
-            allowed_docs = self.transaction.get_required_documents_for_stage()
-            
-            # Also allow documents from all stages for retrospective upload
-            all_stage_docs = [
-                TransactionDocument.DocType.OFFICIAL_SEARCH,
-                TransactionDocument.DocType.SURVEY_MAP,
-                TransactionDocument.DocType.LETTER_OF_OFFER,
-                TransactionDocument.DocType.SALE_AGREEMENT,
-                TransactionDocument.DocType.LCB_CONSENT,
-                TransactionDocument.DocType.SPOUSAL_CONSENT,
-                TransactionDocument.DocType.STAMP_DUTY_RECEIPT,
-                TransactionDocument.DocType.VALUATION_REPORT,
-                TransactionDocument.DocType.TRANSFER_FORM,
-                TransactionDocument.DocType.ORIGINAL_TITLE_DEED,
-                TransactionDocument.DocType.NEW_TITLE_DEED,
-                TransactionDocument.DocType.ID_DOCUMENT,
-                TransactionDocument.DocType.KRA_PIN,
-                TransactionDocument.DocType.RATES_CLEARANCE,
-                TransactionDocument.DocType.RENT_CLEARANCE,
-                TransactionDocument.DocType.PASSPORT_PHOTO,
-            ]
-            
-            # Combine current stage required docs with all docs for retrospective upload
-            allowed_docs = list(set(allowed_docs + all_stage_docs))
-            
+            # Only surface documents required for the current legal stage.
+            # This keeps the upload UI stage-aware while the stored documents
+            # remain available to any later stage that needs them.
+            allowed_docs = list(self.transaction.get_required_documents_for_stage())
+            self.required_document_types = allowed_docs
             self.fields['document_type'].choices = [
                 (choice[0], choice[1]) for choice in self.fields['document_type'].choices 
                 if choice[0] in allowed_docs
             ]
+            if len(allowed_docs) == 1:
+                self.fields['document_type'].initial = allowed_docs[0]
+                self.fields['document_type'].widget = forms.HiddenInput()
+                self.fields['document_type'].help_text = (
+                    f"This stage requires {dict(TransactionDocument.DocType.choices).get(allowed_docs[0], allowed_docs[0])}."
+                )
+            else:
+                stage_label = self.transaction.get_stage_display() if hasattr(self.transaction, "get_stage_display") else "current stage"
+                self.fields['document_type'].help_text = (
+                    f"Choose the document required for the {stage_label.lower()} stage."
+                )
     
     def clean_file(self):
         file = self.cleaned_data.get('file')

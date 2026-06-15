@@ -6,7 +6,7 @@
     {% if payment_presenter and payment_presenter.legal_transaction %}
         Legal Workflow - {{ payment_presenter.legal_transaction.get_stage_display }}
     {% else %}
-        Create Payment Request - AgriPlot
+        Land Transfer Workflow - AgriPlot
     {% endif %}
 {% endblock %}
 
@@ -579,11 +579,11 @@
                         {% with stages=payment_presenter.transaction_stage_matrix %}
                             {% for stage in stages|slice:":13" %}
                                 <div class="stage-step 
-                                    {% if forloop.counter0 < payment_presenter.legal_transaction_progress|divisibleby:8 %}completed
+                                    {% if forloop.counter0 < payment_presenter.legal_transaction_stage_index %}completed
                                     {% elif stage.step_code == payment_presenter.legal_transaction.stage %}current
                                     {% endif %}">
                                     <div class="stage-marker">
-                                        {% if forloop.counter0 < payment_presenter.legal_transaction_progress|divisibleby:8 %}
+                                        {% if forloop.counter0 < payment_presenter.legal_transaction_stage_index %}
                                             <i class="fas fa-check"></i>
                                         {% else %}
                                             <span>{{ forloop.counter }}</span>
@@ -667,40 +667,23 @@
                             </div>
                         </div>
                     
-                    <!-- ============ STAGE 2: BEACON VERIFICATION (No Payment) ============ -->
-                    {% elif current_stage == 'beacon_verification' %}
+                    <!-- ============ STAGE 2: OFFER AGREEMENT (No Payment) ============ -->
+                    {% elif current_stage == 'commitment' or current_stage == 'offer_agreement' %}
                         <div class="document-upload-section">
-                            <h4 style="margin-bottom: 1rem;">📍 Step 2: Physical Beacon Verification</h4>
+                            <h4 style="margin-bottom: 1rem;">📝 Step 2: Offer Agreement</h4>
                             
                             <div class="document-item">
                                 <div class="document-info">
-                                    <div class="document-name">Surveyor's Report & Beacon Certificate</div>
-                                    <div class="document-requirement">Confirms ground boundaries match Registry Index Map</div>
+                                    <div class="document-name">Signed Offer Letter</div>
+                                    <div class="document-requirement">Buyer and seller review the proposed price and terms</div>
                                 </div>
                                 <div class="document-status status-pending">
                                     <i class="fas fa-clock"></i> Not uploaded
                                 </div>
-                                <button type="button" class="upload-btn" onclick="document.getElementById('survey_report_upload').click();">
-                                    <i class="fas fa-upload"></i> Upload
-                                </button>
-                                <input type="file" id="survey_report_upload" style="display: none;" accept=".pdf">
-                            </div>
-                            
-                            <div class="workspace-notice">
-                                <strong>Cost:</strong> Paid directly to licensed surveyor (KES 5,000-15,000 depending on plot size)
-                            </div>
-                            
-                            <div class="action-buttons">
-                                <button type="button" class="hero-btn hero-btn-primary" id="markBeaconComplete">
-                                    <i class="fas fa-check"></i> Mark Verification Complete
+                                <button type="button" class="upload-btn" onclick="location.href='{% url "transactions:generate_offer" payment_presenter.legal_transaction.pk %}'">
+                                    <i class="fas fa-file-signature"></i> Generate & Sign
                                 </button>
                             </div>
-                        </div>
-                    
-                    <!-- ============ STAGE 3: LETTER OF OFFER (No Payment) ============ -->
-                    {% elif current_stage == 'offer_agreement' or current_stage == 'letter_of_offer' %}
-                        <div class="document-upload-section">
-                            <h4 style="margin-bottom: 1rem;">📝 Step 3: Letter of Offer</h4>
                             
                             <div class="workspace-notice">
                                 <strong>Review Offer Terms:</strong>
@@ -711,19 +694,6 @@
                                 </ul>
                             </div>
                             
-                            <div class="document-item">
-                                <div class="document-info">
-                                    <div class="document-name">Signed Letter of Offer</div>
-                                    <div class="document-requirement">Buyer issues offer with proposed price and terms</div>
-                                </div>
-                                <div class="document-status status-pending">
-                                    <i class="fas fa-clock"></i> Pending signature
-                                </div>
-                                <button type="button" class="upload-btn" onclick="location.href='{% url "transactions:generate_offer" payment_presenter.legal_transaction.pk %}'">
-                                    <i class="fas fa-file-signature"></i> Generate & Sign
-                                </button>
-                            </div>
-                            
                             <div class="action-buttons">
                                 <button type="button" class="hero-btn hero-btn-primary" id="markOfferComplete">
                                     <i class="fas fa-check"></i> Confirm Offer Accepted
@@ -731,150 +701,159 @@
                             </div>
                         </div>
                     
-                    <!-- ============ STAGE 4: AGREEMENT DEPOSIT (PAYMENT REQUIRED) ============ -->
-                    {% elif current_stage == 'deposit' or current_stage == 'agreement_deposit' %}
-                        <!-- Amount Display -->
-                        <div class="amount-display">
-                            <div class="amount-label">Agreement Deposit (10%)</div>
-                            <div class="amount-value" id="amountDisplay">
-                                KES {{ payment_presenter.deposit_amount|floatformat:2|intcomma }}
-                            </div>
-                            <div class="amount-label" style="font-size: 0.7rem; margin-top: 0.5rem;">
-                                Required to secure the sale agreement and initiate escrow
-                            </div>
-                        </div>
-                        
-                        {% if not mpesa_allowed %}
-                        <div class="workspace-notice warning">
-                            <strong>M-Pesa unavailable for this amount.</strong>
-                            <div style="margin-top: 0.25rem;">
-                                Payments above KES 50,000 should use bank transfer, card, or wallet.
-                            </div>
-                        </div>
-                        {% endif %}
-                        
-                        <form method="post" id="paymentForm">
-                            {% csrf_token %}
+                    <!-- ============ STAGE 3: AGREEMENT DEPOSIT (PAYMENT REQUIRED) ============ -->
+                    {% elif current_stage == 'contracts' or current_stage == 'deposit' or current_stage == 'agreement_deposit' %}
+                        <div class="document-upload-section">
+                            <h4 style="margin-bottom: 1rem;">💰 Step 3: Agreement Deposit</h4>
                             
-                            <h3 style="font-size: 1rem; font-weight: 600; margin: 1rem 0;">Select Payment Method</h3>
-                            <div class="payment-methods-grid">
-                                <div class="payment-method-card{% if not mpesa_allowed %} disabled{% endif %}" data-method="mpesa_stk" data-available="{% if mpesa_allowed %}true{% else %}false{% endif %}">
-                                    <div class="method-icon">📱</div>
-                                    <div class="method-name">M-Pesa</div>
-                                    <div class="method-description">
-                                        {% if mpesa_allowed %}Pay using Safaricom M-Pesa{% else %}Unavailable above KES 50,000{% endif %}
+                            <div class="workspace-notice">
+                                <strong>Required to secure the sale agreement and initiate escrow</strong>
+                            </div>
+                            
+                            <div class="amount-display">
+                                <div class="amount-label">Agreement Deposit (10%)</div>
+                                <div class="amount-value" id="amountDisplay">
+                                    KES {{ payment_presenter.deposit_amount|floatformat:2|intcomma }}
+                                </div>
+                                <div class="amount-label" style="font-size: 0.7rem; margin-top: 0.5rem;">
+                                    Required to secure the sale agreement and initiate escrow
+                                </div>
+                            </div>
+                            
+                            {% if not mpesa_allowed %}
+                            <div class="workspace-notice warning">
+                                <strong>M-Pesa unavailable for this amount.</strong>
+                                <div style="margin-top: 0.25rem;">
+                                    Payments above KES 50,000 should use bank transfer, card, or wallet.
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            <form method="post" id="paymentForm">
+                                {% csrf_token %}
+                                
+                                <h3 style="font-size: 1rem; font-weight: 600; margin: 1rem 0;">Select Payment Method</h3>
+                                <div class="payment-methods-grid">
+                                    <div class="payment-method-card{% if not mpesa_allowed %} disabled{% endif %}" data-method="mpesa_stk" data-available="{% if mpesa_allowed %}true{% else %}false{% endif %}">
+                                        <div class="method-icon">📱</div>
+                                        <div class="method-name">M-Pesa</div>
+                                        <div class="method-description">
+                                            {% if mpesa_allowed %}Pay using Safaricom M-Pesa{% else %}Unavailable above KES 50,000{% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="payment-method-card" data-method="card" data-available="true">
+                                        <div class="method-icon">💳</div>
+                                        <div class="method-name">Card Payment</div>
+                                        <div class="method-description">Visa, Mastercard, American Express</div>
+                                    </div>
+                                    <div class="payment-method-card" data-method="bank_transfer" data-available="true">
+                                        <div class="method-icon">🏦</div>
+                                        <div class="method-name">Bank Transfer</div>
+                                        <div class="method-description">Direct bank transfer / RTGS</div>
+                                    </div>
+                                    <div class="payment-method-card" data-method="airtel_money" data-available="true">
+                                        <div class="method-icon">📞</div>
+                                        <div class="method-name">Airtel Money</div>
+                                        <div class="method-description">Pay using Airtel Money</div>
+                                    </div>
+                                    <div class="payment-method-card" data-method="wallet" data-available="true">
+                                        <div class="method-icon">👛</div>
+                                        <div class="method-name">AgriPlot Wallet</div>
+                                        <div class="method-description">Use your AgriPlot wallet balance</div>
                                     </div>
                                 </div>
-                                <div class="payment-method-card" data-method="card" data-available="true">
-                                    <div class="method-icon">💳</div>
-                                    <div class="method-name">Card Payment</div>
-                                    <div class="method-description">Visa, Mastercard, American Express</div>
-                                </div>
-                                <div class="payment-method-card" data-method="bank_transfer" data-available="true">
-                                    <div class="method-icon">🏦</div>
-                                    <div class="method-name">Bank Transfer</div>
-                                    <div class="method-description">Direct bank transfer / RTGS</div>
-                                </div>
-                                <div class="payment-method-card" data-method="airtel_money" data-available="true">
-                                    <div class="method-icon">📞</div>
-                                    <div class="method-name">Airtel Money</div>
-                                    <div class="method-description">Pay using Airtel Money</div>
-                                </div>
-                                <div class="payment-method-card" data-method="wallet" data-available="true">
-                                    <div class="method-icon">👛</div>
-                                    <div class="method-name">AgriPlot Wallet</div>
-                                    <div class="method-description">Use your AgriPlot wallet balance</div>
-                                </div>
-                            </div>
-                            
-                            <input type="hidden" name="method" id="selectedMethod" value="">
-                            <input type="hidden" name="amount" value="{{ payment_presenter.deposit_amount }}">
-                            <input type="hidden" name="stage_code" value="deposit">
-                            
-                            <!-- M-Pesa Section -->
-                            <div class="payment-detail-section" id="mpesaSection">
-                                <h4 style="margin-bottom: 1rem;">M-Pesa Payment Details</h4>
-                                <div class="form-group">
-                                    <label for="mpesa_phone">M-Pesa Number</label>
-                                    <input type="tel" name="phone_number" id="mpesa_phone" class="form-control" placeholder="0712345678">
-                                    <small class="help-copy">Enter the M-Pesa registered phone number</small>
-                                </div>
-                                <div class="workspace-notice">
-                                    <strong>How it works:</strong> You will receive an STK push on your phone. Enter your M-Pesa PIN to complete the payment.
-                                </div>
-                            </div>
-                            
-                            <!-- Card Section -->
-                            <div class="payment-detail-section" id="cardSection">
-                                <h4 style="margin-bottom: 1rem;">Card Payment Details</h4>
-                                <div class="form-group">
-                                    <label for="card_number">Card Number</label>
-                                    <input type="text" name="card_number" id="card_number" class="form-control" placeholder="4111 1111 1111 1111">
-                                </div>
-                                <div class="form-row">
+                                
+                                <input type="hidden" name="method" id="selectedMethod" value="">
+                                <input type="hidden" name="amount" value="{{ payment_presenter.deposit_amount }}">
+                                <input type="hidden" name="stage_code" value="deposit">
+                                
+                                <!-- M-Pesa Section -->
+                                <div class="payment-detail-section" id="mpesaSection">
+                                    <h4 style="margin-bottom: 1rem;">M-Pesa Payment Details</h4>
                                     <div class="form-group">
-                                        <label for="card_expiry">Expiry Date</label>
-                                        <input type="text" name="card_expiry" id="card_expiry" class="form-control" placeholder="MM/YY">
+                                        <label for="mpesa_phone">M-Pesa Number</label>
+                                        <input type="tel" name="phone_number" id="mpesa_phone" class="form-control" placeholder="0712345678">
+                                        <small class="help-copy">Enter the M-Pesa registered phone number</small>
+                                    </div>
+                                    <div class="workspace-notice">
+                                        <strong>How it works:</strong> You will receive an STK push on your phone. Enter your M-Pesa PIN to complete the payment.
+                                    </div>
+                                </div>
+                                
+                                <!-- Card Section -->
+                                <div class="payment-detail-section" id="cardSection">
+                                    <h4 style="margin-bottom: 1rem;">Card Payment Details</h4>
+                                    <div class="form-group">
+                                        <label for="card_number">Card Number</label>
+                                        <input type="text" name="card_number" id="card_number" class="form-control" placeholder="4111 1111 1111 1111">
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="card_expiry">Expiry Date</label>
+                                            <input type="text" name="card_expiry" id="card_expiry" class="form-control" placeholder="MM/YY">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="card_cvv">CVV</label>
+                                            <input type="text" name="card_cvv" id="card_cvv" class="form-control" placeholder="123">
+                                        </div>
                                     </div>
                                     <div class="form-group">
-                                        <label for="card_cvv">CVV</label>
-                                        <input type="text" name="card_cvv" id="card_cvv" class="form-control" placeholder="123">
+                                        <label for="cardholder_name">Cardholder Name</label>
+                                        <input type="text" name="cardholder_name" id="cardholder_name" class="form-control" placeholder="John Doe">
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="cardholder_name">Cardholder Name</label>
-                                    <input type="text" name="cardholder_name" id="cardholder_name" class="form-control" placeholder="John Doe">
+                                
+                                <!-- Bank Transfer Section -->
+                                <div class="payment-detail-section" id="bankSection">
+                                    <h4 style="margin-bottom: 1rem;">Bank Transfer Instructions</h4>
+                                    <div class="workspace-notice">
+                                        <strong>Bank Account Details:</strong><br>
+                                        Bank: Cooperative Bank of Kenya<br>
+                                        Account Name: AgriPlot Escrow Services<br>
+                                        Account Number: 0114123456789<br>
+                                        SWIFT Code: KCOOKENA
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="bank_reference">Reference Number</label>
+                                        <input type="text" name="bank_reference" id="bank_reference" class="form-control" placeholder="Enter your transaction reference">
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <!-- Bank Transfer Section -->
-                            <div class="payment-detail-section" id="bankSection">
-                                <h4 style="margin-bottom: 1rem;">Bank Transfer Instructions</h4>
-                                <div class="workspace-notice">
-                                    <strong>Bank Account Details:</strong><br>
-                                    Bank: Cooperative Bank of Kenya<br>
-                                    Account Name: AgriPlot Escrow Services<br>
-                                    Account Number: 0114123456789<br>
-                                    SWIFT Code: KCOOKENA
+                                
+                                <!-- Airtel Section -->
+                                <div class="payment-detail-section" id="airtelSection">
+                                    <h4 style="margin-bottom: 1rem;">Airtel Money Payment Details</h4>
+                                    <div class="form-group">
+                                        <label for="airtel_number">Airtel Money Number</label>
+                                        <input type="tel" name="airtel_number" id="airtel_number" class="form-control" placeholder="0712345678">
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="bank_reference">Reference Number</label>
-                                    <input type="text" name="bank_reference" id="bank_reference" class="form-control" placeholder="Enter your transaction reference">
+                                
+                                <!-- Wallet Section -->
+                                <div class="payment-detail-section" id="walletSection">
+                                    <h4 style="margin-bottom: 1rem;">AgriPlot Wallet Payment</h4>
+                                    <div class="workspace-notice">
+                                        <strong>Current Wallet Balance:</strong> KES {{ wallet_balance.balance|default:"0.00"|floatformat:2|intcomma }}
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="wallet_pin">Wallet PIN</label>
+                                        <input type="password" name="wallet_pin" id="wallet_pin" class="form-control" placeholder="Enter 4-digit PIN" maxlength="4">
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <!-- Airtel Section -->
-                            <div class="payment-detail-section" id="airtelSection">
-                                <h4 style="margin-bottom: 1rem;">Airtel Money Payment Details</h4>
-                                <div class="form-group">
-                                    <label for="airtel_number">Airtel Money Number</label>
-                                    <input type="tel" name="airtel_number" id="airtel_number" class="form-control" placeholder="0712345678">
+                                
+                                <div class="form-actions">
+                                    <button type="submit" class="hero-btn hero-btn-primary" id="submitPaymentBtn">
+                                        <i class="fas fa-lock"></i> Pay KES {{ payment_presenter.deposit_amount|floatformat:2|intcomma }}
+                                    </button>
                                 </div>
-                            </div>
-                            
-                            <!-- Wallet Section -->
-                            <div class="payment-detail-section" id="walletSection">
-                                <h4 style="margin-bottom: 1rem;">AgriPlot Wallet Payment</h4>
-                                <div class="workspace-notice">
-                                    <strong>Current Wallet Balance:</strong> KES {{ wallet_balance.balance|default:"0.00"|floatformat:2|intcomma }}
-                                </div>
-                                <div class="form-group">
-                                    <label for="wallet_pin">Wallet PIN</label>
-                                    <input type="password" name="wallet_pin" id="wallet_pin" class="form-control" placeholder="Enter 4-digit PIN" maxlength="4">
-                                </div>
-                            </div>
-                            
-                            <div class="form-actions">
-                                <button type="submit" class="hero-btn hero-btn-primary" id="submitPaymentBtn">
-                                    <i class="fas fa-lock"></i> Pay KES {{ payment_presenter.deposit_amount|floatformat:2|intcomma }}
-                                </button>
-                            </div>
-                        </form>
+                            </form>
                     
-                    <!-- ============ STAGES 5-7: CONSENTS & CLEARANCES (No Payment) ============ -->
+                    <!-- ============ STAGE 4: STATUTORY CONSENTS (No Payment) ============ -->
                     {% elif current_stage == 'statutory_consents' or current_stage == 'lcb_consent' %}
                         <div class="document-upload-section">
-                            <h4 style="margin-bottom: 1rem;">📋 Steps 5-7: Statutory Consents & Clearances</h4>
+                            <h4 style="margin-bottom: 1rem;">📋 Step 4: Statutory Consents</h4>
+                            <div class="workspace-notice">
+                                <strong>Required Action:</strong> Land Control Board consent, county consent, and spousal consent where applicable.
+                            </div>
                             
                             <div class="document-item">
                                 <div class="document-info">
@@ -925,10 +904,10 @@
                             </div>
                         </div>
                     
-                    <!-- ============ STAGE 8: STAMP DUTY (KRA DIRECT - INSTRUCTIONS ONLY) ============ -->
+                    <!-- ============ STAGE 5: STAMP DUTY (KRA DIRECT - INSTRUCTIONS ONLY) ============ -->
                     {% elif current_stage == 'stamp_duty' %}
                         <div class="document-upload-section">
-                            <h4 style="margin-bottom: 1rem;">🏛️ Step 8: Stamp Duty (Paid Directly to KRA)</h4>
+                            <h4 style="margin-bottom: 1rem;">🏛️ Step 5: Stamp Duty (Paid Directly to KRA)</h4>
                             
                             <div class="stamp-duty-notice">
                                 <strong><i class="fas fa-landmark"></i> Important: Stamp Duty Payment</strong>
@@ -978,8 +957,8 @@
                             </div>
                         </div>
                     
-                    <!-- ============ STAGE 9: COMPLETION & 90% BALANCE (PAYMENT REQUIRED) ============ -->
-                    {% elif current_stage == 'completion' or current_stage == 'completion_docs' %}
+                    <!-- ============ STAGE 6: COMPLETION BALANCE (PAYMENT REQUIRED) ============ -->
+                    {% elif current_stage == 'completion' or current_stage == 'completion_docs' or current_stage == 'completion_balance' %}
                         <div class="amount-display">
                             <div class="amount-label">Completion Balance (90%)</div>
                             <div class="amount-value">
@@ -1036,10 +1015,10 @@
                             </div>
                         </form>
                     
-                    <!-- ============ STAGES 10-13: REGISTRATION & COMPLETION (No Payment) ============ -->
+                    <!-- ============ STAGE 7-9: REGISTRATION, DISBURSEMENT & COMPLETION (No Payment) ============ -->
                     {% elif current_stage == 'registration' %}
                         <div class="document-upload-section">
-                            <h4 style="margin-bottom: 1rem;">📌 Step 10: Registration at Land Registry</h4>
+                            <h4 style="margin-bottom: 1rem;">📌 Step 7: Registration at Land Registry</h4>
                             
                             <div class="workspace-notice">
                                 <strong>Registration Fees:</strong> KES 5,000 - 10,000 (paid via eCitizen)
@@ -1106,16 +1085,23 @@
                 <!-- No legal transaction - show initial selection -->
                 <div class="workspace-notice">
                     <strong>Start Your Land Transfer</strong>
-                    <p>Select a property to begin the legal workflow.</p>
+                    <p>The property is already linked to this checkout, so you can start the legal workflow directly.</p>
                 </div>
                 
                 <form method="post">
                     {% csrf_token %}
-                    
-                    <div class="form-group">
-                        <label for="{{ form.plot.id_for_label }}">Select Property</label>
-                        {{ form.plot }}
-                    </div>
+
+                    {% if selected_plot %}
+                        <input type="hidden" name="plot" value="{{ selected_plot.id }}">
+                        <input type="hidden" name="transaction_type" value="{{ selected_transaction_type }}">
+                        {{ form.category }}
+                        {{ form.amount }}
+                    {% else %}
+                        <div class="workspace-notice warning">
+                            <strong>Plot missing</strong>
+                            <p class="mb-0">This checkout needs a property context. Please open it from a property page.</p>
+                        </div>
+                    {% endif %}
                     
                     <div class="form-actions">
                         <button type="submit" class="hero-btn hero-btn-primary">Start Workflow</button>

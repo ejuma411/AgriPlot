@@ -923,7 +923,6 @@ class PaymentDashboardView(ListView):
         return context
 
 
-
 class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
     model = PaymentRequest
     form_class = PaymentRequestForm
@@ -957,113 +956,244 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             return requested_type
         return PaymentRequest.TransactionType.LEASE
 
-    def get_or_create_legal_transaction(self, plot, buyer, seller, transaction_type):
-        """Create or get existing legal transaction for this plot/buyer"""
-        from transactions.models import Transaction
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        kwargs["selected_plot"] = self.get_selected_plot()
         
-        # Check for existing active transaction
-        existing_transaction = Transaction.objects.filter(
-            plot=plot,
-            buyer=buyer,
-            transaction_type=transaction_type
-        ).exclude(
-            stage__in=[Transaction.Stage.COMPLETED, Transaction.Stage.CANCELLED]
-        ).first()
-        
-        if existing_transaction:
-            return existing_transaction
-        
-        # Create new transaction
-        price = PaymentRequestForm.calculate_amount(
-            plot, transaction_type, PaymentRequest.Category.AGREEMENT_DEPOSIT
-        )
-        
-        transaction = Transaction.objects.create(
-            plot=plot,
-            buyer=buyer,
-            seller=seller,
-            agreed_price=price,
-            transaction_type=transaction_type,
-            stage=Transaction.Stage.DUE_DILIGENCE,
-            created_by=buyer,
-        )
-        
-        # Create linked payment request
-        payment = PaymentRequest.objects.create(
-            transaction_type=transaction_type,
-            plot=plot,
-            buyer=buyer,
-            seller=seller,
-            amount=price,
-            status=PaymentRequest.Status.PENDING,
-            title=f"Purchase of {plot.title}",
-            escrow_enabled=True,
-        )
-        
-        transaction.payment_request = payment
-        transaction.save(update_fields=['payment_request'])
-        
-        return transaction
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
+        # Determine if we're just starting a workflow (not creating a payment)
         selected_plot = self.get_selected_plot()
         selected_transaction_type = self.get_selected_transaction_type()
         
-        context["method_cards"] = PAYMENT_METHOD_CARDS
-        context["selected_plot"] = selected_plot
-        context["selected_transaction_type"] = selected_transaction_type
-        context["can_set_lease_terms"] = getattr(context.get("form"), "allow_lease_term_entry", False)
-        
-        # Check for existing legal transaction
-        payment_presenter = None
-        legal_transaction = None
-        
+        # Check if there's already an existing legal transaction
+        existing_transaction = None
         if selected_plot and self.request.user.is_authenticated:
             from transactions.models import Transaction
-            legal_transaction = Transaction.objects.filter(
+            existing_transaction = Transaction.objects.filter(
                 plot=selected_plot,
                 buyer=self.request.user,
                 transaction_type=selected_transaction_type
             ).exclude(
                 stage__in=[Transaction.Stage.COMPLETED, Transaction.Stage.CANCELLED]
             ).first()
-            
-            if legal_transaction and legal_transaction.payment_request:
-                from payments.presenters import PaymentPresenter
-                payment_presenter = PaymentPresenter(legal_transaction.payment_request)
-                context["payment_presenter"] = payment_presenter
         
-        context["legal_transaction"] = legal_transaction
+        # If no existing transaction, we're starting a new workflow
+        # Pass start_workflow_only=True to the form
+        kwargs["start_workflow_only"] = (existing_transaction is None)
         
-        # Add presenter properties for template
-        if payment_presenter:
-            context["deposit_amount"] = payment_presenter.deposit_amount
-            context["balance_amount"] = payment_presenter.balance_amount
-            context["stamp_duty_rural"] = payment_presenter.stamp_duty_rural
-            context["stamp_duty_urban"] = payment_presenter.stamp_duty_urban
+        kwargs.setdefault("initial", {})
+        kwargs["initial"]["transaction_type"] = selected_transaction_type
+        stage_gate = self.get_stage_gate()
+        kwargs["forced_category"] = stage_gate["forced_category"]
+        kwargs["active_deal"] = stage_gate["active_deal"]
+        kwargs["forced_amount"] = stage_gate["forced_amount"]
+        return kwargs
+
+    def get_stage_gate(self):
+        selected_plot = self.get_selected_plot()
+        transaction_type = self.get_selected_transaction_type()
+        requested_workflow_root = self.get_requested_workflow_root()
         
-        # Get wallet balance
+        if not selected_plot:
+            return {
+                "forced_category": None,
+                "active_deal": None,
+                "forced_amount": None,
+                "payment_required": False,
+                "stage_title": "",
+                "stage_message": "",
+            }
+        
+        if requested_workflow_root and requested_workflow_root.plot_id == selected_plot.pk:
+            active_deal = requested_workflow_root.workflow_anchor_payment
+            next_step = active_deal.next_closing_step
+            if transaction_type == PaymentRequest.TransactionType.PURCHASE:
+                step_to_category = {
+                    "agreement": PaymentRequest.Category.AGREEMENT_DEPOSIT,
+                    "completion_docs": PaymentRequest.Category.COMPLETION_BALANCE,
+                }
+            else:
+                step_to_category = {
+                    "offer": PaymentRequest.Category.RESERVATION_DEPOSIT,
+                    "payment_security": PaymentRequest.Category.ESCROW_DEPOSIT,
+                }
+            forced_category = step_to_category.get(next_step.code) if next_step else None
+        else:
+            forced_category, active_deal = _recommended_payment_category(
+                selected_plot,
+                self.request.user,
+                transaction_type,
+            )
+        
+        stage_title = ""
+        stage_message = ""
+        payment_required = bool(forced_category) and forced_category not in {PaymentRequest.Category.STAMP_DUTY, None}
+        forced_amount = self.get_forced_stage_amount(active_deal, forced_category)
+        
+        if forced_category == PaymentRequest.Category.STAMP_DUTY:
+            payment_required = False
+            stage_title = "Stamp Duty (Paid to KRA)"
+            stage_message = (
+                "Stamp duty must be paid directly to KRA via iTax. After payment, upload the receipt for verification."
+            )
+        elif forced_category:
+            stage_title = dict(PaymentRequest.Category.choices).get(forced_category, "Current payment stage")
+            stage_message = (
+                f"AgriPlot has locked this checkout to {stage_title.lower()} based on the current legal step, "
+                "so the buyer cannot accidentally pay for the wrong stage."
+            )
+        
+        return {
+            "forced_category": forced_category,
+            "active_deal": active_deal,
+            "forced_amount": forced_amount,
+            "payment_required": payment_required,
+            "stage_title": stage_title,
+            "stage_message": stage_message,
+        }
+
+    def get_requested_workflow_root(self):
+        workflow_root_id = self.request.GET.get("workflow_root_id") or self.request.POST.get("workflow_root_id")
+        if not workflow_root_id:
+            return None
+        try:
+            return PaymentRequest.objects.select_related("plot", "buyer", "seller").get(pk=workflow_root_id)
+        except (PaymentRequest.DoesNotExist, ValueError, TypeError):
+            return None
+
+    def get_forced_stage_amount(self, active_deal, forced_category):
+        if not active_deal or not forced_category:
+            return None
+        if forced_category == PaymentRequest.Category.STAMP_DUTY:
+            return None
+        return None
+
+    def build_payment_stage_cards(self, transaction_type, checkout_amounts):
+        amount_bucket = checkout_amounts.get(transaction_type, {})
+        return [
+            {
+                "code": "agreement_deposit",
+                "step": "1",
+                "title": "Agreement",
+                "subtitle": "Deposit (10%)",
+                "amount": amount_bucket.get("agreement_deposit", ""),
+            },
+            {
+                "code": "completion_balance",
+                "step": "2",
+                "title": "Completion",
+                "subtitle": "Balance (90%)",
+                "amount": amount_bucket.get("completion_balance", ""),
+            },
+        ]
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["method_cards"] = PAYMENT_METHOD_CARDS
+        context["selected_plot"] = self.get_selected_plot()
+        context["selected_transaction_type"] = self.get_selected_transaction_type()
+        context["can_set_lease_terms"] = getattr(context.get("form"), "allow_lease_term_entry", False)
+        stage_gate = self.get_stage_gate()
+        context["stage_gate"] = stage_gate
+        context["forced_category"] = stage_gate["forced_category"]
+        context["forced_amount"] = stage_gate["forced_amount"]
+        context["current_stage"] = stage_gate["forced_category"]
+        context["current_payment_stage_label"] = stage_gate["stage_title"]
+        context["current_payment_stage_message"] = stage_gate["stage_message"]
+
         from .wallet_service import WalletService
         context["wallet_balance"] = WalletService.get_balance(self.request.user)
         context["has_wallet_pin"] = WalletService.has_pin(self.request.user)
-        
-        # Calculate amounts for template
-        if selected_plot:
-            total_amount = PaymentRequestForm.calculate_amount(
-                selected_plot, selected_transaction_type, PaymentRequest.Category.AGREEMENT_DEPOSIT
-            )
-            context["total_amount"] = total_amount
-            context["deposit_amount"] = total_amount * Decimal('0.1') if total_amount else Decimal('0')
-            context["balance_amount"] = total_amount * Decimal('0.9') if total_amount else Decimal('0')
-            context["stamp_duty_rural"] = total_amount * Decimal('0.02') if total_amount else Decimal('0')
-            context["stamp_duty_urban"] = total_amount * Decimal('0.04') if total_amount else Decimal('0')
-            context["mpesa_allowed"] = total_amount <= 50000 if total_amount else True
-        
+
+        context["plot_listing_types"] = {
+            str(plot.pk): plot.listing_type
+            for plot in context["form"].fields["plot"].queryset
+        }
+        context["plot_checkout_contexts"] = {
+            str(plot.pk): {
+                "listing_type": plot.listing_type,
+                "land_type": plot.land_type,
+                "land_type_display": plot.get_land_type_display(),
+                "market_zone_display": plot.get_market_zone_display(),
+                "title": plot.title,
+            }
+            for plot in context["form"].fields["plot"].queryset
+        }
         context["selected_plot_availability"] = (
-            selected_plot.availability_summary if selected_plot else ""
+            context["selected_plot"].availability_summary
+            if context["selected_plot"]
+            else ""
         )
         
+        form_amount = context["form"].fields["amount"].initial
+        context["mpesa_allowed"] = PaymentRequestForm.mpesa_allowed_for_amount(form_amount)
+        context["allowed_method_slugs"] = PaymentRequestForm.allowed_methods_for_amount(form_amount)
+        context["default_method_slug"] = PaymentRequestForm.preferred_method_for_amount(form_amount)
+        
+        selected_plot = context["selected_plot"]
+        context["checkout_amounts"] = {
+            "purchase": {
+                "agreement_deposit": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.Category.AGREEMENT_DEPOSIT,
+                ) or ""),
+                "reservation_deposit": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.Category.RESERVATION_DEPOSIT,
+                ) or ""),
+                "escrow_deposit": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.Category.ESCROW_DEPOSIT,
+                ) or ""),
+                "stamp_duty": "Pay to KRA",
+                "completion_balance": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.PURCHASE,
+                    PaymentRequest.Category.COMPLETION_BALANCE,
+                ) or ""),
+            },
+            "lease": {
+                "reservation_deposit": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.LEASE,
+                    PaymentRequest.Category.RESERVATION_DEPOSIT,
+                ) or ""),
+                "agreement_deposit": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.LEASE,
+                    PaymentRequest.Category.AGREEMENT_DEPOSIT,
+                ) or ""),
+                "escrow_deposit": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.LEASE,
+                    PaymentRequest.Category.ESCROW_DEPOSIT,
+                ) or ""),
+                "completion_balance": str(PaymentRequestForm.calculate_amount(
+                    selected_plot,
+                    PaymentRequest.TransactionType.LEASE,
+                    PaymentRequest.Category.COMPLETION_BALANCE,
+                ) or ""),
+            },
+        }
+        context["payment_stage_cards"] = self.build_payment_stage_cards(
+            context["selected_transaction_type"],
+            context["checkout_amounts"],
+        )
+        
+        bound_form = context.get("form")
+        selected_method = ""
+        if bound_form and getattr(bound_form, "is_bound", False):
+            selected_method = (
+                bound_form.data.get("method")
+                or bound_form.data.get("payment_method")
+                or ""
+            )
+        context["selected_method_slug"] = (
+            selected_method if selected_method in context["allowed_method_slugs"] else context["default_method_slug"]
+        )
         return context
 
     def dispatch(self, request, *args, **kwargs):
@@ -1087,7 +1217,6 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             ).first()
             
             if legal_transaction:
-                # Redirect to legal workflow view instead of payment create
                 return redirect("transactions:detail", pk=legal_transaction.pk)
         
         return super().dispatch(request, *args, **kwargs)
@@ -1108,9 +1237,19 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         elif selected_plot.agent_id and selected_plot.agent.user_id:
             seller = selected_plot.agent.user
         
+        # Validate we have a seller
+        if not seller:
+            messages.error(self.request, "This property does not have a valid seller assigned.")
+            return redirect("payments:create_request")
+        
+        # Check if buyer is trying to buy their own property
+        if seller.id == self.request.user.id:
+            messages.error(self.request, "You cannot purchase your own property.")
+            return redirect("payments:create_request")
+        
         try:
             with transaction.atomic():
-                # Create legal transaction instead of payment request
+                # Create legal transaction
                 legal_transaction = self.get_or_create_legal_transaction(
                     plot=selected_plot,
                     buyer=self.request.user,
@@ -1118,19 +1257,87 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
                     transaction_type=selected_transaction_type
                 )
                 
+                if not legal_transaction:
+                    messages.error(self.request, "Failed to create legal transaction.")
+                    return redirect("payments:create_request")
+                
                 messages.success(
                     self.request,
                     f"✅ Legal workflow started for {selected_plot.title}. "
                     f"Current stage: {legal_transaction.get_stage_display()}"
                 )
                 
-                # Redirect to transaction detail (legal workflow view)
                 return redirect("transactions:detail", pk=legal_transaction.pk)
                 
         except Exception as e:
             logger.exception(f"Failed to create legal transaction: {e}")
             messages.error(self.request, f"Failed to start workflow: {str(e)}")
             return redirect("payments:create_request")
+
+    def get_or_create_legal_transaction(self, plot, buyer, seller, transaction_type):
+        """Create or get existing legal transaction for this plot/buyer"""
+        from transactions.models import Transaction
+        
+        # Check for existing active transaction
+        existing_transaction = Transaction.objects.filter(
+            plot=plot,
+            buyer=buyer,
+            transaction_type=transaction_type
+        ).exclude(
+            stage__in=[Transaction.Stage.COMPLETED, Transaction.Stage.CANCELLED]
+        ).first()
+        
+        if existing_transaction:
+            return existing_transaction
+        
+        # Calculate the full contract value first.
+        # Agreement Deposit is only the first 10% payment, not the total deal amount.
+        from .forms import PaymentRequestForm
+        if transaction_type == PaymentRequest.TransactionType.PURCHASE:
+            agreed_price = getattr(plot, "sale_price", None) or getattr(plot, "price", None)
+        else:
+            agreed_price = PaymentRequestForm.lease_base_amount(plot)
+            if agreed_price in {None, ""}:
+                lease_monthly = getattr(plot, "lease_price_monthly", None)
+                lease_yearly = getattr(plot, "lease_price_yearly", None)
+                if lease_monthly:
+                    agreed_price = lease_monthly * 12
+                elif lease_yearly:
+                    agreed_price = lease_yearly
+        
+        if not agreed_price or agreed_price <= 0:
+            raise ValidationError("Unable to determine the full agreement value for this plot.")
+        
+        # Create transaction FIRST (without payment request)
+        transaction_obj = Transaction.objects.create(
+            plot=plot,
+            buyer=buyer,
+            seller=seller,
+            agreed_price=agreed_price,
+            transaction_type=transaction_type,
+            stage=Transaction.Stage.DUE_DILIGENCE,
+        )
+        
+        # Create payment request with proper values for escrow
+        payment = PaymentRequest.objects.create(
+            transaction_type=transaction_type,
+            category=PaymentRequest.Category.AGREEMENT_DEPOSIT,
+            plot=plot,
+            buyer=buyer,
+            seller=seller,
+            amount=agreed_price,
+            status=PaymentRequest.Status.PENDING,
+            title=f"Purchase of {plot.title}",
+            description=f"Legal transaction #{transaction_obj.id} for {plot.title}",
+            escrow_enabled=True,
+            method=PaymentRequest.Method.BANK_TRANSFER,
+            internal_reference=PaymentRequest.generate_reference(),
+        )
+        
+        transaction_obj.payment_request = payment
+        transaction_obj.save(update_fields=['payment_request'])
+        
+        return transaction_obj
 
     def form_invalid(self, form):
         error_messages = []
@@ -1143,6 +1350,7 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             "We could not start the workflow. " + " ".join(error_messages[:5])
         )
         return super().form_invalid(form)
+
 
 class PaymentAccessMixin(UserPassesTestMixin):
     def test_func(self):
@@ -1470,17 +1678,22 @@ class PaymentClosingStepWorkspaceView(LoginRequiredMixin, UserPassesTestMixin, V
 
         # Missing legal docs
         missing_legal_docs = []
+        required_legal_docs = []
         pending_legal_docs = []
         legal_upload_form = None
         if legal_transaction:
             required_docs = legal_transaction.get_required_documents_for_stage()
-            missing_legal_docs = required_docs
+            from transactions.models import TransactionDocument
+            doc_labels = dict(TransactionDocument.DocType.choices)
+            required_legal_docs = [doc_labels.get(doc_type, doc_type) for doc_type in required_docs]
+            missing_legal_docs = required_legal_docs
             try:
                 from transactions.forms import TransactionDocumentForm
                 legal_upload_form = TransactionDocumentForm(transaction=legal_transaction, user=self.request.user)
             except Exception:
                 pass
 
+        context["required_legal_docs"] = required_legal_docs
         context["missing_legal_docs"] = missing_legal_docs
         context["pending_legal_docs"] = pending_legal_docs
         context["legal_upload_form"] = legal_upload_form
@@ -1894,7 +2107,18 @@ class LegalWorkflowView(LoginRequiredMixin, DetailView):
         presenter = PaymentPresenter(payment)
         
         context["presenter"] = presenter
-        context["current_stage"] = payment.stage if hasattr(payment, 'stage') else 'due_diligence'
+        current_stage = payment.metadata.get("current_step_code")
+        if not current_stage:
+            if payment.category == PaymentRequest.Category.AGREEMENT_DEPOSIT:
+                current_stage = "deposit"
+            elif payment.category == PaymentRequest.Category.COMPLETION_BALANCE:
+                current_stage = "completion_balance"
+            elif payment.category == PaymentRequest.Category.STAMP_DUTY:
+                current_stage = "stamp_duty"
+            else:
+                current_stage = "due_diligence"
+
+        context["current_stage"] = current_stage
         context["stage_progress"] = presenter.legal_transaction_progress
         
         # Get the workflow matrix
@@ -1910,7 +2134,7 @@ class LegalWorkflowView(LoginRequiredMixin, DetailView):
             context["payment_required"] = True
             context["is_deposit_stage"] = True
             
-        elif current_stage_code in ['completion', 'completion_docs']:
+        elif current_stage_code in ['completion', 'completion_docs', 'completion_balance']:
             balance_amount = payment.amount * Decimal('0.9')
             context["payment_amount"] = balance_amount
             context["payment_label"] = "Completion Balance (90%)"
@@ -1960,30 +2184,44 @@ class LegalWorkflowView(LoginRequiredMixin, DetailView):
         action = request.POST.get("action")
         
         # Handle document upload
-        if action == "upload_document" and "document" in request.FILES:
-            document_type = request.POST.get("document_type")
-            document_file = request.FILES["document"]
-            
+        if action == "upload_document" and ("file" in request.FILES or "document" in request.FILES):
             try:
-                # Store document using TransactionDocument model
+                from transactions.forms import TransactionDocumentForm
                 from transactions.models import TransactionDocument
-                
-                doc = TransactionDocument.objects.create(
+
+                form_data = request.POST.copy()
+                form_files = request.FILES.copy()
+                if "file" not in form_files and "document" in form_files:
+                    form_files["file"] = form_files["document"]
+
+                document_type = form_data.get("document_type")
+                existing_doc = None
+                if document_type:
+                    existing_doc = TransactionDocument.objects.filter(
+                        transaction=payment.legal_transaction,
+                        document_type=document_type,
+                    ).first()
+
+                doc_form = TransactionDocumentForm(
+                    form_data,
+                    form_files,
+                    instance=existing_doc,
                     transaction=payment.legal_transaction,
-                    document_type=document_type,
-                    file=document_file,
-                    uploaded_by=request.user,
-                    status='pending'
+                    user=request.user,
                 )
-                
-                messages.success(request, f"Document '{doc.get_document_type_display()}' uploaded successfully.")
-                
-                # After upload, check if stage can be advanced
-                if hasattr(payment.legal_transaction, 'can_advance_to_next_stage'):
-                    can_advance, _ = payment.legal_transaction.can_advance_to_next_stage()
-                    if can_advance:
-                        messages.info(request, "All required documents for this stage are now uploaded. You can proceed to the next step.")
-                
+                if doc_form.is_valid():
+                    doc = doc_form.save()
+                    messages.success(request, f"Document '{doc.get_document_type_display()}' uploaded successfully.")
+
+                    # After upload, check if stage can be advanced
+                    if hasattr(payment.legal_transaction, 'can_advance_to_next_stage'):
+                        can_advance, _ = payment.legal_transaction.can_advance_to_next_stage()
+                        if can_advance:
+                            messages.info(request, "All required documents for this stage are now uploaded. You can proceed to the next step.")
+                else:
+                    for field, errors in doc_form.errors.items():
+                        for error in errors:
+                            messages.error(request, f"{field}: {error}")
             except Exception as e:
                 messages.error(request, f"Failed to upload document: {str(e)}")
                 
@@ -2220,26 +2458,42 @@ class UploadDocumentView(LoginRequiredMixin, View):
         payment = get_object_or_404(PaymentRequest, pk=pk)
         payment = payment.workflow_anchor_payment
         
-        document_type = request.POST.get("document_type")
-        document_file = request.FILES.get("document")
-        
-        if not document_type or not document_file:
-            return JsonResponse({"success": False, "message": "Document type and file required."}, status=400)
-            
         try:
+            from transactions.forms import TransactionDocumentForm
             from transactions.models import TransactionDocument
-            
-            doc = TransactionDocument.objects.create(
+
+            form_data = request.POST.copy()
+            form_files = request.FILES.copy()
+            if "file" not in form_files and "document" in form_files:
+                form_files["file"] = form_files["document"]
+
+            document_type = form_data.get("document_type")
+            existing_doc = None
+            if document_type:
+                existing_doc = TransactionDocument.objects.filter(
+                    transaction=payment.legal_transaction,
+                    document_type=document_type,
+                ).first()
+
+            doc_form = TransactionDocumentForm(
+                form_data,
+                form_files,
+                instance=existing_doc,
                 transaction=payment.legal_transaction,
-                document_type=document_type,
-                file=document_file,
-                uploaded_by=request.user,
-                status='pending'
+                user=request.user,
             )
-            
+            if not doc_form.is_valid():
+                error_messages = []
+                for field, errors in doc_form.errors.items():
+                    for error in errors:
+                        error_messages.append(f"{field}: {error}")
+                return JsonResponse({"success": False, "message": " ".join(error_messages) or "Document upload failed."}, status=400)
+
+            doc = doc_form.save()
+
             # After upload, check if stage can be advanced
             can_advance, message = payment.legal_transaction.can_advance_to_next_stage()
-            
+
             return JsonResponse({
                 "success": True,
                 "document_id": doc.id,

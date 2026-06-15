@@ -283,11 +283,26 @@
         display: inline-flex;
         align-items: center;
         gap: 0.5rem;
+        border: 1px solid transparent;
+        box-shadow: 0 8px 18px rgba(47, 133, 90, 0.18);
+        line-height: 1.1;
     }
     
     .btn-action:hover {
         background: var(--ap-green-dark);
         color: white;
+        border-color: rgba(255, 255, 255, 0.08);
+        box-shadow: 0 10px 22px rgba(39, 103, 73, 0.22);
+    }
+
+    .btn-action:focus-visible {
+        outline: 3px solid rgba(47, 133, 90, 0.28);
+        outline-offset: 2px;
+    }
+
+    .desktop-table td:last-child {
+        white-space: nowrap;
+        text-align: center;
     }
     
     /* Desktop Table View (hidden on mobile) */
@@ -632,8 +647,8 @@
                                 <span class="status-badge status-pending">—</span>
                             {% endif %}
                         </td>
-                        <tr>
-                            <a href="{% url 'transactions:detail' trx.pk %}" class="btn-action" style="padding: 0.4rem 0.8rem;">
+                        <td>
+                            <a href="{% url 'transactions:detail' trx.pk %}" class="btn-action" style="padding: 0.45rem 0.85rem;">
                                 <i class="fa-solid fa-folder-open"></i> Open
                             </a>
                         </td>

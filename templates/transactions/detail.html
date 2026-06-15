@@ -222,84 +222,173 @@
                 </div>
                 <div class="workspace-card-body">
                     <div class="legal-timeline">
-                        {% for stage_code, stage_label in transaction.Stage.choices %}
-                            {% if stage_code != 'draft' and stage_code != 'cancelled' %}
-                            <div class="timeline-item {% if transaction.stage == stage_code %}is-current{% elif stage_code == 'completed' and transaction.stage == 'completed' %}is-completed{% elif stage_code != 'completed' and transaction.get_stage_index > forloop.counter|add:"-1" %}is-completed{% endif %}">
+                        {% for stage in workflow_stages %}
+                            <div class="timeline-item {% if stage.is_current %}is-current{% elif stage.is_completed %}is-completed{% endif %}">
                                 <div class="timeline-marker">
-                                    {% if transaction.stage == stage_code %}
+                                    {% if stage.is_current %}
                                         <i class="fa-solid fa-circle-play"></i>
-                                    {% elif stage_code == 'completed' and transaction.stage == 'completed' %}
-                                        <i class="fa-solid fa-circle-check"></i>
-                                    {% elif transaction.get_stage_index > forloop.counter|add:"-1" and stage_code != 'completed' %}
+                                    {% elif stage.is_completed %}
                                         <i class="fa-solid fa-circle-check"></i>
                                     {% else %}
                                         <i class="fa-solid fa-circle"></i>
                                     {% endif %}
                                 </div>
                                 <div class="timeline-content">
-                                    <h3 class="timeline-title">{{ stage_label }}</h3>
-                                    {% if transaction.stage == stage_code %}
-                                        <div class="timeline-active-info">
-                                            <p class="mb-2">Currently in this stage. Legal progression requires specific documents and escrow payments.</p>
-                                            
-                                            {% if can_advance %}
-                                                <form method="post" action="{% url 'transactions:advance_stage' transaction.pk %}">
-                                                    {% csrf_token %}
-                                                    <div class="mb-2 form-check">
-                                                        {{ advance_form.confirm_legal_requirements }}
-                                                        <label class="form-check-label text-sm fw-bold" for="{{ advance_form.confirm_legal_requirements.id_for_label }}">I confirm all legal requirements are met.</label>
-                                                    </div>
-                                                    
-                                                    {% if stage_code == 'statutory_consents' %}
-                                                        <div class="row g-2 mb-2">
-                                                            <div class="col-6">
-                                                                <label class="form-label text-sm fw-bold">LCB Meeting Date</label>
-                                                                {{ advance_form.lcb_meeting_date }}
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <label class="form-label text-sm fw-bold">LCB Consent Reference</label>
-                                                                {{ advance_form.lcb_consent_reference }}
-                                                            </div>
-                                                        </div>
-                                                    {% endif %}
-                                                    
-                                                    {% if stage_code == 'taxation' %}
-                                                        <div class="row g-2 mb-2">
-                                                            <div class="col-6">
-                                                                <label class="form-label text-sm fw-bold">Stamp Duty Rate</label>
-                                                                {{ advance_form.stamp_duty_rate }}
-                                                            </div>
-                                                            <div class="col-6">
-                                                                <label class="form-label text-sm fw-bold">KRA Receipt Number</label>
-                                                                {{ advance_form.stamp_duty_receipt_number }}
-                                                            </div>
-                                                        </div>
-                                                    {% endif %}
-                                                    
-                                                    <button type="submit" class="ap-btn ap-btn-primary btn-sm mt-2">
-                                                        <i class="fa-solid fa-arrow-right"></i> Advance to Next Stage
-                                                    </button>
-                                                </form>
+                                    <h3 class="timeline-title">{{ stage.label }}</h3>
+                                    <div class="timeline-active-info">
+                                        <p class="mb-2">
+                                            {% if stage.is_current %}
+                                                Currently in this stage. Legal progression requires the documents listed below.
+                                            {% elif stage.is_completed %}
+                                                This stage is complete. The document(s) verified for this stage are shown for reference.
                                             {% else %}
-                                                <div class="alert alert-warning py-2 px-3 mb-0 mt-2 text-sm">
-                                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                                                        <div class="d-flex align-items-center">
-                                                            <i class="fa-solid fa-triangle-exclamation me-2 fs-5"></i> 
-                                                            <span>{{ advance_message }}</span>
+                                                Upcoming stage. The checklist unlocks when you reach this stage.
+                                            {% endif %}
+                                        </p>
+
+                                        {% if stage.is_current or stage.is_completed %}
+                                            <div style="margin: 0.75rem 0; padding: 0.9rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #f8fafc;">
+                                                <strong style="display: block; margin-bottom: 0.5rem;">Documents:</strong>
+                                                {% if stage.required_doc_details %}
+                                                    <div class="d-flex flex-column gap-2">
+                                                        {% for doc in stage.required_doc_details %}
+                                                            <div class="d-flex align-items-start justify-content-between gap-3 p-2 rounded border {% if doc.is_verified %}border-success bg-success-subtle{% elif doc.is_pending %}border-info bg-info-subtle{% elif doc.is_rejected %}border-danger bg-danger-subtle{% else %}border-light bg-white{% endif %}">
+                                                                <div class="flex-grow-1">
+                                                                    <div class="fw-semibold text-sm">{{ doc.label }}</div>
+                                                                    <div class="text-xs text-muted">
+                                                                        {% if doc.is_verified and doc.doc %}
+                                                                            Uploaded {{ doc.doc.uploaded_at|date:"M d, Y" }} by {{ doc.doc.uploaded_by.username }}
+                                                                        {% elif doc.is_pending and doc.doc %}
+                                                                            Uploaded {{ doc.doc.uploaded_at|date:"M d, Y" }} by {{ doc.doc.uploaded_by.username }}
+                                                                        {% elif doc.is_rejected and doc.doc %}
+                                                                            Rejected {{ doc.doc.verified_at|date:"M d, Y" }} by {{ doc.doc.verified_by.username|default:"admin" }}
+                                                                        {% else %}
+                                                                            Not uploaded yet
+                                                                        {% endif %}
+                                                                    </div>
+                                                                    {% if doc.doc and doc.doc.reference_number %}
+                                                                        <div class="text-xs text-muted">Ref: {{ doc.doc.reference_number }}</div>
+                                                                    {% endif %}
+                                                                </div>
+                                                                <div class="text-end">
+                                                                    {% if doc.is_verified %}
+                                                                        <span class="badge bg-success-subtle text-success">Verified</span>
+                                                                    {% elif doc.is_pending %}
+                                                                        <span class="badge bg-info-subtle text-info">Awaiting verification</span>
+                                                                    {% elif doc.is_rejected %}
+                                                                        <span class="badge bg-danger-subtle text-danger">Rejected</span>
+                                                                    {% else %}
+                                                                        <span class="badge bg-secondary-subtle text-secondary">Not uploaded</span>
+                                                                    {% endif %}
+                                                                    {% if can_verify_documents and doc.doc and not doc.is_verified %}
+                                                                        <div class="mt-2 d-flex gap-2 justify-content-end flex-wrap">
+                                                                            <form method="post" action="{% url 'transactions:verify_document' doc.doc.id %}">
+                                                                                {% csrf_token %}
+                                                                                <input type="hidden" name="action" value="verify">
+                                                                                <button type="submit" class="ap-btn ap-btn-primary btn-sm">Verify</button>
+                                                                            </form>
+                                                                            <form method="post" action="{% url 'transactions:verify_document' doc.doc.id %}">
+                                                                                {% csrf_token %}
+                                                                                <input type="hidden" name="action" value="reject">
+                                                                                <input type="hidden" name="reason" value="Rejected during stage review">
+                                                                                <button type="submit" class="ap-btn ap-btn-secondary btn-sm">Reject</button>
+                                                                            </form>
+                                                                        </div>
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% else %}
+                                                    {% if stage.required_docs %}
+                                                        <ul style="margin: 0; padding-left: 1.25rem;" class="text-sm">
+                                                            {% for doc in stage.required_docs %}
+                                                                <li>{{ doc }}</li>
+                                                            {% endfor %}
+                                                        </ul>
+                                                    {% else %}
+                                                        <p class="mb-0 text-sm text-muted">No additional documents are required at this stage.</p>
+                                                    {% endif %}
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <div style="margin: 0.75rem 0; padding: 0.75rem 0.9rem; border: 1px dashed #d1d5db; border-radius: 12px; background: #fafafa;">
+                                                <p class="mb-0 text-sm text-muted">Checklist hidden until this stage unlocks.</p>
+                                            </div>
+                                        {% endif %}
+
+                                        {% if stage.is_current %}
+                                            {% if not can_advance %}
+                                                <div class="alert alert-warning py-2 px-3 mb-3 mt-2 text-sm">
+                                                    <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                                                        <div class="d-flex align-items-start">
+                                                            <i class="fa-solid fa-triangle-exclamation me-2 fs-5"></i>
+                                                            <div>
+                                                                <div class="fw-semibold mb-1">What is still needed</div>
+                                                                <div>{{ advance_message }}</div>
+                                                            </div>
                                                         </div>
-                                                        {% if 'Missing required legal document' in advance_message %}
+                                                        {% if stage.required_docs %}
                                                             <button type="button" class="ap-btn ap-btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocModal" style="white-space: nowrap;">
-                                                                <i class="fa-solid fa-upload me-1"></i> Upload Now
+                                                                <i class="fa-solid fa-upload me-1"></i> Upload Required Document
                                                             </button>
                                                         {% endif %}
                                                     </div>
+                                                    {% if stage.required_docs %}
+                                                        <div class="mt-2 ps-4">
+                                                            <div class="fw-semibold mb-1">Required for this stage</div>
+                                                            <ul class="mb-0 small">
+                                                                {% for doc in stage.required_docs %}
+                                                                    <li>{{ doc }}</li>
+                                                                {% endfor %}
+                                                            </ul>
+                                                        </div>
+                                                    {% endif %}
                                                 </div>
                                             {% endif %}
-                                        </div>
-                                    {% endif %}
+
+                                            <form method="post" action="{% url 'transactions:advance_stage' transaction.pk %}">
+                                                {% csrf_token %}
+                                                <div class="mb-2 form-check">
+                                                    {{ advance_form.confirm_legal_requirements }}
+                                                    <label class="form-check-label text-sm fw-bold" for="{{ advance_form.confirm_legal_requirements.id_for_label }}">I confirm all legal requirements are met.</label>
+                                                </div>
+                                                
+                                                {% if stage.code == 'statutory_consents' %}
+                                                    <div class="row g-2 mb-2">
+                                                        <div class="col-6">
+                                                            <label class="form-label text-sm fw-bold">LCB Meeting Date</label>
+                                                            {{ advance_form.lcb_meeting_date }}
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label class="form-label text-sm fw-bold">LCB Consent Reference</label>
+                                                            {{ advance_form.lcb_consent_reference }}
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                                
+                                                {% if stage.code == 'taxation' %}
+                                                    <div class="row g-2 mb-2">
+                                                        <div class="col-6">
+                                                            <label class="form-label text-sm fw-bold">Stamp Duty Rate</label>
+                                                            {{ advance_form.stamp_duty_rate }}
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label class="form-label text-sm fw-bold">KRA Receipt Number</label>
+                                                            {{ advance_form.stamp_duty_receipt_number }}
+                                                        </div>
+                                                    </div>
+                                                {% endif %}
+                                                
+                                                <button type="submit" class="ap-btn ap-btn-primary btn-sm mt-2">
+                                                    <i class="fa-solid fa-arrow-right"></i>
+                                                    {% if can_advance %}Advance to Next Stage{% else %}Save Confirmation{% endif %}
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
-                            {% endif %}
                         {% endfor %}
                     </div>
                 </div>
@@ -444,9 +533,11 @@
                 </div>
             </article>
 
-            <!-- ============ PAYMENT CARD - ONLY SHOWS AT CORRECT LEGAL STAGES ============ -->
+            <!-- ============ PAYMENT CARD - USING CORRECT STAGE VALUES ============ -->
             {% if request.user == transaction.buyer %}
-                {% if transaction.stage == 'contracts' and transaction.deposit_paid < transaction.ten_percent_deposit %}
+                {# Stage 3: CONTRACTS - 10% Deposit Required #}
+                {# Assuming Stage.CONTRACTS = 3, Stage.STATUTORY_CONSENTS = 4 #}
+                {% if transaction.stage == 3 and transaction.deposit_paid < transaction.ten_percent_deposit %}
                     <!-- STAGE: Contracts - 10% Deposit Required -->
                     <article class="workspace-card mt-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white;">
                         <div class="workspace-card-body">
@@ -463,8 +554,11 @@
                                 <i class="fa-solid fa-info-circle"></i> Pay deposit to secure the sale agreement. Funds held in escrow.
                             </div>
                             
-                            <form method="post" id="depositPaymentForm">
+                            <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}">
                                 {% csrf_token %}
+                                <input type="hidden" name="stage_type" value="deposit">
+                                <input type="hidden" name="amount" value="{{ transaction.ten_percent_deposit }}">
+                                
                                 <h4 class="text-sm fw-bold mt-3 mb-2">Select Payment Method</h4>
                                 <div class="payment-methods-grid">
                                     <div class="payment-method-card {% if transaction.ten_percent_deposit > 50000 %}disabled{% endif %}" data-method="mpesa_stk" data-available="{% if transaction.ten_percent_deposit <= 50000 %}true{% else %}false{% endif %}">
@@ -486,8 +580,6 @@
                                 </div>
                                 
                                 <input type="hidden" name="method" id="depositSelectedMethod" value="">
-                                <input type="hidden" name="amount" value="{{ transaction.ten_percent_deposit }}">
-                                <input type="hidden" name="stage_type" value="deposit">
                                 
                                 <!-- M-Pesa Section -->
                                 <div class="payment-detail-section" id="depositMpesaSection">
@@ -508,14 +600,15 @@
                                     </div>
                                 </div>
                                 
-                                <button type="submit" class="ap-btn ap-btn-primary w-100 mt-3" id="depositPayBtn">
+                                <button type="submit" class="ap-btn ap-btn-primary w-100 mt-3">
                                     <i class="fa-solid fa-lock me-2"></i> Pay KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}
                                 </button>
                             </form>
                         </div>
                     </article>
                     
-                {% elif transaction.stage == 'statutory_consents' and transaction.balance_due > 0 %}
+                {# Stage 4: STATUTORY_CONSENTS - 90% Balance Required #}
+                {% elif transaction.stage == 4 and transaction.balance_due > 0 %}
                     <!-- STAGE: Statutory Consents - 90% Balance Required -->
                     <article class="workspace-card mt-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white;">
                         <div class="workspace-card-body">
@@ -536,8 +629,11 @@
                                 <i class="fa-solid fa-info-circle"></i> Final payment before registration. Funds held in escrow until title transfer.
                             </div>
                             
-                            <form method="post" id="balancePaymentForm">
+                            <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}">
                                 {% csrf_token %}
+                                <input type="hidden" name="stage_type" value="completion">
+                                <input type="hidden" name="amount" value="{{ transaction.balance_due }}">
+                                
                                 <h4 class="text-sm fw-bold mt-3 mb-2">Select Payment Method</h4>
                                 <div class="payment-methods-grid">
                                     <div class="payment-method-card" data-method="card" data-available="true">
@@ -555,8 +651,6 @@
                                 </div>
                                 
                                 <input type="hidden" name="method" id="balanceSelectedMethod" value="">
-                                <input type="hidden" name="amount" value="{{ transaction.balance_due }}">
-                                <input type="hidden" name="stage_type" value="completion">
                                 
                                 <!-- Bank Transfer Section -->
                                 <div class="payment-detail-section" id="balanceBankSection">
@@ -580,7 +674,7 @@
                                     </div>
                                 </div>
                                 
-                                <button type="submit" class="ap-btn ap-btn-primary w-100 mt-3" id="balancePayBtn">
+                                <button type="submit" class="ap-btn ap-btn-primary w-100 mt-3">
                                     <i class="fa-solid fa-lock me-2"></i> Pay KES {{ transaction.balance_due|floatformat:0|intcomma }}
                                 </button>
                             </form>
@@ -590,7 +684,7 @@
             {% endif %}
 
             <!-- Stamp Duty Status Card -->
-            {% if transaction.stage == 'taxation' or transaction.stamp_duty_receipt_verified_at %}
+            {% if transaction.stage == 5 or transaction.stamp_duty_receipt_verified_at %}
             <article class="workspace-card mb-4">
                 <div class="workspace-card-header">
                     <h2 class="workspace-card-title">Stamp Duty (KRA iTax)</h2>
@@ -620,7 +714,7 @@
             <article class="workspace-card">
                 <div class="workspace-card-header d-flex justify-content-between align-items-center">
                     <h2 class="workspace-card-title">Legal Documents</h2>
-                    {% if transaction.stage != 'completed' and transaction.stage != 'cancelled' %}
+                    {% if transaction.stage != 8 and transaction.stage != 9 %}
                         <button type="button" class="ap-btn ap-btn-ghost btn-sm p-1" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
                             <i class="fa-solid fa-plus"></i>
                         </button>
@@ -675,13 +769,17 @@
                         Required documents for {{ transaction.get_stage_display }} stage.
                     </div>
                     {% for field in upload_form %}
-                        <div class="mb-3">
-                            <label class="form-label text-sm fw-bold">{{ field.label }}</label>
+                        {% if field.is_hidden %}
                             {{ field }}
-                            {% if field.help_text %}
-                                <div class="form-text">{{ field.help_text }}</div>
-                            {% endif %}
-                        </div>
+                        {% else %}
+                            <div class="mb-3">
+                                <label class="form-label text-sm fw-bold">{{ field.label }}</label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <div class="form-text">{{ field.help_text }}</div>
+                                {% endif %}
+                            </div>
+                        {% endif %}
                     {% endfor %}
                 </div>
                 <div class="modal-footer">
