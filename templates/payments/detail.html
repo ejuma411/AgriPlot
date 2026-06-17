@@ -753,21 +753,75 @@
             </div>
         </div>
         
-        <!-- Progress Section -->
+        <!-- Payment Status Stepper -->
         <div class="progress-section">
             <div class="progress-header">
-                <span class="progress-label">Transaction Progress</span>
-                <span class="progress-percent">{{ payment.progress_value }}% Complete</span>
+                <span class="progress-label">Payment Status</span>
+                <span class="progress-percent">{{ payment.get_status_display }}</span>
             </div>
-            <div class="progress-track">
-                <span class="progress-fill" style="width: {{ payment.progress_value }}%;"></span>
+            {% with s=payment.status %}
+            <div style="display:flex;align-items:center;gap:0;margin-top:0.75rem;">
+                {% for step_code, step_label, step_icon in payment_status_steps %}
+                {% endfor %}
+                {# Inline stepper — no extra context var needed #}
+                <div style="display:flex;align-items:center;width:100%;gap:0;">
+
+                    {% comment %}Pending{% endcomment %}
+                    <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                        <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;
+                            {% if s == 'pending' %}background:#f59e0b;color:#fff;{% elif s == 'draft' %}background:#e2e8f0;color:#94a3b8;{% else %}background:#10b981;color:#fff;{% endif %}">
+                            <i class="fas {% if s != 'pending' and s != 'draft' %}fa-check{% else %}fa-clock{% endif %}"></i>
+                        </div>
+                        <span style="font-size:0.7rem;margin-top:4px;color:{% if s == 'pending' %}#92400e;{% else %}#6b7280;{% endif %};font-weight:{% if s == 'pending' %}700{% else %}400{% endif %};">Pending</span>
+                    </div>
+
+                    <div style="flex:1;height:2px;background:{% if s != 'pending' and s != 'draft' %}#10b981{% else %}#e2e8f0{% endif %};"></div>
+
+                    {% comment %}Paid{% endcomment %}
+                    <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                        <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;
+                            {% if s == 'paid' %}background:#3b82f6;color:#fff;
+                            {% elif s == 'in_escrow' or s == 'partially_released' or s == 'released' %}background:#10b981;color:#fff;
+                            {% else %}background:#e2e8f0;color:#94a3b8;{% endif %}">
+                            <i class="fas {% if s == 'in_escrow' or s == 'partially_released' or s == 'released' %}fa-check{% elif s == 'paid' %}fa-money-bill-wave{% else %}fa-money-bill-wave{% endif %}"></i>
+                        </div>
+                        <span style="font-size:0.7rem;margin-top:4px;color:{% if s == 'paid' %}#1d4ed8;{% else %}#6b7280;{% endif %};font-weight:{% if s == 'paid' %}700{% else %}400{% endif %};">Paid</span>
+                    </div>
+
+                    <div style="flex:1;height:2px;background:{% if s == 'in_escrow' or s == 'partially_released' or s == 'released' %}#10b981{% else %}#e2e8f0{% endif %};"></div>
+
+                    {% comment %}In Escrow{% endcomment %}
+                    <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                        <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;
+                            {% if s == 'in_escrow' %}background:#8b5cf6;color:#fff;
+                            {% elif s == 'partially_released' or s == 'released' %}background:#10b981;color:#fff;
+                            {% else %}background:#e2e8f0;color:#94a3b8;{% endif %}">
+                            <i class="fas {% if s == 'partially_released' or s == 'released' %}fa-check{% else %}fa-shield-alt{% endif %}"></i>
+                        </div>
+                        <span style="font-size:0.7rem;margin-top:4px;color:{% if s == 'in_escrow' %}#5b21b6;{% else %}#6b7280;{% endif %};font-weight:{% if s == 'in_escrow' %}700{% else %}400{% endif %};">In Escrow</span>
+                    </div>
+
+                    <div style="flex:1;height:2px;background:{% if s == 'released' %}#10b981{% else %}#e2e8f0{% endif %};"></div>
+
+                    {% comment %}Released{% endcomment %}
+                    <div style="display:flex;flex-direction:column;align-items:center;flex:1;">
+                        <div style="width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:700;
+                            {% if s == 'released' %}background:#10b981;color:#fff;{% else %}background:#e2e8f0;color:#94a3b8;{% endif %}">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <span style="font-size:0.7rem;margin-top:4px;color:{% if s == 'released' %}#065f46;{% else %}#6b7280;{% endif %};font-weight:{% if s == 'released' %}700{% else %}400{% endif %};">Released</span>
+                    </div>
+
+                </div>
             </div>
-            {% if payment.current_assigned_step %}
-            <div class="mt-2">
+            {% endwith %}
+            {% if payment.legal_transaction %}
+            <div class="mt-3" style="border-top:1px solid #e2e8f0;padding-top:0.6rem;">
                 <small class="text-muted">
-                    <i class="fas fa-tasks"></i> Current step: 
-                    <strong>{{ payment.current_assigned_step.display_title }}</strong> — 
-                    {{ payment.current_assignment_message }}
+                    <i class="fas fa-gavel"></i> Legal stage:
+                    <strong>{{ payment.legal_transaction.get_stage_display }}</strong>
+                    &nbsp;&mdash;&nbsp;
+                    <a href="{% url 'transactions:detail' payment.legal_transaction.id %}" style="color:#059669;font-weight:600;">Open Legal Workspace &rarr;</a>
                 </small>
             </div>
             {% endif %}
@@ -948,66 +1002,50 @@
                     {% endif %}
                 </div>
                 {% endif %}
-                
-                <!-- Legal Closing Tracker - Current & Next Steps -->
-                {% if closing_steps %}
-                <div class="info-card">
+                                
+                <!-- Escrow Summary Card -->
+                {% if escrow_summary %}
+                <div class="info-card escrow-summary">
                     <h3 class="card-title">
-                        <i class="fas fa-tasks"></i>
-                        Legal Closing Tracker
+                        <i class="fas fa-lock"></i>
+                        Escrow Summary
                     </h3>
-                    <div class="milestone-list">
-                        {% for step in closing_steps %}
-                            {% if step.status == 'in_progress' or step.status == 'pending' and forloop.counter <= payment.current_assigned_step.sequence|add:1 %}
-                                <div class="milestone-item {% if step.status == 'in_progress' %}active-step{% endif %}">
-                                    <div class="milestone-number">{{ forloop.counter }}</div>
-                                    <div class="milestone-content">
-                                        <div class="milestone-title">
-                                            {{ step.display_title }}
-                                            {% if step.status == 'in_progress' %}
-                                                <span class="badge bg-info text-white ms-2" style="font-size: 0.7rem;">Current</span>
-                                            {% elif step.status == 'pending' and forloop.counter == payment.current_assigned_step.sequence|add:1 %}
-                                                <span class="badge bg-secondary text-white ms-2" style="font-size: 0.7rem;">Next</span>
-                                            {% endif %}
-                                        </div>
-                                        <div class="milestone-status">
-                                            {% if step.status == 'completed' %}
-                                                <span class="text-success"><i class="fas fa-check-circle"></i> Completed</span>
-                                            {% elif step.status == 'in_progress' %}
-                                                <span class="text-info"><i class="fas fa-spinner fa-pulse"></i> In Progress</span>
-                                            {% elif step.status == 'blocked' %}
-                                                <span class="text-danger"><i class="fas fa-ban"></i> Blocked</span>
-                                            {% else %}
-                                                <span class="text-muted"><i class="fas fa-clock"></i> Pending</span>
-                                            {% endif %}
-                                        </div>
-                                        <div class="milestone-desc">
-                                            <strong>Responsible:</strong> {{ step.responsible_party_label }}
-                                        </div>
-                                        {% if step.user_can_update and step.status != 'completed' %}
-                                        <div class="milestone-meta mt-2">
-                                            <a href="{% url 'payments:closing_step_workspace' payment.pk step.pk %}" class="btn btn-sm btn-outline-primary">
-                                                <i class="fas fa-external-link-alt"></i> Open Workspace
-                                            </a>
-                                        </div>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            {% endif %}
-                        {% endfor %}
+                    <div class="summary-grid">
+                        <div class="summary-item">
+                            <div class="summary-label">Total in Escrow</div>
+                            <div class="escrow-amount">{{ escrow_summary.total_escrowed }}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Deposit (10%)</div>
+                            <div class="summary-value">{% if escrow_summary.deposit_received %}✓ Received{% else %}Pending{% endif %}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Balance (90%)</div>
+                            <div class="summary-value">{% if escrow_summary.balance_received %}✓ Received{% else %}Pending{% endif %}</div>
+                        </div>
+                        <div class="summary-item">
+                            <div class="summary-label">Status</div>
+                            <div class="summary-value">
+                                {% if escrow_summary.disbursed_to_seller %}
+                                    <span class="text-success">✓ Disbursed to Seller</span>
+                                {% elif escrow_summary.deposit_received and escrow_summary.balance_received %}
+                                    <span class="text-warning">⏳ Full Amount in Escrow</span>
+                                {% elif escrow_summary.deposit_received %}
+                                    <span class="text-info">💵 Deposit in Escrow</span>
+                                {% else %}
+                                    <span class="text-muted">Pending</span>
+                                {% endif %}
+                            </div>
+                        </div>
                     </div>
-                    
-                    {% if payment.next_closing_step %}
-                    <div class="mt-3 pt-2 border-top">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle"></i> 
-                            {{ payment.closing_steps.count }} total steps. 
-                            <strong>{{ payment.closing_progress_value }}% complete</strong>
-                        </small>
+                    {% if escrow_summary.disbursement_trigger %}
+                    <div class="mt-2">
+                        <small class="text-white-50"><i class="fas fa-info-circle"></i> {{ escrow_summary.disbursement_trigger }}</small>
                     </div>
                     {% endif %}
                 </div>
                 {% endif %}
+
                 
                 <!-- Activity Timeline -->
                 <div class="info-card">
@@ -1052,22 +1090,303 @@
                             {% endif %}
                         {% endwith %}
 
-                        {% if payment_provider == 'daraja' and payment.status == 'pending' %}
-                        <div class="waiting-box" id="daraja-wait-box" data-poll-url="{{ payment_status_poll_url }}">
-                            <strong><span class="pulse-dot"></span>Waiting for M-Pesa confirmation</strong>
-                            <div class="notice-text" id="daraja-wait-message">
-                                {% if daraja_customer_message %}
-                                Check your phone and complete the M-Pesa prompt. {{ daraja_customer_message }}
-                                {% else %}
-                                A Safaricom Daraja STK push was sent to the buyer's phone. Complete it on your device.
+                        {% if is_payment_buyer and payment.status == 'pending' %}
+                        {# ── Payment Initiation Panel (buyer only) ─────────────────────────── #}
+
+                        {% if current_stage_code %}
+                        <div id="payment-panel" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;padding:1.1rem;margin-bottom:0.75rem;">
+
+                            {# ── Stage header ─────────────────────────────────────────────── #}
+                            <div style="background:linear-gradient(135deg,#059669,#10b981);border-radius:10px;padding:0.75rem 0.9rem;margin-bottom:0.85rem;color:#fff;">
+                                <div style="font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;opacity:0.85;margin-bottom:3px;">
+                                    Now paying
+                                </div>
+                                <div style="font-weight:800;font-size:1rem;">{{ current_stage_label }}</div>
+                                <div style="font-size:1.3rem;font-weight:900;margin-top:2px;">
+                                    KES {{ current_stage_amount|floatformat:0|intcomma }}
+                                </div>
+                                <div style="font-size:0.72rem;opacity:0.8;margin-top:3px;">
+                                    {{ current_stage_pct }}% of total contract value KES {{ full_contract_amount|floatformat:0|intcomma }}
+                                </div>
+                            </div>
+
+                            {# ── Installment progress dots ─────────────────────────────────── #}
+                            <div style="display:flex;gap:6px;align-items:center;margin-bottom:0.85rem;font-size:0.72rem;">
+                                <div style="display:flex;align-items:center;gap:5px;flex:1;padding:5px 8px;border-radius:7px;
+                                    {% if deposit_paid %}background:#ecfdf5;border:1px solid #6ee7b7;{% elif not deposit_paid and current_stage_code == 'deposit' %}background:#fef3c7;border:1px solid #f59e0b;{% else %}background:#f1f5f9;border:1px solid #e2e8f0;{% endif %}">
+                                    <i class="fas {% if deposit_paid %}fa-check-circle" style="color:#059669;{% elif current_stage_code == 'deposit' %}fa-circle-dot" style="color:#d97706;{% else %}fa-circle" style="color:#cbd5e1;{% endif %}"></i>
+                                    <span style="font-weight:600;{% if deposit_paid %}color:#065f46;{% elif current_stage_code == 'deposit' %}color:#92400e;{% else %}color:#94a3b8;{% endif %}">Deposit 10%</span>
+                                </div>
+                                <i class="fas fa-arrow-right" style="color:#cbd5e1;font-size:0.65rem;"></i>
+                                <div style="display:flex;align-items:center;gap:5px;flex:1;padding:5px 8px;border-radius:7px;
+                                    {% if completion_paid %}background:#ecfdf5;border:1px solid #6ee7b7;{% elif current_stage_code == 'completion' %}background:#fef3c7;border:1px solid #f59e0b;{% else %}background:#f1f5f9;border:1px solid #e2e8f0;{% endif %}">
+                                    <i class="fas {% if completion_paid %}fa-check-circle" style="color:#059669;{% elif current_stage_code == 'completion' %}fa-circle-dot" style="color:#d97706;{% else %}fa-circle" style="color:#cbd5e1;{% endif %}"></i>
+                                    <span style="font-weight:600;{% if completion_paid %}color:#065f46;{% elif current_stage_code == 'completion' %}color:#92400e;{% else %}color:#94a3b8;{% endif %}">Balance 90%</span>
+                                </div>
+                            </div>
+
+                            <div style="font-weight:700;font-size:0.82rem;color:#475569;margin-bottom:0.7rem;">
+                                <i class="fas fa-credit-card" style="color:#059669;"></i> Select Payment Method
+                            </div>
+
+                            {# Method selector tabs #}
+                            <div id="method-tabs" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:1rem;">
+
+                                <button type="button" class="method-tab active" data-target="panel-bank"
+                                    style="padding:0.5rem 0.4rem;border:2px solid #059669;background:#ecfdf5;border-radius:9px;font-size:0.74rem;font-weight:700;color:#065f46;cursor:pointer;text-align:center;">
+                                    <i class="fas fa-building-columns" style="display:block;font-size:1rem;margin-bottom:3px;"></i>
+                                    Bank Transfer
+                                </button>
+
+                                <button type="button" class="method-tab" data-target="panel-rtgs"
+                                    style="padding:0.5rem 0.4rem;border:2px solid #e2e8f0;background:#fff;border-radius:9px;font-size:0.74rem;font-weight:700;color:#475569;cursor:pointer;text-align:center;">
+                                    <i class="fas fa-paper-plane" style="display:block;font-size:1rem;margin-bottom:3px;"></i>
+                                    RTGS / Wire
+                                </button>
+
+                                <button type="button" class="method-tab" data-target="panel-paybill"
+                                    style="padding:0.5rem 0.4rem;border:2px solid #e2e8f0;background:#fff;border-radius:9px;font-size:0.74rem;font-weight:700;color:#475569;cursor:pointer;text-align:center;">
+                                    <i class="fas fa-mobile-screen-button" style="display:block;font-size:1rem;margin-bottom:3px;"></i>
+                                    M-Pesa Paybill
+                                </button>
+
+                                <button type="button" class="method-tab" data-target="panel-stk"
+                                    style="padding:0.5rem 0.4rem;border:2px solid #e2e8f0;background:#fff;border-radius:9px;font-size:0.74rem;font-weight:700;color:#475569;cursor:pointer;text-align:center;">
+                                    <i class="fas fa-mobile-alt" style="display:block;font-size:1rem;margin-bottom:3px;"></i>
+                                    M-Pesa STK
+                                </button>
+
+                                <button type="button" class="method-tab" data-target="panel-airtel"
+                                    style="padding:0.5rem 0.4rem;border:2px solid #e2e8f0;background:#fff;border-radius:9px;font-size:0.74rem;font-weight:700;color:#475569;cursor:pointer;text-align:center;">
+                                    <i class="fas fa-sim-card" style="display:block;font-size:1rem;margin-bottom:3px;"></i>
+                                    Airtel Money
+                                </button>
+
+                                <button type="button" class="method-tab" data-target="panel-wallet"
+                                    style="padding:0.5rem 0.4rem;border:2px solid #e2e8f0;background:#fff;border-radius:9px;font-size:0.74rem;font-weight:700;color:#475569;cursor:pointer;text-align:center;">
+                                    <i class="fas fa-wallet" style="display:block;font-size:1rem;margin-bottom:3px;"></i>
+                                    Wallet
+                                </button>
+
+                            </div>{# /method-tabs #}
+
+                            {# ── Bank Transfer Panel ──────────────────────────────────────────── #}
+                            <div id="panel-bank" class="method-panel">
+                                <div style="font-size:0.79rem;color:#475569;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:0.7rem;margin-bottom:0.6rem;line-height:1.9;">
+                                    <div style="font-weight:700;color:#1e293b;margin-bottom:0.3rem;font-size:0.82rem;">Transfer to:</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Bank</span> Cooperative Bank of Kenya</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Account</span> AgriPlot Escrow Services</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Acc No</span> 0114123456789</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Branch</span> Nairobi — Kenyatta Ave</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Amount</span> <strong>KES {{ current_stage_amount|floatformat:0|intcomma }}</strong></div>
+                                    <div style="margin-top:0.35rem;">
+                                        <span style="color:#94a3b8;width:70px;display:inline-block;">Reference</span>
+                                        <code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;">{{ payment.internal_reference }}</code>
+                                    </div>
+                                </div>
+                                <form id="bank-transfer-form" data-stage-url="{% url 'payments:stage_payment' payment.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="stage_code" value="{{ current_stage_code }}">
+                                    <input type="hidden" name="method" value="bank_transfer">
+                                    <div style="margin-bottom:0.55rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Your Bank / Source Bank Name</label>
+                                        <input type="text" name="source_bank" placeholder="e.g. KCB, Equity, Standard Chartered…"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <div style="margin-bottom:0.55rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Transaction / Ref Number (from your bank)</label>
+                                        <input type="text" name="transaction_ref" placeholder="e.g. FT240600001234"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <div style="margin-bottom:0.7rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Date of Transfer</label>
+                                        <input type="date" name="transfer_date"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <div style="font-size:0.73rem;color:#f59e0b;margin-bottom:0.5rem;"><i class="fas fa-info-circle"></i> AgriPlot will confirm receipt within 1–2 business days.</div>
+                                    <button type="submit" style="width:100%;padding:0.55rem;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.84rem;cursor:pointer;">
+                                        <i class="fas fa-check"></i> I've Made the Transfer
+                                    </button>
+                                    <div id="bank-status" style="display:none;margin-top:0.5rem;font-size:0.8rem;"></div>
+                                </form>
+                            </div>
+
+                            {# ── RTGS / Wire Panel ────────────────────────────────────────────── #}
+                            <div id="panel-rtgs" class="method-panel" style="display:none;">
+                                <div style="font-size:0.79rem;color:#475569;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:0.7rem;margin-bottom:0.6rem;line-height:1.9;">
+                                    <div style="font-weight:700;color:#1e293b;margin-bottom:0.3rem;font-size:0.82rem;">RTGS / Wire Details:</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Bank</span> Cooperative Bank of Kenya</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Account</span> AgriPlot Escrow Services</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Acc No</span> 0114123456789</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Swift</span> KCOOKENA</div>
+                                    <div><span style="color:#94a3b8;width:70px;display:inline-block;">Amount</span> <strong>KES {{ current_stage_amount|floatformat:0|intcomma }}</strong></div>
+                                    <div style="margin-top:0.35rem;">
+                                        <span style="color:#94a3b8;width:70px;display:inline-block;">Narrative</span>
+                                        <code style="background:#f1f5f9;padding:2px 8px;border-radius:5px;">{{ payment.internal_reference }}</code>
+                                    </div>
+                                </div>
+                                <form id="rtgs-form" data-stage-url="{% url 'payments:stage_payment' payment.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="stage_code" value="{{ current_stage_code }}">
+                                    <input type="hidden" name="method" value="bank_transfer">
+                                    <div style="margin-bottom:0.55rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Sending Bank</label>
+                                        <input type="text" name="source_bank" placeholder="e.g. Barclays, NCBA, I&M…"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <div style="margin-bottom:0.55rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">RTGS / Wire Reference</label>
+                                        <input type="text" name="transaction_ref" placeholder="Bank-issued reference number"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <div style="margin-bottom:0.55rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Amount Sent (KES)</label>
+                                        <input type="number" name="amount_sent" value="{{ current_stage_amount }}" step="0.01"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <div style="margin-bottom:0.7rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Transfer Date</label>
+                                        <input type="date" name="transfer_date"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <div style="font-size:0.73rem;color:#f59e0b;margin-bottom:0.5rem;"><i class="fas fa-info-circle"></i> RTGS confirmation typically takes 1 business day.</div>
+                                    <button type="submit" style="width:100%;padding:0.55rem;background:linear-gradient(135deg,#1d4ed8,#3b82f6);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.84rem;cursor:pointer;">
+                                        <i class="fas fa-check"></i> Confirm Wire Sent
+                                    </button>
+                                    <div id="rtgs-status" style="display:none;margin-top:0.5rem;font-size:0.8rem;"></div>
+                                </form>
+                            </div>
+
+                            {# ── M-Pesa Paybill Panel ─────────────────────────────────────────── #}
+                            <div id="panel-paybill" class="method-panel" style="display:none;">
+                                <div style="background:#fef3c7;border-left:3px solid #f59e0b;border-radius:8px;padding:0.55rem 0.7rem;margin-bottom:0.65rem;font-size:0.75rem;color:#92400e;">
+                                    <i class="fas fa-exclamation-triangle"></i> <strong>Limit notice:</strong> M-Pesa transactions are capped at KES 150,000 per transfer. Use Bank Transfer for large amounts.
+                                </div>
+                                <div style="font-size:0.79rem;color:#475569;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:0.7rem;margin-bottom:0.6rem;line-height:1.9;">
+                                    <div style="font-weight:700;color:#1e293b;margin-bottom:0.3rem;font-size:0.82rem;">Paybill Details:</div>
+                                    <div><span style="color:#94a3b8;width:90px;display:inline-block;">Paybill No</span> <strong>522522</strong></div>
+                                    <div><span style="color:#94a3b8;width:90px;display:inline-block;">Account No</span> <code style="background:#f1f5f9;padding:1px 6px;border-radius:4px;">{{ payment.internal_reference }}</code></div>
+                                    <div><span style="color:#94a3b8;width:90px;display:inline-block;">Amount</span> <strong>KES {{ current_stage_amount|floatformat:0|intcomma }}</strong></div>
+                                </div>
+                                <form id="paybill-form" data-stage-url="{% url 'payments:stage_payment' payment.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="stage_code" value="{{ current_stage_code }}">
+                                    <input type="hidden" name="method" value="mpesa_paybill">
+                                    <div style="margin-bottom:0.55rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Your M-Pesa Phone Number</label>
+                                        <input type="tel" name="phone_number" placeholder="e.g. 0712 345 678"
+                                            value="{{ request.user.phone_number|default:'' }}"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <div style="margin-bottom:0.7rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">M-Pesa Confirmation Code</label>
+                                        <input type="text" name="mpesa_code" placeholder="e.g. QGH2X1ABCD" maxlength="20"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;text-transform:uppercase;">
+                                    </div>
+                                    <button type="submit" style="width:100%;padding:0.55rem;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.84rem;cursor:pointer;">
+                                        <i class="fas fa-check"></i> Submit Paybill Payment
+                                    </button>
+                                    <div id="paybill-status" style="display:none;margin-top:0.5rem;font-size:0.8rem;"></div>
+                                </form>
+                            </div>
+
+                            {# ── M-Pesa STK Push Panel ────────────────────────────────────────── #}
+                            <div id="panel-stk" class="method-panel" style="display:none;">
+                                <div style="background:#fef3c7;border-left:3px solid #f59e0b;border-radius:8px;padding:0.55rem 0.7rem;margin-bottom:0.65rem;font-size:0.75rem;color:#92400e;">
+                                    <i class="fas fa-exclamation-triangle"></i> <strong>Limit notice:</strong> M-Pesa STK Push is limited to KES 150,000 per transaction. Not suitable for this amount.
+                                </div>
+                                <form id="stk-push-form" data-stage-url="{% url 'payments:stage_payment' payment.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="stage_code" value="{{ current_stage_code }}">
+                                    <input type="hidden" name="method" value="mpesa_stk">
+                                    <div style="margin-bottom:0.55rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">M-Pesa Phone Number</label>
+                                        <input type="tel" name="phone_number" id="stk-phone" placeholder="e.g. 0712 345 678"
+                                            value="{{ request.user.phone_number|default:'' }}"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <button type="submit" id="stk-submit-btn" style="width:100%;padding:0.55rem;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.84rem;cursor:pointer;">
+                                        <i class="fas fa-mobile-alt"></i> Send STK Push
+                                    </button>
+                                    <div id="stk-status" style="display:none;margin-top:0.5rem;font-size:0.8rem;"></div>
+                                </form>
+                                <div id="daraja-wait-box" style="display:none;background:#ecfdf5;border-left:3px solid #10b981;border-radius:8px;padding:0.65rem;margin-top:0.6rem;">
+                                    <strong style="font-size:0.82rem;"><span class="pulse-dot"></span> Waiting for M-Pesa confirmation</strong>
+                                    <div id="daraja-wait-message" style="font-size:0.78rem;color:#065f46;margin-top:4px;" data-poll-url="{{ payment_status_poll_url }}">
+                                        Check your phone and approve the M-Pesa prompt.
+                                    </div>
+                                </div>
+                            </div>
+
+                            {# ── Airtel Money Panel ───────────────────────────────────────────── #}
+                            <div id="panel-airtel" class="method-panel" style="display:none;">
+                                <div style="background:#fef3c7;border-left:3px solid #f59e0b;border-radius:8px;padding:0.55rem 0.7rem;margin-bottom:0.65rem;font-size:0.75rem;color:#92400e;">
+                                    <i class="fas fa-exclamation-triangle"></i> <strong>Limit notice:</strong> Airtel Money has per-transaction limits. Use Bank Transfer for large amounts.
+                                </div>
+                                <form id="airtel-form" data-stage-url="{% url 'payments:stage_payment' payment.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="stage_code" value="{{ current_stage_code }}">
+                                    <input type="hidden" name="method" value="airtel_money">
+                                    <div style="margin-bottom:0.55rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Airtel Phone Number</label>
+                                        <input type="tel" name="phone_number" placeholder="e.g. 0733 123 456"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;">
+                                    </div>
+                                    <div style="margin-bottom:0.7rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Airtel Money Transaction Code</label>
+                                        <input type="text" name="airtel_code" placeholder="e.g. AIR240600001"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.82rem;box-sizing:border-box;text-transform:uppercase;">
+                                    </div>
+                                    <button type="submit" style="width:100%;padding:0.55rem;background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.84rem;cursor:pointer;">
+                                        <i class="fas fa-check"></i> Submit Airtel Payment
+                                    </button>
+                                    <div id="airtel-status" style="display:none;margin-top:0.5rem;font-size:0.8rem;"></div>
+                                </form>
+                            </div>
+
+                            {# ── Wallet Panel ─────────────────────────────────────────────────── #}
+                            <div id="panel-wallet" class="method-panel" style="display:none;">
+                                {% if wallet_balance < current_stage_amount %}
+                                <div style="background:#fef3c7;border-left:3px solid #f59e0b;border-radius:8px;padding:0.55rem 0.7rem;margin-bottom:0.65rem;font-size:0.75rem;color:#92400e;">
+                                    <i class="fas fa-exclamation-triangle"></i> Your wallet balance (KES {{ wallet_balance|floatformat:0|intcomma }}) is insufficient for this installment (KES {{ current_stage_amount|floatformat:0|intcomma }}).
+                                </div>
                                 {% endif %}
+                                <form id="wallet-pay-form" data-stage-url="{% url 'payments:stage_payment' payment.pk %}">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="stage_code" value="{{ current_stage_code }}">
+                                    <input type="hidden" name="method" value="wallet">
+                                    <div style="margin-bottom:0.35rem;font-size:0.78rem;color:#64748b;">
+                                        Balance: <strong>KES {{ wallet_balance|floatformat:0|intcomma }}</strong>
+                                    </div>
+                                    <div style="margin-bottom:0.55rem;">
+                                        <label style="font-size:0.75rem;font-weight:600;color:#64748b;display:block;margin-bottom:3px;">Wallet PIN</label>
+                                        <input type="password" name="wallet_pin" maxlength="4" placeholder="••••"
+                                            style="width:100%;padding:0.4rem 0.6rem;border:1px solid #cbd5e1;border-radius:7px;font-size:0.85rem;letter-spacing:6px;box-sizing:border-box;">
+                                    </div>
+                                    <button type="submit" {% if wallet_balance < current_stage_amount %}disabled title="Insufficient balance"{% endif %}
+                                        style="width:100%;padding:0.55rem;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.84rem;cursor:pointer;{% if wallet_balance < current_stage_amount %}opacity:0.5;{% endif %}">
+                                        <i class="fas fa-wallet"></i> Pay KES {{ current_stage_amount|floatformat:0|intcomma }}
+                                    </button>
+                                    <div id="wallet-status" style="display:none;margin-top:0.5rem;font-size:0.8rem;"></div>
+                                </form>
                             </div>
-                            <div class="muted mt-2" id="daraja-wait-hint">
-                                This page will update automatically as soon as Safaricom confirms the payment.
-                            </div>
+
+                        </div>{# /payment-panel #}
+
+                        {% else %}
+                        {# All installments have been paid — no more payment actions needed #}
+                        <div style="background:#ecfdf5;border:1px solid #6ee7b7;border-radius:12px;padding:1rem;margin-bottom:0.75rem;text-align:center;">
+                            <div style="font-size:1.5rem;margin-bottom:4px;">✅</div>
+                            <div style="font-weight:700;color:#065f46;font-size:0.9rem;">All payments complete</div>
+                            <div style="font-size:0.78rem;color:#047857;margin-top:3px;">Both deposit and completion balance have been received. Awaiting escrow release.</div>
                         </div>
-                        {% endif %}
-                        
+                        {% endif %}{# /current_stage_code #}
+
+                        {% endif %}{# /is_payment_buyer #}
+                        {# ─────────────────────────────────────────────────────────────────── #}
+
+
+
                         <!-- Legal Workspace Link -->
                         {% if payment.legal_transaction %}
                         <a href="{% url 'transactions:detail' payment.legal_transaction.id %}" class="btn btn-primary w-100">
@@ -1134,28 +1453,8 @@
                 </div>
                 {% endif %}
                 
-                <!-- Platform Revenue -->
-                {% if platform_revenue_streams %}
-                <div class="info-card">
-                    <h3 class="card-title">
-                        <i class="fas fa-chart-pie"></i>
-                        Platform Revenue
-                    </h3>
-                    <div class="milestone-list">
-                        {% for revenue in platform_revenue_streams %}
-                        <div class="milestone-item">
-                            <div class="milestone-number">{{ forloop.counter }}</div>
-                            <div class="milestone-content">
-                                <div class="milestone-title">{{ revenue.label }}</div>
-                                <div class="milestone-status">{{ revenue.amount }}</div>
-                                <div class="milestone-desc">{{ revenue.detail|truncatechars:100 }}</div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-                {% endif %}
                 
+
                 <!-- Bank Transfers -->
                 {% if bank_transfer_requests %}
                 <div class="info-card">
@@ -1203,122 +1502,272 @@
                     </form>
                 </div>
                 {% endif %}
-                
-                <!-- Escrow Summary Card -->
-                {% if escrow_summary %}
-                <div class="info-card escrow-summary">
-                    <h3 class="card-title">
-                        <i class="fas fa-lock"></i>
-                        Escrow Summary
-                    </h3>
-                    <div class="summary-grid">
-                        <div class="summary-item">
-                            <div class="summary-label">Total in Escrow</div>
-                            <div class="escrow-amount">{{ escrow_summary.total_escrowed }}</div>
-                        </div>
-                        <div class="summary-item">
-                            <div class="summary-label">Deposit (10%)</div>
-                            <div class="summary-value">{% if escrow_summary.deposit_received %}✓ Received{% else %}Pending{% endif %}</div>
-                        </div>
-                        <div class="summary-item">
-                            <div class="summary-label">Balance (90%)</div>
-                            <div class="summary-value">{% if escrow_summary.balance_received %}✓ Received{% else %}Pending{% endif %}</div>
-                        </div>
-                        <div class="summary-item">
-                            <div class="summary-label">Status</div>
-                            <div class="summary-value">
-                                {% if escrow_summary.disbursed_to_seller %}
-                                    <span class="text-success">✓ Disbursed to Seller</span>
-                                {% elif escrow_summary.deposit_received and escrow_summary.balance_received %}
-                                    <span class="text-warning">⏳ Full Amount in Escrow</span>
-                                {% elif escrow_summary.deposit_received %}
-                                    <span class="text-info">💵 Deposit in Escrow</span>
-                                {% else %}
-                                    <span class="text-muted">Pending</span>
-                                {% endif %}
-                            </div>
-                        </div>
-                    </div>
-                    {% if escrow_summary.disbursement_trigger %}
-                    <div class="mt-2">
-                        <small class="text-white-50"><i class="fas fa-info-circle"></i> {{ escrow_summary.disbursement_trigger }}</small>
-                    </div>
-                    {% endif %}
-                </div>
-                {% endif %}
+
             </div>
         </div>
     </div>
 </div>
-{% if payment_provider == 'daraja' and payment.status == 'pending' %}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-    const waitBox = document.getElementById("daraja-wait-box");
-    if (!waitBox) {
-        return;
-    }
+    const pollUrl = "{{ payment_status_poll_url }}";
+    const stageUrl = document.getElementById("stk-push-form")
+        ? document.getElementById("stk-push-form").dataset.stageUrl
+        : null;
 
-    const pollUrl = waitBox.dataset.pollUrl;
-    const statusBadge = document.querySelector(".status-badge");
-    const waitMessage = document.getElementById("daraja-wait-message");
-    const waitHint = document.getElementById("daraja-wait-hint");
+    // ── Polling logic ─────────────────────────────────────────────────────────
     let pollTimer = null;
 
-    function setWaitingMessage(message, isError) {
-        if (waitMessage && message) {
-            waitMessage.textContent = message;
-        }
-        if (waitHint) {
-            waitHint.textContent = isError
-                ? "The payment has not been confirmed yet. Please retry if the prompt expired."
-                : "This page will update automatically as soon as Safaricom confirms the payment.";
-        }
-        waitBox.style.borderColor = isError ? "rgba(220,53,69,0.35)" : "rgba(47, 133, 90, 0.18)";
-        waitBox.style.background = isError ? "#fff4f4" : "#eef8f1";
+    function startPolling() {
+        const waitBox = document.getElementById("daraja-wait-box");
+        if (waitBox) { waitBox.style.display = "block"; }
+        const stkForm = document.getElementById("stk-push-form");
+        if (stkForm) { stkForm.style.display = "none"; }
+        pollTimer = window.setInterval(doPoll, 4000);
+        doPoll();
     }
 
-    function markPaid(message) {
-        if (statusBadge) {
-            statusBadge.className = "status-badge status-success";
-            statusBadge.innerHTML = '<i class="fas fa-check-circle"></i> Paid';
-        }
-        setWaitingMessage(message || "Safaricom confirmed the payment successfully.", false);
-        if (waitHint) {
-            waitHint.textContent = "Redirecting you to the next step now...";
-        }
-    }
-
-    async function pollStatus() {
+    async function doPoll() {
+        if (!pollUrl) return;
         try {
-            const response = await fetch(pollUrl, {
+            const res = await fetch(pollUrl, {
                 headers: { "X-Requested-With": "XMLHttpRequest" },
                 credentials: "same-origin",
             });
-            const payload = await response.json();
-            if (!response.ok || !payload.ok) {
-                setWaitingMessage(payload.message || "We could not confirm the M-Pesa payment yet.", true);
-                return;
-            }
-            if (payload.state === "paid") {
+            const data = await res.json();
+            if (!res.ok || !data.ok) return;
+            const msgEl = document.getElementById("daraja-wait-message");
+            if (data.state === "paid") {
                 window.clearInterval(pollTimer);
-                markPaid(payload.message || payload.status_label || "Payment confirmed.");
-                window.setTimeout(function () {
-                    window.location.href = payload.redirect_url || window.location.href;
-                }, 1500);
-            } else if (payload.state === "failed") {
+                if (msgEl) msgEl.textContent = data.message || "Payment confirmed! Redirecting…";
+                const badge = document.querySelector(".status-badge");
+                if (badge) { badge.className = "status-badge status-success"; badge.innerHTML = '<i class="fas fa-check-circle"></i> Paid'; }
+                setTimeout(() => { window.location.href = data.redirect_url || window.location.href; }, 1500);
+            } else if (data.state === "failed") {
                 window.clearInterval(pollTimer);
-                setWaitingMessage(payload.message || "The M-Pesa request did not complete successfully.", true);
+                if (msgEl) msgEl.textContent = data.message || "M-Pesa request did not complete. Please retry.";
+                const waitBox = document.getElementById("daraja-wait-box");
+                if (waitBox) { waitBox.style.borderColor = "#ef4444"; waitBox.style.background = "#fff4f4"; }
             } else {
-                setWaitingMessage(payload.message || "Waiting for Safaricom to confirm the payment...", false);
+                if (msgEl && data.message) msgEl.textContent = data.message;
             }
-        } catch (error) {
-            setWaitingMessage("Still waiting for Safaricom confirmation...", false);
-        }
+        } catch (_) {}
     }
 
-    pollStatus();
-    pollTimer = window.setInterval(pollStatus, 4000);
+    // ── STK Push form ─────────────────────────────────────────────────────────
+    const stkForm = document.getElementById("stk-push-form");
+    if (stkForm) {
+        stkForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const btn = document.getElementById("stk-submit-btn");
+            const statusEl = document.getElementById("stk-status");
+            btn.disabled = true;
+            btn.textContent = "Sending…";
+            statusEl.style.display = "block";
+            statusEl.textContent = "Sending STK push…";
+            statusEl.style.color = "#64748b";
+            try {
+                const fd = new FormData(stkForm);
+                const res = await fetch(stkForm.dataset.stageUrl, {
+                    method: "POST",
+                    body: fd,
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    credentials: "same-origin",
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusEl.textContent = data.message || "STK push sent. Check your phone.";
+                    statusEl.style.color = "#059669";
+                    startPolling();
+                } else {
+                    statusEl.textContent = data.message || "Failed to send STK push.";
+                    statusEl.style.color = "#ef4444";
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-mobile-alt"></i> Retry STK Push';
+                }
+            } catch (err) {
+                statusEl.textContent = "Network error. Please try again.";
+                statusEl.style.color = "#ef4444";
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-mobile-alt"></i> Retry STK Push';
+            }
+        });
+    }
+
+    // ── Wallet payment form ───────────────────────────────────────────────────
+    const walletForm = document.getElementById("wallet-pay-form");
+    if (walletForm) {
+        walletForm.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const statusEl = document.getElementById("wallet-status");
+            const btn = walletForm.querySelector("button[type=submit]");
+            btn.disabled = true;
+            btn.textContent = "Processing…";
+            statusEl.style.display = "block";
+            statusEl.style.color = "#64748b";
+            statusEl.textContent = "Authorizing wallet payment…";
+            try {
+                const fd = new FormData(walletForm);
+                const res = await fetch(walletForm.dataset.stageUrl, {
+                    method: "POST",
+                    body: fd,
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    credentials: "same-origin",
+                });
+                const data = await res.json();
+                if (data.success) {
+                    statusEl.style.color = "#059669";
+                    statusEl.textContent = data.message || "Payment successful! Redirecting…";
+                    setTimeout(() => { window.location.reload(); }, 1500);
+                } else {
+                    statusEl.style.color = "#ef4444";
+                    statusEl.textContent = data.message || "Payment failed.";
+                    btn.disabled = false;
+                    btn.textContent = "Retry";
+                }
+            } catch (_) {
+                statusEl.style.color = "#ef4444";
+                statusEl.textContent = "Network error. Please try again.";
+                btn.disabled = false;
+            }
+        });
+    }
+
+    // ── Method tab switcher ───────────────────────────────────────────────────
+    const tabs = document.querySelectorAll(".method-tab");
+    const panels = document.querySelectorAll(".method-panel");
+
+    tabs.forEach(function (tab) {
+        tab.addEventListener("click", function () {
+            // Reset all tabs
+            tabs.forEach(function (t) {
+                t.style.border = "2px solid #e2e8f0";
+                t.style.background = "#fff";
+                t.style.color = "#475569";
+            });
+            // Activate clicked tab
+            tab.style.border = "2px solid #059669";
+            tab.style.background = "#ecfdf5";
+            tab.style.color = "#065f46";
+
+            // Hide all panels, show target
+            const targetId = tab.dataset.target;
+            panels.forEach(function (p) { p.style.display = "none"; });
+            const target = document.getElementById(targetId);
+            if (target) { target.style.display = "block"; }
+        });
+    });
+
+    // ── Generic form handler (bank, RTGS, paybill, airtel) ───────────────────
+    const genericForms = [
+        { id: "bank-transfer-form", statusId: "bank-status" },
+        { id: "rtgs-form",          statusId: "rtgs-status"  },
+        { id: "paybill-form",       statusId: "paybill-status" },
+        { id: "airtel-form",        statusId: "airtel-status"  },
+    ];
+
+    // ── Manual-payment wait box ───────────────────────────────────────────────
+    let manualPollTimer = null;
+
+    function startManualPolling(childPollUrl) {
+        // Hide method UI, show waiting box
+        const paymentPanel = document.getElementById("payment-panel");
+        if (paymentPanel) { paymentPanel.style.display = "none"; }
+
+        let waitBox = document.getElementById("manual-wait-box");
+        if (!waitBox) {
+            waitBox = document.createElement("div");
+            waitBox.id = "manual-wait-box";
+            waitBox.style.cssText = "background:#f0fdf4;border:1.5px solid #6ee7b7;border-radius:14px;padding:1.1rem;margin-bottom:0.75rem;text-align:center;";
+            waitBox.innerHTML = `
+                <div style="font-size:1.6rem;margin-bottom:6px;">⏳</div>
+                <div style="font-weight:800;color:#065f46;font-size:0.95rem;">Payment Submitted</div>
+                <div id="manual-wait-message" style="font-size:0.8rem;color:#047857;margin-top:5px;line-height:1.5;">
+                    Waiting for admin to confirm receipt…<br>
+                    <span style="font-size:0.72rem;color:#6b7280;">This page will refresh automatically once approved.</span>
+                </div>
+                <div style="margin-top:0.75rem;">
+                    <span style="display:inline-block;width:8px;height:8px;background:#059669;border-radius:50%;animation:pulse 1.4s ease-in-out infinite;"></span>
+                    <span style="display:inline-block;width:8px;height:8px;background:#059669;border-radius:50%;animation:pulse 1.4s ease-in-out 0.3s infinite;margin:0 4px;"></span>
+                    <span style="display:inline-block;width:8px;height:8px;background:#059669;border-radius:50%;animation:pulse 1.4s ease-in-out 0.6s infinite;"></span>
+                </div>`;
+            if (paymentPanel && paymentPanel.parentNode) {
+                paymentPanel.parentNode.insertBefore(waitBox, paymentPanel.nextSibling);
+            }
+        }
+        waitBox.style.display = "block";
+
+        manualPollTimer = window.setInterval(async function () {
+            try {
+                const res = await fetch(childPollUrl, {
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    credentials: "same-origin",
+                });
+                const data = await res.json();
+                if (!res.ok || !data.ok) return;
+                const msgEl = document.getElementById("manual-wait-message");
+                if (data.state === "paid") {
+                    window.clearInterval(manualPollTimer);
+                    waitBox.style.background = "#ecfdf5";
+                    waitBox.querySelector("div:first-child").textContent = "✅";
+                    if (msgEl) msgEl.innerHTML = "<strong>Payment confirmed!</strong><br>Redirecting to your transaction…";
+                    setTimeout(function () {
+                        window.location.href = data.redirect_url || window.location.href;
+                    }, 1800);
+                } else if (data.state === "failed") {
+                    window.clearInterval(manualPollTimer);
+                    waitBox.style.borderColor = "#ef4444";
+                    waitBox.style.background = "#fff4f4";
+                    waitBox.querySelector("div:first-child").textContent = "❌";
+                    if (msgEl) msgEl.innerHTML = "<strong style='color:#dc2626'>Payment was rejected or cancelled.</strong><br>Please contact support or try again.";
+                }
+            } catch (_) {}
+        }, 6000);
+    }
+
+    genericForms.forEach(function ({ id, statusId }) {
+        const form = document.getElementById(id);
+        if (!form) return;
+        form.addEventListener("submit", async function (e) {
+            e.preventDefault();
+            const statusEl = document.getElementById(statusId);
+            const btn = form.querySelector("button[type=submit]");
+            const origLabel = btn.innerHTML;
+            btn.disabled = true;
+            btn.textContent = "Submitting…";
+            if (statusEl) { statusEl.style.display = "block"; statusEl.style.color = "#64748b"; statusEl.textContent = "Sending…"; }
+            try {
+                const fd = new FormData(form);
+                const res = await fetch(form.dataset.stageUrl, {
+                    method: "POST",
+                    body: fd,
+                    headers: { "X-Requested-With": "XMLHttpRequest" },
+                    credentials: "same-origin",
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (statusEl) { statusEl.style.color = "#059669"; statusEl.textContent = data.message || "Submitted."; }
+                    btn.innerHTML = '<i class="fas fa-check"></i> Submitted';
+                    // If the server gave us a poll URL, start watching for admin approval
+                    if (data.poll_url) {
+                        setTimeout(function () { startManualPolling(data.poll_url); }, 800);
+                    }
+                } else {
+                    if (statusEl) { statusEl.style.color = "#ef4444"; statusEl.textContent = data.message || "Submission failed. Please try again."; }
+                    btn.disabled = false;
+                    btn.innerHTML = origLabel;
+                }
+            } catch (_) {
+                if (statusEl) { statusEl.style.color = "#ef4444"; statusEl.textContent = "Network error. Please retry."; }
+                btn.disabled = false;
+                btn.innerHTML = origLabel;
+            }
+        });
+    });
+
+    // ── Auto-start polling if page loaded while already waiting (e.g. refresh) ─
+    {% if payment_provider == 'daraja' and payment.status == 'pending' %}
+    startPolling();
+    {% endif %}
 });
 </script>
-{% endif %}
 {% endblock %}

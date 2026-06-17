@@ -155,6 +155,31 @@
         border-color: var(--ap-green);
         color: white;
     }
+    
+    .status-box {
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+    .status-box.document-needed {
+        background: #fff8e7;
+        border-left: 4px solid #f59e0b;
+    }
+    .status-box.payment-needed {
+        background: #dcfce7;
+        border-left: 4px solid #10b981;
+    }
+    .status-box.waiting {
+        background: #f1f5f9;
+        border-left: 4px solid #94a3b8;
+    }
+    .status-box.complete {
+        background: #dbeafe;
+        border-left: 4px solid #3b82f6;
+    }
 </style>
 {% endblock %}
 
@@ -206,6 +231,124 @@
             <small class="text-muted">Complete</small>
         </div>
     </section>
+
+    <!-- ============================================================ -->
+<!-- PAYMENT SECTION - Compact design when payment is needed       -->
+<!-- ============================================================ -->
+{% if request.user == transaction.buyer %}
+    {# Check if this is a stage that requires payment (contracts or completion) #}
+    {# AND check if a payment is actually needed #}
+    
+    {% if transaction.stage == 'contracts' and transaction.deposit_paid < transaction.ten_percent_deposit %}
+        <!-- 10% Deposit Payment Required - Compact -->
+        <div class="workspace-card mb-4" style="border-left: 4px solid #10b981; background: #f0fdf4;" id="paymentSection">
+            <div class="workspace-card-body" style="padding: 1rem 1.25rem;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-success" style="font-size: 0.75rem;">Action Required</span>
+                        <div>
+                            <span class="fw-bold text-success">💰 Deposit Payment Required</span>
+                            <span class="text-muted ms-2" style="font-size: 0.85rem;">KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="ap-btn ap-btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#paymentFormCollapse" aria-expanded="false" style="background: #10b981; border: none;">
+                        <i class="fa-solid fa-credit-card me-1"></i> Pay Now
+                    </button>
+                </div>
+                
+                <div class="collapse mt-3" id="paymentFormCollapse">
+                    <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}" id="depositPaymentForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="stage_type" value="deposit">
+                        <input type="hidden" name="amount" value="{{ transaction.ten_percent_deposit }}">
+                        
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label text-sm fw-bold mb-1">Payment Method</label>
+                                <select name="method" class="form-select form-select-sm" id="depositMethodSelect" required>
+                                    <option value="">Select Method</option>
+                                    <option value="wallet">💰 Wallet</option>
+                                    <option value="card">💳 Card</option>
+                                    <option value="bank_transfer">🏦 Bank Transfer</option>
+                                    {% if transaction.ten_percent_deposit <= 50000 %}
+                                        <option value="mpesa_stk">📱 M-Pesa</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                            <div class="col-md-3" id="depositPhoneField" style="display: none;">
+                                <label class="form-label text-sm fw-bold mb-1">Phone Number</label>
+                                <input type="tel" name="phone_number" class="form-control form-control-sm" placeholder="0712345678">
+                            </div>
+                            <div class="col-md-3" id="depositPinField" style="display: none;">
+                                <label class="form-label text-sm fw-bold mb-1">Wallet PIN</label>
+                                <input type="password" name="wallet_pin" class="form-control form-control-sm" placeholder="4-digit PIN" maxlength="4">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="ap-btn ap-btn-primary w-100" style="background: #10b981; border: none; padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                                    <i class="fa-solid fa-lock me-1"></i> Pay KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="mt-2">
+                        <small class="text-muted"><i class="fa-solid fa-lock me-1"></i> Funds held in escrow until registration</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    {% elif transaction.stage == 'completion' and transaction.balance_due > 0 %}
+        <!-- 90% Balance Payment Required - Compact -->
+        <div class="workspace-card mb-4" style="border-left: 4px solid #10b981; background: #f0fdf4;">
+            <div class="workspace-card-body" style="padding: 1rem 1.25rem;">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-success" style="font-size: 0.75rem;">Action Required</span>
+                        <div>
+                            <span class="fw-bold text-success">💰 Balance Payment Required</span>
+                            <span class="text-muted ms-2" style="font-size: 0.85rem;">KES {{ transaction.balance_due|floatformat:0|intcomma }}</span>
+                        </div>
+                    </div>
+                    <button type="button" class="ap-btn ap-btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#balanceFormCollapse" aria-expanded="false" style="background: #10b981; border: none;">
+                        <i class="fa-solid fa-credit-card me-1"></i> Pay Now
+                    </button>
+                </div>
+                
+                <div class="collapse mt-3" id="balanceFormCollapse">
+                    <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}" id="balancePaymentForm">
+                        {% csrf_token %}
+                        <input type="hidden" name="stage_type" value="completion">
+                        <input type="hidden" name="amount" value="{{ transaction.balance_due }}">
+                        
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label text-sm fw-bold mb-1">Payment Method</label>
+                                <select name="method" class="form-select form-select-sm" id="balanceMethodSelect" required>
+                                    <option value="">Select Method</option>
+                                    <option value="wallet">💰 Wallet</option>
+                                    <option value="card">💳 Card</option>
+                                    <option value="bank_transfer">🏦 Bank Transfer</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3" id="balancePinField" style="display: none;">
+                                <label class="form-label text-sm fw-bold mb-1">Wallet PIN</label>
+                                <input type="password" name="wallet_pin" class="form-control form-control-sm" placeholder="4-digit PIN" maxlength="4">
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="ap-btn ap-btn-primary w-100" style="background: #10b981; border: none; padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                                    <i class="fa-solid fa-lock me-1"></i> Pay KES {{ transaction.balance_due|floatformat:0|intcomma }}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    <div class="mt-2">
+                        <small class="text-muted"><i class="fa-solid fa-lock me-1"></i> Final payment before registration</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+{% endif %}
 
     <div class="row g-4">
         <!-- Left Column: Timeline -->
@@ -318,73 +461,144 @@
                                         {% endif %}
 
                                         {% if stage.is_current %}
+                                            <!-- Show status message -->
                                             {% if not can_advance %}
-                                                <div class="alert alert-warning py-2 px-3 mb-3 mt-2 text-sm">
-                                                    <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
-                                                        <div class="d-flex align-items-start">
-                                                            <i class="fa-solid fa-triangle-exclamation me-2 fs-5"></i>
-                                                            <div>
-                                                                <div class="fw-semibold mb-1">What is still needed</div>
-                                                                <div>{{ advance_message }}</div>
+                                                {# Check if a payment workspace is already linked #}
+                                                {% if transaction.payment_request %}
+                                                    {% with pr=transaction.payment_request %}
+                                                    {% if pr.status == 'pending' or pr.status == 'draft' %}
+                                                        <!-- Pending Payment Notice — direct buyer to complete it -->
+                                                        <div class="alert py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #f59e0b; background: #fffbeb;">
+                                                            <div class="d-flex align-items-center">
+                                                                <div>
+                                                                    <div class="fw-semibold">⏳ Payment Pending</div>
+                                                                    <div>Ref: <strong>{{ pr.internal_reference }}</strong> · KES {{ pr.amount|floatformat:0|intcomma }} — complete your payment to proceed.</div>
+                                                                </div>
+                                                                <a href="{% url 'payments:detail' pr.pk %}" class="ap-btn ap-btn-primary btn-sm ms-auto" style="background:#f59e0b;border:none;color:#fff;">Complete Payment</a>
                                                             </div>
                                                         </div>
-                                                        {% if stage.required_docs %}
-                                                            <button type="button" class="ap-btn ap-btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocModal" style="white-space: nowrap;">
-                                                                <i class="fa-solid fa-upload me-1"></i> Upload Required Document
-                                                            </button>
-                                                        {% endif %}
-                                                    </div>
-                                                    {% if stage.required_docs %}
-                                                        <div class="mt-2 ps-4">
-                                                            <div class="fw-semibold mb-1">Required for this stage</div>
-                                                            <ul class="mb-0 small">
-                                                                {% for doc in stage.required_docs %}
-                                                                    <li>{{ doc }}</li>
-                                                                {% endfor %}
-                                                            </ul>
+                                                    {% else %}
+                                                        <!-- Payment already recorded — informational -->
+                                                        <div class="alert alert-primary py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #3b82f6;">
+                                                            <div class="d-flex align-items-center">
+                                                                <div>
+                                                                    <div class="fw-semibold">🔗 Payment Workspace Linked</div>
+                                                                    <div>Ref: <strong>{{ pr.internal_reference }}</strong> — payment has been recorded.</div>
+                                                                </div>
+                                                                <a href="{% url 'payments:detail' pr.pk %}" class="ap-btn ap-btn-primary btn-sm ms-auto" style="background:#3b82f6;border:none;">View Payment</a>
+                                                            </div>
                                                         </div>
                                                     {% endif %}
-                                                </div>
-                                            {% endif %}
+                                                    {% endwith %}
 
-                                            <form method="post" action="{% url 'transactions:advance_stage' transaction.pk %}">
-                                                {% csrf_token %}
-                                                <div class="mb-2 form-check">
-                                                    {{ advance_form.confirm_legal_requirements }}
-                                                    <label class="form-check-label text-sm fw-bold" for="{{ advance_form.confirm_legal_requirements.id_for_label }}">I confirm all legal requirements are met.</label>
-                                                </div>
-                                                
-                                                {% if stage.code == 'statutory_consents' %}
-                                                    <div class="row g-2 mb-2">
-                                                        <div class="col-6">
-                                                            <label class="form-label text-sm fw-bold">LCB Meeting Date</label>
-                                                            {{ advance_form.lcb_meeting_date }}
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="form-label text-sm fw-bold">LCB Consent Reference</label>
-                                                            {{ advance_form.lcb_consent_reference }}
+                                                {# Check if this is the CONTRACTS stage and deposit not paid #}
+                                                {% elif transaction.stage == 'contracts' and transaction.deposit_paid < transaction.ten_percent_deposit %}
+                                                    <!-- Payment Needed: 10% Deposit -->
+                                                    <div class="alert alert-success py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #10b981;">
+                                                        <div class="d-flex align-items-center">
+                                                            <div>
+                                                                <div class="fw-semibold">💰 Payment Required</div>
+                                                                <div>The sale agreement is verified. Please pay the 10% deposit to proceed.</div>
+                                                                <div class="mt-1">
+                                                                    <span class="badge bg-success">KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}</span>
+                                                                </div>
+                                                            </div>
+                                                            <a href="#paymentSection" class="ap-btn ap-btn-primary btn-sm ms-auto">Pay Now</a>
                                                         </div>
                                                     </div>
-                                                {% endif %}
-                                                
-                                                {% if stage.code == 'taxation' %}
-                                                    <div class="row g-2 mb-2">
-                                                        <div class="col-6">
-                                                            <label class="form-label text-sm fw-bold">Stamp Duty Rate</label>
-                                                            {{ advance_form.stamp_duty_rate }}
-                                                        </div>
-                                                        <div class="col-6">
-                                                            <label class="form-label text-sm fw-bold">KRA Receipt Number</label>
-                                                            {{ advance_form.stamp_duty_receipt_number }}
+                                                    
+                                                {# Check if this is the COMPLETION stage and balance not paid #}
+                                                {% elif transaction.stage == 'completion' and transaction.balance_due > 0 %}
+                                                    <!-- Payment Needed: 90% Balance -->
+                                                    <div class="alert alert-success py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #10b981;">
+                                                        <div class="d-flex align-items-center">
+                                                            <div>
+                                                                <div class="fw-semibold">💰 Payment Required</div>
+                                                                <div>All documents verified. Please pay the 90% balance to proceed.</div>
+                                                                <div class="mt-1">
+                                                                    <span class="badge bg-success">KES {{ transaction.balance_due|floatformat:0|intcomma }}</span>
+                                                                </div>
+                                                            </div>
+                                                            <a href="#paymentSection" class="ap-btn ap-btn-primary btn-sm ms-auto">Pay Now</a>
                                                         </div>
                                                     </div>
+                                                    
+                                                {% else %}
+                                                    <!-- Check if documents are missing -->
+                                                    {% with missing_count=0 %}
+                                                        {% for doc in stage.required_doc_details %}
+                                                            {% if not doc.is_verified and not doc.has_document %}
+                                                                {% with missing_count=missing_count|add:1 %}{% endwith %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        
+                                                        {% if missing_count > 0 %}
+                                                            <!-- Document Needed -->
+                                                            <div class="alert alert-warning py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #f59e0b;">
+                                                                <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
+                                                                    <div>
+                                                                        <div class="fw-semibold">📄 Document Required</div>
+                                                                        <div>Required documents must be uploaded and verified before proceeding.</div>
+                                                                    </div>
+                                                                    <button type="button" class="ap-btn ap-btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
+                                                                        <i class="fa-solid fa-upload me-1"></i> Upload
+                                                                    </button>
+                                                                </div>
+                                                                {% if stage.required_docs %}
+                                                                    <div class="mt-2 ps-4">
+                                                                        <div class="fw-semibold mb-1">Required:</div>
+                                                                        <ul class="mb-0 small">
+                                                                            {% for doc in stage.required_docs %}
+                                                                                <li>{{ doc }}</li>
+                                                                            {% endfor %}
+                                                                        </ul>
+                                                                    </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        {% else %}
+                                                            <!-- All docs uploaded and verified, but this stage might need payment -->
+                                                            {% if transaction.stage == 'contracts' and transaction.deposit_paid < transaction.ten_percent_deposit %}
+                                                                <div class="alert alert-success py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #10b981;">
+                                                                    <div class="d-flex align-items-center">
+                                                                        <div>
+                                                                            <div class="fw-semibold">💰 Payment Required</div>
+                                                                            <div>Please pay the 10% deposit to proceed.</div>
+                                                                            <div class="mt-1">
+                                                                                <span class="badge bg-success">KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <a href="#paymentSection" class="ap-btn ap-btn-primary btn-sm ms-auto">Pay Now</a>
+                                                                    </div>
+                                                                </div>
+                                                            {% elif transaction.stage == 'completion' and transaction.balance_due > 0 %}
+                                                                <div class="alert alert-success py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #10b981;">
+                                                                    <div class="d-flex align-items-center">
+                                                                        <div>
+                                                                            <div class="fw-semibold">💰 Payment Required</div>
+                                                                            <div>Please pay the 90% balance to proceed.</div>
+                                                                            <div class="mt-1">
+                                                                                <span class="badge bg-success">KES {{ transaction.balance_due|floatformat:0|intcomma }}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <a href="#paymentSection" class="ap-btn ap-btn-primary btn-sm ms-auto">Pay Now</a>
+                                                                    </div>
+                                                                </div>
+                                                            {% else %}
+                                                                <!-- Waiting for Verification -->
+                                                                <div class="alert alert-secondary py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #94a3b8;">
+                                                                    <div class="d-flex align-items-start">
+                                                                        <i class="fa-solid fa-clock me-2"></i>
+                                                                        <div>
+                                                                            <div class="fw-semibold">⏳ Waiting for Verification</div>
+                                                                            <div>{{ advance_message|default:"Documents uploaded, pending admin verification." }}</div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            {% endif %}
+                                                        {% endif %}
+                                                    {% endwith %}
                                                 {% endif %}
-                                                
-                                                <button type="submit" class="ap-btn ap-btn-primary btn-sm mt-2">
-                                                    <i class="fa-solid fa-arrow-right"></i>
-                                                    {% if can_advance %}Advance to Next Stage{% else %}Save Confirmation{% endif %}
-                                                </button>
-                                            </form>
+                                            {% endif %}
                                         {% endif %}
                                     </div>
                                 </div>
@@ -533,158 +747,71 @@
                 </div>
             </article>
 
-            <!-- ============ PAYMENT CARD - USING CORRECT STAGE VALUES ============ -->
-            {% if request.user == transaction.buyer %}
-                {# Stage 3: CONTRACTS - 10% Deposit Required #}
-                {# Assuming Stage.CONTRACTS = 3, Stage.STATUTORY_CONSENTS = 4 #}
-                {% if transaction.stage == 3 and transaction.deposit_paid < transaction.ten_percent_deposit %}
-                    <!-- STAGE: Contracts - 10% Deposit Required -->
-                    <article class="workspace-card mt-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white;">
-                        <div class="workspace-card-body">
-                            <h3 class="text-sm fw-bold text-white-50 mb-3">DEPOSIT PAYMENT REQUIRED</h3>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>Agreed Price</span>
-                                <span class="fw-bold">KES {{ transaction.agreed_price|floatformat:0|intcomma }}</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-3">
-                                <span>Deposit (10%) Due</span>
-                                <span class="fs-4 fw-bold">KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}</span>
-                            </div>
-                            <div class="alert alert-light text-dark mb-3 py-2">
-                                <i class="fa-solid fa-info-circle"></i> Pay deposit to secure the sale agreement. Funds held in escrow.
-                            </div>
-                            
-                            <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}">
-                                {% csrf_token %}
-                                <input type="hidden" name="stage_type" value="deposit">
-                                <input type="hidden" name="amount" value="{{ transaction.ten_percent_deposit }}">
-                                
-                                <h4 class="text-sm fw-bold mt-3 mb-2">Select Payment Method</h4>
-                                <div class="payment-methods-grid">
-                                    <div class="payment-method-card {% if transaction.ten_percent_deposit > 50000 %}disabled{% endif %}" data-method="mpesa_stk" data-available="{% if transaction.ten_percent_deposit <= 50000 %}true{% else %}false{% endif %}">
-                                        <div class="method-icon">📱</div>
-                                        <div class="method-name">M-Pesa</div>
-                                    </div>
-                                    <div class="payment-method-card" data-method="card" data-available="true">
-                                        <div class="method-icon">💳</div>
-                                        <div class="method-name">Card</div>
-                                    </div>
-                                    <div class="payment-method-card" data-method="bank_transfer" data-available="true">
-                                        <div class="method-icon">🏦</div>
-                                        <div class="method-name">Bank Transfer</div>
-                                    </div>
-                                    <div class="payment-method-card" data-method="wallet" data-available="true">
-                                        <div class="method-icon">👛</div>
-                                        <div class="method-name">Wallet</div>
-                                    </div>
-                                </div>
-                                
-                                <input type="hidden" name="method" id="depositSelectedMethod" value="">
-                                
-                                <!-- M-Pesa Section -->
-                                <div class="payment-detail-section" id="depositMpesaSection">
-                                    <div class="form-group mt-2">
-                                        <label class="text-xs fw-bold">M-Pesa Number</label>
-                                        <input type="tel" name="phone_number" class="form-control payment-input" placeholder="0712345678">
-                                    </div>
-                                </div>
-                                
-                                <!-- Wallet Section -->
-                                <div class="payment-detail-section" id="depositWalletSection">
-                                    <div class="form-group mt-2">
-                                        <label class="text-xs fw-bold">Wallet PIN</label>
-                                        <input type="password" name="wallet_pin" class="form-control payment-input" placeholder="Enter 4-digit PIN" maxlength="4">
-                                    </div>
-                                    <div class="alert alert-light text-dark mt-2 py-1 small">
-                                        Balance: KES {{ wallet_balance.balance|floatformat:0|intcomma|default:"0" }}
-                                    </div>
-                                </div>
-                                
-                                <button type="submit" class="ap-btn ap-btn-primary w-100 mt-3">
-                                    <i class="fa-solid fa-lock me-2"></i> Pay KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}
-                                </button>
-                            </form>
+            <!-- Advocate Assignment Card -->
+            {% if show_advocate_assignment or not transaction.buyer_advocate or not transaction.seller_advocate %}
+            <article class="workspace-card mb-4">
+                <div class="workspace-card-header">
+                    <h2 class="workspace-card-title">⚖️ Assign Advocates</h2>
+                    <p class="workspace-card-meta">Required under Advocates Act Cap 16 before sale agreement</p>
+                </div>
+                <div class="workspace-card-body">
+                    {% if transaction.buyer_advocate and transaction.seller_advocate %}
+                        <div class="alert alert-success py-2 mb-3">
+                            <i class="fa-solid fa-check-circle"></i> <strong>Both advocates are assigned:</strong>
+                            <br>
+                            <span class="fw-bold">Buyer Advocate:</span> {{ transaction.buyer_advocate.get_full_name }} ({{ transaction.buyer_advocate.email }})
+                            <br>
+                            <span class="fw-bold">Seller Advocate:</span> {{ transaction.seller_advocate.get_full_name }} ({{ transaction.seller_advocate.email }})
                         </div>
-                    </article>
+                    {% else %}
+                        <div class="alert alert-warning py-2 mb-3">
+                            <i class="fa-solid fa-triangle-exclamation"></i> <strong>Advocates required:</strong>
+                            {% if not transaction.buyer_advocate %}
+                                <br>❌ Buyer advocate not assigned
+                            {% endif %}
+                            {% if not transaction.seller_advocate %}
+                                <br>❌ Seller advocate not assigned
+                            {% endif %}
+                            <br><small class="text-muted">Both advocates must be assigned before uploading the sale agreement.</small>
+                        </div>
+                    {% endif %}
                     
-                {# Stage 4: STATUTORY_CONSENTS - 90% Balance Required #}
-                {% elif transaction.stage == 4 and transaction.balance_due > 0 %}
-                    <!-- STAGE: Statutory Consents - 90% Balance Required -->
-                    <article class="workspace-card mt-4" style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); color: white;">
-                        <div class="workspace-card-body">
-                            <h3 class="text-sm fw-bold text-white-50 mb-3">COMPLETION BALANCE REQUIRED</h3>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>Agreed Price</span>
-                                <span class="fw-bold">KES {{ transaction.agreed_price|floatformat:0|intcomma }}</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-1">
-                                <span>Deposit Paid</span>
-                                <span>KES {{ transaction.deposit_paid|floatformat:0|intcomma }}</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-3">
-                                <span>Balance Due (90%)</span>
-                                <span class="fs-4 fw-bold">KES {{ transaction.balance_due|floatformat:0|intcomma }}</span>
-                            </div>
-                            <div class="alert alert-light text-dark mb-3 py-2">
-                                <i class="fa-solid fa-info-circle"></i> Final payment before registration. Funds held in escrow until title transfer.
-                            </div>
-                            
-                            <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}">
-                                {% csrf_token %}
-                                <input type="hidden" name="stage_type" value="completion">
-                                <input type="hidden" name="amount" value="{{ transaction.balance_due }}">
-                                
-                                <h4 class="text-sm fw-bold mt-3 mb-2">Select Payment Method</h4>
-                                <div class="payment-methods-grid">
-                                    <div class="payment-method-card" data-method="card" data-available="true">
-                                        <div class="method-icon">💳</div>
-                                        <div class="method-name">Card</div>
-                                    </div>
-                                    <div class="payment-method-card" data-method="bank_transfer" data-available="true">
-                                        <div class="method-icon">🏦</div>
-                                        <div class="method-name">Bank Transfer</div>
-                                    </div>
-                                    <div class="payment-method-card" data-method="wallet" data-available="true">
-                                        <div class="method-icon">👛</div>
-                                        <div class="method-name">Wallet</div>
-                                    </div>
-                                </div>
-                                
-                                <input type="hidden" name="method" id="balanceSelectedMethod" value="">
-                                
-                                <!-- Bank Transfer Section -->
-                                <div class="payment-detail-section" id="balanceBankSection">
-                                    <div class="workspace-notice bg-dark text-white border-secondary mt-2 p-2 small">
-                                        <strong>Bank Details:</strong><br>
-                                        Bank: Cooperative Bank of Kenya<br>
-                                        Account: AgriPlot Escrow Services<br>
-                                        Account: 0114123456789<br>
-                                        Reference: {{ transaction.payment_request.internal_reference|default:transaction.id }}
-                                    </div>
-                                </div>
-                                
-                                <!-- Wallet Section -->
-                                <div class="payment-detail-section" id="balanceWalletSection">
-                                    <div class="form-group mt-2">
-                                        <label class="text-xs fw-bold">Wallet PIN</label>
-                                        <input type="password" name="wallet_pin" class="form-control payment-input" placeholder="Enter 4-digit PIN" maxlength="4">
-                                    </div>
-                                    <div class="alert alert-light text-dark mt-2 py-1 small">
-                                        Balance: KES {{ wallet_balance.balance|floatformat:0|intcomma|default:"0" }}
-                                    </div>
-                                </div>
-                                
-                                <button type="submit" class="ap-btn ap-btn-primary w-100 mt-3">
-                                    <i class="fa-solid fa-lock me-2"></i> Pay KES {{ transaction.balance_due|floatformat:0|intcomma }}
-                                </button>
-                            </form>
+                    <form method="post" action="{% url 'transactions:assign_advocates' transaction.pk %}">
+                        {% csrf_token %}
+                        <div class="form-group mb-2">
+                            <label class="form-label text-sm fw-bold">Buyer Advocate</label>
+                            {{ advocate_form.buyer_advocate_id }}
+                            <small class="text-muted">Select the buyer's licensed advocate</small>
                         </div>
-                    </article>
-                {% endif %}
+                        <div class="form-group mb-2">
+                            <label class="form-label text-sm fw-bold">Seller Advocate</label>
+                            {{ advocate_form.seller_advocate_id }}
+                            <small class="text-muted">Select the seller's licensed advocate</small>
+                        </div>
+                        <div class="form-check mb-2">
+                            {{ advocate_form.confirm_advocate_engagement }}
+                            <label class="form-check-label text-sm" for="{{ advocate_form.confirm_advocate_engagement.id_for_label }}">
+                                I confirm that licensed advocates have been engaged as required by the Advocates Act Cap 16
+                            </label>
+                        </div>
+                        <button type="submit" class="ap-btn ap-btn-primary w-100">
+                            <i class="fa-solid fa-gavel"></i> Assign Advocates
+                        </button>
+                    </form>
+                    
+                    {% if transaction.buyer_advocate and transaction.seller_advocate %}
+                        <div class="alert alert-success mt-3 py-2 mb-0">
+                            <i class="fa-solid fa-check-circle"></i> 
+                            <strong>Ready to upload sale agreement.</strong> 
+                            Both advocates are assigned.
+                        </div>
+                    {% endif %}
+                </div>
+            </article>
             {% endif %}
 
             <!-- Stamp Duty Status Card -->
-            {% if transaction.stage == 5 or transaction.stamp_duty_receipt_verified_at %}
+            {% if transaction.stage == 'taxation' or transaction.stamp_duty_receipt_verified_at %}
             <article class="workspace-card mb-4">
                 <div class="workspace-card-header">
                     <h2 class="workspace-card-title">Stamp Duty (KRA iTax)</h2>
@@ -714,7 +841,7 @@
             <article class="workspace-card">
                 <div class="workspace-card-header d-flex justify-content-between align-items-center">
                     <h2 class="workspace-card-title">Legal Documents</h2>
-                    {% if transaction.stage != 8 and transaction.stage != 9 %}
+                    {% if transaction.stage != 'completed' and transaction.stage != 'cancelled' %}
                         <button type="button" class="ap-btn ap-btn-ghost btn-sm p-1" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
                             <i class="fa-solid fa-plus"></i>
                         </button>
@@ -828,7 +955,38 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", function() {
-    // Deposit payment method selection
+    // Show/hide conditional fields for payment forms
+    function setupPaymentForm(formId, phoneFieldId, pinFieldId) {
+        const form = document.getElementById(formId);
+        if (!form) return;
+        
+        const methodSelect = form.querySelector('select[name="method"]');
+        const phoneField = form.querySelector('#' + phoneFieldId);
+        const pinField = form.querySelector('#' + pinFieldId);
+        
+        if (methodSelect) {
+            methodSelect.addEventListener('change', function() {
+                if (this.value === 'mpesa_stk') {
+                    if (phoneField) phoneField.style.display = 'block';
+                    if (pinField) pinField.style.display = 'none';
+                } else if (this.value === 'wallet') {
+                    if (phoneField) phoneField.style.display = 'none';
+                    if (pinField) pinField.style.display = 'block';
+                } else {
+                    if (phoneField) phoneField.style.display = 'none';
+                    if (pinField) pinField.style.display = 'none';
+                }
+            });
+        }
+    }
+    
+    // Setup deposit payment form
+    setupPaymentForm('depositPaymentForm', 'phoneField', 'pinField');
+    
+    // Setup balance payment form
+    setupPaymentForm('balancePaymentForm', 'phoneField2', 'pinField2');
+    
+    // Payment method card selection for deposit
     const depositMethodCards = document.querySelectorAll('#depositPaymentForm .payment-method-card');
     const depositSelectedMethod = document.getElementById('depositSelectedMethod');
     
@@ -841,18 +999,16 @@ document.addEventListener("DOMContentLoaded", function() {
                 this.classList.add('selected');
                 depositSelectedMethod.value = method;
                 
-                // Show relevant section
                 document.querySelectorAll('#depositPaymentForm .payment-detail-section').forEach(s => s.classList.remove('active'));
                 if (method === 'mpesa_stk') document.getElementById('depositMpesaSection')?.classList.add('active');
                 if (method === 'wallet') document.getElementById('depositWalletSection')?.classList.add('active');
             });
         });
-        // Select first available by default
         const firstAvailable = document.querySelector('#depositPaymentForm .payment-method-card[data-available="true"]');
         if (firstAvailable) firstAvailable.click();
     }
     
-    // Balance payment method selection
+    // Payment method card selection for balance
     const balanceMethodCards = document.querySelectorAll('#balancePaymentForm .payment-method-card');
     const balanceSelectedMethod = document.getElementById('balanceSelectedMethod');
     
@@ -864,16 +1020,15 @@ document.addEventListener("DOMContentLoaded", function() {
                 this.classList.add('selected');
                 balanceSelectedMethod.value = method;
                 
-                // Show relevant section
                 document.querySelectorAll('#balancePaymentForm .payment-detail-section').forEach(s => s.classList.remove('active'));
                 if (method === 'bank_transfer') document.getElementById('balanceBankSection')?.classList.add('active');
                 if (method === 'wallet') document.getElementById('balanceWalletSection')?.classList.add('active');
             });
         });
-        // Select first available by default
         const firstAvailable = document.querySelector('#balancePaymentForm .payment-method-card[data-available="true"]');
         if (firstAvailable) firstAvailable.click();
     }
 });
 </script>
+
 {% endblock %}

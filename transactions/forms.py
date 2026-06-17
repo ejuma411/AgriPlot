@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from decimal import Decimal
-
+from django.db.models import Q 
 from .models import Transaction, TransactionDocument
 
 
@@ -31,9 +31,6 @@ class TransactionDocumentForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         
         if self.transaction:
-            # Only surface documents required for the current legal stage.
-            # This keeps the upload UI stage-aware while the stored documents
-            # remain available to any later stage that needs them.
             allowed_docs = list(self.transaction.get_required_documents_for_stage())
             self.required_document_types = allowed_docs
             self.fields['document_type'].choices = [
@@ -95,7 +92,6 @@ class TransactionDocumentForm(forms.ModelForm):
             if not cleaned_data.get('reference_number'):
                 self.add_error('reference_number', 'Stamp duty receipt number from KRA iTax is required')
             
-            # Validate receipt format (KRA-YYYYMMDD-XXXXXX)
             receipt_number = cleaned_data.get('reference_number', '')
             if receipt_number:
                 import re
@@ -112,14 +108,39 @@ class TransactionDocumentForm(forms.ModelForm):
                 if issue_date and issue_date > timezone.now().date():
                     self.add_error('document_date', 'Title deed issue date cannot be in the future')
         
-        # Sale Agreement requires advocates to be assigned
+        # ============================================================
+        # SALE AGREEMENT VALIDATION - ENFORCE ADVOCATE REQUIREMENT
+        # ============================================================
         if doc_type == TransactionDocument.DocType.SALE_AGREEMENT:
             if not self.transaction:
                 self.add_error(None, 'Transaction must be specified before uploading sale agreement')
-            elif not self.transaction.buyer_advocate:
-                self.add_error(None, 'Buyer advocate must be assigned before uploading sale agreement')
-            elif not self.transaction.seller_advocate:
-                self.add_error(None, 'Seller advocate must be assigned before uploading sale agreement')
+            else:
+                # Check if buyer advocate is assigned
+                if not self.transaction.buyer_advocate:
+                    self.add_error(
+                        None, 
+                        'Buyer advocate must be assigned before uploading sale agreement. '
+                        'Please assign a licensed advocate under the Advocates Act Cap 16 first.'
+                    )
+                # Check if seller advocate is assigned
+                elif not self.transaction.seller_advocate:
+                    self.add_error(
+                        None, 
+                        'Seller advocate must be assigned before uploading sale agreement. '
+                        'Please assign a licensed advocate under the Advocates Act Cap 16 first.'
+                    )
+                # Check if buyer and seller are the same person (should not happen)
+                elif self.transaction.buyer_advocate == self.transaction.seller_advocate:
+                    self.add_error(
+                        None,
+                        'Buyer and seller advocates cannot be the same person. '
+                        'Each party must have independent legal representation under the Advocates Act.'
+                    )
+                else:
+                    # All advocate checks passed - allow upload
+                    self.fields['file'].help_text = (
+                        "✅ Both advocates are assigned. You can now upload the signed sale agreement."
+                    )
         
         return cleaned_data
     
@@ -137,6 +158,119 @@ class TransactionDocumentForm(forms.ModelForm):
         if commit:
             instance.save()
         return instance
+
+
+# ============================================================
+# SINGLE AdvocateAssignmentForm - USING ChoiceField for select dropdowns
+# ============================================================
+class AdvocateAssignmentForm(forms.Form):
+    """Form for assigning advocates to a transaction (required by Kenyan law)"""
+    
+    buyer_advocate_id = forms.ChoiceField(
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Select the buyer's licensed advocate"
+    )
+    seller_advocate_id = forms.ChoiceField(
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+        help_text="Select the seller's licensed advocate"
+    )
+    confirm_advocate_engagement = forms.BooleanField(
+        required=True,
+        label="I confirm that licensed advocates have been engaged as required by the Advocates Act Cap 16",
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
+    )
+    
+    def __init__(self, *args, **kwargs):
+        self.transaction = kwargs.pop('transaction', None)
+        super().__init__(*args, **kwargs)
+        
+        # Populate advocate choices
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        # Get users who are legal admins, staff, or have advocate role
+        advocate_users = User.objects.filter(
+            Q(groups__name='Legal Admin') | 
+            Q(is_staff=True) |
+            Q(profile__role='advocate')
+        ).distinct()
+        
+        # Add currently assigned advocates if they're not in the list
+        if self.transaction:
+            if self.transaction.buyer_advocate and self.transaction.buyer_advocate not in advocate_users:
+                advocate_users = advocate_users | User.objects.filter(pk=self.transaction.buyer_advocate.pk)
+            if self.transaction.seller_advocate and self.transaction.seller_advocate not in advocate_users:
+                advocate_users = advocate_users | User.objects.filter(pk=self.transaction.seller_advocate.pk)
+        
+        # Create choices
+        choices = [('', '--- Select Advocate ---')]
+        for user in advocate_users:
+            label = f"{user.get_full_name()} ({user.email})"
+            if self.transaction:
+                if self.transaction.buyer_advocate and user.id == self.transaction.buyer_advocate.id:
+                    label += " (Current Buyer Advocate)"
+                if self.transaction.seller_advocate and user.id == self.transaction.seller_advocate.id:
+                    label += " (Current Seller Advocate)"
+            choices.append((str(user.id), label))
+        
+        self.fields['buyer_advocate_id'].choices = choices
+        self.fields['seller_advocate_id'].choices = choices
+        
+        # Set initial values
+        if self.transaction:
+            if self.transaction.buyer_advocate:
+                self.fields['buyer_advocate_id'].initial = str(self.transaction.buyer_advocate.id)
+            if self.transaction.seller_advocate:
+                self.fields['seller_advocate_id'].initial = str(self.transaction.seller_advocate.id)
+    
+    def clean(self):
+        cleaned_data = super().clean()
+        buyer_advocate_id = cleaned_data.get('buyer_advocate_id')
+        seller_advocate_id = cleaned_data.get('seller_advocate_id')
+        
+        # Verify both advocates are assigned before allowing sale agreement upload
+        if not buyer_advocate_id:
+            self.add_error('buyer_advocate_id', 'Buyer advocate is required for the sale agreement under the Advocates Act Cap 16')
+        if not seller_advocate_id:
+            self.add_error('seller_advocate_id', 'Seller advocate is required for the sale agreement under the Advocates Act Cap 16')
+        
+        # Check that they are different people
+        if buyer_advocate_id and seller_advocate_id and buyer_advocate_id == seller_advocate_id:
+            self.add_error(None, 'Buyer and seller advocates cannot be the same person. Each party must have independent legal representation.')
+        
+        return cleaned_data
+    
+    def save(self, commit=True):
+        """Update transaction with assigned advocates"""
+        if not self.transaction:
+            return
+        
+        buyer_advocate_id = self.cleaned_data.get('buyer_advocate_id')
+        seller_advocate_id = self.cleaned_data.get('seller_advocate_id')
+        
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        
+        if buyer_advocate_id:
+            try:
+                buyer_advocate = User.objects.get(pk=buyer_advocate_id)
+                self.transaction.buyer_advocate = buyer_advocate
+            except User.DoesNotExist:
+                pass
+        
+        if seller_advocate_id:
+            try:
+                seller_advocate = User.objects.get(pk=seller_advocate_id)
+                self.transaction.seller_advocate = seller_advocate
+            except User.DoesNotExist:
+                pass
+        
+        if commit:
+            self.transaction.save(update_fields=['buyer_advocate', 'seller_advocate', 'updated_at'])
+        
+        return self.transaction
 
 
 class TransactionAdvanceForm(forms.Form):
@@ -470,29 +604,3 @@ class DisbursementAuthorizationForm(forms.Form):
         if percentage and (percentage < 1 or percentage > 3):
             raise ValidationError("Platform fee must be between 1% and 3%")
         return percentage
-
-
-class AdvocateAssignmentForm(forms.Form):
-    """Form for assigning advocates to a transaction (required by Kenyan law)"""
-    
-    buyer_advocate_id = forms.IntegerField(
-        widget=forms.HiddenInput(),
-        required=False
-    )
-    seller_advocate_id = forms.IntegerField(
-        widget=forms.HiddenInput(),
-        required=False
-    )
-    confirm_advocate_engagement = forms.BooleanField(
-        required=True,
-        label="I confirm that licensed advocates have been engaged as required by the Advocates Act Cap 16",
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
-    )
-    
-    def __init__(self, *args, **kwargs):
-        self.transaction = kwargs.pop('transaction', None)
-        super().__init__(*args, **kwargs)
-        
-        if self.transaction:
-            self.fields['buyer_advocate_id'].initial = self.transaction.buyer_advocate_id
-            self.fields['seller_advocate_id'].initial = self.transaction.seller_advocate_id

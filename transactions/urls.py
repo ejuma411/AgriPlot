@@ -1,3 +1,4 @@
+from transactions.views import assign_advocates
 from django.urls import path
 from . import views
 
@@ -7,7 +8,8 @@ urlpatterns = [
     # Dashboard and Detail
     path('', views.TransactionDashboardView.as_view(), name='dashboard'),
     path('<int:pk>/', views.transaction_detail, name='detail'),
-    
+    path('<int:pk>/assign-advocates/', views.assign_advocates, name='assign_advocates'),
+
     # Document Management
     path('<int:pk>/upload/', views.upload_document, name='upload_document'),
     path('document/<int:doc_id>/verify/', views.verify_document, name='verify_document'),

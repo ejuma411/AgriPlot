@@ -6,7 +6,8 @@ from decimal import Decimal
 from django.utils import timezone
 import logging
 
-from .models import Wallet, WalletTransaction, PaymentRequest, PaymentClosingStep, PaymentDisbursement
+from payments.models import Wallet, WalletTransaction, PaymentRequest, PaymentClosingStep, PaymentDisbursement
+from transactions.models import Transaction
 
 logger = logging.getLogger(__name__)
 

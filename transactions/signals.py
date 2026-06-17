@@ -1,3 +1,4 @@
+from payments.models import PaymentRequest
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
@@ -13,13 +14,20 @@ def auto_start_transaction(sender, instance, **kwargs):
     """
     Automatically creates or updates a Transaction record when a Purchase payment is confirmed.
     Integrates with payment stages (agreement deposit, completion balance, etc.)
-    
-    Platform Escrow Model Integration:
-    - Agreement Deposit (10%) → Held in escrow, recorded in transaction
-    - Completion Balance (90%) → Held in escrow, recorded in transaction
-    - Stamp Duty → NOT recorded here (paid directly to KRA)
-    - Disbursement → Handled separately after registration
     """
+    # GUARD: Prevent re-entry
+    if getattr(instance, '_auto_transaction_processing', False):
+        return
+    
+    try:
+        instance._auto_transaction_processing = True
+        _auto_start_transaction_logic(sender, instance, **kwargs)
+    finally:
+        instance._auto_transaction_processing = False
+
+
+def _auto_start_transaction_logic(sender, instance, **kwargs):
+    """Actual logic for auto_start_transaction with recursion prevention"""
     from payments.models import PaymentRequest
     from .models import Transaction, TransactionMilestone, TransactionDocument
     
@@ -82,6 +90,7 @@ def auto_start_transaction(sender, instance, **kwargs):
             transaction_type=Transaction.TransactionType.PURCHASE,
         )
         created = True
+        # Use update to avoid triggering signals again
         PaymentRequest.objects.filter(pk=instance.pk).update(legal_transaction=transaction)
         instance.legal_transaction = transaction
         
@@ -96,14 +105,12 @@ def auto_start_transaction(sender, instance, **kwargs):
     if not created and not transaction.payment_request:
         transaction.payment_request = instance
         transaction.save(update_fields=["payment_request", "updated_at"])
+        # Use update to avoid triggering signals again
         PaymentRequest.objects.filter(pk=instance.pk).update(legal_transaction=transaction)
         instance.legal_transaction = transaction
         logger.info(f"Linked existing legal transaction {transaction.id} to payment {instance.internal_reference}")
     
     # Track payment amount based on category
-    previous_deposit = transaction.deposit_paid
-    previous_balance = transaction.balance_paid
-    
     if instance.category == PaymentRequest.Category.AGREEMENT_DEPOSIT:
         # This is the 10% agreement deposit held in escrow
         transaction.deposit_paid = instance.amount
@@ -147,7 +154,8 @@ def auto_start_transaction(sender, instance, **kwargs):
         payment_metadata['deposit_paid_at'] = timezone.now().isoformat()
         payment_metadata['transaction_id'] = transaction.id
         instance.metadata = payment_metadata
-        instance.save(update_fields=['metadata', 'updated_at'])
+        # Use update to avoid triggering signals again
+        PaymentRequest.objects.filter(pk=instance.pk).update(metadata=payment_metadata)
         
         # Send notification to buyer and seller
         from notifications.notification_service import NotificationService
@@ -193,7 +201,8 @@ def auto_start_transaction(sender, instance, **kwargs):
         payment_metadata['balance_paid_at'] = timezone.now().isoformat()
         payment_metadata['transaction_id'] = transaction.id
         instance.metadata = payment_metadata
-        instance.save(update_fields=['metadata', 'updated_at'])
+        # Use update to avoid triggering signals again
+        PaymentRequest.objects.filter(pk=instance.pk).update(metadata=payment_metadata)
         
         # Send notification
         from notifications.notification_service import NotificationService
@@ -211,14 +220,10 @@ def auto_start_transaction(sender, instance, **kwargs):
         )
         
         logger.info(f"Completion balance recorded in escrow for transaction {transaction.id}: KES {instance.amount:,.2f}")
-        
-    # Stamp duty is NOT recorded here - paid directly to KRA
-    # Stamp duty verification is handled separately
     
     # If both deposit and balance are fully paid (100%), ensure transaction is ready for registration
     total_paid = transaction.deposit_paid + transaction.balance_paid
     if total_paid >= transaction.agreed_price and transaction.stage == Transaction.Stage.CONTRACTS:
-        # Check if all required documents for TAXATION are uploaded
         try:
             can_advance, message = transaction.can_advance_to_next_stage()
             if can_advance:
@@ -229,12 +234,17 @@ def auto_start_transaction(sender, instance, **kwargs):
         except Exception as e:
             logger.warning(f"Could not auto-advance transaction {transaction.id}: {e}")
     
-    # Add event to payment
-    instance.add_event(
-        "legal_transaction_updated",
-        f"Legal transaction {transaction.id} updated. Deposit in escrow: KES {transaction.deposit_paid:,.2f}, "
-        f"Balance in escrow: KES {transaction.balance_paid:,.2f}, "
-        f"Balance due: KES {transaction.balance_due:,.2f}",
+    # Add event to payment - but don't save again
+    # Use a direct DB update to avoid signal recursion
+    from payments.models import PaymentEvent
+    PaymentEvent.objects.create(
+        payment=instance,
+        event_type="legal_transaction_updated",
+        message=(
+            f"Legal transaction {transaction.id} updated. Deposit in escrow: KES {transaction.deposit_paid:,.2f}, "
+            f"Balance in escrow: KES {transaction.balance_paid:,.2f}, "
+            f"Balance due: KES {transaction.balance_due:,.2f}"
+        ),
         actor=instance.buyer
     )
 
@@ -245,6 +255,19 @@ def auto_update_transaction_on_disbursement(sender, instance, **kwargs):
     When a payment request is disbursed (funds released to seller),
     update the associated legal transaction.
     """
+    # GUARD: Prevent re-entry
+    if getattr(instance, '_disbursement_sync_processing', False):
+        return
+    
+    try:
+        instance._disbursement_sync_processing = True
+        _auto_update_transaction_on_disbursement_logic(sender, instance, **kwargs)
+    finally:
+        instance._disbursement_sync_processing = False
+
+
+def _auto_update_transaction_on_disbursement_logic(sender, instance, **kwargs):
+    """Actual logic for auto_update_transaction_on_disbursement with recursion prevention"""
     from payments.models import PaymentRequest
     from .models import Transaction
     
@@ -294,42 +317,52 @@ def sync_transaction_stage_to_payment(sender, instance, **kwargs):
     When a legal transaction advances stage, sync relevant information back to payment.
     This ensures payment and legal workflows stay aligned.
     """
-    if not instance.payment_request:
+    # GUARD: Prevent re-entry
+    if getattr(instance, '_sync_to_payment_processing', False):
         return
     
-    payment = instance.payment_request
-    payment_metadata = dict(payment.metadata or {})
+    try:
+        instance._sync_to_payment_processing = True
+        
+        if not instance.payment_request:
+            return
+        
+        payment = instance.payment_request
+        payment_metadata = dict(payment.metadata or {})
+        
+        # Map transaction stage to payment metadata
+        stage_mapping = {
+            Transaction.Stage.DUE_DILIGENCE: 'legal_due_diligence_completed',
+            Transaction.Stage.COMMITMENT: 'legal_commitment_completed',
+            Transaction.Stage.CONTRACTS: 'legal_contracts_completed',
+            Transaction.Stage.STATUTORY_CONSENTS: 'legal_consents_completed',
+            Transaction.Stage.TAXATION: 'legal_taxation_completed',
+            Transaction.Stage.REGISTRATION: 'legal_registration_completed',
+            Transaction.Stage.DISBURSEMENT: 'legal_disbursement_completed',
+            Transaction.Stage.COMPLETED: 'legal_completed',
+        }
+        
+        if instance.stage in stage_mapping:
+            payment_metadata[stage_mapping[instance.stage]] = timezone.now().isoformat()
+        
+        # Sync stamp duty verification (paid to KRA)
+        if instance.stamp_duty_receipt_verified_at:
+            payment_metadata['stamp_duty_receipt_verified_at'] = instance.stamp_duty_receipt_verified_at.isoformat()
+            payment_metadata['stamp_duty_receipt_number'] = instance.stamp_duty_receipt_number
+        
+        # Sync disbursement information
+        if instance.disbursed_at:
+            payment_metadata['disbursed_at'] = instance.disbursed_at.isoformat()
+            payment_metadata['platform_fee_amount'] = str(instance.platform_fee_amount)
+            payment_metadata['seller_net_amount'] = str(instance.seller_net_amount)
+        
+        # Use update to avoid triggering signals again
+        PaymentRequest.objects.filter(pk=payment.pk).update(metadata=payment_metadata)
+        
+        logger.info(f"Synced transaction {instance.id} stage {instance.stage} to payment {payment.internal_reference}")
     
-    # Map transaction stage to payment metadata
-    stage_mapping = {
-        Transaction.Stage.DUE_DILIGENCE: 'legal_due_diligence_completed',
-        Transaction.Stage.COMMITMENT: 'legal_commitment_completed',
-        Transaction.Stage.CONTRACTS: 'legal_contracts_completed',
-        Transaction.Stage.STATUTORY_CONSENTS: 'legal_consents_completed',
-        Transaction.Stage.TAXATION: 'legal_taxation_completed',
-        Transaction.Stage.REGISTRATION: 'legal_registration_completed',
-        Transaction.Stage.DISBURSEMENT: 'legal_disbursement_completed',
-        Transaction.Stage.COMPLETED: 'legal_completed',
-    }
-    
-    if instance.stage in stage_mapping:
-        payment_metadata[stage_mapping[instance.stage]] = timezone.now().isoformat()
-    
-    # Sync stamp duty verification (paid to KRA)
-    if instance.stamp_duty_receipt_verified_at:
-        payment_metadata['stamp_duty_receipt_verified_at'] = instance.stamp_duty_receipt_verified_at.isoformat()
-        payment_metadata['stamp_duty_receipt_number'] = instance.stamp_duty_receipt_number
-    
-    # Sync disbursement information
-    if instance.disbursed_at:
-        payment_metadata['disbursed_at'] = instance.disbursed_at.isoformat()
-        payment_metadata['platform_fee_amount'] = str(instance.platform_fee_amount)
-        payment_metadata['seller_net_amount'] = str(instance.seller_net_amount)
-    
-    payment.metadata = payment_metadata
-    payment.save(update_fields=['metadata', 'updated_at'])
-    
-    logger.info(f"Synced transaction {instance.id} stage {instance.stage} to payment {payment.internal_reference}")
+    finally:
+        instance._sync_to_payment_processing = False
 
 
 @receiver(post_save, sender="transactions.TransactionDocument")
@@ -338,54 +371,64 @@ def sync_document_verification_to_payment(sender, instance, **kwargs):
     When a legal document is verified, update the associated payment's closing step.
     This links legal document verification with payment step completion.
     """
-    if not instance.transaction or not instance.transaction.payment_request:
+    # GUARD: Prevent re-entry
+    if getattr(instance, '_doc_sync_processing', False):
         return
     
-    payment = instance.transaction.payment_request
+    try:
+        instance._doc_sync_processing = True
+        
+        if not instance.transaction or not instance.transaction.payment_request:
+            return
+        
+        payment = instance.transaction.payment_request
+        
+        # Map document type to payment closing step
+        doc_to_step = {
+            'OFFICIAL_SEARCH': 'due_diligence',
+            'SURVEY_MAP': 'due_diligence',
+            'LETTER_OF_OFFER': 'offer',
+            'SALE_AGREEMENT': 'agreement',
+            'LCB_CONSENT': 'lcb_consent',
+            'SPOUSAL_CONSENT': 'lcb_consent',
+            'STAMP_DUTY_RECEIPT': 'stamp_duty',
+            'VALUATION_REPORT': 'stamp_duty',
+            'TRANSFER_FORM': 'completion_docs',
+            'ORIGINAL_TITLE_DEED': 'completion_docs',
+            'NEW_TITLE_DEED': 'registration',
+        }
+        
+        step_code = doc_to_step.get(instance.document_type)
+        if step_code and instance.status == 'verified':
+            from payments.models import PaymentClosingStep
+            closing_step = payment.closing_steps.filter(code=step_code).first()
+            if closing_step and closing_step.status != PaymentClosingStep.Status.COMPLETED:
+                # Check if all documents for this step are verified
+                required_docs = instance.transaction.get_required_documents_for_stage()
+                all_verified = True
+                
+                for doc_type in required_docs:
+                    doc = instance.transaction.documents.filter(
+                        document_type=doc_type,
+                        status='verified'
+                    ).first()
+                    if not doc:
+                        all_verified = False
+                        break
+                
+                if all_verified:
+                    try:
+                        closing_step.set_status(
+                            PaymentClosingStep.Status.COMPLETED,
+                            actor=instance.verified_by,
+                            notes=f"All legal documents verified for {closing_step.display_title}"
+                        )
+                        logger.info(f"Auto-completed payment step {step_code} for {payment.internal_reference}")
+                    except Exception as e:
+                        logger.warning(f"Could not auto-complete payment step: {e}")
     
-    # Map document type to payment closing step
-    doc_to_step = {
-        'OFFICIAL_SEARCH': 'due_diligence',
-        'SURVEY_MAP': 'due_diligence',
-        'LETTER_OF_OFFER': 'offer',
-        'SALE_AGREEMENT': 'agreement',
-        'LCB_CONSENT': 'lcb_consent',
-        'SPOUSAL_CONSENT': 'lcb_consent',
-        'STAMP_DUTY_RECEIPT': 'stamp_duty',
-        'VALUATION_REPORT': 'stamp_duty',
-        'TRANSFER_FORM': 'completion_docs',
-        'ORIGINAL_TITLE_DEED': 'completion_docs',
-        'NEW_TITLE_DEED': 'registration',
-    }
-    
-    step_code = doc_to_step.get(instance.document_type)
-    if step_code and instance.status == 'verified':
-        from payments.models import PaymentClosingStep
-        closing_step = payment.closing_steps.filter(code=step_code).first()
-        if closing_step and closing_step.status != PaymentClosingStep.Status.COMPLETED:
-            # Check if all documents for this step are verified
-            required_docs = instance.transaction.get_required_documents_for_stage()
-            all_verified = True
-            
-            for doc_type in required_docs:
-                doc = instance.transaction.documents.filter(
-                    document_type=doc_type,
-                    status='verified'
-                ).first()
-                if not doc:
-                    all_verified = False
-                    break
-            
-            if all_verified:
-                try:
-                    closing_step.set_status(
-                        PaymentClosingStep.Status.COMPLETED,
-                        actor=instance.verified_by,
-                        notes=f"All legal documents verified for {closing_step.display_title}"
-                    )
-                    logger.info(f"Auto-completed payment step {step_code} for {payment.internal_reference}")
-                except Exception as e:
-                    logger.warning(f"Could not auto-complete payment step: {e}")
+    finally:
+        instance._doc_sync_processing = False
 
 
 @receiver(post_save, sender="transactions.Transaction")
@@ -393,48 +436,73 @@ def auto_trigger_payment_disbursement(sender, instance, **kwargs):
     """
     When a legal transaction reaches the REGISTRATION stage (new title issued),
     automatically trigger the payment disbursement.
-    
-    This is the key integration point between legal and payment workflows:
-    - Registration complete → Disburse funds to seller
     """
-    from .models import Transaction
+    # GUARD: Prevent re-entry
+    if getattr(instance, '_disbursement_trigger_processing', False):
+        return
     
-    # Check if we just advanced to REGISTRATION stage
-    if not hasattr(instance, '_previous_stage'):
-        try:
-            original = Transaction.objects.get(pk=instance.pk)
-            previous_stage = original.stage
-        except Transaction.DoesNotExist:
-            previous_stage = None
-    else:
-        previous_stage = getattr(instance, '_previous_stage', None)
-    
-    # If we just advanced to REGISTRATION stage, trigger disbursement
-    if (instance.stage == Transaction.Stage.REGISTRATION and 
-        previous_stage != Transaction.Stage.REGISTRATION and
-        instance.payment_request):
+    try:
+        instance._disbursement_trigger_processing = True
         
-        payment = instance.payment_request
-        
-        # Check if both deposit and balance are in escrow
-        deposit_paid = payment.metadata.get('deposit_paid', False)
-        balance_paid = payment.metadata.get('balance_paid', False)
-        
-        if deposit_paid and balance_paid and not payment.disbursed_at:
-            from payments.models import PaymentRequest
-            
-            logger.info(f"Registration complete for transaction {instance.id}, triggering disbursement for {payment.internal_reference}")
-            
+        # Check if we just advanced to REGISTRATION stage
+        if not hasattr(instance, '_previous_stage'):
             try:
-                # Mark stamp duty as verified if receipt exists
-                if instance.stamp_duty_receipt_number and not payment.stamp_duty_receipt_verified_at:
-                    payment.stamp_duty_receipt_verified_at = timezone.now()
-                    payment.stamp_duty_receipt_number = instance.stamp_duty_receipt_number
-                    payment.save(update_fields=['stamp_duty_receipt_verified_at', 'stamp_duty_receipt_number', 'updated_at'])
+                original = Transaction.objects.get(pk=instance.pk)
+                previous_stage = original.stage
+            except Transaction.DoesNotExist:
+                previous_stage = None
+        else:
+            previous_stage = getattr(instance, '_previous_stage', None)
+        
+        # If we just advanced to REGISTRATION stage, trigger disbursement
+        if (instance.stage == Transaction.Stage.REGISTRATION and 
+            previous_stage != Transaction.Stage.REGISTRATION and
+            instance.payment_request):
+            
+            payment = instance.payment_request
+            
+            # Check if both deposit and balance are in escrow
+            deposit_paid = payment.metadata.get('deposit_paid', False)
+            balance_paid = payment.metadata.get('balance_paid', False)
+            
+            if deposit_paid and balance_paid and not payment.disbursed_at:
+                logger.info(f"Registration complete for transaction {instance.id}, triggering disbursement for {payment.internal_reference}")
                 
-                # Trigger disbursement
-                payment.apply_transition("disburse_to_seller", actor=instance.buyer)
-                logger.info(f"Auto-disbursement triggered for {payment.internal_reference}")
-                
-            except Exception as e:
-                logger.error(f"Failed to auto-disburse for {payment.internal_reference}: {e}")
+                try:
+                    # Mark stamp duty as verified if receipt exists
+                    if instance.stamp_duty_receipt_number and not payment.stamp_duty_receipt_verified_at:
+                        PaymentRequest.objects.filter(pk=payment.pk).update(
+                            stamp_duty_receipt_verified_at=timezone.now(),
+                            stamp_duty_receipt_number=instance.stamp_duty_receipt_number
+                        )
+                    
+                    # Trigger disbursement using a separate method to avoid signal recursion
+                    _trigger_payment_disbursement_safely(payment, instance.buyer)
+                    
+                except Exception as e:
+                    logger.error(f"Failed to auto-disburse for {payment.internal_reference}: {e}")
+    
+    finally:
+        instance._disbursement_trigger_processing = False
+
+
+def _trigger_payment_disbursement_safely(payment, actor):
+    """
+    Safely trigger payment disbursement without causing signal recursion.
+    """
+    # Mark disbursement as in progress to prevent recursion
+    payment_metadata = dict(payment.metadata or {})
+    payment_metadata['disbursement_triggered'] = True
+    PaymentRequest.objects.filter(pk=payment.pk).update(
+        disbursed_at=timezone.now(),
+        platform_fee_deducted_at=timezone.now(),
+        metadata=payment_metadata
+    )
+    
+    # Use a direct update to set status to RELEASED
+    PaymentRequest.objects.filter(pk=payment.pk).update(
+        status=PaymentRequest.Status.RELEASED,
+        released_at=timezone.now()
+    )
+    
+    logger.info(f"Funds disbursed for {payment.internal_reference}")

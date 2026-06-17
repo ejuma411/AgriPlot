@@ -51,7 +51,6 @@ class TransactionAdmin(admin.ModelAdmin):
     fieldsets = (
         ("Transaction Information", {
             "fields": (
-                "id",
                 "transaction_type",
                 "stage",
                 "payment_request",
@@ -81,7 +80,6 @@ class TransactionAdmin(admin.ModelAdmin):
                 "balance_held_in_escrow_at",
                 "disbursed_at",
                 "platform_fee_deducted_at",
-                "escrow_status_display",
             ),
             "classes": ("collapse",),
         }),
@@ -93,7 +91,6 @@ class TransactionAdmin(admin.ModelAdmin):
                 "stamp_duty_receipt_number",
                 "stamp_duty_receipt_verified_at",
                 "stamp_duty_verified_by",
-                "stamp_duty_status_display",
             ),
             "classes": ("collapse",),
         }),

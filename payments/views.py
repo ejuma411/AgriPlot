@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import timedelta
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.conf import settings
 from django.contrib import messages
@@ -1448,7 +1448,44 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
                 "payment_id": self.object.pk,
             },
         )
+
+        # ── Current payment stage (deposit vs completion) ──────────────────────
+        meta = dict(workspace_payment.metadata or {})
+        deposit_paid = bool(meta.get("deposit_paid"))
+        completion_paid = bool(meta.get("completion_paid"))
+        full_amount = workspace_payment.amount or Decimal("0")
+
+        if not deposit_paid:
+            current_stage_code = "deposit"
+            current_stage_label = "Agreement Deposit (10%)"
+            current_stage_amount = (full_amount * Decimal("0.1")).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            current_stage_pct = 10
+        elif not completion_paid:
+            current_stage_code = "completion"
+            current_stage_label = "Completion Balance (90%)"
+            current_stage_amount = (full_amount * Decimal("0.9")).quantize(
+                Decimal("0.01"), rounding=ROUND_HALF_UP
+            )
+            current_stage_pct = 90
+        else:
+            current_stage_code = None
+            current_stage_label = "All payments complete"
+            current_stage_amount = Decimal("0")
+            current_stage_pct = 0
+
+        context["deposit_paid"] = deposit_paid
+        context["completion_paid"] = completion_paid
+        context["current_stage_code"] = current_stage_code
+        context["current_stage_label"] = current_stage_label
+        context["current_stage_amount"] = current_stage_amount
+        context["current_stage_pct"] = current_stage_pct
+        context["full_contract_amount"] = full_amount
+        # ──────────────────────────────────────────────────────────────────────
+
         return context
+
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -1548,6 +1585,15 @@ class PaymentStatusPollView(LoginRequiredMixin, View):
         elif payment.status in failed_statuses:
             state = "failed"
 
+        # Prefer the legal transaction workspace if one exists
+        if state == "paid" and anchor_payment.legal_transaction_id:
+            from django.urls import reverse as _rev
+            next_url = _rev("transactions:detail", kwargs={"pk": anchor_payment.legal_transaction_id})
+        elif state == "paid":
+            next_url = _payment_next_workspace_url(anchor_payment)
+        else:
+            next_url = ""
+
         return JsonResponse(
             {
                 "ok": True,
@@ -1555,7 +1601,7 @@ class PaymentStatusPollView(LoginRequiredMixin, View):
                 "status": payment.status,
                 "status_label": payment.get_status_display(),
                 "message": customer_message,
-                "redirect_url": _payment_next_workspace_url(anchor_payment) if state == "paid" else "",
+                "redirect_url": next_url,
             }
         )
 
@@ -2519,7 +2565,11 @@ class PaymentStagePaymentView(LoginRequiredMixin, View):
         if stage_code not in ['deposit', 'completion']:
             return JsonResponse({"success": False, "message": "Invalid stage for payment."}, status=400)
             
-        amount = payment.amount * Decimal('0.1') if stage_code == 'deposit' else payment.amount * Decimal('0.9')
+        amount = (
+            payment.amount * Decimal('0.1') if stage_code == 'deposit'
+            else payment.amount * Decimal('0.9')
+        ).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
         
         # Create child payment
         child_payment = PaymentRequest(
@@ -2532,7 +2582,7 @@ class PaymentStagePaymentView(LoginRequiredMixin, View):
             method=method,
             transaction_type=payment.transaction_type,
             status=PaymentRequest.Status.PENDING,
-            phone_number=phone_number if phone_number else None,
+            phone_number=phone_number or "",
             metadata={
                 "workflow_root_id": payment.pk,
                 "stage_code": stage_code,
@@ -2602,20 +2652,23 @@ class PaymentStagePaymentView(LoginRequiredMixin, View):
                 elif method == PaymentRequest.Method.BANK_TRANSFER:
                     return JsonResponse({
                         "success": True,
-                        "message": "Bank transfer initiated. Follow the instructions to complete payment.",
-                        "bank_details": {
-                            "bank": "Cooperative Bank of Kenya",
-                            "account_name": "AgriPlot Escrow Services",
-                            "account_number": "0114123456789",
-                            "swift_code": "KCOOKENA",
-                            "reference": child_payment.internal_reference,
-                        },
+                        "message": "Bank transfer noted. AgriPlot will confirm receipt within 1\u20132 business days.",
+                        "payment_id": child_payment.pk,
+                        "poll_url": reverse(
+                            "payments:payment_status_poll",
+                            kwargs={"pk": payment.pk, "payment_id": child_payment.pk},
+                        ),
                     })
                     
                 else:
                     return JsonResponse({
                         "success": True,
-                        "message": f"{dict(PaymentRequest.Method.choices).get(method)} payment initiated.",
+                        "message": f"{dict(PaymentRequest.Method.choices).get(method)} payment submitted. Pending admin confirmation.",
+                        "payment_id": child_payment.pk,
+                        "poll_url": reverse(
+                            "payments:payment_status_poll",
+                            kwargs={"pk": payment.pk, "payment_id": child_payment.pk},
+                        ),
                     })
                     
         except ValidationError as e:
