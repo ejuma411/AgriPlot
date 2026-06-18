@@ -27,7 +27,7 @@
     "date": "2026-02-25",
     "module": "Admin navigation patterns",
     "work_done": "Aligned admin navigation for quick access to verification queues, tasks, and analytics with consistent iconography.",
-    "evidence": "listings/templates/listings/admin/base_admin.html",
+    "evidence": "listings/templates/accounts/dashboard/base_dashboard.html",
     "status": "Done",
     "next_step": "Introduce global admin search for records"
   },

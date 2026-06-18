@@ -752,6 +752,11 @@ def stamp_duty_verification(request, pk):
 # ============================================================
 from payments.presenters import PaymentPresenter
 
+# ============================================================
+# TRANSACTION DETAIL VIEW - FIXED
+# ============================================================
+from payments.presenters import PaymentPresenter
+
 @login_required
 def transaction_detail(request, pk):
     """Display transaction details with all legal documents and milestones"""
@@ -781,14 +786,54 @@ def transaction_detail(request, pk):
     doc_type_labels = dict(TransactionDocument.DocType.choices)
     workflow_stages = []
     
+    # ============================================================
+    # TRACK SALE AGREEMENT VERIFICATION STATUS
+    # ============================================================
+    sale_agreement_verified = False
+    sale_agreement_exists = False
+    sale_agreement_doc = None
+    sale_agreement_status = "not_uploaded"
+    
+    for doc in documents:
+        if doc.document_type == 'SALE_AGREEMENT':
+            sale_agreement_exists = True
+            sale_agreement_doc = doc
+            if doc.status == 'verified':
+                sale_agreement_verified = True
+                sale_agreement_status = "verified"
+            elif doc.status == 'pending':
+                sale_agreement_status = "pending"
+            elif doc.status == 'rejected':
+                sale_agreement_status = "rejected"
+            break
+    
+    logger.info(f"📄 Sale Agreement: exists={sale_agreement_exists}, verified={sale_agreement_verified}, status={sale_agreement_status}")
+    
+    # ============================================================
+    # BUILD WORKFLOW STAGES
+    # ============================================================
     for stage_code in stage_order:
         stage_label = dict(Transaction.Stage.choices).get(stage_code, stage_code)
         stage_doc_types = transaction.get_required_documents_for_stage(stage_code)
         stage_required_doc_details = []
         
+        missing_count = 0
+        pending_count = 0
+        verified_count = 0
+        has_any_docs = len(stage_doc_types) > 0
+        
         for doc_type in stage_doc_types:
             doc = documents_by_type.get(doc_type)
             doc_label = doc_type_labels.get(doc_type, doc_type)
+            
+            if doc:
+                if doc.status == TransactionDocument.Status.VERIFIED:
+                    verified_count += 1
+                elif doc.status == TransactionDocument.Status.PENDING:
+                    pending_count += 1
+            else:
+                missing_count += 1
+            
             stage_required_doc_details.append({
                 "doc_type": doc_type,
                 "label": doc_label,
@@ -806,6 +851,11 @@ def transaction_detail(request, pk):
                 ),
             })
         
+        total_docs = len(stage_doc_types)
+        has_missing = missing_count > 0
+        has_pending = pending_count > 0
+        all_verified = verified_count == total_docs and total_docs > 0
+        
         workflow_stages.append({
             "code": stage_code,
             "label": stage_label,
@@ -813,6 +863,16 @@ def transaction_detail(request, pk):
             "required_doc_details": stage_required_doc_details,
             "is_current": transaction.stage == stage_code,
             "is_completed": stage_order.index(stage_code) < current_index,
+            "doc_status": {
+                "missing_count": missing_count,
+                "pending_count": pending_count,
+                "verified_count": verified_count,
+                "total_count": total_docs,
+                "has_missing": has_missing,
+                "has_pending": has_pending,
+                "all_verified": all_verified,
+                "has_any_docs": has_any_docs,
+            }
         })
     
     can_advance, advance_message = transaction.can_advance_to_next_stage()
@@ -858,7 +918,6 @@ def transaction_detail(request, pk):
         Q(profile__role='advocate')
     ).distinct()
     
-    # Also include currently assigned advocates even if they don't match the filter
     if transaction.buyer_advocate and transaction.buyer_advocate not in available_advocates:
         available_advocates = available_advocates | User.objects.filter(pk=transaction.buyer_advocate.pk)
     if transaction.seller_advocate and transaction.seller_advocate not in available_advocates:
@@ -867,27 +926,52 @@ def transaction_detail(request, pk):
     advocate_form = AdvocateAssignmentForm(transaction=transaction)
     
     # ============================================================
-    # PAYMENT UI LOGIC - Only show at CONTRACTS (deposit) and COMPLETION (balance)
+    # PAYMENT UI LOGIC - FIXED
     # ============================================================
     show_payment_ui = False
     payment_stage_type = None
     payment_amount = None
     payment_label = None
     
+    # Check deposit paid status
+    deposit_paid = False
+    if transaction.payment_request and transaction.payment_request.metadata:
+        deposit_paid = transaction.payment_request.metadata.get('deposit_paid', False)
+    if not deposit_paid:
+        deposit_paid = transaction.deposit_paid >= transaction.ten_percent_deposit
+    
+    # Check balance paid status
+    balance_paid = False
+    if transaction.payment_request and transaction.payment_request.metadata:
+        balance_paid = transaction.payment_request.metadata.get('balance_paid', False)
+    if not balance_paid:
+        balance_paid = transaction.balance_paid >= transaction.ninety_percent_balance
+    
+    # CONTRACTS stage - 10% deposit
+    if transaction.stage == Transaction.Stage.CONTRACTS:
+        if not deposit_paid and sale_agreement_verified:
+            show_payment_ui = True
+            payment_stage_type = 'deposit'
+            payment_amount = transaction.ten_percent_deposit
+            payment_label = "Agreement Deposit (10%)"
+            logger.info(f"✅ Payment UI ENABLED for CONTRACTS")
+    
+    # COMPLETION stage - 90% balance
+    elif transaction.stage == Transaction.Stage.COMPLETION:
+        if not balance_paid:
+            show_payment_ui = True
+            payment_stage_type = 'completion_balance'
+            payment_amount = transaction.balance_due
+            payment_label = "Completion Balance (90%)"
+            logger.info(f"✅ Payment UI ENABLED for COMPLETION")
+    
+    # ============================================================
+    # CHECK IF PAYMENT IS PENDING
+    # ============================================================
+    payment_pending = False
     if transaction.payment_request:
-        if transaction.stage == Transaction.Stage.CONTRACTS:
-            if not payment_status or not payment_status.get('deposit_paid'):
-                show_payment_ui = True
-                payment_stage_type = 'deposit'
-                payment_amount = transaction.ten_percent_deposit
-                payment_label = "Agreement Deposit (10%)"
-                
-        elif transaction.stage == Transaction.Stage.COMPLETION:
-            if not payment_status or not payment_status.get('balance_paid'):
-                show_payment_ui = True
-                payment_stage_type = 'completion_balance'
-                payment_amount = transaction.balance_due                
-                payment_label = "Completion Balance (90%)"
+        if transaction.payment_request.status in ['pending', 'draft']:
+            payment_pending = True
     
     stamp_duty_status = None
     if transaction.stage == Transaction.Stage.TAXATION:
@@ -931,11 +1015,11 @@ def transaction_detail(request, pk):
         'payment_stage_type': payment_stage_type,
         'payment_amount': payment_amount,
         'payment_label': payment_label,
+        'payment_pending': payment_pending,
         'stamp_duty_status': stamp_duty_status,
         'wallet_balance': wallet_balance,
         'has_wallet_pin': has_wallet_pin,
         'mpesa_allowed': payment_amount <= 50000 if payment_amount else True,
-        # Advocate assignment context
         'advocate_form': advocate_form,
         'available_advocates': available_advocates,
         'show_advocate_assignment': (
@@ -943,10 +1027,13 @@ def transaction_detail(request, pk):
             not transaction.buyer_advocate or 
             not transaction.seller_advocate
         ),
+        'sale_agreement_verified': sale_agreement_verified,
+        'sale_agreement_exists': sale_agreement_exists,
+        'sale_agreement_doc': sale_agreement_doc,
+        'sale_agreement_status': sale_agreement_status,
     }
     
     return render(request, 'transactions/detail.html', context)
-
 
 # ============================================================
 # UPLOAD DOCUMENT
@@ -1011,7 +1098,7 @@ def upload_document(request, pk):
 
 
 # ============================================================
-# MAKE STAGE PAYMENT
+# MAKE STAGE PAYMENT - FIXED
 # ============================================================
 @login_required
 @require_http_methods(["POST"])
@@ -1023,6 +1110,7 @@ def make_stage_payment(request, pk):
         messages.error(request, "Only the buyer can make payments.")
         return redirect('transactions:detail', pk=pk)
 
+    # Check if there's an existing payment request
     linked_payment = transaction.payment_request or PaymentRequest.objects.filter(legal_transaction=transaction).first()
     if linked_payment:
         paid_statuses = {
@@ -1032,17 +1120,52 @@ def make_stage_payment(request, pk):
             PaymentRequest.Status.RELEASED,
         }
         if linked_payment.status in paid_statuses:
-            messages.info(
-                request,
-                f"This transaction's payment ({linked_payment.internal_reference}) has already been completed."
-            )
+            # Payment is already completed - update transaction and advance
+            if transaction.stage == Transaction.Stage.CONTRACTS:
+                if not transaction.deposit_paid:
+                    transaction.deposit_paid = transaction.ten_percent_deposit
+                    transaction.deposit_held_in_escrow_at = timezone.now()
+                    transaction.balance_due = transaction.agreed_price - transaction.ten_percent_deposit
+                    transaction.save(update_fields=['deposit_paid', 'deposit_held_in_escrow_at', 'balance_due', 'updated_at'])
+                    
+                    messages.success(request, f"✅ Deposit payment confirmed! KES {transaction.ten_percent_deposit:,.2f} held in escrow.")
+                    
+                    # Try to advance to next stage
+                    try:
+                        can_advance, msg = transaction.can_advance_to_next_stage()
+                        if can_advance:
+                            transaction.advance_stage(actor=request.user)
+                            messages.info(request, f"Transaction advanced to {transaction.get_stage_display()}")
+                    except Exception as e:
+                        logger.warning(f"Could not auto-advance: {e}")
+            
+            elif transaction.stage == Transaction.Stage.COMPLETION:
+                if transaction.balance_due > 0:
+                    transaction.balance_paid = transaction.balance_due
+                    transaction.balance_held_in_escrow_at = timezone.now()
+                    transaction.balance_due = 0
+                    transaction.save(update_fields=['balance_paid', 'balance_held_in_escrow_at', 'balance_due', 'updated_at'])
+                    
+                    messages.success(request, f"✅ Balance payment confirmed! KES {transaction.balance_paid:,.2f} held in escrow.")
+                    
+                    # Try to advance to next stage
+                    try:
+                        can_advance, msg = transaction.can_advance_to_next_stage()
+                        if can_advance:
+                            transaction.advance_stage(actor=request.user)
+                            messages.info(request, f"Transaction advanced to {transaction.get_stage_display()}")
+                    except Exception as e:
+                        logger.warning(f"Could not auto-advance: {e}")
+            
+            return redirect('transactions:detail', pk=pk)
         else:
+            # Payment is pending - redirect to complete it
             messages.info(
                 request,
-                f"You have a pending payment workspace ({linked_payment.internal_reference}). "
-                f"Please complete your payment there."
+                f"You have a pending payment ({linked_payment.internal_reference}). "
+                f"Please complete your payment to proceed."
             )
-        return redirect("payments:detail", pk=linked_payment.pk)
+            return redirect("payments:detail", pk=linked_payment.pk)
     
     # Only allow payments at CONTRACTS (deposit) or COMPLETION (balance) stages
     if transaction.stage not in [Transaction.Stage.CONTRACTS, Transaction.Stage.COMPLETION]:
@@ -1075,6 +1198,7 @@ def make_stage_payment(request, pk):
         messages.error(request, "Please select a payment method.")
         return redirect('transactions:detail', pk=pk)
     
+    # Create payment request
     payment = PaymentRequest.objects.create(
         transaction_type=PaymentRequest.TransactionType.PURCHASE,
         category=category,
@@ -1094,6 +1218,7 @@ def make_stage_payment(request, pk):
     transaction.payment_request = payment
     transaction.save(update_fields=['payment_request', 'updated_at'])
     
+    # Process payment based on method
     try:
         with db_transaction.atomic():
             if method == PaymentRequest.Method.WALLET:
@@ -1112,9 +1237,13 @@ def make_stage_payment(request, pk):
                 
                 if stage_type == 'deposit':
                     transaction.deposit_paid = amount
+                    transaction.deposit_held_in_escrow_at = timezone.now()
                 else:
                     transaction.balance_paid = amount
+                    transaction.balance_held_in_escrow_at = timezone.now()
                     transaction.deposit_paid = min(transaction.deposit_paid, transaction.ten_percent_deposit)
+                
+                transaction.balance_due = transaction.agreed_price - (transaction.deposit_paid + transaction.balance_paid)
                 
                 metadata = dict(payment.metadata or {})
                 metadata[f"{stage_type}_paid"] = True
@@ -1122,12 +1251,22 @@ def make_stage_payment(request, pk):
                 payment.metadata = metadata
                 payment.save(update_fields=['metadata', 'updated_at'])
                 
-                transaction.save(update_fields=['deposit_paid', 'balance_paid', 'updated_at'])
+                transaction.save(update_fields=['deposit_paid', 'balance_paid', 'balance_due', 'deposit_held_in_escrow_at', 'balance_held_in_escrow_at', 'updated_at'])
                 
                 messages.success(request, f"💰 Payment of KES {amount:,.2f} successful via wallet.")
                 
+                # Check if both payments are complete
                 if transaction.deposit_paid >= transaction.ten_percent_deposit and transaction.balance_due <= 0:
                     messages.info(request, "✅ All payments complete! Transaction will proceed to registration.")
+                
+                # Try to advance after payment
+                try:
+                    can_advance, msg = transaction.can_advance_to_next_stage()
+                    if can_advance:
+                        transaction.advance_stage(actor=request.user)
+                        messages.info(request, f"Transaction advanced to {transaction.get_stage_display()}")
+                except Exception as e:
+                    logger.warning(f"Could not auto-advance after payment: {e}")
                 
                 return redirect('transactions:detail', pk=pk)
                 
@@ -1171,3 +1310,76 @@ def make_stage_payment(request, pk):
         messages.error(request, f"Payment failed: {str(e)}")
     
     return redirect('transactions:detail', pk=pk)
+
+
+# ============================================================
+# HELPER VIEW - Force advance after document verification
+# ============================================================
+@login_required
+@require_http_methods(["POST"])
+def force_advance_contracts(request, pk):
+    """
+    Force advance from CONTRACTS stage when document is verified.
+    This is a temporary fix for the stuck stage issue.
+    """
+    transaction = get_object_or_404(Transaction, pk=pk)
+    
+    # Only buyer or seller can force advance
+    if request.user not in [transaction.buyer, transaction.seller] and not request.user.is_staff:
+        messages.error(request, "You don't have permission to advance this transaction")
+        return redirect('transactions:detail', pk=pk)
+    
+    # Only works for CONTRACTS stage
+    if transaction.stage != Transaction.Stage.CONTRACTS:
+        messages.error(request, f"This action is only for the Contracts stage. Current stage: {transaction.get_stage_display()}")
+        return redirect('transactions:detail', pk=pk)
+    
+    try:
+        with db_transaction.atomic():
+            # Check if the agreement step is complete (both parties confirmed)
+            agreement_step = transaction.payment_request.closing_steps.filter(code='agreement').first() if transaction.payment_request else None
+            
+            if agreement_step and agreement_step.status == PaymentClosingStep.Status.COMPLETED:
+                # Both parties confirmed, advance to next stage
+                success, message = transaction.advance_stage(actor=request.user)
+                if success:
+                    messages.success(request, f"✅ {message}")
+                else:
+                    messages.error(request, f"❌ Cannot advance: {message}")
+            else:
+                # Record the user's confirmation
+                if request.user == transaction.buyer:
+                    if not agreement_step.buyer_confirmed_at:
+                        agreement_step.buyer_confirmed_at = timezone.now()
+                        agreement_step.save(update_fields=['buyer_confirmed_at', 'updated_at'])
+                        messages.info(request, "✅ Your confirmation as buyer has been recorded. Waiting for seller confirmation.")
+                    else:
+                        messages.info(request, "You have already confirmed. Waiting for seller confirmation.")
+                elif request.user == transaction.seller:
+                    if not agreement_step.seller_confirmed_at:
+                        agreement_step.seller_confirmed_at = timezone.now()
+                        agreement_step.save(update_fields=['seller_confirmed_at', 'updated_at'])
+                        messages.info(request, "✅ Your confirmation as seller has been recorded. Waiting for buyer confirmation.")
+                    else:
+                        messages.info(request, "You have already confirmed. Waiting for buyer confirmation.")
+                
+                # Check if both parties confirmed
+                if agreement_step and agreement_step.buyer_confirmed_at and agreement_step.seller_confirmed_at:
+                    agreement_step.status = PaymentClosingStep.Status.COMPLETED
+                    agreement_step.save(update_fields=['status', 'updated_at'])
+                    messages.success(request, "✅ Both parties have confirmed the agreement!")
+                    
+                    # Advance to next stage
+                    success, message = transaction.advance_stage(actor=request.user)
+                    if success:
+                        messages.success(request, f"✅ {message}")
+                    else:
+                        messages.error(request, f"❌ Cannot advance: {message}")
+            
+    except Exception as e:
+        logger.exception(f"Force advance error: {e}")
+        messages.error(request, f"❌ Failed to advance: {str(e)}")
+    
+    return redirect('transactions:detail', pk=pk)
+
+

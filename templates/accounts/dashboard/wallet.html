@@ -2,252 +2,187 @@
 {% load humanize %}
 
 {% block dash_page_title %}Wallet{% endblock %}
-{% block dash_page_subtitle %}Manage your funds, track deposits, and view transaction history.{% endblock %}
-
-{% block dashboard_content %}
-<!-- Stats Grid -->
-<div class="dash-grid-4 mb-4">
-    <div class="dash-card">
-        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
-            <div style="background: rgba(16, 185, 129, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--accent-hover); font-size: 1.25rem;">
-                <i class="fa-solid fa-wallet"></i>
-            </div>
-        </div>
-        <div>
-            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">KES {{ wallet.balance|default:0|floatformat:0|intcomma }}</h3>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Available Balance</p>
-        </div>
-    </div>
-
-    <div class="dash-card">
-        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
-            <div style="background: rgba(59, 130, 246, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 1.25rem;">
-                <i class="fa-solid fa-arrow-down"></i>
-            </div>
-        </div>
-        <div>
-            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">KES {{ wallet_cards.deposit_total|default:0|floatformat:0|intcomma }}</h3>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Total Deposits</p>
-        </div>
-    </div>
-
-    <div class="dash-card">
-        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
-            <div style="background: rgba(239, 68, 68, 0.1); width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1.25rem;">
-                <i class="fa-solid fa-arrow-up"></i>
-            </div>
-        </div>
-        <div>
-            <h3 style="font-size: 1.75rem; font-weight: 800; margin: 0; color: var(--text-primary);">KES {{ wallet_cards.debit_total|default:0|floatformat:0|intcomma }}</h3>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Total Withdrawn</p>
-        </div>
-    </div>
-
-    <div class="dash-card">
-        <div class="dash-card-header" style="margin-bottom: 0.5rem; padding-bottom: 0; border: none;">
-            <div style="background: {% if wallet_cards.has_pin %}rgba(16, 185, 129, 0.1); color: var(--accent-hover);{% else %}rgba(245, 158, 11, 0.1); color: #f59e0b;{% endif %} width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
-                <i class="fa-solid fa-lock"></i>
-            </div>
-        </div>
-        <div>
-            <h3 style="font-size: 1.5rem; font-weight: 800; margin: 0; color: var(--text-primary);">
-                {% if wallet_cards.has_pin %}✓ Active{% else %}⚠️ Not Set{% endif %}
-            </h3>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; margin: 0;">Security PIN</p>
-        </div>
-    </div>
-</div>
-
-<div class="dash-grid-3">
-    <!-- Main Transactions Queue (Spans 2 columns) -->
-    <div class="dash-card" style="grid-column: span 2;">
-        <div class="dash-card-header">
-            <h3 class="dash-card-title">Recent Transactions</h3>
-            <a href="{% url 'payments:wallet_transactions' %}" class="ap-btn ap-btn-ghost btn-sm" style="padding: 0.25rem 0.75rem; font-size: 0.8rem;">View All</a>
-        </div>
-        
-        {% if primary_queue %}
-            <div style="display: flex; flex-direction: column; gap: 1rem;">
-                {% for item in primary_queue|slice:":8" %}
-                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem; border: 1px solid #f1f5f9; border-radius: 0.75rem; background: white; transition: transform 0.2s ease;">
-                        <div style="display: flex; align-items: center; gap: 1rem;">
-                            <div style="width: 40px; height: 40px; border-radius: 50%; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
-                                <i class="fa-solid fa-file-invoice-dollar"></i>
-                            </div>
-                            <div>
-                                <h4 style="font-size: 0.95rem; font-weight: 600; margin: 0; color: var(--text-primary);">{{ item.title }}</h4>
-                                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">{{ item.subtitle }}</p>
-                            </div>
-                        </div>
-                        {% if item.url %}
-                            <a href="{{ item.url }}" style="padding: 0.25rem 0.75rem; border-radius: 2rem; background: var(--accent-light); color: var(--accent-hover); font-size: 0.75rem; font-weight: 600; text-decoration: none;">{{ item.status }}</a>
-                        {% else %}
-                            <span style="padding: 0.25rem 0.75rem; border-radius: 2rem; background: #f1f5f9; color: var(--text-secondary); font-size: 0.75rem; font-weight: 600;">{{ item.status }}</span>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div style="text-align: center; padding: 3rem 1rem;">
-                <div style="font-size: 2.5rem; color: #cbd5e1; margin-bottom: 1rem;">
-                    <i class="fa-solid fa-receipt"></i>
-                </div>
-                <h4 style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem;">No Transactions</h4>
-                <p style="color: var(--text-secondary); font-size: 0.9rem;">Your transaction history will appear here.</p>
-            </div>
-        {% endif %}
-    </div>
-
-    <!-- Quick Actions / Transact -->
-    <div class="dash-card">
-        <h3 class="dash-card-title mb-4">Transact</h3>
-        
-        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-            {% if not wallet_cards.has_pin %}
-            <button onclick="document.getElementById('pinModal').style.display='flex'" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: white; cursor: pointer; text-align: left; width: 100%;">
-                <div style="color: #f59e0b; font-size: 1.2rem; width: 24px; text-align: center;">
-                    <i class="fa-solid fa-lock"></i>
-                </div>
-                <div>
-                    <h4 style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0;">Set PIN</h4>
-                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">Required to make withdrawals</p>
-                </div>
-            </button>
-            {% endif %}
-
-            <button onclick="document.getElementById('depositModal').style.display='flex'" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: white; cursor: pointer; text-align: left; width: 100%;">
-                <div style="color: var(--accent-primary); font-size: 1.2rem; width: 24px; text-align: center;">
-                    <i class="fa-solid fa-arrow-down-long"></i>
-                </div>
-                <div>
-                    <h4 style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0;">Deposit Funds</h4>
-                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">Top up via M-Pesa or Bank</p>
-                </div>
-            </button>
-
-            <button onclick="document.getElementById('withdrawModal').style.display='flex'" style="display: flex; align-items: center; gap: 1rem; padding: 1rem; border: 1px solid #e2e8f0; border-radius: 0.75rem; background: white; cursor: pointer; text-align: left; width: 100%;">
-                <div style="color: #ef4444; font-size: 1.2rem; width: 24px; text-align: center;">
-                    <i class="fa-solid fa-arrow-up-long"></i>
-                </div>
-                <div>
-                    <h4 style="font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin: 0;">Withdraw</h4>
-                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin: 0;">Transfer to your M-Pesa</p>
-                </div>
-            </button>
-        </div>
-
-        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #f1f5f9;">
-            <h4 style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em; margin-bottom: 1rem;">Summary</h4>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <span style="font-size: 0.9rem; color: var(--text-secondary);">Purchases</span>
-                <span style="font-weight: 600;">{{ wallet_cards.purchase_payments|default:0 }}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
-                <span style="font-size: 0.9rem; color: var(--text-secondary);">Leases</span>
-                <span style="font-weight: 600;">{{ wallet_cards.lease_payments|default:0 }}</span>
-            </div>
-            <div style="display: flex; justify-content: space-between;">
-                <span style="font-size: 0.9rem; color: var(--text-secondary);">Total Txns</span>
-                <span style="font-weight: 600;">{{ wallet_cards.transaction_count|default:0 }}</span>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Wallet Modals -->
-<div id="pinModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:1rem;padding:2rem;max-width:400px;width:90%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);">
-        <h3 style="margin:0 0 0.5rem 0;font-size:1.25rem;font-weight:700;">Set Wallet PIN</h3>
-        <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1.5rem;">Choose a 4-digit PIN for wallet payments.</p>
-        <input type="password" id="pinInput" maxlength="4" placeholder="Enter 4-digit PIN" class="dash-form-control mb-3">
-        <input type="password" id="pinConfirm" maxlength="4" placeholder="Confirm PIN" class="dash-form-control mb-3">
-        <div id="pinError" style="color:#ef4444;font-size:0.85rem;margin-bottom:1rem;display:none;"></div>
-        <div style="display:flex;gap:1rem;">
-            <button class="ap-btn ap-btn-primary" style="flex:1;justify-content:center;" onclick="submitPin()">Set PIN</button>
-            <button class="ap-btn ap-btn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('pinModal').style.display='none'">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<div id="depositModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:1rem;padding:2rem;max-width:400px;width:90%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);">
-        <h3 style="margin:0 0 0.5rem 0;font-size:1.25rem;font-weight:700;">Deposit to Wallet</h3>
-        <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1.5rem;">Enter amount and your M-Pesa number.</p>
-        <input type="number" id="depositAmount" placeholder="Amount (KES)" class="dash-form-control mb-3">
-        <input type="tel" id="depositPhone" placeholder="Phone (e.g. 0712345678)" class="dash-form-control mb-3">
-        <div id="depositError" style="color:#ef4444;font-size:0.85rem;margin-bottom:1rem;display:none;"></div>
-        <div style="display:flex;gap:1rem;">
-            <button class="ap-btn ap-btn-primary" style="flex:1;justify-content:center;" onclick="submitDeposit()">Deposit</button>
-            <button class="ap-btn ap-btn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('depositModal').style.display='none'">Cancel</button>
-        </div>
-    </div>
-</div>
-
-<div id="withdrawModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.6);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:1rem;padding:2rem;max-width:400px;width:90%;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);">
-        <h3 style="margin:0 0 0.5rem 0;font-size:1.25rem;font-weight:700;">Withdraw from Wallet</h3>
-        <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:1.5rem;">Funds will be sent to your M-Pesa.</p>
-        <input type="number" id="withdrawAmount" placeholder="Amount (KES)" class="dash-form-control mb-3">
-        <input type="tel" id="withdrawPhone" placeholder="Phone (e.g. 0712345678)" class="dash-form-control mb-3">
-        <input type="password" id="withdrawPin" maxlength="4" placeholder="Wallet PIN" class="dash-form-control mb-3">
-        <div id="withdrawError" style="color:#ef4444;font-size:0.85rem;margin-bottom:1rem;display:none;"></div>
-        <div style="display:flex;gap:1rem;">
-            <button class="ap-btn ap-btn-primary" style="flex:1;justify-content:center;" onclick="submitWithdraw()">Withdraw</button>
-            <button class="ap-btn ap-btn-outline" style="flex:1;justify-content:center;" onclick="document.getElementById('withdrawModal').style.display='none'">Cancel</button>
-        </div>
-    </div>
-</div>
+{% block dash_page_subtitle %}Manage your funds and transaction history.{% endblock %}
 
 {% block dashboard_extra_css %}
-<script>
-function getCookie(name) {
-    let v = document.cookie.match('(^|;) ?' + name + '=([^;]*)(;|$)');
-    return v ? v[2] : null;
-}
+<style>
+    .wallet-balance-card {
+        background: linear-gradient(135deg, #0f5c3f 0%, #0a3d28 100%);
+        color: white;
+        padding: 2rem;
+        border-radius: 1rem;
+        margin-bottom: 2rem;
+    }
 
-async function walletFetch(url, body) {
-    const r = await fetch(url, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
-        body: JSON.stringify(body),
-    });
-    return r.json();
-}
+    .wallet-balance-card h2 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0.5rem 0;
+    }
 
-async function submitPin() {
-    const pin = document.getElementById('pinInput').value;
-    const confirm = document.getElementById('pinConfirm').value;
-    const err = document.getElementById('pinError');
-    if (pin.length !== 4 || !/^\d{4}$/.test(pin)) { err.textContent='PIN must be 4 digits'; err.style.display='block'; return; }
-    if (pin !== confirm) { err.textContent='PINs do not match'; err.style.display='block'; return; }
-    err.style.display='none';
-    const res = await walletFetch('{% url "payments:wallet_set_pin" %}', {pin, confirm_pin: confirm});
-    if (res.success) { location.reload(); } else { err.textContent=res.message; err.style.display='block'; }
-}
+    .wallet-balance-card p {
+        opacity: 0.8;
+        margin: 0;
+    }
 
-async function submitDeposit() {
-    const amount = document.getElementById('depositAmount').value;
-    const phone = document.getElementById('depositPhone').value;
-    const err = document.getElementById('depositError');
-    if (!amount || amount < 10) { err.textContent='Minimum deposit is KES 10'; err.style.display='block'; return; }
-    if (!phone) { err.textContent='Enter your M-Pesa number'; err.style.display='block'; return; }
-    err.style.display='none';
-    const res = await walletFetch('{% url "payments:wallet_deposit" %}', {amount, phone_number: phone});
-    if (res.success) { location.reload(); } else { err.textContent=res.message; err.style.display='block'; }
-}
+    .transaction-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid #e2e8f0;
+    }
 
-async function submitWithdraw() {
-    const amount = document.getElementById('withdrawAmount').value;
-    const phone = document.getElementById('withdrawPhone').value;
-    const pin = document.getElementById('withdrawPin').value;
-    const err = document.getElementById('withdrawError');
-    if (!amount || amount < 10) { err.textContent='Minimum withdrawal is KES 10'; err.style.display='block'; return; }
-    if (!phone) { err.textContent='Enter your M-Pesa number'; err.style.display='block'; return; }
-    if (!pin) { err.textContent='Enter your wallet PIN'; err.style.display='block'; return; }
-    err.style.display='none';
-    const res = await walletFetch('{% url "payments:wallet_withdraw" %}', {amount, phone_number: phone, pin});
-    if (res.success) { location.reload(); } else { err.textContent=res.message; err.style.display='block'; }
-}
-</script>
+    .transaction-item:last-child {
+        border-bottom: none;
+    }
+
+    .transaction-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+    }
+
+    .transaction-icon.credit {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .transaction-icon.debit {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .transaction-info h4 {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin: 0 0 0.25rem 0;
+    }
+
+    .transaction-info p {
+        font-size: 0.75rem;
+        color: #64748b;
+        margin: 0;
+    }
+
+    .transaction-amount {
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .transaction-amount.credit {
+        color: #10b981;
+    }
+
+    .transaction-amount.debit {
+        color: #ef4444;
+    }
+
+    .dash-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .dash-card-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .dash-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .card-badge {
+        background: #f1f5f9;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #64748b;
+    }
+</style>
 {% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Wallet</h1>
+        <p class="dashboard-subtitle">Manage your funds and transaction history</p>
+    </div>
+</div>
+
+<!-- Wallet Balance -->
+<div class="wallet-balance-card">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <p>Available Balance</p>
+            <h2>KES {{ wallet_balance|default:"0"|intcomma }}</h2>
+        </div>
+        <div style="display: flex; gap: 0.5rem;">
+            <button style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+                <i class="fa-solid fa-plus"></i> Top Up
+            </button>
+            <button style="background: white; border: none; color: #0f5c3f; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+                <i class="fa-solid fa-arrow-right"></i> Withdraw
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction History -->
+<div class="dash-card">
+    <div class="dash-card-header">
+        <h3 class="dash-card-title">
+            <i class="fas fa-clock-rotate-left" style="color: #10b981;"></i>
+            Transaction History
+        </h3>
+        <span class="card-badge">{{ transactions|length }} transactions</span>
+    </div>
+    <div style="padding: 1.25rem;">
+        {% for transaction in transactions %}
+        <div class="transaction-item">
+            <div style="display: flex; gap: 1rem; align-items: center;">
+                <div class="transaction-icon {% if transaction.type == 'credit' %}credit{% else %}debit{% endif %}">
+                    <i class="fa-solid {% if transaction.type == 'credit' %}fa-arrow-down{% else %}fa-arrow-up{% endif %}"></i>
+                </div>
+                <div class="transaction-info">
+                    <h4>{{ transaction.description }}</h4>
+                    <p>{{ transaction.date|date:"M d, Y" }} • {{ transaction.reference|default:"No reference" }}</p>
+                </div>
+            </div>
+            <div>
+                <div class="transaction-amount {% if transaction.type == 'credit' %}credit{% else %}debit{% endif %}">
+                    {% if transaction.type == 'credit' %}+{% else %}-{% endif %} KES {{ transaction.amount|intcomma }}
+                </div>
+                <div style="font-size: 0.65rem; color: #94a3b8; text-align: right;">
+                    {{ transaction.status|title }}
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; padding: 2rem 1rem;">
+            <div style="font-size: 2.5rem; color: #cbd5e1; margin-bottom: 1rem;">
+                <i class="fa-solid fa-wallet"></i>
+            </div>
+            <h4 style="font-weight: 600; color: #0f172a; margin-bottom: 0.5rem;">No transactions</h4>
+            <p style="color: #64748b;">Your transaction history will appear here</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
 {% endblock %}

@@ -1,15 +1,451 @@
-{% extends "verification/admin/base_admin.html" %}
+{% extends "accounts/dashboard/base_dashboard.html" %}
 {% load static humanize %}
 
-{% block admin_title %}Workload Management{% endblock %}
+{% block dash_page_title %}Workload Management{% endblock %}
+{% block dash_page_subtitle %}Manage officer assignments and task distribution.{% endblock %}
 
-{% block admin_content %}
+{% block dashboard_extra_css %}
+<style>
+    /* Workload Management specific styles */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    .stat-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        transition: all 0.2s;
+    }
+
+    .stat-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transform: translateY(-2px);
+    }
+
+    .stat-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        font-weight: 600;
+    }
+
+    .stat-value {
+        display: block;
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0.25rem 0;
+    }
+
+    .stat-value.text-primary { color: #3b82f6; }
+    .stat-value.text-warning { color: #f59e0b; }
+    .stat-value.text-success { color: #10b981; }
+    .stat-value.text-danger { color: #ef4444; }
+
+    .stat-trend {
+        font-size: 0.75rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -0.75rem;
+    }
+
+    .g-4 {
+        gap: 1.5rem;
+    }
+
+    .col-lg-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        padding: 0 0.75rem;
+    }
+
+    .admin-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+
+    .admin-card-body {
+        padding: 1.25rem;
+    }
+
+    .admin-card-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+
+    .admin-card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .admin-card-title i {
+        color: #10b981;
+    }
+
+    .admin-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+
+    .admin-btn-primary {
+        background: #10b981;
+        color: white;
+        border-color: #10b981;
+    }
+
+    .admin-btn-primary:hover {
+        background: #059669;
+        border-color: #059669;
+    }
+
+    .admin-btn-outline {
+        background: transparent;
+        border-color: #e2e8f0;
+        color: #64748b;
+    }
+
+    .admin-btn-outline:hover {
+        border-color: #10b981;
+        color: #10b981;
+        background: #f8fafc;
+    }
+
+    .admin-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .admin-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+
+    .admin-table th {
+        text-align: left;
+        padding: 0.75rem 1rem;
+        background: #fafafa;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        border-bottom: 2px solid #e2e8f0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .admin-table td {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e2e8f0;
+        color: #334155;
+        vertical-align: middle;
+    }
+
+    .admin-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .admin-table tbody tr.table-warning {
+        background: #fef3c7;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+
+    .bg-light {
+        background: #f1f5f9 !important;
+    }
+    
+    .border {
+        border: 1px solid #e2e8f0 !important;
+    }
+
+    .bg-secondary-soft {
+        background: rgba(100, 116, 139, 0.1) !important;
+        color: #64748b !important;
+    }
+
+    .bg-info-soft {
+        background: rgba(59, 130, 246, 0.1) !important;
+        color: #3b82f6 !important;
+    }
+
+    .bg-success-soft {
+        background: rgba(16, 185, 129, 0.1) !important;
+        color: #10b981 !important;
+    }
+
+    .bg-warning-soft {
+        background: rgba(245, 158, 11, 0.1) !important;
+        color: #f59e0b !important;
+    }
+
+    .bg-primary-soft {
+        background: rgba(16, 185, 129, 0.1) !important;
+        color: #10b981 !important;
+    }
+
+    .text-primary { color: #3b82f6 !important; }
+    .text-warning { color: #f59e0b !important; }
+    .text-success { color: #10b981 !important; }
+    .text-danger { color: #ef4444 !important; }
+    .text-dark { color: #0f172a !important; }
+    .text-muted { color: #64748b !important; }
+
+    .fw-bold { font-weight: 700 !important; }
+    .small { font-size: 0.875rem !important; }
+
+    .d-flex { display: flex !important; }
+    .align-items-center { align-items: center !important; }
+    .justify-content-between { justify-content: space-between !important; }
+    .align-items-start { align-items: flex-start !important; }
+    .flex-column { flex-direction: column !important; }
+    .gap-2 { gap: 0.5rem !important; }
+    .gap-3 { gap: 0.75rem !important; }
+    .gap-4 { gap: 1.5rem !important; }
+
+    .mb-0 { margin-bottom: 0 !important; }
+    .mb-1 { margin-bottom: 0.25rem !important; }
+    .mb-2 { margin-bottom: 0.5rem !important; }
+    .mb-3 { margin-bottom: 0.75rem !important; }
+    .mb-4 { margin-bottom: 1.5rem !important; }
+    
+    .mt-2 { margin-top: 0.5rem !important; }
+    
+    .p-3 { padding: 0.75rem !important; }
+    .px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+    .py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+    .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+    .py-3 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+    .py-5 { padding-top: 3rem !important; padding-bottom: 3rem !important; }
+
+    .text-center { text-align: center !important; }
+    .text-end { text-align: right !important; }
+    .opacity-50 { opacity: 0.5 !important; }
+
+    .rounded-circle { border-radius: 50% !important; }
+    .rounded-3 { border-radius: 0.75rem !important; }
+    .border-start { border-left: 4px solid #e2e8f0 !important; }
+    .border-warning { border-color: #f59e0b !important; }
+    .border-primary { border-color: #10b981 !important; }
+    .border-secondary { border-color: #64748b !important; }
+
+    .h-100 { height: 100% !important; }
+
+    /* Alert styles */
+    .alert {
+        padding: 1rem 1.25rem;
+        border-radius: 0.75rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .alert-warning {
+        background: #fef3c7;
+        border-color: #f59e0b;
+        color: #92400e;
+    }
+
+    .alert-warning.border-start {
+        border-left: 4px solid #f59e0b !important;
+    }
+
+    /* Officer Mini Card */
+    .officer-mini-card {
+        background: white;
+        transition: all 0.2s ease;
+    }
+    
+    .officer-mini-card:hover {
+        border-color: #10b981 !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+
+    /* Custom Modal Styles */
+    .ag-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 2000;
+        backdrop-filter: blur(2px);
+    }
+    
+    .ag-modal-content {
+        position: relative;
+        background: white;
+        margin: 10vh auto;
+        width: 90%;
+        max-width: 500px;
+        border-radius: 16px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        animation: modalFadeIn 0.3s ease;
+    }
+    
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .ag-modal-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .ag-modal-title {
+        margin: 0;
+        font-weight: 700;
+        color: #0f172a;
+    }
+    
+    .ag-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+        opacity: 0.5;
+    }
+    
+    .ag-modal-close:hover { opacity: 1; }
+    
+    .ag-modal-body { padding: 1.5rem; }
+    .ag-modal-footer {
+        padding: 1rem 1.5rem;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 0.4rem;
+    }
+
+    .form-select {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        background: white;
+        appearance: none;
+    }
+
+    .form-select:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .d-none { display: none !important; }
+
+    .py-2.px-3 {
+        padding: 0.5rem 0.75rem !important;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 992px) {
+        .col-lg-6 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stat-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        .admin-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .admin-table th, .admin-table td {
+            padding: 0.5rem;
+        }
+
+        .ag-modal-content {
+            margin: 5vh auto;
+            width: 95%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stat-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Workload Management</h1>
+        <p class="dashboard-subtitle">Manage officer assignments and task distribution.</p>
+    </div>
+</div>
+
 {% if focus_task_id %}
 <div class="alert alert-warning border-start border-4 border-warning mb-4">
     <div class="fw-bold mb-1">Manual assignment required</div>
     <div>The requested task is highlighted below. If auto-assignment did not find a surveyor, assign it from this screen.</div>
 </div>
 {% endif %}
+
 <!-- Operational Stats -->
 <div class="stat-grid mb-4">
     <div class="stat-card">
@@ -48,10 +484,10 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="d-flex gap-3">
                                 <div class="officer-initials bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
-                                    {{ officer.user|display_initial }}
+                                    {{ officer.user.username|first|upper }}
                                 </div>
                                 <div>
-                                    <div class="fw-bold text-dark">{{ officer.user|display_name }}</div>
+                                    <div class="fw-bold text-dark">{{ officer.user.get_full_name|default:officer.user.username }}</div>
                                     <small class="text-muted d-block">{{ officer.designation }}</small>
                                 </div>
                             </div>
@@ -82,10 +518,10 @@
                         <div class="d-flex justify-content-between align-items-start">
                             <div class="d-flex gap-3">
                                 <div class="officer-initials bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
-                                    {{ surveyor.user|display_initial }}
+                                    {{ surveyor.user.username|first|upper }}
                                 </div>
                                 <div>
-                                    <div class="fw-bold text-dark">{{ surveyor.user|display_name }}</div>
+                                    <div class="fw-bold text-dark">{{ surveyor.user.get_full_name|default:surveyor.user.username }}</div>
                                     <small class="text-muted d-block">{{ surveyor.designation }}</small>
                                 </div>
                             </div>
@@ -189,7 +625,7 @@
                 <tr>
                     <td><span class="badge bg-light border text-dark">{{ task.get_verification_type_display }}</span></td>
                     <td><div class="fw-bold text-dark">{{ task.plot.title|truncatechars:40 }}</div></td>
-                    <td><i class="fas fa-user-circle me-1 text-muted"></i> {{ task.assigned_to|display_name }}</td>
+                    <td><i class="fas fa-user-circle me-1 text-muted"></i> {{ task.assigned_to.get_full_name|default:task.assigned_to.username }}</td>
                     <td><small class="text-muted">{{ task.assigned_at|timesince }} ago</small></td>
                     <td class="text-end">
                         <a href="{% url 'verification:review_plot' task.plot.id %}" class="admin-btn admin-btn-outline py-1 px-3">Review</a>
@@ -229,22 +665,22 @@
                         <option value="">-- Choose Officer --</option>
                         {% for officer in extension_officers %}
                             <option value="{{ officer.user.id }}" data-role="extension" data-counties="{{ officer.assigned_counties|join:',' }}">
-                                {{ officer.user|display_name }} (Extension)
+                                {{ officer.user.get_full_name|default:officer.user.username }} (Extension)
                             </option>
                         {% endfor %}
                         {% for surveyor in surveyors %}
                             <option value="{{ surveyor.user.id }}" data-role="surveyor" data-counties="{{ surveyor.assigned_counties|join:',' }}">
-                                {{ surveyor.user|display_name }} (Surveyor)
+                                {{ surveyor.user.get_full_name|default:surveyor.user.username }} (Surveyor)
                             </option>
                         {% endfor %}
                         {% for staff in staff_users %}
                             <option value="{{ staff.id }}" data-role="staff">
-                                {{ staff|display_name }} (Staff)
+                                {{ staff.get_full_name|default:staff.username }} (Staff)
                             </option>
                         {% endfor %}
                         {% for superuser in superusers %}
                             <option value="{{ superuser.id }}" data-role="superuser">
-                                {{ superuser|display_name }} (Superuser)
+                                {{ superuser.get_full_name|default:superuser.username }} (Superuser)
                             </option>
                         {% endfor %}
                     </select>
@@ -260,56 +696,6 @@
         </div>
     </div>
 </div>
-
-<style>
-    .bg-info-soft { background: rgba(13, 202, 240, 0.1); }
-    .bg-warning-soft { background: rgba(255, 193, 7, 0.1); }
-    .bg-success-soft { background: rgba(25, 135, 84, 0.1); }
-    .bg-danger-soft { background: rgba(220, 53, 69, 0.1); }
-    .bg-primary-soft { background: rgba(var(--ag-green-rgb), 0.1); }
-    
-    .officer-mini-card {
-        background: white;
-        transition: all 0.2s ease;
-    }
-    .officer-mini-card:hover {
-        border-color: var(--ag-green-700) !important;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    }
-    
-    /* Custom Modal Styles */
-    .ag-modal {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 2000;
-        backdrop-filter: blur(2px);
-    }
-    .ag-modal-content {
-        position: relative;
-        background: white;
-        margin: 10vh auto;
-        width: 90%;
-        max-width: 500px;
-        border-radius: 16px;
-        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
-        animation: modalFadeIn 0.3s ease;
-    }
-    @keyframes modalFadeIn {
-        from { opacity: 0; transform: translateY(-20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    .ag-modal-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
-    .ag-modal-title { margin: 0; font-weight: 700; color: var(--ag-charcoal); }
-    .ag-modal-close { background: none; border: none; font-size: 1.5rem; line-height: 1; cursor: pointer; opacity: 0.5; }
-    .ag-modal-close:hover { opacity: 1; }
-    .ag-modal-body { padding: 1.5rem; }
-    .ag-modal-footer { padding: 1rem 1.5rem; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 0.75rem; }
-</style>
 
 <script>
 let currentTaskId = null;
@@ -416,12 +802,12 @@ async function assignTask() {
     console.log('Assigning task:', taskId, 'to user:', userId);
     
     if (!taskId) {
-        AgriPlotUI.showToast({ message: 'Error: No task selected', type: 'danger' });
+        alert('Error: No task selected');
         return;
     }
     
     if (!userId) {
-        AgriPlotUI.showToast({ message: 'Please select an officer', type: 'warning' });
+        alert('Please select an officer');
         return;
     }
     
@@ -450,16 +836,16 @@ async function assignTask() {
         
         if (data.success) {
             closeCustomModal();
-            AgriPlotUI.showToast({ message: data.message || 'Task assigned successfully!', type: 'success' });
+            alert(data.message || 'Task assigned successfully!');
             setTimeout(() => location.reload(), 800);
         } else {
-            AgriPlotUI.showToast({ message: 'Error: ' + (data.message || 'Unknown error'), type: 'danger' });
+            alert('Error: ' + (data.message || 'Unknown error'));
             confirmBtn.disabled = false;
             confirmBtn.innerHTML = originalText;
         }
     } catch (error) {
         console.error('Error:', error);
-        AgriPlotUI.showToast({ message: 'An error occurred while assigning the task.', type: 'danger' });
+        alert('An error occurred while assigning the task.');
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = originalText;
     }

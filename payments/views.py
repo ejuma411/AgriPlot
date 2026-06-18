@@ -1274,6 +1274,8 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             messages.error(self.request, f"Failed to start workflow: {str(e)}")
             return redirect("payments:create_request")
 
+    # In payments/views.py - Update the get_or_create_legal_transaction method
+
     def get_or_create_legal_transaction(self, plot, buyer, seller, transaction_type):
         """Create or get existing legal transaction for this plot/buyer"""
         from transactions.models import Transaction
@@ -1288,10 +1290,13 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         ).first()
         
         if existing_transaction:
+            # Update seller if needed
+            if existing_transaction.seller != seller:
+                existing_transaction.seller = seller
+                existing_transaction.save(update_fields=['seller', 'updated_at'])
             return existing_transaction
         
-        # Calculate the full contract value first.
-        # Agreement Deposit is only the first 10% payment, not the total deal amount.
+        # Calculate the full contract value
         from .forms import PaymentRequestForm
         if transaction_type == PaymentRequest.TransactionType.PURCHASE:
             agreed_price = getattr(plot, "sale_price", None) or getattr(plot, "price", None)
@@ -1316,9 +1321,15 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             agreed_price=agreed_price,
             transaction_type=transaction_type,
             stage=Transaction.Stage.DUE_DILIGENCE,
+            # Calculate deposit and balance
+            ten_percent_deposit=agreed_price * Decimal('0.1'),
+            ninety_percent_balance=agreed_price * Decimal('0.9'),
+            deposit_paid=Decimal('0'),
+            balance_paid=Decimal('0'),
+            balance_due=agreed_price,
         )
         
-        # Create payment request with proper values for escrow
+        # Create a payment request for the full amount (to track escrow)
         payment = PaymentRequest.objects.create(
             transaction_type=transaction_type,
             category=PaymentRequest.Category.AGREEMENT_DEPOSIT,
@@ -1332,24 +1343,31 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             escrow_enabled=True,
             method=PaymentRequest.Method.BANK_TRANSFER,
             internal_reference=PaymentRequest.generate_reference(),
+            # Store transaction ID in metadata for lookup
+            metadata={'transaction_id': transaction_obj.id},
         )
         
         transaction_obj.payment_request = payment
         transaction_obj.save(update_fields=['payment_request'])
         
-        return transaction_obj
-
-    def form_invalid(self, form):
-        error_messages = []
-        for field_name, errors in form.errors.items():
-            for error in errors:
-                error_messages.append(f"{field_name}: {error}")
-        
-        messages.error(
-            self.request,
-            "We could not start the workflow. " + " ".join(error_messages[:5])
+        # Also store payment ref in transaction
+        PaymentRequest.objects.filter(pk=payment.pk).update(
+            legal_transaction=transaction_obj
         )
-        return super().form_invalid(form)
+        
+        return transaction_obj
+        
+        def form_invalid(self, form):
+            error_messages = []
+            for field_name, errors in form.errors.items():
+                for error in errors:
+                    error_messages.append(f"{field_name}: {error}")
+            
+            messages.error(
+                self.request,
+                "We could not start the workflow. " + " ".join(error_messages[:5])
+            )
+            return super().form_invalid(form)
 
 
 class PaymentAccessMixin(UserPassesTestMixin):

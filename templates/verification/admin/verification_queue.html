@@ -1,16 +1,17 @@
-{% extends "verification/admin/base_admin.html" %}
+{% extends "accounts/dashboard/base_dashboard.html" %}
 {% load static humanize %}
 
-{% block admin_title %}Verification Queue{% endblock %}
+{% block dash_page_title %}Verification Queue{% endblock %}
+{% block dash_page_subtitle %}Review and manage plot verification requests.{% endblock %}
 
-{% block extra_css %}
+{% block dashboard_extra_css %}
 <style>
     /* ========================================
        VERIFICATION QUEUE STYLES
        Professional AgriPlot Design
     ======================================== */
     
-    /* Stats Row */
+    /* Stats Row - Override dashboard stats */
     .stats-row {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
@@ -31,36 +32,45 @@
     
     .stat-card:hover {
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transform: translateY(-2px);
     }
     
     .stat-icon {
         width: 48px;
         height: 48px;
-        background: #f8fafc;
+        background: #f1f5f9;
         border-radius: 0.75rem;
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
     }
     
     .stat-icon i {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
         color: #0f5c3f;
     }
+    
+    .stat-icon.pending i { color: #f59e0b; }
+    .stat-icon.approved i { color: #10b981; }
+    .stat-icon.rejected i { color: #ef4444; }
+    .stat-icon.total i { color: #3b82f6; }
     
     .stat-info h3 {
         font-size: 1.25rem;
         font-weight: 700;
         margin: 0;
         color: #0f172a;
+        line-height: 1.2;
     }
     
     .stat-info p {
         font-size: 0.7rem;
-        margin: 0;
+        margin: 0.25rem 0 0 0;
         color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        font-weight: 600;
     }
     
     /* Filter Tabs */
@@ -81,9 +91,10 @@
         border-radius: 2rem;
         color: #64748b;
         text-decoration: none;
-        font-size: 0.875rem;
-        font-weight: 500;
+        font-size: 0.85rem;
+        font-weight: 600;
         transition: all 0.2s;
+        cursor: pointer;
     }
     
     .filter-tab i {
@@ -99,19 +110,11 @@
         background: #0f5c3f;
         border-color: #0f5c3f;
         color: white;
+        box-shadow: 0 2px 8px rgba(15, 92, 63, 0.15);
     }
     
     .filter-tab.active i {
         color: white;
-    }
-    
-    .filter-badge {
-        background: #e2e8f0;
-        color: #475569;
-        padding: 0.125rem 0.5rem;
-        border-radius: 1rem;
-        font-size: 0.7rem;
-        font-weight: 600;
     }
     
     .filter-tab.active .filter-badge {
@@ -119,15 +122,25 @@
         color: white;
     }
     
-    /* Table Styles */
-    .table-container {
-        background: white;
+    .filter-badge {
+        background: #f1f5f9;
+        color: #475569;
+        padding: 0.1rem 0.5rem;
+        border-radius: 1rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        transition: all 0.2s;
+    }
+    
+    /* Table Styles - Use dashboard card styling */
+    .queue-card {
         border: 1px solid #e2e8f0;
         border-radius: 1rem;
         overflow: hidden;
+        background: white;
     }
     
-    .table-header {
+    .queue-card-header {
         padding: 1rem 1.25rem;
         border-bottom: 1px solid #e2e8f0;
         background: #f8fafc;
@@ -138,15 +151,22 @@
         gap: 0.75rem;
     }
     
-    .table-title {
+    .queue-card-title {
         font-size: 1rem;
         font-weight: 700;
         color: #0f172a;
         margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     
-    .table-badge {
-        background: #e2e8f0;
+    .queue-card-title i {
+        color: #0f5c3f;
+    }
+    
+    .queue-badge {
+        background: #f1f5f9;
         padding: 0.25rem 0.75rem;
         border-radius: 2rem;
         font-size: 0.7rem;
@@ -154,46 +174,88 @@
         color: #475569;
     }
     
-    .data-table {
-        width: 100%;
-        border-collapse: collapse;
+    .queue-badge.urgent {
+        background: #fef3c7;
+        color: #92400e;
     }
     
-    .data-table th {
+    /* Table Wrapper */
+    .table-wrapper {
+        overflow-x: auto;
+        padding: 0;
+    }
+    
+    .queue-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.875rem;
+    }
+    
+    .queue-table th {
         text-align: left;
         padding: 0.875rem 1rem;
-        background: #f8fafc;
+        background: #fafafa;
         font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
         color: #64748b;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 2px solid #e2e8f0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
     }
     
-    .data-table td {
+    .queue-table td {
         padding: 0.875rem 1rem;
         border-bottom: 1px solid #e2e8f0;
         color: #334155;
-        font-size: 0.875rem;
+        vertical-align: middle;
     }
     
-    .data-table tr:last-child td {
+    .queue-table tbody tr {
+        transition: background 0.15s ease;
+    }
+    
+    .queue-table tbody tr:hover {
+        background: #f8fafc;
+    }
+    
+    .queue-table tbody tr.pending-row {
+        background: #fffbeb;
+    }
+    
+    .queue-table tbody tr.pending-row:hover {
+        background: #fef3c7;
+    }
+    
+    .queue-table tbody tr:last-child td {
         border-bottom: none;
     }
     
-    .data-table tr:hover td {
-        background: #f8fafc;
-    }
+    /* Column Widths */
+    .col-id { width: 6%; }
+    .col-title { width: 22%; }
+    .col-location { width: 15%; }
+    .col-seller { width: 15%; }
+    .col-submitted { width: 12%; }
+    .col-status { width: 12%; }
+    .col-documents { width: 10%; }
+    .col-actions { width: 8%; }
     
     /* Status Badges */
     .status-badge {
         display: inline-flex;
         align-items: center;
+        gap: 0.3rem;
         padding: 0.25rem 0.75rem;
         border-radius: 2rem;
         font-size: 0.7rem;
         font-weight: 600;
+    }
+    
+    .status-badge i {
+        font-size: 0.6rem;
     }
     
     .status-badge.approved {
@@ -230,10 +292,12 @@
     .doc-icons {
         display: flex;
         gap: 0.5rem;
+        align-items: center;
     }
     
     .doc-icon {
-        font-size: 1rem;
+        font-size: 0.9rem;
+        transition: all 0.2s;
     }
     
     .doc-icon.present {
@@ -244,21 +308,126 @@
         color: #cbd5e1;
     }
     
+    .doc-icon.missing:hover {
+        color: #94a3b8;
+    }
+    
+    .doc-tooltip {
+        position: relative;
+        cursor: help;
+    }
+    
+    /* ID Badge */
+    .id-badge {
+        display: inline-block;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #0f172a;
+        background: #f1f5f9;
+        padding: 0.15rem 0.5rem;
+        border-radius: 0.375rem;
+    }
+    
+    /* Plot Link */
+    .plot-link {
+        font-weight: 600;
+        color: #0f172a;
+        text-decoration: none;
+        transition: color 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .plot-link:hover {
+        color: #0f5c3f;
+        text-decoration: underline;
+    }
+    
+    .plot-link .fa-external-link-alt {
+        font-size: 0.6rem;
+        opacity: 0.5;
+        transition: opacity 0.2s;
+    }
+    
+    .plot-link:hover .fa-external-link-alt {
+        opacity: 1;
+    }
+    
+    /* Seller Info */
+    .seller-info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.1rem;
+    }
+    
+    .seller-name {
+        font-weight: 500;
+    }
+    
+    .seller-role {
+        font-size: 0.6rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        color: #94a3b8;
+        background: #f1f5f9;
+        padding: 0.05rem 0.4rem;
+        border-radius: 0.25rem;
+        display: inline-block;
+        width: fit-content;
+    }
+    
+    /* Submitted Info */
+    .submitted-info {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.3;
+    }
+    
+    .submitted-date {
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .submitted-ago {
+        font-size: 0.65rem;
+        color: #94a3b8;
+    }
+    
+    /* Location */
+    .location-text {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        color: #475569;
+    }
+    
+    .location-text i {
+        font-size: 0.7rem;
+        color: #94a3b8;
+    }
+    
     /* Action Buttons */
     .action-buttons {
         display: flex;
-        gap: 0.5rem;
+        gap: 0.4rem;
+        align-items: center;
     }
     
     .action-btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 32px;
-        height: 32px;
+        width: 34px;
+        height: 34px;
         border-radius: 0.5rem;
         text-decoration: none;
         transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+        font-size: 0.8rem;
     }
     
     .action-btn.primary {
@@ -268,6 +437,8 @@
     
     .action-btn.primary:hover {
         background: #0a3d28;
+        transform: translateY(-2px);
+        box-shadow: 0 2px 8px rgba(15, 92, 63, 0.2);
     }
     
     .action-btn.outline {
@@ -279,25 +450,13 @@
     .action-btn.outline:hover {
         border-color: #0f5c3f;
         color: #0f5c3f;
-    }
-    
-    /* Plot Link */
-    .plot-link {
-        font-weight: 600;
-        color: #0f172a;
-        text-decoration: none;
-        transition: color 0.2s;
-    }
-    
-    .plot-link:hover {
-        color: #0f5c3f;
-        text-decoration: underline;
+        background: #f8fafc;
     }
     
     /* Empty State */
     .empty-state {
         text-align: center;
-        padding: 3rem;
+        padding: 3rem 2rem;
     }
     
     .empty-icon {
@@ -307,7 +466,7 @@
     }
     
     .empty-title {
-        font-size: 1rem;
+        font-size: 1.1rem;
         font-weight: 600;
         color: #1e293b;
         margin-bottom: 0.5rem;
@@ -319,6 +478,36 @@
         margin-bottom: 0;
     }
     
+    /* Pagination */
+    .pagination-wrapper {
+        padding: 1rem 1.25rem;
+        border-top: 1px solid #e2e8f0;
+        background: #fafafa;
+    }
+    
+    .pagination-wrapper .pagination {
+        margin: 0;
+        justify-content: center;
+    }
+    
+    .pagination-wrapper .page-link {
+        color: #0f5c3f;
+        border: 1px solid #e2e8f0;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+    
+    .pagination-wrapper .page-item.active .page-link {
+        background: #0f5c3f;
+        border-color: #0f5c3f;
+        color: white;
+    }
+    
+    .pagination-wrapper .page-link:hover {
+        background: #f1f5f9;
+        color: #0a3d28;
+    }
+    
     /* Responsive */
     @media (max-width: 1024px) {
         .stats-row {
@@ -328,44 +517,179 @@
     
     @media (max-width: 768px) {
         .stats-row {
-            grid-template-columns: 1fr;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        
+        .stat-card {
+            padding: 0.75rem;
+        }
+        
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .stat-icon i {
+            font-size: 1rem;
+        }
+        
+        .stat-info h3 {
+            font-size: 1rem;
         }
         
         .filter-tabs {
             overflow-x: auto;
             flex-wrap: nowrap;
             padding-bottom: 0.5rem;
+            -webkit-overflow-scrolling: touch;
         }
         
-        .filter-tab span {
+        .filter-tab {
+            font-size: 0.75rem;
+            padding: 0.4rem 0.75rem;
             white-space: nowrap;
         }
         
-        .data-table {
-            font-size: 0.8rem;
+        .filter-tab span:not(.filter-badge) {
+            display: none;
         }
         
-        .data-table th,
-        .data-table td {
-            padding: 0.625rem 0.75rem;
+        /* Mobile Card View for Table */
+        .queue-table thead {
+            display: none;
+        }
+        
+        .queue-table,
+        .queue-table tbody,
+        .queue-table tr,
+        .queue-table td {
+            display: block;
+            width: 100%;
+        }
+        
+        .queue-table tr {
+            padding: 0.75rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .queue-table tr:last-child {
+            border-bottom: none;
+        }
+        
+        .queue-table td {
+            border: none;
+            padding: 0.3rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .queue-table td::before {
+            content: attr(data-label);
+            font-weight: 600;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #94a3b8;
+            min-width: 80px;
+        }
+        
+        .queue-table td:last-child {
+            justify-content: flex-start;
+            gap: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #f1f5f9;
+        }
+        
+        .queue-table td:last-child::before {
+            content: 'Actions';
         }
         
         .action-buttons {
-            flex-direction: column;
+            flex-direction: row;
         }
         
-        .action-btn {
+        .doc-icons {
+            gap: 0.3rem;
+        }
+        
+        .location-text i {
+            display: none;
+        }
+        
+        .col-id, .col-title, .col-location, .col-seller, .col-submitted, .col-status, .col-documents, .col-actions {
             width: 100%;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .stats-row {
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        
+        .stat-card {
+            padding: 0.5rem;
+        }
+        
+        .stat-icon {
+            width: 32px;
+            height: 32px;
+        }
+        
+        .stat-icon i {
+            font-size: 0.8rem;
+        }
+        
+        .stat-info h3 {
+            font-size: 0.9rem;
+        }
+        
+        .stat-info p {
+            font-size: 0.55rem;
+        }
+        
+        .queue-table td {
+            font-size: 0.8rem;
+            padding: 0.25rem 0;
+        }
+        
+        .queue-table td::before {
+            font-size: 0.6rem;
+            min-width: 60px;
+        }
+        
+        .id-badge {
+            font-size: 0.65rem;
+            padding: 0.1rem 0.3rem;
+        }
+        
+        .submitted-date {
+            font-size: 0.7rem;
+        }
+        
+        .submitted-ago {
+            font-size: 0.55rem;
         }
     }
 </style>
 {% endblock %}
 
-{% block admin_content %}
+{% block dashboard_content %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Verification Queue</h1>
+        <p class="dashboard-subtitle">Review and manage plot verification requests.</p>
+    </div>
+</div>
+
 <!-- Stats Row -->
 <div class="stats-row">
     <div class="stat-card">
-        <div class="stat-icon">
+        <div class="stat-icon total">
             <i class="fas fa-chart-line"></i>
         </div>
         <div class="stat-info">
@@ -374,7 +698,7 @@
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">
+        <div class="stat-icon pending">
             <i class="fas fa-clock"></i>
         </div>
         <div class="stat-info">
@@ -383,7 +707,7 @@
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">
+        <div class="stat-icon approved">
             <i class="fas fa-check-circle"></i>
         </div>
         <div class="stat-info">
@@ -392,7 +716,7 @@
         </div>
     </div>
     <div class="stat-card">
-        <div class="stat-icon">
+        <div class="stat-icon rejected">
             <i class="fas fa-times-circle"></i>
         </div>
         <div class="stat-info">
@@ -411,7 +735,7 @@
     </a>
     <a href="?filter=pending" class="filter-tab {% if current_filter == 'pending' %}active{% endif %}">
         <i class="fas fa-clock"></i>
-        <span>Pending Review</span>
+        <span>Pending</span>
         {% if stats.pending_review %}<span class="filter-badge">{{ stats.pending_review }}</span>{% endif %}
     </a>
     <a href="?filter=in_progress" class="filter-tab {% if current_filter == 'in_progress' %}active{% endif %}">
@@ -432,65 +756,75 @@
 </div>
 
 <!-- Queue Table -->
-<div class="table-container">
-    <div class="table-header">
-        <h3 class="table-title">
+<div class="queue-card">
+    <div class="queue-card-header">
+        <h3 class="queue-card-title">
+            <i class="fas fa-tasks"></i>
             {% if current_filter == 'all' %}All Plots
-            {% elif current_filter == 'pending' %}Documents Uploaded
+            {% elif current_filter == 'pending' %}Pending Review
             {% elif current_filter == 'in_progress' %}In Progress
             {% elif current_filter == 'approved' %}Approved Plots
             {% elif current_filter == 'rejected' %}Rejected Plots
             {% else %}Verification Queue
             {% endif %}
         </h3>
-        <span class="table-badge">{{ plots|length }} items</span>
+        <span class="queue-badge {% if plots|length > 0 %}urgent{% endif %}">
+            {{ plots|length }} items
+        </span>
     </div>
     
-    <div class="legal-table-wrapper">
-        <table class="data-table">
+    <div class="table-wrapper">
+        <table class="queue-table" id="queueTable">
             <thead>
                 <tr>
-                    <th>ID</th>
-                    <th>Plot Title</th>
-                    <th>Location</th>
-                    <th>Owner/Agent</th>
-                    <th>Submitted</th>
-                    <th>Status</th>
-                    <th>Documents</th>
-                    <th>Actions</th>
+                    <th class="col-id">ID</th>
+                    <th class="col-title">Plot Title</th>
+                    <th class="col-location">Location</th>
+                    <th class="col-seller">Seller</th>
+                    <th class="col-submitted">Submitted</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-documents">Documents</th>
+                    <th class="col-actions">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for plot in plots %}
-                <tr>
-                    <td>
-                        <code style="background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.75rem;">#{{ plot.id }}</code>
+                <tr class="{% if plot.verification_status.current_stage == 'pending' %}pending-row{% endif %}">
+                    <td data-label="ID">
+                        <span class="id-badge">#{{ plot.id }}</span>
                     </td>
-                    <td>
-                        <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank" class="plot-link">
-                            {{ plot.title|truncatechars:35 }}
+                    <td data-label="Title">
+                        <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank" class="plot-link" data-analytics="queue_view_plot">
+                            {{ plot.title|truncatechars:30 }}
+                            <i class="fas fa-external-link-alt"></i>
                         </a>
                     </td>
-                    <td>
-                        <div class="d-flex align-items-center gap-1">
-                            <i class="fas fa-map-marker-alt" style="font-size: 0.7rem; color: #94a3b8;"></i>
-                            <span>{{ plot.county|default:plot.location|truncatechars:25 }}</span>
+                    <td data-label="Location">
+                        <span class="location-text">
+                            <i class="fas fa-map-marker-alt"></i>
+                            {{ plot.county|default:plot.location|truncatechars:20 }}
+                        </span>
+                    </td>
+                    <td data-label="Seller">
+                        <div class="seller-info">
+                            {% if plot.agent and plot.agent.user %}
+                                <span class="seller-name">{{ plot.agent.user.get_full_name|default:plot.agent.user.username }}</span>
+                                <span class="seller-role">Agent</span>
+                            {% elif plot.landowner and plot.landowner.user %}
+                                <span class="seller-name">{{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}</span>
+                                <span class="seller-role">Owner</span>
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
                         </div>
                     </td>
-                    <td>
-                        {% if plot.agent and plot.agent.user %}
-                            {{ plot.agent.user.get_full_name|default:plot.agent.user.username }}
-                        {% elif plot.landowner and plot.landowner.user %}
-                            {{ plot.landowner.user.get_full_name|default:plot.landowner.user.username }}
-                        {% else %}
-                            <span class="text-muted">—</span>
-                        {% endif %}
+                    <td data-label="Submitted">
+                        <div class="submitted-info">
+                            <span class="submitted-date">{{ plot.created_at|date:"M d, Y" }}</span>
+                            <span class="submitted-ago">{{ plot.created_at|timesince }} ago</span>
+                        </div>
                     </td>
-                    <td>
-                        <div>{{ plot.created_at|date:"M d, Y" }}</div>
-                        <small class="text-muted">{{ plot.created_at|timesince }} ago</small>
-                    </td>
-                    <td>
+                    <td data-label="Status">
                         {% if plot.verification_status %}
                             <span class="status-badge 
                                 {% if plot.verification_status.current_stage == 'approved' %}approved
@@ -498,26 +832,40 @@
                                 {% elif plot.verification_status.current_stage == 'document_uploaded' %}pending
                                 {% elif plot.verification_status.current_stage == 'in_progress' %}in-progress
                                 {% else %}default{% endif %}">
+                                <i class="fas 
+                                    {% if plot.verification_status.current_stage == 'approved' %}fa-check-circle
+                                    {% elif plot.verification_status.current_stage == 'rejected' %}fa-times-circle
+                                    {% elif plot.verification_status.current_stage == 'document_uploaded' %}fa-upload
+                                    {% elif plot.verification_status.current_stage == 'in_progress' %}fa-spinner fa-pulse
+                                    {% else %}fa-circle{% endif %}">
+                                </i>
                                 {{ plot.verification_status.get_current_stage_display|default:plot.verification_status.current_stage|title }}
                             </span>
                         {% else %}
-                            <span class="status-badge default">Pending</span>
+                            <span class="status-badge default">
+                                <i class="fas fa-circle"></i>
+                                Pending
+                            </span>
                         {% endif %}
                     </td>
-                    <td>
+                    <td data-label="Documents">
                         <div class="doc-icons">
-                            <i class="fas fa-file-contract doc-icon {% if plot.title_deed %}present{% else %}missing{% endif %}" title="Title Deed"></i>
-                            <i class="fas fa-search doc-icon {% if plot.official_search %}present{% else %}missing{% endif %}" title="Official Search"></i>
-                            <i class="fas fa-id-card doc-icon {% if plot.landowner_id_doc %}present{% else %}missing{% endif %}" title="ID Document"></i>
-                            <i class="fas fa-file-invoice doc-icon {% if plot.kra_pin %}present{% else %}missing{% endif %}" title="KRA PIN"></i>
+                            <i class="fas fa-file-contract doc-icon {% if plot.title_deed %}present{% else %}missing{% endif %}" 
+                               title="{% if plot.title_deed %}Title Deed Uploaded{% else %}Missing Title Deed{% endif %}"></i>
+                            <i class="fas fa-search doc-icon {% if plot.official_search %}present{% else %}missing{% endif %}" 
+                               title="{% if plot.official_search %}Official Search Uploaded{% else %}Missing Official Search{% endif %}"></i>
+                            <i class="fas fa-id-card doc-icon {% if plot.landowner_id_doc %}present{% else %}missing{% endif %}" 
+                               title="{% if plot.landowner_id_doc %}ID Uploaded{% else %}Missing ID{% endif %}"></i>
+                            <i class="fas fa-file-invoice doc-icon {% if plot.kra_pin %}present{% else %}missing{% endif %}" 
+                               title="{% if plot.kra_pin %}KRA PIN Uploaded{% else %}Missing KRA PIN{% endif %}"></i>
                         </div>
                     </td>
-                    <td>
+                    <td data-label="Actions">
                         <div class="action-buttons">
-                            <a href="{% url 'verification:review_plot' plot.id %}" class="action-btn primary" title="Review Plot">
+                            <a href="{% url 'verification:review_plot' plot.id %}" class="action-btn primary" title="Review Plot" data-analytics="queue_review_plot">
                                 <i class="fas fa-search"></i>
                             </a>
-                            <a href="{% url 'verification:verification_history' plot.id %}" class="action-btn outline" title="View History">
+                            <a href="{% url 'verification:verification_history' plot.id %}" class="action-btn outline" title="Verification History" data-analytics="queue_verification_history">
                                 <i class="fas fa-history"></i>
                             </a>
                         </div>
@@ -525,7 +873,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center">
+                    <td colspan="8">
                         <div class="empty-state">
                             <div class="empty-icon">
                                 <i class="fas fa-inbox"></i>
@@ -539,5 +887,81 @@
             </tbody>
         </table>
     </div>
+    
+    <!-- Pagination -->
+    {% if is_paginated %}
+    <div class="pagination-wrapper">
+        <nav aria-label="Queue pagination">
+            <ul class="pagination">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_filter %}&filter={{ current_filter }}{% endif %}">Previous</a>
+                    </li>
+                {% endif %}
+                {% for num in page_obj.paginator.page_range %}
+                    <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                        <a class="page-link" href="?page={{ num }}{% if current_filter %}&filter={{ current_filter }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endfor %}
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_filter %}&filter={{ current_filter }}{% endif %}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add data-label attributes for responsive table
+        const tableRows = document.querySelectorAll('.queue-table tbody tr');
+        tableRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const labels = ['ID', 'Title', 'Location', 'Seller', 'Submitted', 'Status', 'Documents', 'Actions'];
+            cells.forEach((cell, index) => {
+                if (index < labels.length) {
+                    cell.setAttribute('data-label', labels[index]);
+                }
+            });
+        });
+
+        // Keyboard navigation for table rows
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.closest('.queue-table tbody tr')) {
+                const reviewBtn = e.target.closest('tr').querySelector('.action-btn.primary');
+                if (reviewBtn) {
+                    window.location.href = reviewBtn.href;
+                }
+            }
+        });
+
+        // Row click navigation (except on links/buttons)
+        document.querySelectorAll('.queue-table tbody tr').forEach(row => {
+            if (row.querySelector('.empty-state')) return; // Skip empty state row
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', function(e) {
+                if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.action-btn')) {
+                    return;
+                }
+                const reviewLink = this.querySelector('.action-btn.primary');
+                if (reviewLink) {
+                    window.location.href = reviewLink.href;
+                }
+            });
+        });
+
+        // Track filter clicks with analytics
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                const filter = this.href.split('filter=')[1] || 'all';
+                console.log(`Queue filter: ${filter}`);
+            });
+        });
+    });
+</script>
 {% endblock %}

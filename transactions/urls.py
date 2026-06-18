@@ -18,6 +18,7 @@ urlpatterns = [
     # Stage Management
     path('<int:pk>/advance-stage/', views.advance_stage, name='advance_stage'),
     path('<int:pk>/pay-installment/', views.pay_installment, name='pay_installment'),
+    path('<int:pk>/force-advance-contracts/', views.force_advance_contracts, name='force_advance_contracts'),
     
     # Stamp Duty (KRA iTax Verification)
     path('<int:pk>/stamp-duty-verify/', views.stamp_duty_verification, name='stamp_duty_verification'),

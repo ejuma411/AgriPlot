@@ -128,7 +128,7 @@
         color: white;
     }
     
-    /* Card List View - Mobile First (replaces table) */
+    /* Card List View - Mobile First */
     .transactions-list {
         display: flex;
         flex-direction: column;
@@ -305,7 +305,7 @@
         text-align: center;
     }
     
-    /* Desktop Table View (hidden on mobile) */
+    /* Desktop Table View */
     .desktop-table {
         display: none;
     }
@@ -320,6 +320,32 @@
         font-size: 3rem;
         color: var(--ap-muted);
         margin-bottom: 1rem;
+    }
+    
+    /* Financial Summary in card */
+    .financial-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.5rem;
+        margin: 0.5rem 0;
+    }
+    
+    .financial-item {
+        text-align: center;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        background: var(--ap-surface-muted);
+    }
+    
+    .financial-item .amount {
+        font-weight: 700;
+        font-size: 0.9rem;
+    }
+    
+    .financial-item .label {
+        font-size: 0.6rem;
+        text-transform: uppercase;
+        color: var(--ap-muted);
     }
     
     /* Responsive Breakpoints */
@@ -343,6 +369,10 @@
         
         .stat-value {
             font-size: 1.75rem;
+        }
+        
+        .financial-grid {
+            grid-template-columns: 1fr 1fr 1fr;
         }
     }
     
@@ -414,6 +444,10 @@
         
         .info-value {
             text-align: left;
+        }
+        
+        .financial-grid {
+            grid-template-columns: 1fr 1fr;
         }
     }
 </style>
@@ -511,21 +545,34 @@
                         </span>
                     </div>
                     
-                    <div class="info-row">
-                        <span class="info-label">Agreed Price</span>
-                        <span class="info-value"><strong>KES {{ trx.agreed_price|floatformat:0|intcomma }}</strong></span>
+                    <!-- Financial Summary - Fixed Display -->
+                    <div class="financial-grid">
+                        <div class="financial-item">
+                            <div class="amount">KES {{ trx.agreed_price|floatformat:0|intcomma }}</div>
+                            <div class="label">Agreed Price</div>
+                        </div>
+                        <div class="financial-item {% if trx.deposit_paid >= trx.ten_percent_deposit %}bg-success-subtle{% endif %}">
+                            <div class="amount {% if trx.deposit_paid >= trx.ten_percent_deposit %}text-success{% endif %}">
+                                KES {{ trx.deposit_paid|floatformat:0|intcomma }}
+                            </div>
+                            <div class="label">Deposit Paid</div>
+                            <div class="small text-muted">of KES {{ trx.ten_percent_deposit|floatformat:0|intcomma }}</div>
+                        </div>
+                        <div class="financial-item {% if trx.balance_paid >= trx.ninety_percent_balance %}bg-success-subtle{% endif %}">
+                            <div class="amount {% if trx.balance_paid >= trx.ninety_percent_balance %}text-success{% endif %}">
+                                KES {{ trx.balance_paid|floatformat:0|intcomma }}
+                            </div>
+                            <div class="label">Balance Paid</div>
+                            <div class="small text-muted">of KES {{ trx.ninety_percent_balance|floatformat:0|intcomma }}</div>
+                        </div>
                     </div>
                     
-                    <div class="info-row">
-                        <span class="info-label">Financial Status</span>
-                        <span class="info-value">
-                            <div>Deposit: <span class="{% if trx.deposit_paid >= trx.ten_percent_deposit %}text-success{% else %}text-muted{% endif %}">KES {{ trx.deposit_paid|floatformat:0|intcomma }}</span></div>
-                            <div>Balance: <span class="{% if trx.balance_paid >= trx.ninety_percent_balance %}text-success{% else %}text-muted{% endif %}">KES {{ trx.balance_paid|floatformat:0|intcomma }}</span></div>
-                            {% if trx.balance_due > 0 %}
-                            <div class="text-warning">Due: KES {{ trx.balance_due|floatformat:0|intcomma }}</div>
-                            {% endif %}
-                        </span>
+                    {% if trx.balance_due > 0 %}
+                    <div class="alert alert-warning py-1 px-2 mt-1 mb-0 small text-center">
+                        <i class="fa-solid fa-circle-exclamation me-1"></i> 
+                        Balance Due: KES {{ trx.balance_due|floatformat:0|intcomma }}
                     </div>
+                    {% endif %}
                     
                     <!-- Progress Bar -->
                     <div class="progress-section">
@@ -541,9 +588,9 @@
                             {% if trx.disbursed_at %}
                                 <span class="status-badge status-disbursed"><i class="fa-solid fa-check-circle"></i> Disbursed</span>
                             {% elif trx.balance_held_in_escrow_at and trx.deposit_held_in_escrow_at %}
-                                <span class="status-badge status-escrow-full"><i class="fa-solid fa-lock"></i> Full Amount in Escrow</span>
+                                <span class="status-badge status-escrow-full"><i class="fa-solid fa-lock"></i> Full Escrow</span>
                             {% elif trx.deposit_held_in_escrow_at %}
-                                <span class="status-badge status-escrow-deposit"><i class="fa-solid fa-lock"></i> Deposit in Escrow</span>
+                                <span class="status-badge status-escrow-deposit"><i class="fa-solid fa-lock"></i> Deposit Escrow</span>
                             {% else %}
                                 <span class="status-badge status-pending"><i class="fa-solid fa-clock"></i> Pending</span>
                             {% endif %}
@@ -626,6 +673,9 @@
                             <div><strong>KES {{ trx.agreed_price|floatformat:0|intcomma }}</strong></div>
                             <div class="small">Deposit: KES {{ trx.deposit_paid|floatformat:0|intcomma }}</div>
                             <div class="small">Balance: KES {{ trx.balance_paid|floatformat:0|intcomma }}</div>
+                            {% if trx.balance_due > 0 %}
+                            <div class="small text-warning">Due: KES {{ trx.balance_due|floatformat:0|intcomma }}</div>
+                            {% endif %}
                         </td>
                         <td>
                             {% if trx.disbursed_at %}

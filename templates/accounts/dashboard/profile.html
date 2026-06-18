@@ -1,58 +1,305 @@
 {% extends "accounts/dashboard/base_dashboard.html" %}
+{% load humanize %}
 
-{% block dash_page_title %}Profile{% endblock %}
-{% block dash_page_subtitle %}Manage your personal information and professional profiles.{% endblock %}
+{% block dashboard_extra_css %}
+<style>
+    /* Profile specific styles */
+    .dash-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+
+    .dash-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        overflow: hidden;
+    }
+
+    .dash-card-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .dash-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .dash-form-group {
+        margin-bottom: 1.25rem;
+    }
+
+    .dash-form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 0.4rem;
+    }
+
+    .dash-form-control {
+        width: 100%;
+        padding: 0.625rem 0.875rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        transition: border-color 0.2s;
+        background: white;
+    }
+
+    .dash-form-control:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .dash-form-control:read-only {
+        background: #f8fafc;
+        cursor: not-allowed;
+    }
+
+    .dash-form-control textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    .ap-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1.25rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: none;
+    }
+
+    .ap-btn-primary {
+        background: #10b981;
+        color: white;
+    }
+
+    .ap-btn-primary:hover {
+        background: #059669;
+    }
+
+    .ap-btn-ghost {
+        background: transparent;
+        color: #64748b;
+    }
+
+    .ap-btn-ghost:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .text-muted {
+        color: #94a3b8;
+    }
+
+    .role-badge {
+        background: #f1f5f9;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    /* Document items */
+    .document-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        border: 1px solid #f1f5f9;
+        border-radius: 0.5rem;
+        background: #f8fafc;
+        transition: all 0.2s;
+    }
+
+    .document-item:hover {
+        background: #f1f5f9;
+    }
+
+    .document-item-left {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .document-icon {
+        color: #ef4444;
+        font-size: 1.25rem;
+    }
+
+    .document-info-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #0f172a;
+    }
+
+    .document-info-name {
+        font-size: 0.75rem;
+        color: #64748b;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #64748b;
+    }
+
+    .empty-state-icon {
+        font-size: 2.5rem;
+        color: #cbd5e1;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+        .dash-grid-2 {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .dash-card-header {
+            padding: 1rem;
+        }
+
+        .dash-card-body {
+            padding: 1rem;
+        }
+
+        .dash-form-group {
+            margin-bottom: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .dash-grid-2 {
+            gap: 0.75rem;
+        }
+
+        .dash-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .document-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+
+        .document-item-left {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}
 
 {% block dashboard_content %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Profile</h1>
+        <p class="dashboard-subtitle">Manage your personal information and professional profiles.</p>
+    </div>
+</div>
+
 <div class="dash-grid-2">
     <!-- General Profile Information -->
     <div class="dash-card">
         <div class="dash-card-header">
-            <h3 class="dash-card-title">Personal Information</h3>
-            <div style="background: rgba(16, 185, 129, 0.1); width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--accent-hover);">
-                <i class="fa-solid fa-user"></i>
-            </div>
+            <h3 class="dash-card-title">
+                <i class="fa-solid fa-user" style="color: #10b981;"></i>
+                Personal Information
+            </h3>
         </div>
         
-        <form method="post" action="{% url 'listings:profile_edit' %}">
-            {% csrf_token %}
-            <input type="hidden" name="section" value="account">
-            
-            <div class="dash-grid-2">
-                <div class="dash-form-group">
-                    <label class="dash-form-label" for="{{ account_form.first_name.id_for_label }}">First Name</label>
-                    <input type="text" name="{{ account_form.first_name.html_name }}" id="{{ account_form.first_name.id_for_label }}" class="dash-form-control" value="{{ account_form.first_name.value|default:'' }}">
+        <div style="padding: 1.25rem;">
+            <form method="post" action="{% url 'listings:profile_edit' %}">
+                {% csrf_token %}
+                <input type="hidden" name="section" value="account">
+                
+                <div class="dash-grid-2" style="gap: 1rem;">
+                    <div class="dash-form-group">
+                        <label class="dash-form-label" for="{{ account_form.first_name.id_for_label }}">First Name</label>
+                        <input type="text" 
+                               name="{{ account_form.first_name.html_name }}" 
+                               id="{{ account_form.first_name.id_for_label }}" 
+                               class="dash-form-control" 
+                               value="{{ account_form.first_name.value|default:'' }}">
+                    </div>
+                    <div class="dash-form-group">
+                        <label class="dash-form-label" for="{{ account_form.last_name.id_for_label }}">Last Name</label>
+                        <input type="text" 
+                               name="{{ account_form.last_name.html_name }}" 
+                               id="{{ account_form.last_name.id_for_label }}" 
+                               class="dash-form-control" 
+                               value="{{ account_form.last_name.value|default:'' }}">
+                    </div>
                 </div>
+
                 <div class="dash-form-group">
-                    <label class="dash-form-label" for="{{ account_form.last_name.id_for_label }}">Last Name</label>
-                    <input type="text" name="{{ account_form.last_name.html_name }}" id="{{ account_form.last_name.id_for_label }}" class="dash-form-control" value="{{ account_form.last_name.value|default:'' }}">
+                    <label class="dash-form-label" for="{{ account_form.email.id_for_label }}">Email Address</label>
+                    <input type="email" 
+                           name="{{ account_form.email.html_name }}" 
+                           id="{{ account_form.email.id_for_label }}" 
+                           class="dash-form-control" 
+                           value="{{ account_form.email.value|default:'' }}" 
+                           readonly>
+                    <small style="color: #64748b; font-size: 0.75rem; display: block; margin-top: 0.25rem;">Contact support to change your email address.</small>
                 </div>
-            </div>
 
-            <div class="dash-form-group">
-                <label class="dash-form-label" for="{{ account_form.email.id_for_label }}">Email Address</label>
-                <input type="email" name="{{ account_form.email.html_name }}" id="{{ account_form.email.id_for_label }}" class="dash-form-control" value="{{ account_form.email.value|default:'' }}" readonly style="background-color: #f8fafc; cursor: not-allowed;">
-                <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Contact support to change your email address.</small>
-            </div>
+                <div class="dash-form-group">
+                    <label class="dash-form-label" for="{{ account_form.phone.id_for_label }}">Phone Number</label>
+                    <input type="text" 
+                           name="{{ account_form.phone.html_name }}" 
+                           id="{{ account_form.phone.id_for_label }}" 
+                           class="dash-form-control" 
+                           value="{{ account_form.phone.value|default:'' }}">
+                </div>
 
-            <div class="dash-form-group">
-                <label class="dash-form-label" for="{{ account_form.phone.id_for_label }}">Phone Number</label>
-                <input type="text" name="{{ account_form.phone.html_name }}" id="{{ account_form.phone.id_for_label }}" class="dash-form-control" value="{{ account_form.phone.value|default:'' }}">
-            </div>
+                <div class="dash-form-group">
+                    <label class="dash-form-label" for="{{ account_form.address.id_for_label }}">Address / Location</label>
+                    <input type="text" 
+                           name="{{ account_form.address.html_name }}" 
+                           id="{{ account_form.address.id_for_label }}" 
+                           class="dash-form-control" 
+                           value="{{ account_form.address.value|default:'' }}">
+                </div>
+                
+                <div class="dash-form-group" style="display: none;">
+                    {{ account_form.intent }}
+                </div>
 
-            <div class="dash-form-group">
-                <label class="dash-form-label" for="{{ account_form.address.id_for_label }}">Address / Location</label>
-                <input type="text" name="{{ account_form.address.html_name }}" id="{{ account_form.address.id_for_label }}" class="dash-form-control" value="{{ account_form.address.value|default:'' }}">
-            </div>
-            
-            <div class="dash-form-group" style="display: none;">
-                {{ account_form.intent }}
-            </div>
-
-            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-                <button type="submit" class="ap-btn ap-btn-primary">Save Changes</button>
-            </div>
-        </form>
+                <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                    <button type="submit" class="ap-btn ap-btn-primary">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Professional Profile (if agent or other specific role) -->
@@ -60,57 +307,85 @@
         {% if is_agent and agent_form %}
         <div class="dash-card">
             <div class="dash-card-header">
-                <h3 class="dash-card-title">Agent Profile</h3>
-                <span style="background: #f1f5f9; padding: 0.25rem 0.75rem; border-radius: 2rem; font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Professional</span>
+                <h3 class="dash-card-title">
+                    <i class="fa-solid fa-briefcase" style="color: #10b981;"></i>
+                    Agent Profile
+                </h3>
+                <span class="role-badge">Professional</span>
             </div>
             
-            <form method="post" action="{% url 'listings:profile_edit' %}">
-                {% csrf_token %}
-                <input type="hidden" name="section" value="agent">
-                
-                <div class="dash-form-group">
-                    <label class="dash-form-label" for="{{ agent_form.license_number.id_for_label }}">License Number</label>
-                    <input type="text" name="{{ agent_form.license_number.html_name }}" id="{{ agent_form.license_number.id_for_label }}" class="dash-form-control" value="{{ agent_form.license_number.value|default:'' }}">
-                </div>
-                
-                <div class="dash-form-group">
-                    <label class="dash-form-label" for="{{ agent_form.agency_name.id_for_label }}">Agency Name</label>
-                    <input type="text" name="{{ agent_form.agency_name.html_name }}" id="{{ agent_form.agency_name.id_for_label }}" class="dash-form-control" value="{{ agent_form.agency_name.value|default:'' }}">
-                </div>
+            <div style="padding: 1.25rem;">
+                <form method="post" action="{% url 'listings:profile_edit' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="section" value="agent">
+                    
+                    <div class="dash-form-group">
+                        <label class="dash-form-label" for="{{ agent_form.license_number.id_for_label }}">License Number</label>
+                        <input type="text" 
+                               name="{{ agent_form.license_number.html_name }}" 
+                               id="{{ agent_form.license_number.id_for_label }}" 
+                               class="dash-form-control" 
+                               value="{{ agent_form.license_number.value|default:'' }}">
+                    </div>
+                    
+                    <div class="dash-form-group">
+                        <label class="dash-form-label" for="{{ agent_form.agency_name.id_for_label }}">Agency Name</label>
+                        <input type="text" 
+                               name="{{ agent_form.agency_name.html_name }}" 
+                               id="{{ agent_form.agency_name.id_for_label }}" 
+                               class="dash-form-control" 
+                               value="{{ agent_form.agency_name.value|default:'' }}">
+                    </div>
 
-                <div class="dash-form-group">
-                    <label class="dash-form-label" for="{{ agent_form.bio.id_for_label }}">Professional Bio</label>
-                    <textarea name="{{ agent_form.bio.html_name }}" id="{{ agent_form.bio.id_for_label }}" class="dash-form-control" rows="4">{{ agent_form.bio.value|default:'' }}</textarea>
-                </div>
+                    <div class="dash-form-group">
+                        <label class="dash-form-label" for="{{ agent_form.bio.id_for_label }}">Professional Bio</label>
+                        <textarea name="{{ agent_form.bio.html_name }}" 
+                                  id="{{ agent_form.bio.id_for_label }}" 
+                                  class="dash-form-control" 
+                                  rows="4">{{ agent_form.bio.value|default:'' }}</textarea>
+                    </div>
 
-                <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-                    <button type="submit" class="ap-btn ap-btn-primary">Update Agent Details</button>
-                </div>
-            </form>
+                    <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                        <button type="submit" class="ap-btn ap-btn-primary">
+                            <i class="fa-solid fa-floppy-disk"></i> Update Agent Details
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
         {% endif %}
 
+        <!-- My Documents -->
         <div class="dash-card">
             <div class="dash-card-header">
-                <h3 class="dash-card-title">My Documents</h3>
-                <i class="fa-solid fa-file-shield text-muted"></i>
+                <h3 class="dash-card-title">
+                    <i class="fa-solid fa-file-shield" style="color: #10b981;"></i>
+                    My Documents
+                </h3>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem;">
                 {% for request in role_requests %}
                     {% for doc in request.docs %}
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; border: 1px solid #f1f5f9; border-radius: 0.5rem; background: #f8fafc;">
-                            <div style="display: flex; align-items: center; gap: 0.75rem;">
-                                <i class="fa-solid fa-file-pdf" style="color: #ef4444; font-size: 1.25rem;"></i>
+                        <div class="document-item">
+                            <div class="document-item-left">
+                                <i class="fa-solid fa-file-pdf document-icon"></i>
                                 <div>
-                                    <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">{{ doc.label }}</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary);">{{ doc.name }}</div>
+                                    <div class="document-info-label">{{ doc.label }}</div>
+                                    <div class="document-info-name">{{ doc.name }}</div>
                                 </div>
                             </div>
-                            <a href="{{ doc.url }}" target="_blank" class="ap-btn ap-btn-ghost btn-sm" style="padding: 0.25rem 0.5rem;"><i class="fa-solid fa-eye"></i></a>
+                            <a href="{{ doc.url }}" target="_blank" class="ap-btn ap-btn-ghost btn-sm">
+                                <i class="fa-solid fa-eye"></i> View
+                            </a>
                         </div>
                     {% endfor %}
                 {% empty %}
-                    <p style="color: var(--text-secondary); font-size: 0.9rem; text-align: center; margin: 1rem 0;">No documents uploaded yet.</p>
+                    <div class="empty-state">
+                        <div class="empty-state-icon">
+                            <i class="fa-solid fa-file-circle-exclamation"></i>
+                        </div>
+                        <p style="margin: 0;">No documents uploaded yet.</p>
+                    </div>
                 {% endfor %}
             </div>
         </div>

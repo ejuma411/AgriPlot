@@ -1,9 +1,675 @@
-{% extends "verification/admin/base_admin.html" %}
+{% extends "accounts/dashboard/base_dashboard.html" %}
 {% load static humanize plot_extras %}
 
-{% block admin_title %}Property Audit: {{ plot.title }}{% endblock %}
+{% block dash_page_title %}Property Audit: {{ plot.title }}{% endblock %}
+{% block dash_page_subtitle %}Comprehensive verification and audit trail for property {{ plot.title }}.{% endblock %}
 
-{% block admin_content %}
+{% block dashboard_extra_css %}
+<style>
+    /* Property Audit specific styles */
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        margin: 0 -0.75rem;
+    }
+    
+    .g-4 {
+        gap: 1.5rem;
+    }
+    
+    .col-xl-9 {
+        flex: 0 0 75%;
+        max-width: 75%;
+        padding: 0 0.75rem;
+    }
+    
+    .col-xl-3 {
+        flex: 0 0 25%;
+        max-width: 25%;
+        padding: 0 0.75rem;
+    }
+    
+    .col-lg-7 {
+        flex: 0 0 58.333333%;
+        max-width: 58.333333%;
+        padding: 0 0.75rem;
+    }
+    
+    .col-lg-5 {
+        flex: 0 0 41.666667%;
+        max-width: 41.666667%;
+        padding: 0 0.75rem;
+    }
+    
+    .admin-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+    
+    .admin-card-body {
+        padding: 1.25rem;
+    }
+    
+    .admin-card-header {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    
+    .admin-card-title {
+        font-size: 1rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .admin-card-title i {
+        color: #10b981;
+    }
+    
+    .admin-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+    
+    .admin-btn-primary {
+        background: #10b981;
+        color: white;
+        border-color: #10b981;
+    }
+    
+    .admin-btn-primary:hover {
+        background: #059669;
+        border-color: #059669;
+    }
+    
+    .admin-btn-outline {
+        background: transparent;
+        border-color: #e2e8f0;
+        color: #64748b;
+    }
+    
+    .admin-btn-outline:hover {
+        border-color: #10b981;
+        color: #10b981;
+        background: #f8fafc;
+    }
+    
+    .border-danger {
+        border-color: #ef4444 !important;
+    }
+    
+    .text-danger {
+        color: #ef4444 !important;
+    }
+    
+    .text-success {
+        color: #10b981 !important;
+    }
+    
+    .text-warning {
+        color: #f59e0b !important;
+    }
+    
+    .text-primary {
+        color: #10b981 !important;
+    }
+    
+    .text-dark {
+        color: #0f172a !important;
+    }
+    
+    .text-muted {
+        color: #64748b !important;
+    }
+    
+    .bg-success {
+        background: #d1fae5 !important;
+        color: #065f46 !important;
+    }
+    
+    .bg-primary {
+        background: #3b82f6 !important;
+        color: white !important;
+    }
+    
+    .bg-success-soft {
+        background: rgba(16, 185, 129, 0.1) !important;
+        color: #10b981 !important;
+    }
+    
+    .bg-info-soft {
+        background: rgba(59, 130, 246, 0.1) !important;
+        color: #3b82f6 !important;
+    }
+    
+    .bg-secondary {
+        background: #64748b !important;
+        color: white !important;
+    }
+    
+    .fw-bold {
+        font-weight: 700 !important;
+    }
+    
+    .small {
+        font-size: 0.875rem !important;
+    }
+    
+    .x-small {
+        font-size: 0.75rem !important;
+    }
+    
+    .mb-0 {
+        margin-bottom: 0 !important;
+    }
+    
+    .mb-1 {
+        margin-bottom: 0.25rem !important;
+    }
+    
+    .mb-2 {
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .mb-3 {
+        margin-bottom: 0.75rem !important;
+    }
+    
+    .mb-4 {
+        margin-bottom: 1.5rem !important;
+    }
+    
+    .mt-3 {
+        margin-top: 0.75rem !important;
+    }
+    
+    .p-0 {
+        padding: 0 !important;
+    }
+    
+    .p-2 {
+        padding: 0.5rem !important;
+    }
+    
+    .p-4 {
+        padding: 1.5rem !important;
+    }
+    
+    .px-2 {
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
+    .px-4 {
+        padding-left: 1.5rem !important;
+        padding-right: 1.5rem !important;
+    }
+    
+    .pb-4 {
+        padding-bottom: 1.5rem !important;
+    }
+    
+    .py-2 {
+        padding-top: 0.5rem !important;
+        padding-bottom: 0.5rem !important;
+    }
+    
+    .py-3 {
+        padding-top: 0.75rem !important;
+        padding-bottom: 0.75rem !important;
+    }
+    
+    .d-flex {
+        display: flex !important;
+    }
+    
+    .align-items-center {
+        align-items: center !important;
+    }
+    
+    .justify-content-between {
+        justify-content: space-between !important;
+    }
+    
+    .flex-column {
+        flex-direction: column !important;
+    }
+    
+    .gap-2 {
+        gap: 0.5rem !important;
+    }
+    
+    .gap-3 {
+        gap: 0.75rem !important;
+    }
+    
+    .gap-4 {
+        gap: 1.5rem !important;
+    }
+    
+    .ms-auto {
+        margin-left: auto !important;
+    }
+    
+    .me-1 {
+        margin-right: 0.25rem !important;
+    }
+    
+    .me-2 {
+        margin-right: 0.5rem !important;
+    }
+    
+    .h-100 {
+        height: 100% !important;
+    }
+    
+    .w-100 {
+        width: 100% !important;
+    }
+    
+    .text-center {
+        text-align: center !important;
+    }
+    
+    .opacity-50 {
+        opacity: 0.5 !important;
+    }
+    
+    .opacity-25 {
+        opacity: 0.25 !important;
+    }
+    
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 2rem;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    
+    .rounded-circle {
+        border-radius: 50% !important;
+    }
+    
+    .border {
+        border: 1px solid #e2e8f0 !important;
+    }
+    
+    .list-group {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .list-group-flush .list-group-item:last-child {
+        border-bottom: 0;
+    }
+    
+    .list-group-item {
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .form-label {
+        display: block;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 0.25rem;
+    }
+    
+    .form-control {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.5rem;
+        font-size: 0.875rem;
+        background: white;
+        transition: border-color 0.2s;
+    }
+    
+    .form-control:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    
+    .d-grid {
+        display: grid !important;
+    }
+    
+    /* Stat Grid */
+    .stat-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1rem;
+    }
+    
+    .stat-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 0.75rem;
+        padding: 1.25rem;
+        transition: all 0.2s;
+    }
+    
+    .stat-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        transform: translateY(-2px);
+    }
+    
+    .stat-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        font-weight: 600;
+    }
+    
+    .stat-value {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0.25rem 0;
+    }
+    
+    .stat-trend {
+        font-size: 0.75rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+    
+    /* Doc Workspace Styling */
+    .doc-workspace {
+        display: flex;
+        height: 650px;
+    }
+    
+    .doc-sidebar {
+        width: 180px;
+        background: #f8fafc;
+        border-right: 1px solid #e2e8f0;
+        display: flex;
+        flex-direction: column;
+        padding: 0.5rem;
+        gap: 0.5rem;
+    }
+    
+    .doc-nav-item {
+        background: none;
+        border: 1px solid transparent;
+        padding: 0.75rem 0.5rem;
+        border-radius: 8px;
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.2s;
+        color: #64748b;
+        cursor: pointer;
+    }
+    
+    .doc-nav-item .doc-icon {
+        font-size: 1.25rem;
+        opacity: 0.6;
+    }
+    
+    .doc-nav-item .doc-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        text-align: center;
+    }
+    
+    .doc-nav-item:hover {
+        background: rgba(0, 0, 0, 0.03);
+        border-color: #e2e8f0;
+    }
+    
+    .doc-nav-item.active {
+        background: white;
+        border-color: #e2e8f0;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+        color: #10b981;
+    }
+    
+    .doc-nav-item.active .doc-icon {
+        opacity: 1;
+        color: #10b981;
+    }
+    
+    .doc-viewer {
+        flex-grow: 1;
+        position: relative;
+        background: #fafafa;
+    }
+    
+    .doc-content {
+        display: none;
+        height: 100%;
+        overflow-y: auto;
+        padding: 1.5rem;
+    }
+    
+    .doc-content.active {
+        display: block;
+    }
+    
+    .doc-placeholder {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: #94a3b8;
+    }
+    
+    .doc-placeholder i {
+        color: #cbd5e1;
+    }
+    
+    /* Audit Timeline */
+    .audit-timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    
+    .audit-step {
+        display: flex;
+        gap: 1rem;
+        position: relative;
+    }
+    
+    .audit-step::after {
+        content: '';
+        position: absolute;
+        left: 9px;
+        top: 24px;
+        bottom: -24px;
+        width: 2px;
+        background: #e2e8f0;
+    }
+    
+    .audit-step:last-child::after {
+        display: none;
+    }
+    
+    .audit-step .step-icon {
+        width: 20px;
+        height: 20px;
+        background: white;
+        z-index: 1;
+        font-size: 0.9rem;
+        margin: 0.25rem 0;
+    }
+    
+    .step-label {
+        flex-grow: 1;
+    }
+    
+    .progress {
+        display: flex;
+        height: 8px;
+        overflow: hidden;
+        background: #f1f5f9;
+        border-radius: 1rem;
+    }
+    
+    .progress-bar {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        overflow: hidden;
+        background: #10b981;
+        transition: width 0.6s ease;
+    }
+    
+    .rounded-pill {
+        border-radius: 1rem !important;
+    }
+    
+    .img-fluid {
+        max-width: 100%;
+        height: auto;
+    }
+    
+    .rounded {
+        border-radius: 0.5rem !important;
+    }
+    
+    .adjudication-card {
+        border-color: #f59e0b;
+        border-left: 4px solid #f59e0b;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 1200px) {
+        .col-xl-9 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+        
+        .col-xl-3 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+    }
+    
+    @media (max-width: 992px) {
+        .col-lg-7, .col-lg-5 {
+            flex: 0 0 100%;
+            max-width: 100%;
+        }
+        
+        .stat-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .stat-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+        
+        .doc-workspace {
+            flex-direction: column;
+            height: auto;
+        }
+        
+        .doc-sidebar {
+            width: 100%;
+            flex-direction: row;
+            border-right: 0;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.5rem;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+        }
+        
+        .doc-nav-item {
+            flex-direction: row;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            white-space: nowrap;
+        }
+        
+        .doc-nav-item .doc-label {
+            font-size: 0.65rem;
+        }
+        
+        .doc-viewer {
+            height: 400px;
+        }
+        
+        .admin-card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        
+        .admin-card-body {
+            padding: 1rem;
+        }
+        
+        .list-group-item {
+            padding: 0.75rem 1rem;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .stat-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .doc-viewer {
+            height: 300px;
+        }
+        
+        .doc-content {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block dashboard_content %}
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Property Audit: {{ plot.title }}</h1>
+        <p class="dashboard-subtitle">Comprehensive verification and audit trail for property {{ plot.title }}.</p>
+    </div>
+</div>
+
 <div class="row g-4">
     <!-- Main Audit Pane -->
     <div class="col-xl-9">
@@ -203,9 +869,9 @@
                     {% for stage in verification_stages %}
                     <div class="audit-step {% if stage.completed %}completed{% elif stage.active %}active{% endif %}">
                         <div class="step-icon">
-                            {% if stage.completed %}<i class="fas fa-check-circle"></i>
-                            {% elif stage.active %}<i class="fas fa-circle-notch fa-spin"></i>
-                            {% else %}<i class="fas fa-circle"></i>{% endif %}
+                            {% if stage.completed %}<i class="fas fa-check-circle text-success"></i>
+                            {% elif stage.active %}<i class="fas fa-circle-notch fa-spin text-primary"></i>
+                            {% else %}<i class="fas fa-circle text-muted"></i>{% endif %}
                         </div>
                         <div class="step-label">
                             <div class="fw-bold small">{{ stage.name }}</div>
@@ -216,7 +882,7 @@
                     
                     {% if verification.current_stage == 'rejected' %}
                     <div class="audit-step rejected mt-3">
-                        <div class="step-icon text-danger"><i class="fas fa-times-circle"></i></div>
+                        <div class="step-icon text-danger"><i class="fas fa-times-circle text-danger"></i></div>
                         <div class="step-label">
                             <div class="fw-bold small text-danger">Verification Rejected</div>
                             <div class="x-small text-muted">{{ verification.rejected_at|date:"M d, Y" }}</div>
@@ -291,359 +957,45 @@
     </div>
 </div>
 
-<style>
-    .bg-success-soft { background: rgba(25, 135, 84, 0.1); }
-    .bg-info-soft { background: rgba(13, 202, 240, 0.1); }
-    
-    /* Doc Workspace Styling */
-    .doc-workspace {
-        display: flex;
-        height: 650px;
-    }
-    .doc-sidebar {
-        width: 180px;
-        background: #f8f9fa;
-        border-right: 1px solid #eee;
-        display: flex;
-        flex-direction: column;
-        padding: 0.5rem;
-        gap: 0.5rem;
-    }
-    .doc-nav-item {
-        background: none;
-        border: 1px solid transparent;
-        padding: 1rem 0.75rem;
-        border-radius: 10px;
-        text-align: left;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5rem;
-        transition: all 0.2s ease;
-        color: var(--ag-charcoal);
-    }
-    .doc-nav-item .doc-icon { font-size: 1.25rem; opacity: 0.6; }
-    .doc-nav-item .doc-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; }
-    .doc-nav-item:hover { background: rgba(0,0,0,0.03); border-color: #eee; }
-    .doc-nav-item.active { background: white; border-color: #eee; box-shadow: 0 4px 10px rgba(0,0,0,0.05); color: var(--ag-green-700); }
-    .doc-nav-item.active .doc-icon { opacity: 1; color: var(--ag-green-700); }
-    
-    .doc-viewer { flex-grow: 1; position: relative; background: #fafafa; }
-    .doc-content { display: none; height: 100%; overflow-y: auto; padding: 1.5rem; }
-    .doc-content.active { display: block; }
-    .doc-placeholder { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ccc; }
-    
-    /* Audit Timeline */
-    .audit-timeline {
-        display: flex;
-        flex-direction: column;
-        gap: 1.5rem;
-    }
-    .audit-step {
-        display: flex;
-        gap: 1rem;
-        position: relative;
-    }
-    .audit-step::after {
-        content: '';
-        position: absolute;
-        left: 9px;
-        top: 24px;
-        bottom: -24px;
-        width: 2px;
-        background: #eee;
-    }
-    .audit-step:last-child::after { display: none; }
-    .audit-step .step-icon {
-        width: 20px;
-        height: 20px;
-        background: white;
-        z-index: 1;
-        font-size: 0.9rem;
-        margin: 0.25rem 0;
-        word-wrap: break-word;
-    }
-
-    .btn-lg {
-        padding: 1rem;
-        font-weight: 600;
-        width: 100%;
-    }
-
-    /* Mobile Responsive Styles */
-    @media (max-width: 992px) {
-        .row {
-            margin-left: -0.5rem;
-            margin-right: -0.5rem;
-        }
-        
-        [class*="col-"] {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .page-header-title h1 {
-            font-size: 1.5rem;
-        }
-        
-        .page-header-subtitle {
-            font-size: 0.9rem;
-        }
-        
-        .admin-card-header {
-            padding: 1rem;
-        }
-        
-        .admin-card-body {
-            padding: 1rem;
-        }
-        
-        .admin-card-title {
-            font-size: 1rem;
-        }
-        
-        .details-table th,
-        .details-table td {
-            padding: 0.35rem 0;
-            font-size: 0.9rem;
-        }
-        
-        .details-table th {
-            width: 35%;
-        }
-        
-        .nav-pills {
-            flex-wrap: nowrap;
-            overflow-x: auto;
-            padding-bottom: 0.75rem;
-            margin-bottom: 0.5rem;
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: thin;
-        }
-        
-        .nav-pills::-webkit-scrollbar {
-            height: 4px;
-        }
-        
-        .nav-pills::-webkit-scrollbar-thumb {
-            background: var(--primary);
-            border-radius: 4px;
-        }
-        
-        .nav-pills .nav-link {
-            white-space: nowrap;
-            font-size: 0.85rem;
-            padding: 0.4rem 0.8rem;
-        }
-        
-        .document-viewer-container iframe {
-            height: 400px;
-        }
-        
-        .status-timeline {
-            padding-left: 25px;
-        }
-        
-        .timeline-item {
-            padding-bottom: 1rem;
-        }
-        
-        .timeline-content strong {
-            font-size: 0.9rem;
-        }
-        
-        .timeline-content small {
-            font-size: 0.8rem;
-        }
-        
-        .activity-item {
-            padding: 0.75rem;
-        }
-        
-        .activity-icon {
-            width: 28px;
-            height: 28px;
-            font-size: 0.9rem;
-        }
-        
-        .activity-content p {
-            font-size: 0.85rem;
-        }
-        
-        .btn-lg {
-            padding: 0.75rem;
-            font-size: 0.95rem;
-        }
-        
-        .btn-sm {
-            padding: 0.3rem 0.6rem;
-            font-size: 0.8rem;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .page-header {
-            padding: 1.5rem 1rem;
-        }
-        
-        .page-header-actions .btn {
-            padding: 0.5rem 1rem;
-            font-size: 0.9rem;
-        }
-        
-        .admin-card-header {
-            flex-direction: column;
-            gap: 0.5rem;
-            align-items: flex-start;
-        }
-        
-        .details-table th {
-            width: 40%;
-            font-size: 0.85rem;
-        }
-        
-        .details-table td {
-            font-size: 0.85rem;
-        }
-        
-        .document-viewer-container iframe {
-            height: 300px;
-        }
-        
-        .Seller-type {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.25rem;
-        }
-        
-        .Seller-type .badge {
-            font-size: 0.7rem;
-        }
-        
-        .timeline-dot {
-            left: -22px;
-            width: 10px;
-            height: 10px;
-        }
-        
-        .timeline-content strong {
-            font-size: 0.85rem;
-        }
-        
-        .d-grid.gap-2 {
-            gap: 0.5rem !important;
-        }
-        
-        .modal-dialog {
-            margin: 0.5rem;
-        }
-        
-        .modal-body {
-            padding: 1rem;
-        }
-    }
-
-    @media (max-height: 500px) and (orientation: landscape) {
-        .document-viewer-container iframe {
-            height: 250px;
-        }
-        
-        .activity-list {
-            max-height: 200px;
-        }
-    }
-
-    @media (min-width: 769px) and (max-width: 1024px) {
-        .details-table th {
-            width: 35%;
-        }
-        
-        .nav-pills .nav-link {
-            padding: 0.4rem 0.8rem;
-            font-size: 0.85rem;
-        }
-    }
-
-    @media print {
-        .page-header-actions,
-        .btn,
-        .review-actions,
-        .admin-card-footer {
-            display: none !important;
-        }
-        
-        .admin-card {
-            break-inside: avoid;
-            box-shadow: none;
-            border: 1px solid #ddd;
-        }
-        
-        .document-viewer-container iframe {
-            height: 500px;
-        }
-    }
-
-    @media (hover: none) and (pointer: coarse) {
-        .btn, 
-        .nav-link,
-        [data-bs-toggle="pill"] {
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .btn-sm {
-            min-height: 36px;
-        }
-        
-        input, 
-        select, 
-        textarea {
-            font-size: 16px !important;
-        }
-    }
-
-    .admin-card,
-    .btn,
-    .nav-link,
-    .timeline-dot {
-        transition: all 0.3s ease;
-    }
-
-    .btn:disabled {
-        opacity: 0.65;
-        cursor: not-allowed;
-    }
-
-    .btn:focus,
-    .nav-link:focus,
-    .form-control:focus {
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(6, 145, 50, 0.25);
-    }
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Document navigation
+    const docItems = document.querySelectorAll('.doc-nav-item');
+    const docContents = document.querySelectorAll('.doc-content');
+
+    docItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const target = item.dataset.target;
+            
+            docItems.forEach(i => i.classList.remove('active'));
+            item.classList.add('active');
+            
+            docContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === `doc-${target}`) {
+                    content.classList.add('active');
+                }
+            });
+        });
+    });
+
     // Add warning if notes are empty for rejection
     const reviewForm = document.getElementById('reviewForm');
-    const notesField = document.getElementById('notes');
+    const notesField = reviewForm.querySelector('textarea[name="notes"]');
     
     reviewForm.addEventListener('submit', function(e) {
-        const action = e.submitter?.value;
+        const submitter = e.submitter;
+        const action = submitter ? submitter.value : null;
         const notes = notesField.value.trim();
         
         if (action === 'reject' && !notes) {
             e.preventDefault();
-            AgriPlotUI.showToast({ message: 'Please provide a reason for rejection in the notes.', type: 'warning' });
+            alert('Please provide a reason for rejection in the notes.');
         }
         
         if (action === 'request_changes' && !notes) {
             e.preventDefault();
-            AgriPlotUI.showToast({ message: 'Please specify what changes are needed in the notes.', type: 'warning' });
+            alert('Please specify what changes are needed in the notes.');
         }
     });
 });
@@ -654,7 +1006,7 @@ function triggerArdhisasa() {
         return;
     }
     
-    const btn = event.target;
+    const btn = document.getElementById('ardhisasaSyncBtn');
     const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-sync-alt fa-spin me-2"></i> Processing...';
     btn.disabled = true;
@@ -669,21 +1021,28 @@ function triggerArdhisasa() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            AgriPlotUI.showToast({ message: 'Ardhisasa verification started successfully! The page will reload to show results.', type: 'success' });
-            AgriPlotUI.trackEvent('cta_click', { cta: 'ardhisasa_verification' });
+            alert('Ardhisasa verification started successfully! The page will reload to show results.');
             location.reload();
         } else {
-            AgriPlotUI.showToast({ message: 'Error: ' + data.error, type: 'danger' });
+            alert('Error: ' + data.error);
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        AgriPlotUI.showToast({ message: 'Failed to start verification. Please try again.', type: 'danger' });
+        alert('Failed to start verification. Please try again.');
         btn.innerHTML = originalText;
         btn.disabled = false;
     });
 }
+
+// Attach event listener to Ardhisasa button
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('ardhisasaSyncBtn');
+    if (btn) {
+        btn.addEventListener('click', triggerArdhisasa);
+    }
+});
 </script>
 {% endblock %}

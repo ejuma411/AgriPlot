@@ -1,183 +1,496 @@
-{% extends "listings/admin/base_admin.html" %}
+{% extends "accounts/dashboard/base_dashboard.html" %}
 {% load static %}
 
-{% block title %}Verification Queue - AgriPlot Admin{% endblock %}
+{% block admin_title %}Verification Queue{% endblock %}
 
 {% block admin_content %}
-<!-- Page Header -->
-<div class="page-header">
-    <div class="page-header-content">
-        <div class="page-header-title">
-            <h1><i class="fas fa-list me-2"></i>Verification Queue</h1>
-            <p class="page-header-subtitle">Track document review, extension reports, and surveyor inspections</p>
-        </div>
-        <div class="page-header-actions">
-            <a href="{% url 'listings:home' %}" class="btn" data-analytics="admin_back_home">
-                <i class="fas fa-home me-2"></i>Back to Home
-            </a>
-            <a href="{% url 'verification:verification_dashboard' %}" class="btn" data-analytics="admin_back_dashboard">
-                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
-            </a>
-        </div>
+<!-- Stats Grid -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <span class="stat-value">{{ stats.total|default:0 }}</span>
+        <span class="stat-label">Total Plots</span>
     </div>
+    <div class="stat-card" style="border-left: 4px solid #f59e0b;">
+        <span class="stat-value" style="color: #f59e0b;">{{ stats.pending_review|default:0 }}</span>
+        <span class="stat-label">Pending Review</span>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid #3b82f6;">
+        <span class="stat-value" style="color: #3b82f6;">{{ stats.in_progress|default:0 }}</span>
+        <span class="stat-label">In Progress</span>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid #10b981;">
+        <span class="stat-value" style="color: #10b981;">{{ stats.approved|default:0 }}</span>
+        <span class="stat-label">Approved</span>
+    </div>
+    <div class="stat-card" style="border-left: 4px solid #ef4444;">
+        <span class="stat-value" style="color: #ef4444;">{{ stats.rejected|default:0 }}</span>
+        <span class="stat-label">Rejected</span>
+    </div>
+</div>
 
-    <!-- Filter Tabs -->
-    <div class="admin-tabs">
-        <ul class="nav nav-tabs" role="tablist">
-            <li class="nav-item">
-                <a href="?filter=all" class="nav-link {% if current_filter == 'all' %}active{% endif %}" data-analytics="queue_filter_all">
-                    <i class="fas fa-list"></i> <span>All</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="?filter=pending" class="nav-link {% if current_filter == 'pending' %}active{% endif %}" data-analytics="queue_filter_pending">
-                    <i class="fas fa-clock"></i> <span>Documents Uploaded</span>
-                    {% if stats.pending_review %}<span class="badge bg-danger">{{ stats.pending_review }}</span>{% endif %}
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="?filter=in_progress" class="nav-link {% if current_filter == 'in_progress' %}active{% endif %}" data-analytics="queue_filter_in_progress">
-                    <i class="fas fa-sync-alt"></i> <span>In Progress</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="?filter=approved" class="nav-link {% if current_filter == 'approved' %}active{% endif %}" data-analytics="queue_filter_approved">
-                    <i class="fas fa-check-circle"></i> <span>Approved</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="?filter=rejected" class="nav-link {% if current_filter == 'rejected' %}active{% endif %}" data-analytics="queue_filter_rejected">
-                    <i class="fas fa-times-circle"></i> <span>Rejected</span>
-                </a>
-            </li>
-        </ul>
-    </div>
+<!-- Filter Tabs -->
+<div class="filter-tabs-wrapper">
+    <ul class="nav nav-tabs filter-tabs" role="tablist">
+        <li class="nav-item">
+            <a href="?filter=all" class="nav-link {% if current_filter == 'all' %}active{% endif %}" data-analytics="queue_filter_all">
+                <i class="fas fa-th-list"></i>
+                <span>All</span>
+                <span class="badge badge-filter">{{ stats.total|default:0 }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="?filter=pending" class="nav-link {% if current_filter == 'pending' %}active{% endif %}" data-analytics="queue_filter_pending">
+                <i class="fas fa-clock text-warning"></i>
+                <span>Pending</span>
+                <span class="badge badge-filter bg-warning">{{ stats.pending_review|default:0 }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="?filter=in_progress" class="nav-link {% if current_filter == 'in_progress' %}active{% endif %}" data-analytics="queue_filter_in_progress">
+                <i class="fas fa-spinner fa-pulse text-info"></i>
+                <span>In Progress</span>
+                <span class="badge badge-filter bg-info">{{ stats.in_progress|default:0 }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="?filter=approved" class="nav-link {% if current_filter == 'approved' %}active{% endif %}" data-analytics="queue_filter_approved">
+                <i class="fas fa-check-circle text-success"></i>
+                <span>Approved</span>
+                <span class="badge badge-filter bg-success">{{ stats.approved|default:0 }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="?filter=rejected" class="nav-link {% if current_filter == 'rejected' %}active{% endif %}" data-analytics="queue_filter_rejected">
+                <i class="fas fa-times-circle text-danger"></i>
+                <span>Rejected</span>
+                <span class="badge badge-filter bg-danger">{{ stats.rejected|default:0 }}</span>
+            </a>
+        </li>
+    </ul>
 </div>
 
 <!-- Queue Table -->
 <div class="admin-card queue-card">
     <div class="admin-card-header">
-        <h5 class="admin-card-title">
-            <i class="fas fa-tasks me-2"></i>
-            {% if current_filter == 'all' %}All Plots
-            {% elif current_filter == 'pending' %}Documents Uploaded
-            {% elif current_filter == 'in_progress' %}In Progress
-            {% elif current_filter == 'approved' %}Approved Plots
-            {% elif current_filter == 'rejected' %}Rejected Plots
-            {% endif %}
-        </h5>
-        <span class="badge bg-primary">{{ plots|length }} total</span>
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+            <h5 class="admin-card-title mb-0">
+                <i class="fas fa-tasks me-2"></i>
+                {% if current_filter == 'all' %}All Plots
+                {% elif current_filter == 'pending' %}Pending Review
+                {% elif current_filter == 'in_progress' %}In Progress
+                {% elif current_filter == 'approved' %}Approved Plots
+                {% elif current_filter == 'rejected' %}Rejected Plots
+                {% endif %}
+            </h5>
+            <span class="badge bg-light text-dark border">{{ plots|length }} items</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <button class="admin-btn admin-btn-outline" style="padding: 0.3rem 0.7rem; font-size: 0.8rem;" onclick="window.location.reload()" aria-label="Refresh queue">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <span class="text-muted small">Updated: {% now "H:i" %}</span>
+        </div>
     </div>
-    <div class="admin-card-body">
+
+    <div class="admin-table-wrapper">
         {% if plots %}
-        <div class="table-responsive">
-            <table class="admin-table queue-table" aria-describedby="queueTableCaption">
-                <caption id="queueTableCaption" class="visually-hidden">
-                    Verification queue for plots and documents awaiting review.
-                </caption>
-                <thead>
-                    <tr>
-                        <th scope="col">ID</th>
-                        <th scope="col">Title</th>
-                        <th scope="col">Location</th>
-                        <th scope="col">Seller</th>
-                        <th scope="col">Submitted</th>
-                        <th scope="col">Status</th>
-                        <th scope="col">Documents</th>
-                        <th scope="col">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for plot in plots %}
-                    <tr>
-                        <td><strong>#{{ plot.id }}</strong></td>
-                        <td>
-                                <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank" rel="noopener" data-analytics="queue_view_plot">
-                                    {{ plot.title|truncatechars:30 }}
-                                </a>
-                        </td>
-                        <td>{{ plot.county|default:plot.location|truncatechars:20 }}</td>
-                        <td>
-                            {% if plot.agent and plot.agent.user %}
-                                {{ plot.agent.user|display_name }}
-                            {% elif plot.landowner and plot.landowner.user %}
-                                {{ plot.landowner.user|display_name }}
-                            {% else %}
-                                <span class="text-muted">Unknown</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <small>{{ plot.created_at|date:"M d, Y" }}</small><br>
-                            <small class="text-muted">{{ plot.created_at|timesince }} ago</small>
-                        </td>
-                        <td>
-                            {% if plot.verification_status %}
-                                <span class="badge 
-                                    {% if plot.verification_status.current_stage == 'approved' %}bg-success
-                                    {% elif plot.verification_status.current_stage == 'rejected' %}bg-danger
-                                    {% elif plot.verification_status.current_stage == 'document_uploaded' %}bg-warning
-                                    {% else %}bg-info{% endif %}">
-                                    {{ plot.verification_status.get_current_stage_display }}
-                                </span>
-                            {% else %}
-                                <span class="badge bg-secondary">No Status</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if plot.registry_task %}
-                            <span class="badge {% if plot.registry_task.status == 'completed' %}bg-success{% else %}bg-warning{% endif %}"
-                                  title="Registry Search {{ plot.registry_task.get_status_display }}">
-                                <i class="fas fa-search"></i>
+        <table class="admin-table queue-table" id="queueTable" aria-describedby="queueTableCaption">
+            <caption id="queueTableCaption" class="visually-hidden">
+                Verification queue for plots and documents awaiting review.
+            </caption>
+            <thead>
+                <tr>
+                    <th scope="col">ID</th>
+                    <th scope="col">Title</th>
+                    <th scope="col">Location</th>
+                    <th scope="col">Seller</th>
+                    <th scope="col">Submitted</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Documents</th>
+                    <th scope="col">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for plot in plots %}
+                <tr class="queue-row {% if plot.verification_status.current_stage == 'pending' %}row-pending{% endif %}">
+                    <td data-label="ID">
+                        <span class="id-badge">#{{ plot.id }}</span>
+                    </td>
+                    <td data-label="Title">
+                        <a href="{% url 'listings:plot_detail' plot.id %}" target="_blank" rel="noopener" class="plot-title-link" data-analytics="queue_view_plot">
+                            {{ plot.title|truncatechars:30 }}
+                            <i class="fas fa-external-link-alt small ms-1"></i>
+                        </a>
+                    </td>
+                    <td data-label="Location">
+                        <span class="location-text">{{ plot.county|default:plot.location|truncatechars:20 }}</span>
+                    </td>
+                    <td data-label="Seller">
+                        {% if plot.agent and plot.agent.user %}
+                            <span class="seller-name">{{ plot.agent.user|display_name }}</span>
+                            <span class="seller-role badge bg-light text-muted">Agent</span>
+                        {% elif plot.landowner and plot.landowner.user %}
+                            <span class="seller-name">{{ plot.landowner.user|display_name }}</span>
+                            <span class="seller-role badge bg-light text-muted">Owner</span>
+                        {% else %}
+                            <span class="text-muted">Unassigned</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Submitted">
+                        <div class="submitted-info">
+                            <span class="submitted-date">{{ plot.created_at|date:"M d, Y" }}</span>
+                            <span class="submitted-ago">{{ plot.created_at|timesince }} ago</span>
+                        </div>
+                    </td>
+                    <td data-label="Status">
+                        {% if plot.verification_status %}
+                            <span class="status-badge status-{{ plot.verification_status.current_stage }}">
+                                <i class="fas 
+                                    {% if plot.verification_status.current_stage == 'approved' %}fa-check-circle
+                                    {% elif plot.verification_status.current_stage == 'rejected' %}fa-times-circle
+                                    {% elif plot.verification_status.current_stage == 'document_uploaded' %}fa-upload
+                                    {% else %}fa-spinner{% endif %} 
+                                    me-1"></i>
+                                {{ plot.verification_status.get_current_stage_display }}
                             </span>
-                            {% endif %}
-                            <span class="badge {% if plot.title_deed %}bg-success{% else %}bg-danger{% endif %}" 
+                        {% else %}
+                            <span class="status-badge status-none">No Status</span>
+                        {% endif %}
+                    </td>
+                    <td data-label="Documents">
+                        <div class="document-badges">
+                            <span class="doc-badge {% if plot.title_deed %}doc-uploaded{% else %}doc-missing{% endif %}" 
                                   title="{% if plot.title_deed %}Title Deed Uploaded{% else %}Missing Title Deed{% endif %}">
                                 <i class="fas fa-file-contract"></i>
+                                <span class="doc-label">Title</span>
                             </span>
-                            <span class="badge {% if plot.official_search %}bg-success{% else %}bg-danger{% endif %}"
+                            <span class="doc-badge {% if plot.official_search %}doc-uploaded{% else %}doc-missing{% endif %}"
                                   title="{% if plot.official_search %}Official Search Uploaded{% else %}Missing Official Search{% endif %}">
                                 <i class="fas fa-search"></i>
+                                <span class="doc-label">Search</span>
                             </span>
-                            <span class="badge {% if plot.landowner_id_doc %}bg-success{% else %}bg-danger{% endif %}"
+                            <span class="doc-badge {% if plot.landowner_id_doc %}doc-uploaded{% else %}doc-missing{% endif %}"
                                   title="{% if plot.landowner_id_doc %}ID Uploaded{% else %}Missing ID{% endif %}">
                                 <i class="fas fa-id-card"></i>
+                                <span class="doc-label">ID</span>
                             </span>
-                            <span class="badge {% if plot.kra_pin %}bg-success{% else %}bg-danger{% endif %}"
+                            <span class="doc-badge {% if plot.kra_pin %}doc-uploaded{% else %}doc-missing{% endif %}"
                                   title="{% if plot.kra_pin %}KRA PIN Uploaded{% else %}Missing KRA PIN{% endif %}">
                                 <i class="fas fa-file-invoice"></i>
+                                <span class="doc-label">KRA</span>
                             </span>
-                        </td>
-                        <td>
-                            <div class="btn-group" style="gap: 0.25rem;">
-                                <a href="{% url 'verification:review_plot' plot.id %}" class="btn btn-sm btn-primary" aria-label="Review plot {{ plot.title }}" data-analytics="queue_review_plot">
-                                    <i class="fas fa-search"></i>
-                                </a>
-                                <a href="{% url 'verification:verification_history' plot.id %}" class="btn btn-sm btn-info" aria-label="View verification history for {{ plot.title }}" data-analytics="queue_verification_history">
-                                    <i class="fas fa-history"></i>
-                                </a>
-                            </div>
-                        </td>
-                    </tr>
+                        </div>
+                    </td>
+                    <td data-label="Actions">
+                        <div class="action-buttons">
+                            <a href="{% url 'verification:review_plot' plot.id %}" class="admin-btn admin-btn-primary" style="padding: 0.3rem 0.8rem; font-size: 0.75rem;" aria-label="Review plot {{ plot.title }}" data-analytics="queue_review_plot">
+                                <i class="fas fa-search"></i>
+                                <span class="btn-label">Review</span>
+                            </a>
+                            <a href="{% url 'verification:verification_history' plot.id %}" class="admin-btn admin-btn-outline" style="padding: 0.3rem 0.8rem; font-size: 0.75rem;" aria-label="View verification history for {{ plot.title }}" data-analytics="queue_verification_history">
+                                <i class="fas fa-history"></i>
+                                <span class="btn-label">History</span>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <div class="p-3 border-top">
+            <nav aria-label="Queue pagination">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_filter %}&filter={{ current_filter }}{% endif %}">Previous</a>
+                        </li>
+                    {% endif %}
+                    {% for num in page_obj.paginator.page_range %}
+                        <li class="page-item {% if page_obj.number == num %}active{% endif %}">
+                            <a class="page-link" href="?page={{ num }}{% if current_filter %}&filter={{ current_filter }}{% endif %}">{{ num }}</a>
+                        </li>
                     {% endfor %}
-                </tbody>
-            </table>
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_filter %}&filter={{ current_filter }}{% endif %}">Next</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
         </div>
+        {% endif %}
+
         {% else %}
-        <div class="text-center py-5">
-            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-            <h5>No Plots Found</h5>
-            <p class="text-muted">No plots match the current filter.</p>
+        <div class="empty-state">
+            <div class="empty-state-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h5 class="empty-state-title">All Caught Up!</h5>
+            <p class="empty-state-text">No plots match the current filter. All verification tasks are complete.</p>
+            <a href="?filter=all" class="admin-btn admin-btn-outline mt-3">View All Plots</a>
         </div>
         {% endif %}
     </div>
 </div>
 
 <style>
-    .queue-card .admin-card-header {
-        align-items: flex-start;
+    /* ============================================
+       VERIFICATION QUEUE - CUSTOM STYLES
+    ============================================ */
+
+    /* Filter Tabs */
+    .filter-tabs-wrapper {
+        margin-bottom: 1.5rem;
     }
 
+    .filter-tabs {
+        border-bottom: none;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+        padding: 0.25rem 0;
+        margin-bottom: 0;
+        background: var(--ag-white, #ffffff);
+        border-radius: var(--ag-radius-md, 8px);
+        padding: 0.5rem;
+        border: 1px solid var(--ag-border, #e2e8f0);
+    }
+
+    .filter-tabs .nav-link {
+        border: none;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #64748b;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: transparent;
+    }
+
+    .filter-tabs .nav-link:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+
+    .filter-tabs .nav-link.active {
+        background: #0f172a;
+        color: white;
+    }
+
+    .filter-tabs .nav-link.active .badge-filter {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+    }
+
+    .badge-filter {
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 0.65rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 12px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+    }
+
+    /* ID Badge */
+    .id-badge {
+        display: inline-block;
+        font-weight: 700;
+        color: #0f172a;
+        font-size: 0.8rem;
+        background: #f1f5f9;
+        padding: 0.15rem 0.5rem;
+        border-radius: 6px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Plot Title Link */
+    .plot-title-link {
+        color: #0f172a;
+        font-weight: 600;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .plot-title-link:hover {
+        color: var(--ag-green-700, #0f5c3f);
+        text-decoration: underline;
+    }
+
+    .plot-title-link .fa-external-link-alt {
+        font-size: 0.6rem;
+        opacity: 0.5;
+        transition: opacity 0.2s ease;
+    }
+
+    .plot-title-link:hover .fa-external-link-alt {
+        opacity: 1;
+    }
+
+    /* Location */
+    .location-text {
+        color: #64748b;
+        font-size: 0.8rem;
+    }
+
+    /* Seller */
+    .seller-name {
+        font-weight: 500;
+        display: block;
+        font-size: 0.85rem;
+    }
+
+    .seller-role {
+        font-size: 0.6rem;
+        padding: 0.1rem 0.4rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    /* Submitted Info */
+    .submitted-info {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.3;
+    }
+
+    .submitted-date {
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+
+    .submitted-ago {
+        font-size: 0.7rem;
+        color: #94a3b8;
+    }
+
+    /* Status Badge */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .status-approved {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-document_uploaded {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .status-in_progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .status-none {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    /* Document Badges */
+    .document-badges {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+    }
+
+    .doc-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.15rem 0.4rem;
+        border-radius: 6px;
+        font-size: 0.6rem;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        cursor: default;
+    }
+
+    .doc-uploaded {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .doc-missing {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .doc-label {
+        display: none;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        gap: 0.25rem;
+        flex-wrap: wrap;
+    }
+
+    .action-buttons .admin-btn .btn-label {
+        display: none;
+    }
+
+    .action-buttons .admin-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Pending Row */
+    .queue-row.row-pending {
+        background: #fffbeb;
+    }
+
+    .queue-row.row-pending:hover {
+        background: #fef3c7;
+    }
+
+    /* Empty State */
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+    }
+
+    .empty-state-icon {
+        font-size: 3rem;
+        color: #10b981;
+        margin-bottom: 1rem;
+    }
+
+    .empty-state-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin-bottom: 0.5rem;
+    }
+
+    .empty-state-text {
+        color: #94a3b8;
+        margin-bottom: 0;
+    }
+
+    /* Responsive Table Styles */
     @media (max-width: 768px) {
+        /* Mobile Card View for Table */
         .queue-table thead {
             display: none;
         }
@@ -191,54 +504,206 @@
         }
 
         .queue-table tr {
-            background: var(--light);
-            border: 1px solid #e9ecef;
+            background: white;
+            border: 1px solid #e2e8f0;
             border-radius: 12px;
             margin-bottom: 1rem;
             padding: 0.75rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
         .queue-table td {
             border: none;
-            padding: 0.5rem 0;
+            padding: 0.4rem 0;
             display: flex;
             justify-content: space-between;
-            gap: 1rem;
             align-items: center;
-            white-space: normal;
+            gap: 0.5rem;
             flex-wrap: wrap;
         }
 
         .queue-table td::before {
             content: attr(data-label);
             font-weight: 600;
-            color: var(--secondary);
-            min-width: 110px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: #94a3b8;
+            min-width: 80px;
         }
 
         .queue-table td:last-child {
             justify-content: flex-start;
             gap: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid #f1f5f9;
+        }
+
+        .queue-table td:last-child::before {
+            content: 'Actions';
+        }
+
+        /* Mobile Document Badges */
+        .doc-label {
+            display: inline;
+        }
+
+        .doc-badge {
+            padding: 0.2rem 0.5rem;
+            font-size: 0.65rem;
+        }
+
+        /* Mobile Action Buttons */
+        .action-buttons .admin-btn .btn-label {
+            display: inline;
+        }
+
+        .action-buttons .admin-btn {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.8rem;
+        }
+
+        /* Filter Tabs Mobile */
+        .filter-tabs .nav-link span:not(.badge-filter) {
+            display: none;
+        }
+
+        .filter-tabs .nav-link {
+            font-size: 0.75rem;
+            padding: 0.4rem 0.75rem;
+        }
+
+        .filter-tabs {
+            padding: 0.25rem;
+        }
+
+        .filter-tabs .nav-link .badge-filter {
+            font-size: 0.6rem;
+            padding: 0.05rem 0.3rem;
+        }
+
+        /* Stats Grid Mobile */
+        .stat-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 0.5rem;
+        }
+
+        .stat-card {
+            padding: 0.75rem;
+        }
+
+        .stat-value {
+            font-size: 1.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.6rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .queue-table td::before {
+            font-size: 0.65rem;
+            min-width: 60px;
+        }
+
+        .queue-table td {
+            font-size: 0.8rem;
+            padding: 0.3rem 0;
+        }
+
+        .id-badge {
+            font-size: 0.7rem;
+            padding: 0.1rem 0.3rem;
+        }
+
+        .submitted-date {
+            font-size: 0.7rem;
+        }
+
+        .submitted-ago {
+            font-size: 0.6rem;
+        }
+
+        .stat-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 0.4rem;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+        }
+
+        .stat-label {
+            font-size: 0.55rem;
+        }
+
+        .filter-tabs .nav-link {
+            padding: 0.3rem 0.4rem;
+            font-size: 0.65rem;
+        }
+
+        .filter-tabs .nav-link i {
+            font-size: 0.7rem;
+        }
+
+        .queue-table tr {
+            padding: 0.5rem;
         }
     }
 </style>
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const rows = document.querySelectorAll('.queue-table tbody tr');
-        rows.forEach(row => {
+        // Add data-label attributes for responsive table
+        const tableRows = document.querySelectorAll('.queue-table tbody tr');
+        tableRows.forEach(row => {
             const cells = row.querySelectorAll('td');
-            if (cells.length >= 8) {
-                cells[0].setAttribute('data-label', 'ID');
-                cells[1].setAttribute('data-label', 'Title');
-                cells[2].setAttribute('data-label', 'Location');
-                cells[3].setAttribute('data-label', 'Seller');
-                cells[4].setAttribute('data-label', 'Submitted');
-                cells[5].setAttribute('data-label', 'Status');
-                cells[6].setAttribute('data-label', 'Documents');
-                cells[7].setAttribute('data-label', 'Actions');
+            const labels = ['ID', 'Title', 'Location', 'Seller', 'Submitted', 'Status', 'Documents', 'Actions'];
+            cells.forEach((cell, index) => {
+                if (index < labels.length) {
+                    cell.setAttribute('data-label', labels[index]);
+                }
+            });
+        });
+
+        // Keyboard navigation for table rows
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && e.target.closest('.queue-row')) {
+                const reviewBtn = e.target.closest('.queue-row').querySelector('.admin-btn-primary');
+                if (reviewBtn) {
+                    window.location.href = reviewBtn.href;
+                }
             }
         });
+
+        // Row click navigation (except on links/buttons)
+        document.querySelectorAll('.queue-row').forEach(row => {
+            row.style.cursor = 'pointer';
+            row.addEventListener('click', function(e) {
+                if (e.target.closest('a') || e.target.closest('button') || e.target.closest('.admin-btn')) {
+                    return;
+                }
+                const reviewLink = this.querySelector('.admin-btn-primary');
+                if (reviewLink) {
+                    window.location.href = reviewLink.href;
+                }
+            });
+        });
+
+        // Auto-refresh indicator
+        const updatedText = document.querySelector('.admin-card-header .text-muted');
+        if (updatedText) {
+            setInterval(() => {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('en-US', { 
+                    hour12: false, 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                updatedText.textContent = `Updated: ${timeStr}`;
+            }, 60000);
+        }
     });
 </script>
 {% endblock %}
