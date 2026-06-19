@@ -197,6 +197,16 @@ class Transaction(models.Model):
         self.platform_fee_percentage = percentage * 100
         return (value * percentage).quantize(Decimal('0.01'))
     
+    def _get_statutory_consent_docs(self):
+        """Return required statutory consent documents based on plot properties."""
+        from .models import TransactionDocument
+        docs = []
+        if self.plot and self.plot.land_type == 'agricultural':
+            docs.append(TransactionDocument.DocType.LCB_CONSENT)
+        if self.plot and getattr(self.plot, 'is_matrimonial_property', False):
+            docs.append(TransactionDocument.DocType.SPOUSAL_CONSENT)
+        return docs
+    
     def get_required_documents_for_stage(self, stage=None):
         """
         Return list of required document types for the specified stage.
@@ -217,10 +227,7 @@ class Transaction(models.Model):
             self.Stage.CONTRACTS: [
                 TransactionDocument.DocType.SALE_AGREEMENT,
             ],
-            self.Stage.STATUTORY_CONSENTS: [
-                TransactionDocument.DocType.LCB_CONSENT,
-                TransactionDocument.DocType.SPOUSAL_CONSENT,
-            ],
+            self.Stage.STATUTORY_CONSENTS: self._get_statutory_consent_docs(),
             self.Stage.TAXATION: [
                 TransactionDocument.DocType.STAMP_DUTY_RECEIPT,
                 TransactionDocument.DocType.VALUATION_REPORT,
@@ -292,13 +299,21 @@ class Transaction(models.Model):
                 )
             return False, f"Missing required legal document: {doc_label}"
         
-        # Check deposit requirements (funds held in escrow)
-        required_percentage = self.get_required_deposit_percentage()
-        if required_percentage > 0:
-            total_paid = self.deposit_paid + self.balance_paid
-            required_amount = self.agreed_price * required_percentage
-            if total_paid < required_amount:
-                return False, f"Required escrow deposit: {required_percentage*100}% (KES {required_amount:,.2f})"
+        # ============================================================
+        # FIXED DEPOSIT/ESCROW REQUIREMENTS CHECK
+        # ============================================================
+        if self.stage == self.Stage.CONTRACTS:
+            # Only 10% deposit is required at this stage
+            if self.deposit_paid < self.ten_percent_deposit:
+                return False, f"10% deposit required: KES {self.ten_percent_deposit:,.2f} (Currently held: KES {self.deposit_paid:,.2f})"
+                
+        elif self.stage == self.Stage.COMPLETION:
+            # Both 10% deposit AND 90% balance must be in escrow at Completion
+            if self.deposit_paid < self.ten_percent_deposit:
+                return False, f"10% deposit not fully held in escrow. Required: KES {self.ten_percent_deposit:,.2f}"
+            if self.balance_paid < self.ninety_percent_balance:
+                return False, f"90% completion balance not fully held in escrow. Required: KES {self.ninety_percent_balance:,.2f}"
+        # ============================================================
         
         # Stage-specific additional validations
         if self.stage == self.Stage.DUE_DILIGENCE:
@@ -338,10 +353,6 @@ class Transaction(models.Model):
             
             if not self.stamp_duty_receipt_verified_at:
                 return False, "Stamp duty receipt not verified. Please pay stamp duty directly to KRA via iTax and upload the receipt."
-        
-        elif self.stage == self.Stage.COMPLETION:
-            if not (self.deposit_paid >= self.ten_percent_deposit and self.balance_paid >= self.ninety_percent_balance):
-                return False, f"Full amount not in escrow. Deposit: KES {self.deposit_paid:,.2f}, Balance: KES {self.balance_paid:,.2f}"
         
         elif self.stage == self.Stage.REGISTRATION:
             has_new_title = TransactionDocument.objects.filter(
@@ -444,6 +455,17 @@ class Transaction(models.Model):
             
             if self.stage == self.Stage.COMPLETED:
                 self._finalize_transaction(actor)
+            
+            # Auto-chain: if the new stage also has all requirements met,
+            # continue advancing (e.g., STATUTORY_CONSENTS with no docs needed).
+            # Guard against infinite loops by only chaining for non-terminal stages.
+            if self.stage not in (self.Stage.COMPLETED, self.Stage.CANCELLED):
+                try:
+                    chain_ok, chain_msg = self.can_advance_to_next_stage()
+                    if chain_ok:
+                        return self.advance_stage(actor=actor)
+                except Exception:
+                    pass  # Don't block the current advance if chaining fails
             
             return True, f"Legal milestone achieved: {self.get_stage_display()}"
         else:

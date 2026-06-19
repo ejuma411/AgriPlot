@@ -1290,7 +1290,6 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         ).first()
         
         if existing_transaction:
-            # Update seller if needed
             if existing_transaction.seller != seller:
                 existing_transaction.seller = seller
                 existing_transaction.save(update_fields=['seller', 'updated_at'])
@@ -1313,7 +1312,7 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
         if not agreed_price or agreed_price <= 0:
             raise ValidationError("Unable to determine the full agreement value for this plot.")
         
-        # Create transaction FIRST (without payment request)
+        # Create transaction
         transaction_obj = Transaction.objects.create(
             plot=plot,
             buyer=buyer,
@@ -1321,7 +1320,6 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             agreed_price=agreed_price,
             transaction_type=transaction_type,
             stage=Transaction.Stage.DUE_DILIGENCE,
-            # Calculate deposit and balance
             ten_percent_deposit=agreed_price * Decimal('0.1'),
             ninety_percent_balance=agreed_price * Decimal('0.9'),
             deposit_paid=Decimal('0'),
@@ -1329,46 +1327,34 @@ class PaymentRequestCreateView(LoginRequiredMixin, CreateView):
             balance_due=agreed_price,
         )
         
-        # Create a payment request for the full amount (to track escrow)
+        # ============================================================
+        # FIX 1: CREATE A PLACEHOLDER PAYMENT REQUEST WITH AMOUNT = 0
+        # ============================================================
         payment = PaymentRequest.objects.create(
             transaction_type=transaction_type,
             category=PaymentRequest.Category.AGREEMENT_DEPOSIT,
             plot=plot,
             buyer=buyer,
             seller=seller,
-            amount=agreed_price,
-            status=PaymentRequest.Status.PENDING,
+            amount=Decimal('0.00'),  # <-- CHANGED FROM agreed_price TO 0
+            status=PaymentRequest.Status.DRAFT, # <-- Changed from PENDING to DRAFT
             title=f"Purchase of {plot.title}",
             description=f"Legal transaction #{transaction_obj.id} for {plot.title}",
             escrow_enabled=True,
             method=PaymentRequest.Method.BANK_TRANSFER,
             internal_reference=PaymentRequest.generate_reference(),
-            # Store transaction ID in metadata for lookup
             metadata={'transaction_id': transaction_obj.id},
         )
+        # ============================================================
         
         transaction_obj.payment_request = payment
         transaction_obj.save(update_fields=['payment_request'])
         
-        # Also store payment ref in transaction
         PaymentRequest.objects.filter(pk=payment.pk).update(
             legal_transaction=transaction_obj
         )
         
         return transaction_obj
-        
-        def form_invalid(self, form):
-            error_messages = []
-            for field_name, errors in form.errors.items():
-                for error in errors:
-                    error_messages.append(f"{field_name}: {error}")
-            
-            messages.error(
-                self.request,
-                "We could not start the workflow. " + " ".join(error_messages[:5])
-            )
-            return super().form_invalid(form)
-
 
 class PaymentAccessMixin(UserPassesTestMixin):
     def test_func(self):
@@ -1386,6 +1372,13 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
     model = PaymentRequest
     template_name = "payments/detail.html"
     context_object_name = "payment"
+
+    def dispatch(self, request, *args, **kwargs):
+        payment = self.get_object()
+        # If this is the placeholder payment request (amount 0), redirect to the legal transaction detail view
+        if payment.legal_transaction_id and payment.amount == 0:
+            return redirect("transactions:detail", pk=payment.legal_transaction_id)
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1419,6 +1412,8 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
         context["escrow_summary"] = presenter.escrow_summary
         context["stamp_duty_status"] = presenter.stamp_duty_status
         context["disbursement_schedule"] = presenter.disbursement_schedule
+        context["legal_workspace_url"] = presenter.legal_workspace_url
+        context["legal_transaction"] = workspace_payment.legal_transaction
         
         action_labels = [
             ("submit", "Send request"),
@@ -1467,43 +1462,88 @@ class PaymentRequestDetailView(LoginRequiredMixin, PaymentAccessMixin, DetailVie
             },
         )
 
-        # ── Current payment stage (deposit vs completion) ──────────────────────
+        # =============================================================
+        # FIXED PAYMENT STAGE CALCULATION
+        # =============================================================
         meta = dict(workspace_payment.metadata or {})
+        
+        # 1. Get the correct paid flags from the metadata
+        # We check for 'deposit_paid' and 'balance_paid' (as set in legal workflows)
+        # and also maintain backward compatibility with 'completion_paid'
         deposit_paid = bool(meta.get("deposit_paid"))
-        completion_paid = bool(meta.get("completion_paid"))
-        full_amount = workspace_payment.amount or Decimal("0")
+        balance_paid = bool(meta.get("balance_paid", meta.get("completion_paid")))
+        
+        # 2. Get the precise amount due by checking the Legal Transaction first
+        amount_due = Decimal('0.00')
+        full_amount = workspace_payment.amount or Decimal('0.00')
+        current_stage_code = None
+        current_stage_label = "All payments complete"
+        current_stage_pct = 0
 
-        if not deposit_paid:
-            current_stage_code = "deposit"
-            current_stage_label = "Agreement Deposit (10%)"
-            current_stage_amount = (full_amount * Decimal("0.1")).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-            current_stage_pct = 10
-        elif not completion_paid:
-            current_stage_code = "completion"
-            current_stage_label = "Completion Balance (90%)"
-            current_stage_amount = (full_amount * Decimal("0.9")).quantize(
-                Decimal("0.01"), rounding=ROUND_HALF_UP
-            )
-            current_stage_pct = 90
+        # If there is a linked legal transaction, trust its balance_due field first
+        if workspace_payment.legal_transaction:
+            legal_tx = workspace_payment.legal_transaction
+            if legal_tx.stage == 'contracts':
+                # 10% Deposit needed
+                current_stage_code = "deposit"
+                current_stage_label = "Agreement Deposit (10%)"
+                amount_due = legal_tx.ten_percent_deposit - legal_tx.deposit_paid
+                current_stage_pct = 10
+                deposit_paid = (legal_tx.deposit_paid >= legal_tx.ten_percent_deposit)
+                balance_paid = (legal_tx.balance_paid >= legal_tx.ninety_percent_balance)
+            elif legal_tx.stage == 'completion':
+                # 90% Balance needed
+                current_stage_code = "completion"
+                current_stage_label = "Completion Balance (90%)"
+                amount_due = legal_tx.balance_due
+                current_stage_pct = 90
+                deposit_paid = (legal_tx.deposit_paid >= legal_tx.ten_percent_deposit)
+                balance_paid = (legal_tx.balance_paid >= legal_tx.ninety_percent_balance)
+            elif legal_tx.stage in ['statutory_consents', 'taxation', 'registration', 'disbursement', 'completed']:
+                # Fully paid
+                current_stage_label = "All payments complete"
+                amount_due = Decimal('0.00')
+                current_stage_pct = 100
+            else:
+                # Fallback to standard 10/90 split
+                if not deposit_paid:
+                    current_stage_code = "deposit"
+                    current_stage_label = "Agreement Deposit (10%)"
+                    amount_due = (full_amount * Decimal('0.10')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    current_stage_pct = 10
+                elif not balance_paid:
+                    current_stage_code = "completion"
+                    current_stage_label = "Completion Balance (90%)"
+                    amount_due = (full_amount * Decimal('0.90')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                    current_stage_pct = 90
         else:
-            current_stage_code = None
-            current_stage_label = "All payments complete"
-            current_stage_amount = Decimal("0")
-            current_stage_pct = 0
+            # If no legal transaction, fallback to standard metadata checks
+            if not deposit_paid:
+                current_stage_code = "deposit"
+                current_stage_label = "Agreement Deposit (10%)"
+                amount_due = (full_amount * Decimal('0.10')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                current_stage_pct = 10
+            elif not balance_paid:
+                current_stage_code = "completion"
+                current_stage_label = "Completion Balance (90%)"
+                amount_due = (full_amount * Decimal('0.90')).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+                current_stage_pct = 90
+
+        # Ensure negative numbers are treated as 0 (edge case safety)
+        if amount_due < Decimal('0.00'):
+            amount_due = Decimal('0.00')
 
         context["deposit_paid"] = deposit_paid
-        context["completion_paid"] = completion_paid
+        context["completion_paid"] = balance_paid # Aliased for template compatibility
+        context["balance_paid"] = balance_paid
         context["current_stage_code"] = current_stage_code
         context["current_stage_label"] = current_stage_label
-        context["current_stage_amount"] = current_stage_amount
+        context["current_stage_amount"] = amount_due
         context["current_stage_pct"] = current_stage_pct
         context["full_contract_amount"] = full_amount
-        # ──────────────────────────────────────────────────────────────────────
+        # =============================================================
 
         return context
-
 
 
 @method_decorator(csrf_exempt, name="dispatch")
@@ -1908,9 +1948,19 @@ class PaymentClosingStepStkPushView(LoginRequiredMixin, View):
 
 @login_required
 def wallet_dashboard(request):
-    """Wallet dashboard view — always routes to the wallet section."""
-    return redirect(f"{reverse('listings:dashboard_router')}?section=wallet")
-
+    """Wallet dashboard view — displays wallet balance and transaction history."""
+    from .wallet_service import WalletService
+    
+    # Get the comprehensive wallet dictionary
+    wallet_data = WalletService.get_balance_dict(request.user)
+    
+    # Get the transaction history
+    transactions = WalletService.get_transaction_history(request.user, limit=50)
+    
+    return render(request, 'payments/wallet_dashboard.html', {
+        'wallet_balance': wallet_data,
+        'transactions': transactions,
+    })
 
 @login_required
 def wallet_set_pin(request):
@@ -2163,6 +2213,12 @@ class LegalWorkflowView(LoginRequiredMixin, DetailView):
         )
         return payment.workflow_anchor_payment
 
+    def get(self, request, *args, **kwargs):
+        payment = self.get_object()
+        if payment.legal_transaction:
+            return redirect("transactions:detail", pk=payment.legal_transaction.pk)
+        return redirect("payments:detail", pk=payment.pk)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         payment = self.get_object()
@@ -2360,7 +2416,9 @@ class LegalWorkflowView(LoginRequiredMixin, DetailView):
             else:
                 messages.error(request, "Please upload the new title deed.")
                 
-        return redirect("payments:legal_workflow", pk=payment.pk)
+        if payment.legal_transaction:
+            return redirect("transactions:detail", pk=payment.legal_transaction.pk)
+        return redirect("payments:detail", pk=payment.pk)
     
     def _handle_stage_payment(self, request, payment, stage_code, amount):
         """Handle payment for a specific stage (deposit or completion)"""
@@ -2370,7 +2428,9 @@ class LegalWorkflowView(LoginRequiredMixin, DetailView):
         
         if not method:
             messages.error(request, "Please select a payment method.")
-            return redirect("payments:legal_workflow", pk=payment.pk)
+            if payment.legal_transaction:
+                return redirect("transactions:detail", pk=payment.legal_transaction.pk)
+            return redirect("payments:detail", pk=payment.pk)
             
         # Create child payment for this stage
         child_payment = PaymentRequest(
@@ -2476,7 +2536,9 @@ class LegalWorkflowView(LoginRequiredMixin, DetailView):
             logger.exception(f"Payment failed: {e}")
             messages.error(request, f"Payment failed: {str(e)}")
             
-        return redirect("payments:legal_workflow", pk=payment.pk)
+        if payment.legal_transaction:
+            return redirect("transactions:detail", pk=payment.legal_transaction.pk)
+        return redirect("payments:detail", pk=payment.pk)
 
 
 class AdvanceStageView(LoginRequiredMixin, View):
@@ -2509,7 +2571,7 @@ class AdvanceStageView(LoginRequiredMixin, View):
                 "new_stage_display": payment.get_stage_display(),
                 "progress_percentage": presenter.legal_transaction_progress,
                 "payment_required": payment.stage in ['deposit', 'completion'],
-                "redirect_url": reverse("payments:legal_workflow", kwargs={"pk": payment.pk}),
+                "redirect_url": reverse("transactions:detail", kwargs={"pk": payment.legal_transaction.pk}) if payment.legal_transaction else reverse("payments:detail", kwargs={"pk": payment.pk}),
             })
         except ValidationError as e:
             return JsonResponse({"success": False, "message": str(e)}, status=400)
@@ -2641,7 +2703,7 @@ class PaymentStagePaymentView(LoginRequiredMixin, View):
                     return JsonResponse({
                         "success": True,
                         "message": f"Payment of KES {amount:,.2f} successful.",
-                        "redirect_url": reverse("payments:legal_workflow", kwargs={"pk": payment.pk}),
+                        "redirect_url": reverse("transactions:detail", kwargs={"pk": payment.legal_transaction.pk}) if payment.legal_transaction else reverse("payments:detail", kwargs={"pk": payment.pk}),
                     })
                     
                 elif method == PaymentRequest.Method.MPESA_STK:

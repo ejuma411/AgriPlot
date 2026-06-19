@@ -170,7 +170,7 @@
                 {% endif %}
 
                 {% if current_buyer_deal %}
-                <a href="{% url 'payments:detail' current_buyer_deal.pk %}" class="btn hero-btn payment">
+                <a href="{% if current_buyer_deal.legal_transaction %}{% url 'transactions:detail' current_buyer_deal.legal_transaction.pk %}{% else %}{% url 'payments:detail' current_buyer_deal.pk %}{% endif %}" class="btn hero-btn payment">
                     <i class="fas fa-route me-2"></i>Continue Transaction
                 </a>
                 {% elif can_start_lease %}
@@ -1253,6 +1253,21 @@
         window.requestContactDetails = function() {
             alert('Contact request sent. The owner/agent will contact you shortly.');
         };
+    });
+</script>
+<script>
+    // ============================================================
+    // AUTO-REFRESH CHECK: If we see "Stage will auto-advance" and 
+    // the blue dot is still there for more than 3 seconds, reload.
+    // ============================================================
+    document.addEventListener("DOMContentLoaded", function() {
+        const alertBox = document.querySelector('.alert-success');
+        if (alertBox && alertBox.innerText.includes("All Requirements Met")) {
+            // Wait 3 seconds to allow any background processes to finish
+            setTimeout(() => {
+                location.reload();
+            }, 3000);
+        }
     });
 </script>
 

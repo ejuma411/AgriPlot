@@ -12,6 +12,7 @@
         padding: 2rem;
         border-radius: 1rem;
         margin-bottom: 2rem;
+        box-shadow: 0 4px 12px rgba(15, 92, 63, 0.15);
     }
 
     .wallet-balance-card h2 {
@@ -115,6 +116,109 @@
         font-weight: 600;
         color: #64748b;
     }
+
+    /* ============================================================
+       MODAL & FORM STYLES
+    ============================================================ */
+    .wallet-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(2px);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+    }
+    .wallet-modal-overlay.active {
+        display: flex;
+    }
+    .wallet-modal-box {
+        background: white;
+        max-width: 450px;
+        width: 90%;
+        border-radius: 16px;
+        padding: 2rem;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .wallet-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    .wallet-modal-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+    }
+    .wallet-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #64748b;
+    }
+    .wallet-modal-close:hover { color: #ef4444; }
+
+    .wallet-form-group {
+        margin-bottom: 1rem;
+    }
+    .wallet-form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-bottom: 0.25rem;
+    }
+    .wallet-form-control {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        transition: border-color 0.2s;
+    }
+    .wallet-form-control:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+    
+    .wallet-btn-primary {
+        width: 100%;
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .wallet-btn-primary:hover { background: #059669; }
+    .wallet-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Toast Notification */
+    .toast-notification {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 10000;
+        font-weight: 600;
+        animation: slideUp 0.3s ease;
+    }
 </style>
 {% endblock %}
 
@@ -131,13 +235,19 @@
     <div style="display: flex; justify-content: space-between; align-items: center;">
         <div>
             <p>Available Balance</p>
-            <h2>KES {{ wallet_balance|default:"0"|intcomma }}</h2>
+            <h2>KES {{ wallet_balance.balance|default:"0"|intcomma }}</h2>
+            <p style="font-size: 0.8rem; opacity: 0.7;">
+                Account: {{ wallet_balance.account_number|default:"N/A" }}
+                {% if wallet_balance.pending_credits > 0 %}
+                    <br><span style="color: #fbbf24;">⏳ {{ wallet_balance.pending_credits|intcomma }} pending</span>
+                {% endif %}
+            </p>
         </div>
         <div style="display: flex; gap: 0.5rem;">
-            <button style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+            <button onclick="openModal('deposit')" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
                 <i class="fa-solid fa-plus"></i> Top Up
             </button>
-            <button style="background: white; border: none; color: #0f5c3f; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
+            <button onclick="openModal('withdraw')" style="background: white; border: none; color: #0f5c3f; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; font-weight: 600;">
                 <i class="fa-solid fa-arrow-right"></i> Withdraw
             </button>
         </div>
@@ -161,7 +271,7 @@
                     <i class="fa-solid {% if transaction.type == 'credit' %}fa-arrow-down{% else %}fa-arrow-up{% endif %}"></i>
                 </div>
                 <div class="transaction-info">
-                    <h4>{{ transaction.description }}</h4>
+                    <h4>{{ transaction.description|truncatechars:40 }}</h4>
                     <p>{{ transaction.date|date:"M d, Y" }} • {{ transaction.reference|default:"No reference" }}</p>
                 </div>
             </div>
@@ -185,4 +295,185 @@
         {% endfor %}
     </div>
 </div>
+
+<!-- ============================================================ -->
+<!-- DEPOSIT MODAL                                                 -->
+<!-- ============================================================ -->
+<div id="depositModal" class="wallet-modal-overlay">
+    <div class="wallet-modal-box">
+        <div class="wallet-modal-header">
+            <h3 class="wallet-modal-title"><i class="fa-solid fa-plus-circle text-success"></i> Top Up Wallet</h3>
+            <button class="wallet-modal-close" onclick="closeModal('depositModal')">&times;</button>
+        </div>
+        <form id="depositForm" onsubmit="handleDeposit(event)">
+            {% csrf_token %}
+            <div class="wallet-form-group">
+                <label class="wallet-form-label">Amount (KES)</label>
+                <input type="number" name="amount" class="wallet-form-control" placeholder="e.g. 1000" min="10" step="1" required>
+            </div>
+            <div class="wallet-form-group">
+                <label class="wallet-form-label">M-Pesa Phone Number</label>
+                <input type="tel" name="phone_number" class="wallet-form-control" placeholder="0712345678" pattern="[0-9]{10}" required>
+                <small class="text-muted" style="font-size: 0.75rem;">You will receive an STK push on this number.</small>
+            </div>
+            <button type="submit" id="depositSubmitBtn" class="wallet-btn-primary">
+                <i class="fa-solid fa-lock"></i> Deposit Funds
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- WITHDRAW MODAL                                                -->
+<!-- ============================================================ -->
+<div id="withdrawModal" class="wallet-modal-overlay">
+    <div class="wallet-modal-box">
+        <div class="wallet-modal-header">
+            <h3 class="wallet-modal-title"><i class="fa-solid fa-arrow-right text-danger"></i> Withdraw Funds</h3>
+            <button class="wallet-modal-close" onclick="closeModal('withdrawModal')">&times;</button>
+        </div>
+        <form id="withdrawForm" onsubmit="handleWithdraw(event)">
+            {% csrf_token %}
+            <div class="wallet-form-group">
+                <label class="wallet-form-label">Amount (KES)</label>
+                <input type="number" name="amount" class="wallet-form-control" placeholder="e.g. 1000" min="50" step="1" required>
+            </div>
+            <div class="wallet-form-group">
+                <label class="wallet-form-label">M-Pesa Phone Number</label>
+                <input type="tel" name="phone_number" class="wallet-form-control" placeholder="0712345678" pattern="[0-9]{10}" required>
+            </div>
+            <div class="wallet-form-group">
+                <label class="wallet-form-label">Wallet PIN</label>
+                <input type="password" name="pin" class="wallet-form-control" placeholder="4-digit PIN" maxlength="4" pattern="[0-9]{4}" required>
+            </div>
+            <button type="submit" id="withdrawSubmitBtn" class="wallet-btn-primary">
+                <i class="fa-solid fa-lock"></i> Withdraw Funds
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- JAVASCRIPT LOGIC                                              -->
+<!-- ============================================================ -->
+<script>
+    // Get CSRF Token
+    function getCsrfToken() {
+        return document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+    }
+
+    // Show Toast Notification
+    function showToast(message, type = 'success') {
+        const existingToast = document.querySelector('.toast-notification');
+        if (existingToast) existingToast.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'toast-notification';
+        toast.style.background = type === 'success' ? '#10b981' : '#ef4444';
+        toast.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    // Open Modal
+    function openModal(type) {
+        if (type === 'deposit') {
+            document.getElementById('depositModal').classList.add('active');
+        } else {
+            document.getElementById('withdrawModal').classList.add('active');
+        }
+        document.body.style.overflow = 'hidden';
+    }
+
+    // Close Modal
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Handle Deposit
+    async function handleDeposit(e) {
+        e.preventDefault();
+        const btn = document.getElementById('depositSubmitBtn');
+        const originalText = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+        const formData = new FormData(document.getElementById('depositForm'));
+
+        try {
+            const response = await fetch("{% url 'payments:wallet_deposit' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken() },
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                closeModal('depositModal');
+                showToast(data.message || 'Deposit initiated successfully!');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.message || 'Deposit failed. Please try again.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        } catch (error) {
+            showToast('Network error. Please try again.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    // Handle Withdraw
+    async function handleWithdraw(e) {
+        e.preventDefault();
+        const btn = document.getElementById('withdrawSubmitBtn');
+        const originalText = btn.innerHTML;
+        
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+
+        const formData = new FormData(document.getElementById('withdrawForm'));
+
+        try {
+            const response = await fetch("{% url 'payments:wallet_withdraw' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken() },
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                closeModal('withdrawModal');
+                showToast(data.message || 'Withdrawal initiated successfully!');
+                setTimeout(() => location.reload(), 1500);
+            } else {
+                showToast(data.message || 'Withdrawal failed. Please try again.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        } catch (error) {
+            showToast('Network error. Please try again.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    }
+
+    // Close modals if clicking outside the box
+    document.querySelectorAll('.wallet-modal-overlay').forEach(overlay => {
+        overlay.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+                document.body.style.overflow = 'auto';
+            }
+        });
+    });
+</script>
 {% endblock %}

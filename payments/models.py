@@ -1174,10 +1174,38 @@ class PaymentRequest(models.Model):
         if action in ["release", "disburse_to_seller"]:
             self.released_at = now
             self.disbursed_at = now
-            
-            # Mark platform fee as deducted
             self.platform_fee_deducted_at = now
             
+            # ============================================================
+            # CRITICAL FIX: Perform the Actual Wallet Transfers
+            # ============================================================
+            try:
+                # 1. Credit the Seller's Wallet (Less Platform Fee)
+                if self.seller and hasattr(self.seller, 'wallet'):
+                    seller_wallet = self.seller.wallet
+                    seller_wallet.credit(
+                        amount=self.seller_net_amount,
+                        description=f"Funds released for {self.title} (After platform fee)",
+                        reference=f"PAY-REL-{self.internal_reference}"
+                    )
+                    self.add_event("seller_credited", f"KES {self.seller_net_amount:,.2f} credited to seller wallet.")
+                
+                # 2. Credit the Platform's System Wallet (Platform Fee)
+                platform_user = User.objects.filter(is_superuser=True).first()
+                if platform_user and hasattr(platform_user, 'wallet'):
+                    platform_wallet = platform_user.wallet
+                    platform_wallet.credit(
+                        amount=self.platform_fee_amount,
+                        description=f"Platform fee for {self.title}",
+                        reference=f"PLAT-FEE-{self.internal_reference}"
+                    )
+                    self.add_event("platform_fee_credited", f"KES {self.platform_fee_amount:,.2f} platform fee credited.")
+                    
+            except Exception as e:
+                self.add_event("disbursement_wallet_error", f"Error crediting wallets: {str(e)}")
+                raise ValidationError(f"Funds could not be transferred to wallets: {str(e)}")
+            # ============================================================
+
             # Auto-trigger report generation after disbursement
             if not self.reports_sent_at:
                 self._send_transaction_reports()
@@ -1188,7 +1216,7 @@ class PaymentRequest(models.Model):
         self.ensure_transaction_artifacts()
 
         self.add_event(action, message, actor=actor)
-
+    
     def _send_transaction_reports(self):
         """Internal method to trigger report generation and email"""
         from notifications.notification_service import NotificationService
@@ -2689,34 +2717,49 @@ class Wallet(models.Model):
             raise ValueError(f"Insufficient balance. Available: {self.available_balance}, Requested: {amount}")
         
         with db_transaction.atomic():
+            # Lock the wallet row to prevent race conditions
             Wallet.objects.select_for_update().get(pk=self.pk)
+            
             wallet_tx = WalletTransaction.objects.create(
                 wallet=self,
                 amount=amount,
                 type=WalletTransaction.TYPE_DEBIT,
-                status=WalletTransaction.STATUS_PENDING,
+                status=WalletTransaction.STATUS_SUCCESS, # Immediately Success
                 reference=reference or f"TX-{uuid.uuid4().hex[:12].upper()}",
                 description=description,
-                metadata=metadata or {}
+                metadata=metadata or {},
+                completed_at=timezone.now()
             )
+            
+            # Apply the balance change to the wallet model
+            self.balance -= amount
+            self.save(update_fields=['balance'])
+            
         return wallet_tx
     
     def credit(self, amount, description="", reference="", metadata=None):
         from django.db import transaction as db_transaction
         
         with db_transaction.atomic():
+            # Lock the wallet row to prevent race conditions
             Wallet.objects.select_for_update().get(pk=self.pk)
+            
             wallet_tx = WalletTransaction.objects.create(
                 wallet=self,
                 amount=amount,
                 type=WalletTransaction.TYPE_CREDIT,
-                status=WalletTransaction.STATUS_PENDING,
+                status=WalletTransaction.STATUS_SUCCESS, # Immediately Success
                 reference=reference or f"TX-{uuid.uuid4().hex[:12].upper()}",
                 description=description,
-                metadata=metadata or {}
+                metadata=metadata or {},
+                completed_at=timezone.now()
             )
+            
+            # Apply the balance change to the wallet model
+            self.balance += amount
+            self.save(update_fields=['balance'])
+            
         return wallet_tx
-
 
 class WalletTransaction(models.Model):
     TYPE_CREDIT = 'CREDIT'

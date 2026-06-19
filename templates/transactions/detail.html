@@ -5,6 +5,9 @@
 
 {% block extra_css %}
 <style>
+    /* ============================================================
+       TIMELINE STYLES
+    ============================================================ */
     .legal-timeline {
         position: relative;
         padding-left: 3rem;
@@ -20,7 +23,7 @@
     }
     .timeline-item {
         position: relative;
-        padding-bottom: 2rem;
+        padding-bottom: 2.5rem;
     }
     .timeline-item:last-child {
         padding-bottom: 0;
@@ -70,10 +73,115 @@
         border: 1px solid #e2e8f0;
         margin-top: 0.5rem;
     }
+
+    /* ============================================================
+       PAYMENT CARD & FORM STYLES
+    ============================================================ */
+    .payment-accordion {
+        overflow: hidden;
+        transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, margin 0.3s ease;
+        max-height: 0;
+        opacity: 0;
+        margin-top: 0;
+    }
+    .payment-accordion.open {
+        max-height: 1200px; /* High enough to fit all fields */
+        opacity: 1;
+        margin-top: 1.5rem;
+    }
+
+    .payment-form-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    .payment-form-group {
+        flex: 1 1 200px;
+        min-width: 180px;
+    }
+    .payment-form-group label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: #374151;
+        margin-bottom: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .payment-form-control {
+        width: 100%;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        background: white;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .payment-form-control:focus {
+        outline: none;
+        border-color: #10b981;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+    }
+
+    .payment-submit-btn {
+        background: #10b981;
+        color: white;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 1rem;
+        width: 100%;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    .payment-submit-btn:hover {
+        background: #059669;
+        transform: translateY(-2px);
+    }
+    .payment-submit-btn:active {
+        transform: translateY(0);
+    }
+
+    /* ============================================================
+       UTILITY TWEAKS
+    ============================================================ */
+    .workspace-card {
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        background: white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+    }
+    .workspace-card-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fafafa;
+    }
+    .workspace-card-body {
+        padding: 1.5rem;
+    }
+    .workspace-card-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0;
+        color: #0f172a;
+    }
+    .workspace-card-meta {
+        font-size: 0.8rem;
+        color: #64748b;
+        margin: 0.25rem 0 0 0;
+    }
     .avatar-sm {
         width: 32px;
         height: 32px;
-        border-radius: 8px;
+        border-radius: 50%;
         background: #f1f5f9;
         display: flex;
         align-items: center;
@@ -92,264 +200,308 @@
         justify-content: center;
         font-size: 1.25rem;
     }
-    .text-white-50 { color: rgba(255,255,255,0.5); }
-    .border-white-10 { border-color: rgba(255,255,255,0.1); }
-    .progress-bar {
-        transition: width 0.5s ease;
-    }
-    
-    .payment-methods-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 0.75rem;
-        margin: 1rem 0;
-    }
-    .payment-method-card {
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 12px;
-        padding: 0.75rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        position: relative;
-        text-align: center;
-    }
-    .payment-method-card:hover {
-        background: rgba(255,255,255,0.2);
-        transform: translateY(-2px);
-    }
-    .payment-method-card.selected {
-        background: var(--ap-green);
-        border-color: var(--ap-green);
-    }
-    .payment-method-card.selected .method-name {
-        color: white;
-    }
-    .method-icon {
-        font-size: 1.5rem;
-        margin-bottom: 0.25rem;
-    }
-    .method-name {
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: white;
-    }
-    .payment-detail-section {
-        margin-top: 1rem;
-        display: none;
-    }
-    .payment-detail-section.active {
-        display: block;
-    }
-    .payment-input {
-        background: rgba(255,255,255,0.1);
-        border: 1px solid rgba(255,255,255,0.2);
-        color: white;
-    }
-    .payment-input::placeholder {
-        color: rgba(255,255,255,0.5);
-    }
-    .payment-input:focus {
-        background: rgba(255,255,255,0.15);
-        border-color: var(--ap-green);
-        color: white;
+
+    /* Mobile Fixes */
+    @media (max-width: 768px) {
+        .payment-form-group {
+            flex: 1 1 100%;
+        }
+        .payment-submit-btn {
+            font-size: 0.9rem;
+            padding: 0.6rem 1rem;
+        }
     }
 </style>
 {% endblock %}
 
 {% block full_width_content %}
-<main class="workspace-page">
+<main class="workspace-page" style="background: #f8fafc; padding: 2rem 1.5rem;">
+    
     <!-- Hero Section -->
-    <section class="workspace-hero">
-        <div class="d-flex align-items-center gap-4">
-            <div class="workspace-stat-icon" style="width: 80px; height: 80px; font-size: 2rem; background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: white; border: none;">
-                <i class="fa-solid fa-map-location-dot"></i>
+    <section class="workspace-card" style="border-left: 6px solid #10b981;">
+        <div class="workspace-card-body">
+            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 16px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.5rem;">
+                        <i class="fa-solid fa-map-location-dot"></i>
+                    </div>
+                    <div>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <p class="mb-0 text-muted small fw-bold" style="letter-spacing: 0.05em;">TRANSACTION WORKSPACE</p>
+                            <span class="badge {% if user_role == 'Buyer' %}bg-primary{% elif user_role == 'Seller' %}bg-success{% elif user_role == 'Escrow Admin' %}bg-info{% else %}bg-secondary{% endif %}" style="font-size: 0.65rem;">{{ user_role }}</span>
+                        </div>
+                        <h1 class="fw-bold mb-0" style="font-size: 1.5rem; color: #0f172a;">{{ transaction.plot.title }}</h1>
+                        <p class="text-muted small mb-0">
+                            {{ transaction.plot.county|default:"N/A" }} · 
+                            Agreed Price: <strong class="text-dark">KES {{ transaction.agreed_price|floatformat:0|intcomma }}</strong>
+                            {% if transaction.payment_request %}
+                                · Payment Ref: <a href="{% url 'payments:detail' transaction.payment_request.pk %}" class="text-decoration-none fw-bold text-primary">{{ transaction.payment_request.internal_reference }}</a>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+                <div>
+                    <a class="btn btn-outline-secondary btn-sm" href="{% url 'transactions:dashboard' %}" style="border-radius: 8px; padding: 0.4rem 1rem;">
+                        <i class="fa-solid fa-arrow-left me-1"></i> My Deals
+                    </a>
+                </div>
             </div>
-            <div>
-                <p class="workspace-kicker">Transaction Workspace
-                    <span class="badge {% if user_role == 'Buyer' %}bg-primary{% elif user_role == 'Seller' %}bg-success{% elif user_role == 'Escrow Admin' %}bg-info{% else %}bg-secondary{% endif %} ms-2" style="font-size: 0.65rem; vertical-align: middle;">{{ user_role }}</span>
-                </p>
-                <h1 class="workspace-title">{{ transaction.plot.title }}</h1>
-                <p class="workspace-subtitle">
-                    {{ transaction.plot.county|default:"N/A" }} · 
-                    Agreed Price: <strong>KES {{ transaction.agreed_price|floatformat:0|intcomma }}</strong>
-                    {% if transaction.payment_request %}
-                        · Payment Ref: <a href="{% url 'payments:detail' transaction.payment_request.pk %}" class="text-decoration-none">{{ transaction.payment_request.internal_reference }}</a>
-                    {% endif %}
-                </p>
-            </div>
-        </div>
-        <div class="workspace-actions">
-            <a class="ap-btn ap-btn-ghost" href="{% url 'transactions:dashboard' %}">
-                <i class="fa-solid fa-arrow-left"></i> My Deals
-            </a>
         </div>
     </section>
 
     <!-- Progress Bar -->
     <section class="mb-5">
         <div class="d-flex justify-content-between mb-2">
-            <span class="text-sm fw-semibold text-muted">TRANSACTION PROGRESS</span>
-            <span class="text-sm fw-bold text-success">{{ progress_percentage }}% Complete</span>
+            <span class="text-muted small fw-bold text-uppercase">Progress</span>
+            <span class="text-success fw-bold small">{{ progress_percentage }}% Complete</span>
         </div>
-        <div class="progress" style="height: 10px; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
+        <div class="progress" style="height: 8px; background: #e2e8f0; border-radius: 10px; overflow: hidden;">
             <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress_percentage }}%; transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);" aria-valuenow="{{ progress_percentage }}" aria-valuemin="0" aria-valuemax="100"></div>
         </div>
-        <div class="d-flex justify-content-between mt-2">
-            <small>Due Diligence</small>
-            <small>Commitment</small>
-            <small>Contracts</small>
-            <small>Consents</small>
-            <small>Taxation</small>
-            <small>Registration</small>
-            <small>Disbursement</small>
-            <small>Complete</small>
+        <div class="d-flex justify-content-between mt-2 small text-muted">
+            <span>Due Diligence</span>
+            <span>Commitment</span>
+            <span>Contracts</span>
+            <span>Consents</span>
+            <span>Completion</span>
+            <span>Taxation</span>
+            <span>Registration</span>
+            <span>Complete</span>
         </div>
     </section>
 
+    <!-- Force Advance Button for Admins -->
+    {% if user.is_staff or is_escrow_admin or is_finance_admin %}
+        {% if transaction.stage == 'contracts' %}
+            <div class="alert alert-warning mt-3 p-3 rounded-3">
+                <p class="mb-2 fw-bold"><i class="fa-solid fa-triangle-exclamation me-2"></i> Stuck on Contracts?</p>
+                <form method="post" action="{% url 'transactions:force_advance_contracts' transaction.id %}" class="d-inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fa-solid fa-forward me-1"></i> Force Advance
+                    </button>
+                </form>
+                <small class="text-muted ms-2">(Bypasses deposit check for admin testing)</small>
+            </div>
+        {% endif %}
+    {% endif %}
+
     <!-- ============================================================ -->
-    <!-- PAYMENT SECTION - Only shows when ALL requirements are met    -->
+    <!-- PAYMENT SECTION                                                -->
     <!-- ============================================================ -->
     {% if request.user == transaction.buyer %}
+        
         {# Stage: CONTRACTS - 10% Deposit Required #}
         {% if transaction.stage == 'contracts' and transaction.deposit_paid < transaction.ten_percent_deposit %}
             
             {% if sale_agreement_verified %}
-                <!-- 10% Deposit Payment Required - Document is verified -->
-                <div class="workspace-card mb-4" style="border-left: 4px solid #10b981; background: #f0fdf4;" id="paymentSection">
-                    <div class="workspace-card-body" style="padding: 1rem 1.25rem;">
-                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                <!-- PAYMENT CARD - 10% DEPOSIT -->
+                <div class="workspace-card mb-4" style="border-left: 6px solid #10b981; background: #f0fdf4;" id="paymentSection">
+                    <div class="workspace-card-body">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                             <div class="d-flex align-items-center gap-3">
-                                <span class="badge bg-success" style="font-size: 0.75rem;">Action Required</span>
+                                <div style="background: #10b981; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                                    <i class="fa-solid fa-lock"></i>
+                                </div>
                                 <div>
-                                    <span class="fw-bold text-success">💰 Deposit Payment Required</span>
-                                    <span class="text-muted ms-2" style="font-size: 0.85rem;">KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}</span>
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <span class="badge bg-success" style="font-size: 0.7rem;">Action Required</span>
+                                        <span class="fw-bold text-dark" style="font-size: 1.1rem;">10% Deposit Payment</span>
+                                    </div>
+                                    <p class="text-muted small mb-0">Pay <strong>KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}</strong> to proceed to statutory consents.</p>
                                 </div>
                             </div>
-                            <button type="button" class="ap-btn ap-btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#paymentFormCollapse" aria-expanded="false" style="background: #10b981; border: none;">
+                            <button type="button" class="btn btn-success btn-sm" style="border-radius: 8px; padding: 0.5rem 1.5rem; background: #10b981; border: none;" onclick="togglePaymentForm('depositPaymentFormContainer')">
                                 <i class="fa-solid fa-credit-card me-1"></i> Pay Now
                             </button>
                         </div>
                         
-                        <div class="collapse mt-3" id="paymentFormCollapse">
-                            <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}" id="depositPaymentForm">
-                                {% csrf_token %}
-                                <input type="hidden" name="stage_type" value="deposit">
-                                <input type="hidden" name="amount" value="{{ transaction.ten_percent_deposit }}">
-                                
-                                <div class="row g-2 align-items-end">
-                                    <div class="col-md-4">
-                                        <label class="form-label text-sm fw-bold mb-1">Payment Method</label>
-                                        <select name="method" class="form-select form-select-sm" id="depositMethodSelect" required>
-                                            <option value="">Select Method</option>
-                                            <option value="wallet">💰 Wallet</option>
-                                            <option value="card">💳 Card</option>
-                                            <option value="bank_transfer">🏦 Bank Transfer</option>
-                                            {% if transaction.ten_percent_deposit <= 50000 %}
-                                                <option value="mpesa_stk">📱 M-Pesa</option>
-                                            {% endif %}
-                                        </select>
+                        <div id="depositPaymentFormContainer" class="payment-accordion">
+                            <div style="border-top: 1px solid rgba(16, 185, 129, 0.2); padding-top: 1.5rem;">
+                                <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}" id="depositPaymentForm">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="stage_type" value="deposit">
+                                    <input type="hidden" name="amount" value="{{ transaction.ten_percent_deposit }}">
+                                    
+                                    <div class="payment-form-row">
+                                        <div class="payment-form-group">
+                                            <label>Payment Method</label>
+                                            <select name="method" class="payment-form-control" id="depositMethodSelect" required>
+                                                <option value="">Select Method</option>
+                                                <option value="wallet">💰 Wallet</option>
+                                                <option value="card">💳 Card</option>
+                                                <option value="bank_transfer">🏦 Bank Transfer</option>
+                                                {% if transaction.ten_percent_deposit <= 50000 %}
+                                                    <option value="mpesa_stk">📱 M-Pesa</option>
+                                                {% endif %}
+                                            </select>
+                                        </div>
+
+                                        <!-- Wallet Fields -->
+                                        <div class="payment-form-group" id="depositWalletFields" style="display: none;">
+                                            <label>Wallet PIN</label>
+                                            <input type="password" name="wallet_pin" id="depositWalletPin" class="payment-form-control" placeholder="4-digit PIN" maxlength="4">
+                                            <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Balance: <strong>KES {{ wallet_balance|default:0|intcomma }}</strong></small>
+                                        </div>
+
+                                        <!-- Card Fields -->
+                                        <div class="payment-form-group" id="depositCardFields" style="display: none; flex: 1 1 400px;">
+                                            <label>Card Details</label>
+                                            <input type="text" name="card_number" class="payment-form-control mb-2" placeholder="Card Number">
+                                            <div class="d-flex gap-2">
+                                                <input type="text" name="card_expiry" class="payment-form-control" placeholder="MM/YY" style="flex: 1;">
+                                                <input type="text" name="card_cvv" class="payment-form-control" placeholder="CVV" style="flex: 1;">
+                                                <input type="text" name="cardholder_name" class="payment-form-control" placeholder="Name on Card" style="flex: 2;">
+                                            </div>
+                                        </div>
+
+                                        <!-- Bank Transfer Fields -->
+                                        <div class="payment-form-group" id="depositBankFields" style="display: none; flex: 1 1 400px;">
+                                            <label>Bank Transfer Details</label>
+                                            <div class="d-flex gap-2 mb-2">
+                                                <input type="text" name="bank_name" class="payment-form-control" placeholder="Bank Name">
+                                                <input type="text" name="account_number" class="payment-form-control" placeholder="Account Number">
+                                            </div>
+                                            <div class="d-flex gap-2">
+                                                <input type="text" name="account_name" class="payment-form-control" placeholder="Account Name">
+                                                <input type="file" name="payment_proof" class="payment-form-control" style="padding: 0.4rem;" accept=".pdf,.jpg,.png">
+                                            </div>
+                                            <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Upload screenshot/PDF of transfer receipt.</small>
+                                        </div>
+
+                                        <!-- M-Pesa Fields -->
+                                        <div class="payment-form-group" id="depositMpesaFields" style="display: none;">
+                                            <label>M-Pesa Phone Number</label>
+                                            <input type="tel" name="phone_number" class="payment-form-control" placeholder="0712345678" pattern="[0-9]{10}">
+                                            <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">STK push notification will be sent.</small>
+                                        </div>
+
+                                        <!-- Submit Button -->
+                                        <div class="payment-form-group" style="flex: 0 0 100%; margin-top: 1rem;">
+                                            <button type="submit" class="payment-submit-btn">
+                                                <i class="fa-solid fa-lock"></i> Pay KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}
+                                            </button>
+                                        </div>
                                     </div>
-                                    <div class="col-md-3" id="depositPhoneField" style="display: none;">
-                                        <label class="form-label text-sm fw-bold mb-1">Phone Number</label>
-                                        <input type="tel" name="phone_number" class="form-control form-control-sm" placeholder="0712345678">
+                                    <div class="mt-2">
+                                        <small class="text-muted"><i class="fa-solid fa-lock me-1 text-success"></i> Funds held in escrow until registration.</small>
                                     </div>
-                                    <div class="col-md-3" id="depositPinField" style="display: none;">
-                                        <label class="form-label text-sm fw-bold mb-1">Wallet PIN</label>
-                                        <input type="password" name="wallet_pin" class="form-control form-control-sm" placeholder="4-digit PIN" maxlength="4">
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="submit" class="ap-btn ap-btn-primary w-100" style="background: #10b981; border: none; padding: 0.4rem 0.75rem; font-size: 0.85rem;">
-                                            <i class="fa-solid fa-lock me-1"></i> Pay KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
-                            <div class="mt-2">
-                                <small class="text-muted"><i class="fa-solid fa-lock me-1"></i> Funds held in escrow until registration</small>
+                                </form>
                             </div>
                         </div>
                     </div>
                 </div>
                 
             {% elif sale_agreement_exists %}
-                <!-- Sale agreement uploaded but not verified -->
-                <div class="workspace-card mb-4" style="border-left: 4px solid #0d6efd; background: #eff6ff;">
-                    <div class="workspace-card-body" style="padding: 1rem 1.25rem;">
+                <div class="workspace-card mb-4" style="border-left: 6px solid #0d6efd; background: #eff6ff;">
+                    <div class="workspace-card-body">
                         <div class="d-flex align-items-center gap-3">
                             <span class="badge bg-info text-white" style="font-size: 0.75rem;">Pending Verification</span>
-                            <div>
-                                <span class="fw-bold text-info">⏳ Sale Agreement Pending Verification</span>
-                                <span class="text-muted ms-2" style="font-size: 0.85rem;">Payment will be available once the document is verified by the admin.</span>
-                            </div>
+                            <span class="fw-bold text-info">⏳ Sale Agreement Pending Verification</span>
+                            <span class="text-muted ms-2" style="font-size: 0.85rem;">Payment will unlock once verified by admin.</span>
                         </div>
                     </div>
                 </div>
-                
             {% else %}
-                <!-- No sale agreement uploaded yet -->
-                <div class="workspace-card mb-4" style="border-left: 4px solid #f59e0b; background: #fffbeb;">
-                    <div class="workspace-card-body" style="padding: 1rem 1.25rem;">
-                        <div class="d-flex align-items-center gap-3">
-                            <span class="badge bg-warning text-dark" style="font-size: 0.75rem;">Document Required</span>
-                            <div>
+                <div class="workspace-card mb-4" style="border-left: 6px solid #f59e0b; background: #fffbeb;">
+                    <div class="workspace-card-body">
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                            <div class="d-flex align-items-center gap-3">
+                                <span class="badge bg-warning text-dark" style="font-size: 0.75rem;">Document Required</span>
                                 <span class="fw-bold text-warning">📄 Sale Agreement Not Uploaded</span>
-                                <span class="text-muted ms-2" style="font-size: 0.85rem;">Please upload the signed sale agreement to proceed.</span>
                             </div>
-                            <button type="button" class="ap-btn ap-btn-primary btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
-                                <i class="fa-solid fa-upload"></i> Upload
+                            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
+                                <i class="fa-solid fa-upload me-1"></i> Upload
                             </button>
                         </div>
                     </div>
                 </div>
             {% endif %}
             
+        {# Stage: COMPLETION - 90% Balance Required #}
         {% elif transaction.stage == 'completion' and transaction.balance_due > 0 %}
-            <!-- 90% Balance Payment Required -->
-            <div class="workspace-card mb-4" style="border-left: 4px solid #10b981; background: #f0fdf4;">
-                <div class="workspace-card-body" style="padding: 1rem 1.25rem;">
-                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <!-- PAYMENT CARD - 90% BALANCE -->
+            <div class="workspace-card mb-4" style="border-left: 6px solid #10b981; background: #f0fdf4;" id="paymentSection">
+                <div class="workspace-card-body">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
                         <div class="d-flex align-items-center gap-3">
-                            <span class="badge bg-success" style="font-size: 0.75rem;">Action Required</span>
+                            <div style="background: #10b981; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                                <i class="fa-solid fa-lock"></i>
+                            </div>
                             <div>
-                                <span class="fw-bold text-success">💰 Balance Payment Required</span>
-                                <span class="text-muted ms-2" style="font-size: 0.85rem;">KES {{ transaction.balance_due|floatformat:0|intcomma }}</span>
+                                <div class="d-flex align-items-center gap-2 flex-wrap">
+                                    <span class="badge bg-success" style="font-size: 0.7rem;">Action Required</span>
+                                    <span class="fw-bold text-dark" style="font-size: 1.1rem;">Balance Payment</span>
+                                </div>
+                                <p class="text-muted small mb-0">Pay <strong>KES {{ transaction.balance_due|floatformat:0|intcomma }}</strong> to proceed to registration.</p>
                             </div>
                         </div>
-                        <button type="button" class="ap-btn ap-btn-primary btn-sm" data-bs-toggle="collapse" data-bs-target="#balanceFormCollapse" aria-expanded="false" style="background: #10b981; border: none;">
+                        <button type="button" class="btn btn-success btn-sm" style="border-radius: 8px; padding: 0.5rem 1.5rem; background: #10b981; border: none;" onclick="togglePaymentForm('balancePaymentFormContainer')">
                             <i class="fa-solid fa-credit-card me-1"></i> Pay Now
                         </button>
                     </div>
                     
-                    <div class="collapse mt-3" id="balanceFormCollapse">
-                        <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}" id="balancePaymentForm">
-                            {% csrf_token %}
-                            <input type="hidden" name="stage_type" value="completion">
-                            <input type="hidden" name="amount" value="{{ transaction.balance_due }}">
-                            
-                            <div class="row g-2 align-items-end">
-                                <div class="col-md-4">
-                                    <label class="form-label text-sm fw-bold mb-1">Payment Method</label>
-                                    <select name="method" class="form-select form-select-sm" id="balanceMethodSelect" required>
-                                        <option value="">Select Method</option>
-                                        <option value="wallet">💰 Wallet</option>
-                                        <option value="card">💳 Card</option>
-                                        <option value="bank_transfer">🏦 Bank Transfer</option>
-                                    </select>
+                    <div id="balancePaymentFormContainer" class="payment-accordion">
+                        <div style="border-top: 1px solid rgba(16, 185, 129, 0.2); padding-top: 1.5rem;">
+                            <form method="post" action="{% url 'transactions:make_stage_payment' transaction.id %}" id="balancePaymentForm">
+                                {% csrf_token %}
+                                <input type="hidden" name="stage_type" value="completion">
+                                <input type="hidden" name="amount" value="{{ transaction.balance_due }}">
+                                
+                                <div class="payment-form-row">
+                                    <div class="payment-form-group">
+                                        <label>Payment Method</label>
+                                        <select name="method" class="payment-form-control" id="balanceMethodSelect" required>
+                                            <option value="">Select Method</option>
+                                            <option value="wallet">💰 Wallet</option>
+                                            <option value="card">💳 Card</option>
+                                            <option value="bank_transfer">🏦 Bank Transfer</option>
+                                        </select>
+                                    </div>
+
+                                    <!-- Wallet Fields -->
+                                    <div class="payment-form-group" id="balanceWalletFields" style="display: none;">
+                                        <label>Wallet PIN</label>
+                                        <input type="password" name="wallet_pin" id="balanceWalletPin" class="payment-form-control" placeholder="4-digit PIN" maxlength="4">
+                                        <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Balance: <strong>KES {{ wallet_balance|default:0|intcomma }}</strong></small>
+                                    </div>
+
+                                    <!-- Card Fields -->
+                                    <div class="payment-form-group" id="balanceCardFields" style="display: none; flex: 1 1 400px;">
+                                        <label>Card Details</label>
+                                        <input type="text" name="card_number" class="payment-form-control mb-2" placeholder="Card Number">
+                                        <div class="d-flex gap-2">
+                                            <input type="text" name="card_expiry" class="payment-form-control" placeholder="MM/YY" style="flex: 1;">
+                                            <input type="text" name="card_cvv" class="payment-form-control" placeholder="CVV" style="flex: 1;">
+                                            <input type="text" name="cardholder_name" class="payment-form-control" placeholder="Name on Card" style="flex: 2;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Bank Transfer Fields -->
+                                    <div class="payment-form-group" id="balanceBankFields" style="display: none; flex: 1 1 400px;">
+                                        <label>Bank Transfer Details</label>
+                                        <div class="d-flex gap-2 mb-2">
+                                            <input type="text" name="bank_name" class="payment-form-control" placeholder="Bank Name">
+                                            <input type="text" name="account_number" class="payment-form-control" placeholder="Account Number">
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <input type="text" name="account_name" class="payment-form-control" placeholder="Account Name">
+                                            <input type="file" name="payment_proof" class="payment-form-control" style="padding: 0.4rem;" accept=".pdf,.jpg,.png">
+                                        </div>
+                                        <small class="text-muted d-block mt-1" style="font-size: 0.75rem;">Upload screenshot/PDF of transfer receipt.</small>
+                                    </div>
+
+                                    <!-- Submit Button -->
+                                    <div class="payment-form-group" style="flex: 0 0 100%; margin-top: 1rem;">
+                                        <button type="submit" class="payment-submit-btn">
+                                            <i class="fa-solid fa-lock"></i> Pay KES {{ transaction.balance_due|floatformat:0|intcomma }}
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="col-md-3" id="balancePinField" style="display: none;">
-                                    <label class="form-label text-sm fw-bold mb-1">Wallet PIN</label>
-                                    <input type="password" name="wallet_pin" class="form-control form-control-sm" placeholder="4-digit PIN" maxlength="4">
+                                <div class="mt-2">
+                                    <small class="text-muted"><i class="fa-solid fa-lock me-1 text-success"></i> Final payment held securely in escrow.</small>
                                 </div>
-                                <div class="col-md-2">
-                                    <button type="submit" class="ap-btn ap-btn-primary w-100" style="background: #10b981; border: none; padding: 0.4rem 0.75rem; font-size: 0.85rem;">
-                                        <i class="fa-solid fa-lock me-1"></i> Pay KES {{ transaction.balance_due|floatformat:0|intcomma }}
-                                    </button>
-                                </div>
-                            </div>
-                        </form>
-                        <div class="mt-2">
-                            <small class="text-muted"><i class="fa-solid fa-lock me-1"></i> Final payment before registration</small>
+                            </form>
                         </div>
                     </div>
                 </div>
@@ -361,9 +513,7 @@
     <!-- MAIN CONTENT: Two Column Layout                               -->
     <!-- ============================================================ -->
     <div class="row g-4">        
-        <!-- ============================================================ -->
-        <!-- LEFT COLUMN: Legal Timeline                                  -->
-        <!-- ============================================================ -->
+        <!-- LEFT COLUMN: Legal Timeline -->
         <div class="col-lg-8">
             <article class="workspace-card">
                 <div class="workspace-card-header d-flex justify-content-between align-items-center">
@@ -401,7 +551,6 @@
                                             {% endif %}
                                         </p>
 
-                                        <!-- Document Display -->
                                         {% if stage.is_current or stage.is_completed %}
                                             <div style="margin: 0.75rem 0; padding: 0.9rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #f8fafc;">
                                                 <strong style="display: block; margin-bottom: 0.5rem;">Documents:</strong>
@@ -442,17 +591,12 @@
                                                                     {% endif %}
                                                                     {% if can_verify_documents and doc.doc and not doc.is_verified %}
                                                                         <div class="mt-2 d-flex gap-2 justify-content-end flex-wrap">
-                                                                            <form method="post" action="{% url 'transactions:verify_document' doc.doc.id %}">
-                                                                                {% csrf_token %}
-                                                                                <input type="hidden" name="action" value="verify">
-                                                                                <button type="submit" class="ap-btn ap-btn-primary btn-sm">Verify</button>
-                                                                            </form>
-                                                                            <form method="post" action="{% url 'transactions:verify_document' doc.doc.id %}">
-                                                                                {% csrf_token %}
-                                                                                <input type="hidden" name="action" value="reject">
-                                                                                <input type="hidden" name="reason" value="Rejected during stage review">
-                                                                                <button type="submit" class="ap-btn ap-btn-secondary btn-sm">Reject</button>
-                                                                            </form>
+                                                                            <button class="btn btn-success btn-sm verify-doc-btn" data-doc-id="{{ doc.doc.id }}" data-action="verify">
+                                                                                <i class="fa-solid fa-check"></i> Verify
+                                                                            </button>
+                                                                            <button class="btn btn-secondary btn-sm reject-doc-btn" data-doc-id="{{ doc.doc.id }}" data-action="reject">
+                                                                                <i class="fa-solid fa-xmark"></i> Reject
+                                                                            </button>
                                                                         </div>
                                                                     {% endif %}
                                                                 </div>
@@ -480,21 +624,15 @@
                                         <!-- STATUS MESSAGE -->
                                         {% if stage.is_current %}
                                             {% if not can_advance %}
-                                                
-                                                {# Check if this stage requires payment #}
                                                 {% if transaction.stage == 'contracts' and transaction.deposit_paid < transaction.ten_percent_deposit %}
-                                                    {# Check if sale agreement is verified using the view-passed variable #}
                                                     {% if sale_agreement_verified %}
                                                         <div class="alert alert-success py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #10b981;">
-                                                            <div class="d-flex align-items-center">
+                                                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                                                                 <div>
                                                                     <div class="fw-semibold">💰 Payment Required</div>
                                                                     <div>The sale agreement is verified. Please pay the 10% deposit to proceed.</div>
-                                                                    <div class="mt-1">
-                                                                        <span class="badge bg-success">KES {{ transaction.ten_percent_deposit|floatformat:0|intcomma }}</span>
-                                                                    </div>
                                                                 </div>
-                                                                <a href="#paymentSection" class="ap-btn ap-btn-primary btn-sm ms-auto">Pay Now</a>
+                                                                <a href="#paymentSection" class="btn btn-success btn-sm">Pay Now</a>
                                                             </div>
                                                         </div>
                                                     {% elif sale_agreement_exists %}
@@ -521,22 +659,17 @@
                                                     
                                                 {% elif transaction.stage == 'completion' and transaction.balance_due > 0 %}
                                                     <div class="alert alert-success py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #10b981;">
-                                                        <div class="d-flex align-items-center">
+                                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                                                             <div>
                                                                 <div class="fw-semibold">💰 Payment Required</div>
                                                                 <div>All documents verified. Please pay the 90% balance to proceed.</div>
-                                                                <div class="mt-1">
-                                                                    <span class="badge bg-success">KES {{ transaction.balance_due|floatformat:0|intcomma }}</span>
-                                                                </div>
                                                             </div>
-                                                            <a href="#paymentSection" class="ap-btn ap-btn-primary btn-sm ms-auto">Pay Now</a>
+                                                            <a href="#paymentSection" class="btn btn-success btn-sm">Pay Now</a>
                                                         </div>
                                                     </div>
                                                     
                                                 {% else %}
-                                                    {# Check document status using pre-computed values #}
                                                     {% with status=stage.doc_status %}
-                                                        
                                                         {% if not status.has_any_docs %}
                                                             <div class="alert alert-success py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #10b981;">
                                                                 <div class="d-flex align-items-center">
@@ -547,7 +680,6 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            
                                                         {% elif status.has_missing %}
                                                             <div class="alert alert-warning py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #f59e0b;">
                                                                 <div class="d-flex align-items-start justify-content-between flex-wrap gap-2">
@@ -558,9 +690,13 @@
                                                                             <span class="badge bg-warning text-dark">{{ status.missing_count }} document(s) missing</span>
                                                                         </div>
                                                                     </div>
-                                                                    <button type="button" class="ap-btn ap-btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
-                                                                        <i class="fa-solid fa-upload me-1"></i> Upload
-                                                                    </button>
+                                                                    {% if stage.is_current %}
+                                                                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#uploadDocModal">
+                                                                            <i class="fa-solid fa-upload me-1"></i> Upload
+                                                                        </button>
+                                                                    {% else %}
+                                                                        <span class="badge bg-secondary text-light">Stage locked</span>
+                                                                    {% endif %}
                                                                 </div>
                                                                 {% if stage.required_docs %}
                                                                     <div class="mt-2 ps-4">
@@ -573,7 +709,6 @@
                                                                     </div>
                                                                 {% endif %}
                                                             </div>
-                                                            
                                                         {% elif status.has_pending %}
                                                             <div class="alert alert-info py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #0d6efd;">
                                                                 <div class="d-flex align-items-start">
@@ -584,7 +719,6 @@
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            
                                                         {% elif status.all_verified %}
                                                             <div class="alert alert-success py-2 px-3 mb-0 mt-2 text-sm" style="border-left: 4px solid #10b981;">
                                                                 <div class="d-flex align-items-center">
@@ -659,9 +793,7 @@
             </article>
         </div>
 
-        <!-- ============================================================ -->
-        <!-- RIGHT COLUMN: Details & Documents                            -->
-        <!-- ============================================================ -->
+        <!-- RIGHT COLUMN: Details & Documents -->
         <div class="col-lg-4">
             <!-- Parties Card -->
             <article class="workspace-card mb-4">
@@ -956,76 +1088,197 @@
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    function setupPaymentForm(formId, phoneFieldId, pinFieldId) {
-        const form = document.getElementById(formId);
-        if (!form) return;
+    // ============================================================
+    // PURE JS ACCORDION - Bypasses Bootstrap click-capture issues
+    // ============================================================
+    function togglePaymentForm(containerId) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        // Toggle the 'open' class
+        container.classList.toggle('open');
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        // ============================================================
+        // DYNAMIC PAYMENT FIELD TOGGLES
+        // ============================================================
+        function setupPaymentForm(formId, methodSelectId, fieldsMap) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+            
+            const methodSelect = form.querySelector('#' + methodSelectId);
+            
+            if (methodSelect) {
+                methodSelect.addEventListener('change', function() {
+                    // Hide all method-specific fields first
+                    Object.keys(fieldsMap).forEach(key => {
+                        const field = document.getElementById(key);
+                        if (field) field.style.display = 'none';
+                    });
+                    
+                    // Show selected method fields
+                    const selectedMethod = this.value;
+                    if (fieldsMap[selectedMethod]) {
+                        fieldsMap[selectedMethod].forEach(fieldId => {
+                            const field = document.getElementById(fieldId);
+                            if (field) field.style.display = 'block';
+                        });
+                    }
+                });
+            }
+        }
         
-        const methodSelect = form.querySelector('select[name="method"]');
-        const phoneField = form.querySelector('#' + phoneFieldId);
-        const pinField = form.querySelector('#' + pinFieldId);
+        // Map method names to field container IDs for Deposit Form
+        setupPaymentForm('depositPaymentForm', 'depositMethodSelect', {
+            'wallet': ['depositWalletFields'],
+            'card': ['depositCardFields'],
+            'bank_transfer': ['depositBankFields'],
+            'mpesa_stk': ['depositMpesaFields']
+        });
         
-        if (methodSelect) {
-            methodSelect.addEventListener('change', function() {
-                if (this.value === 'mpesa_stk') {
-                    if (phoneField) phoneField.style.display = 'block';
-                    if (pinField) pinField.style.display = 'none';
-                } else if (this.value === 'wallet') {
-                    if (phoneField) phoneField.style.display = 'none';
-                    if (pinField) pinField.style.display = 'block';
-                } else {
-                    if (phoneField) phoneField.style.display = 'none';
-                    if (pinField) pinField.style.display = 'none';
+        // Map method names to field container IDs for Balance Form
+        setupPaymentForm('balancePaymentForm', 'balanceMethodSelect', {
+            'wallet': ['balanceWalletFields'],
+            'card': ['balanceCardFields'],
+            'bank_transfer': ['balanceBankFields']
+        });
+
+        // ============================================================
+        // FIX THE "INVALID FORM CONTROL" WALLET PIN ERROR
+        // ============================================================
+        function handleWalletFormSubmit(formId, pinFieldId) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+
+            form.addEventListener('submit', function(e) {
+                const pinInput = document.getElementById(pinFieldId);
+                
+                // Check if Wallet PIN field is currently visible
+                if (pinInput && pinInput.style.display !== 'none') {
+                    const pinValue = pinInput.value.trim();
+                    const methodSelect = form.querySelector('select[name="method"]');
+                    
+                    // Only validate if Wallet is selected
+                    if (methodSelect && methodSelect.value === 'wallet') {
+                        if (pinValue.length !== 4 || !/^[0-9]{4}$/.test(pinValue)) {
+                            e.preventDefault();
+                            alert("Please enter a valid 4-digit Wallet PIN.");
+                            pinInput.focus();
+                            return false;
+                        }
+                    }
                 }
             });
         }
-    }
-    
-    setupPaymentForm('depositPaymentForm', 'depositPhoneField', 'depositPinField');
-    setupPaymentForm('balancePaymentForm', 'balancePhoneField', 'balancePinField');
-    
-    // Payment method card selection for deposit
-    const depositMethodCards = document.querySelectorAll('#depositPaymentForm .payment-method-card');
-    const depositSelectedMethod = document.getElementById('depositSelectedMethod');
-    
-    if (depositMethodCards.length > 0 && depositSelectedMethod) {
-        depositMethodCards.forEach(card => {
-            card.addEventListener('click', function() {
-                if (this.dataset.available === 'false') return;
-                const method = this.dataset.method;
-                depositMethodCards.forEach(c => c.classList.remove('selected'));
-                this.classList.add('selected');
-                depositSelectedMethod.value = method;
+
+        // Attach to both forms
+        handleWalletFormSubmit('depositPaymentForm', 'depositWalletPin');
+        handleWalletFormSubmit('balancePaymentForm', 'balanceWalletPin');
+
+        // ============================================================
+        // VERIFY / REJECT DOCUMENT AJAX
+        // ============================================================
+        function getCsrfToken() {
+            return document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed; bottom: 30px; right: 30px; 
+                background: ${type === 'success' ? '#10b981' : '#ef4444'}; 
+                color: white; padding: 16px 24px; border-radius: 8px; 
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+                z-index: 9999; font-weight: 600;
+                animation: slideIn 0.3s ease;
+            `;
+            toast.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        document.querySelectorAll('.verify-doc-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const docId = this.dataset.docId;
+                const action = this.dataset.action;
+                const originalText = this.innerHTML;
                 
-                document.querySelectorAll('#depositPaymentForm .payment-detail-section').forEach(s => s.classList.remove('active'));
-                if (method === 'mpesa_stk') document.getElementById('depositMpesaSection')?.classList.add('active');
-                if (method === 'wallet') document.getElementById('depositWalletSection')?.classList.add('active');
+                this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Verifying...';
+                this.disabled = true;
+
+                fetch(`/transactions/document/${docId}/verify/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({ action: action })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message || 'Document verified successfully');
+                        // RELOAD INSTANTLY
+                        location.reload(); 
+                    } else {
+                        showToast(data.message || 'Verification failed', 'error');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Network error. Please try again.', 'error');
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                });
             });
         });
-        const firstAvailable = document.querySelector('#depositPaymentForm .payment-method-card[data-available="true"]');
-        if (firstAvailable) firstAvailable.click();
-    }
-    
-    // Payment method card selection for balance
-    const balanceMethodCards = document.querySelectorAll('#balancePaymentForm .payment-method-card');
-    const balanceSelectedMethod = document.getElementById('balanceSelectedMethod');
-    
-    if (balanceMethodCards.length > 0 && balanceSelectedMethod) {
-        balanceMethodCards.forEach(card => {
-            card.addEventListener('click', function() {
-                const method = this.dataset.method;
-                balanceMethodCards.forEach(c => c.classList.remove('selected'));
-                this.classList.add('selected');
-                balanceSelectedMethod.value = method;
-                
-                document.querySelectorAll('#balancePaymentForm .payment-detail-section').forEach(s => s.classList.remove('active'));
-                if (method === 'bank_transfer') document.getElementById('balanceBankSection')?.classList.add('active');
-                if (method === 'wallet') document.getElementById('balanceWalletSection')?.classList.add('active');
+
+        document.querySelectorAll('.reject-doc-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const docId = this.dataset.docId;
+                const action = this.dataset.action;
+                const reason = prompt("Please enter the reason for rejection:");
+                if (reason === null) return;
+
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Rejecting...';
+                this.disabled = true;
+
+                fetch(`/transactions/document/${docId}/verify/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({ action: action, reason: reason })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast(data.message || 'Document rejected');
+                        location.reload();
+                    } else {
+                        showToast(data.message || 'Rejection failed', 'error');
+                        this.innerHTML = originalText;
+                        this.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showToast('Network error. Please try again.', 'error');
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                });
             });
         });
-        const firstAvailable = document.querySelector('#balancePaymentForm .payment-method-card[data-available="true"]');
-        if (firstAvailable) firstAvailable.click();
-    }
-});
+    });
 </script>
 {% endblock %}

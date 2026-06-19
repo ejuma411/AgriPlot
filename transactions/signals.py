@@ -221,19 +221,16 @@ def _auto_start_transaction_logic(sender, instance, **kwargs):
         
         logger.info(f"Completion balance recorded in escrow for transaction {transaction.id}: KES {instance.amount:,.2f}")
     
-    # If both deposit and balance are fully paid (100%), ensure transaction is ready for registration
-    total_paid = transaction.deposit_paid + transaction.balance_paid
-    if total_paid >= transaction.agreed_price and transaction.stage == Transaction.Stage.CONTRACTS:
-        try:
-            can_advance, message = transaction.can_advance_to_next_stage()
-            if can_advance:
-                transaction.advance_stage(actor=instance.buyer)
-                logger.info(f"Transaction {transaction.id} auto-advanced to TAXATION after full payment")
-            else:
-                logger.info(f"Transaction {transaction.id} cannot advance to TAXATION: {message}")
-        except Exception as e:
-            logger.warning(f"Could not auto-advance transaction {transaction.id}: {e}")
-    
+    # Try to auto-advance the transaction stage if possible based on payment update
+    try:
+        can_advance, message = transaction.can_advance_to_next_stage()
+        if can_advance:
+            transaction.advance_stage(actor=instance.buyer)
+            logger.info(f"Transaction {transaction.id} auto-advanced to {transaction.get_stage_display()} after payment update")
+        else:
+            logger.info(f"Transaction {transaction.id} cannot advance: {message}")
+    except Exception as e:
+        logger.warning(f"Could not auto-advance transaction {transaction.id}: {e}")    
     # Add event to payment - but don't save again
     # Use a direct DB update to avoid signal recursion
     from payments.models import PaymentEvent
@@ -426,6 +423,27 @@ def sync_document_verification_to_payment(sender, instance, **kwargs):
                         logger.info(f"Auto-completed payment step {step_code} for {payment.internal_reference}")
                     except Exception as e:
                         logger.warning(f"Could not auto-complete payment step: {e}")
+                    
+                    # ============================================================
+                    # AUTO-ADVANCE: Try to advance the transaction stage
+                    # This covers the case where payment was already confirmed
+                    # and this document verification was the last missing piece.
+                    # ============================================================
+                    transaction = instance.transaction
+                    try:
+                        can_advance, advance_msg = transaction.can_advance_to_next_stage()
+                        if can_advance:
+                            transaction.advance_stage(actor=instance.verified_by)
+                            logger.info(
+                                f"🚀 Auto-advanced transaction {transaction.id} to "
+                                f"{transaction.get_stage_display()} after document verification"
+                            )
+                        else:
+                            logger.info(
+                                f"⏳ Transaction {transaction.id} cannot advance yet: {advance_msg}"
+                            )
+                    except Exception as e:
+                        logger.warning(f"Could not auto-advance transaction {transaction.id}: {e}")
     
     finally:
         instance._doc_sync_processing = False
@@ -506,3 +524,24 @@ def _trigger_payment_disbursement_safely(payment, actor):
     )
     
     logger.info(f"Funds disbursed for {payment.internal_reference}")
+    
+    
+# ============================================================
+# RESERVE PLOT WHEN LEGAL TRANSACTION IS CREATED
+# ============================================================
+@receiver(post_save, sender="transactions.Transaction")
+def reserve_plot_on_transaction_creation(sender, instance, created, **kwargs):
+    """
+    When a legal transaction is created (NOT updated), mark the plot as 'reserved' 
+    so it disappears from the general marketplace and can't be bought by others.
+    """
+    if created:
+        plot = instance.plot
+        if plot.market_status != 'reserved':
+            plot.market_status = 'reserved'
+            plot.availability_notes = (
+                f"Reserved under legal transaction #{instance.id} by {instance.buyer.username} "
+                f"on {timezone.now().strftime('%Y-%m-%d %H:%M')}."
+            )
+            plot.save(update_fields=['market_status', 'availability_notes'])
+            logger.info(f"✅ [reserve_plot] Plot {plot.id} marked as 'reserved' for transaction {instance.id}.")

@@ -174,7 +174,7 @@ class PaymentPresenter:
     @property
     def platform_fee_percentage(self):
         """Platform fee as percentage of transaction value (1-3% standard for Kenya)"""
-        value = self.payment.amount
+        value = self._legal_transaction.agreed_price if self._legal_transaction else self.payment.amount
         if value < Decimal('1000000'):  # Below 1M KES
             return Decimal('0.03')  # 3%
         elif value < Decimal('5000000'):  # 1M-5M KES
@@ -187,12 +187,14 @@ class PaymentPresenter:
     @property
     def platform_fee_amount(self):
         """Calculate platform fee based on percentage"""
-        return self.payment.amount * self.platform_fee_percentage
+        value = self._legal_transaction.agreed_price if self._legal_transaction else self.payment.amount
+        return value * self.platform_fee_percentage
     
     @property
     def seller_net_amount(self):
         """Amount seller receives after platform fee deduction"""
-        return self.payment.amount - self.platform_fee_amount
+        value = self._legal_transaction.agreed_price if self._legal_transaction else self.payment.amount
+        return value - self.platform_fee_amount
 
     @property
     def transaction_stage_matrix(self):
@@ -719,9 +721,10 @@ class PaymentPresenter:
     def disbursement_schedule(self):
         """Automatic disbursement triggers and schedule with fee deduction"""
         registration_complete = self._check_document_verified('NEW_TITLE_DEED')
+        total_value = self._legal_transaction.agreed_price if self._legal_transaction else self.payment.amount
         
         return {
-            "total_held_in_escrow": self.payment._money_display(self.payment.amount),
+            "total_held_in_escrow": self.payment._money_display(total_value),
             "platform_fee": {
                 "amount": self.payment._money_display(self.platform_fee_amount),
                 "percentage": f"{self.platform_fee_percentage * 100}%",
@@ -745,10 +748,16 @@ class PaymentPresenter:
     @property
     def escrow_summary(self):
         """Summary of funds currently held in platform escrow for this transaction"""
-        total_price = self.payment.amount
-        deposit_paid = self.payment.metadata.get('deposit_paid', False)
-        balance_paid = self.payment.metadata.get('balance_paid', False)
-        disbursed = self.payment.metadata.get('disbursed', False)
+        if self._legal_transaction:
+            total_price = self._legal_transaction.agreed_price
+            deposit_paid = self._legal_transaction.deposit_paid > 0
+            balance_paid = self._legal_transaction.balance_paid > 0
+            disbursed = self._legal_transaction.stage in ['disbursement', 'completed']
+        else:
+            total_price = self.payment.amount
+            deposit_paid = self.payment.metadata.get('deposit_paid', False)
+            balance_paid = self.payment.metadata.get('balance_paid', False)
+            disbursed = self.payment.metadata.get('disbursed', False)
         
         current_holdings = Decimal('0')
         if not disbursed:

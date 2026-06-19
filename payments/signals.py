@@ -595,3 +595,56 @@ def enforce_wallet_pin_lockout(sender, instance, **kwargs):
             instance.locked_until = None
             instance.failed_pin_attempts = 0
             logger.info(f"Wallet {instance.account_number} PIN lock expired, resetting attempts")
+            
+            
+# ============================================================
+# SYNC NEW TITLE DEED VERIFICATION TO PAYMENT
+# ============================================================
+@receiver(post_save, sender="transactions.TransactionDocument")
+def sync_title_deed_verification_to_payment(sender, instance, **kwargs):
+    """
+    When the New Title Deed is verified, automatically set 
+    purchase_registration_complete = True on the linked payment.
+    This unlocks the disbursement block.
+    """
+    # Only act on verified documents
+    if instance.status != 'verified':
+        return
+
+    # Only act on the New Title Deed document
+    if instance.document_type != 'NEW_TITLE_DEED':
+        return
+
+    # Find the legal transaction
+    transaction = instance.transaction
+    if not transaction:
+        return
+
+    # Find the linked payment request
+    payment = transaction.payment_request
+    if not payment:
+        return
+
+    # Safety: Prevent infinite loops
+    if getattr(payment, '_title_sync_processing', False):
+        return
+
+    try:
+        payment._title_sync_processing = True
+        
+        # Update the flag that triggers disbursement
+        if not payment.purchase_registration_complete:
+            payment.purchase_registration_complete = True
+            payment.save(update_fields=['purchase_registration_complete', 'updated_at'])
+            
+            logger.info(f"✅ [sync_title_deed] payment.purchase_registration_complete set to True for Payment {payment.id}")
+            
+            # Check if we can now trigger disbursement automatically
+            # This will call the existing _trigger_fund_disbursement if conditions allow
+            if payment.status == PaymentRequest.Status.IN_ESCROW:
+                payment.apply_transition("release", actor=instance.verified_by)
+                
+    except Exception as e:
+        logger.error(f"⚠️ [sync_title_deed] Failed to sync verification: {e}")
+    finally:
+        payment._title_sync_processing = False

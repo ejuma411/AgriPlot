@@ -538,7 +538,7 @@
             </a>
 
             {% if is_agent or is_landowner %}
-            <a href="{% url 'listings:dashboard_portfolio' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard_portfolio' %}active{% endif %}">
+            <a href="{% url 'listings:dashboard_router' %}" class="sidebar-link {% if request.resolver_match.url_name == 'dashboard_portfolio' %}active{% endif %}">
                 <i class="fa-solid fa-map"></i>
                 <span>My Portfolio</span>
             </a>
