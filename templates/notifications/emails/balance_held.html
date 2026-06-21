@@ -1,0 +1,32 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Your <strong>90% completion balance</strong> has been successfully received and is now securely <strong>held in escrow</strong>.</p>
+
+<div class="info-box">
+    <strong>💰 Transaction Summary:</strong>
+    <ul style="margin: 8px 0 0 20px; padding: 0;">
+        <li><strong>Plot:</strong> {{ transaction.plot.title }}</li>
+        <li><strong>Amount Held:</strong> KES {{ transaction.balance_paid|floatformat:0|intcomma }}</li>
+        <li><strong>Total Paid to Date:</strong> KES {{ transaction.deposit_paid|add:transaction.balance_paid|floatformat:0|intcomma }}</li>
+    </ul>
+</div>
+
+<p>You can now proceed to the <strong>Registration</strong> stage. Once the New Title Deed is uploaded and verified, the funds will be released to the seller.</p>
+{% endblock %}
+
+{% block button_block %}
+<div class="button-container">
+    <a href="{{ transaction_url }}" class="button">Proceed to Registration</a>
+</div>
+{% endblock %}
+
+{% block footer_note %}
+This email confirms your 90% balance payment for {{ transaction.plot.title }}.
+{% endblock %}

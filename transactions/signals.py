@@ -159,13 +159,13 @@ def _auto_start_transaction_logic(sender, instance, **kwargs):
         
         # Send notification to buyer and seller
         from notifications.notification_service import NotificationService
-        NotificationService.create_notification(
+        NotificationService.notify_balance_held(
             user=transaction.buyer,
             notification_type="deposit_held",
             title=f"10% Deposit Held in Escrow - {transaction.plot.title}",
             message=f"Your deposit of KES {instance.amount:,.2f} is now securely held in escrow pending registration."
         )
-        NotificationService.create_notification(
+        NotificationService.notify_deposit_received(
             user=transaction.seller,
             notification_type="deposit_received",
             title=f"Deposit Received in Escrow - {transaction.plot.title}",
@@ -206,13 +206,13 @@ def _auto_start_transaction_logic(sender, instance, **kwargs):
         
         # Send notification
         from notifications.notification_service import NotificationService
-        NotificationService.create_notification(
+        NotificationService.notify_balance_held(
             user=transaction.buyer,
             notification_type="balance_held",
             title=f"90% Balance Held in Escrow - {transaction.plot.title}",
             message=f"Your balance payment of KES {instance.amount:,.2f} is now securely held in escrow. Proceed with registration."
         )
-        NotificationService.create_notification(
+        NotificationService.notify_balance_received(
             user=transaction.seller,
             notification_type="balance_received",
             title=f"Balance Received in Escrow - {transaction.plot.title}",

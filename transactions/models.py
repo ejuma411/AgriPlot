@@ -14,6 +14,8 @@ Integrates with Platform Escrow Model:
 - Platform fee deducted from seller proceeds before disbursement
 """
 
+from asgiref.server import logger
+from asgiref.server import logger
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
@@ -450,6 +452,9 @@ class Transaction(models.Model):
             
             self.save()
             
+            from notifications.notification_service import NotificationService
+            NotificationService.notify_transaction_advanced(self)
+            
             if self.stage == self.Stage.DISBURSEMENT:
                 self._trigger_disbursement(actor)
             
@@ -522,15 +527,16 @@ class Transaction(models.Model):
         self._send_transaction_reports()
     
     def _send_transaction_reports(self):
-        """Send comprehensive transaction reports to both parties via email"""
+        """Send comprehensive transaction reports to both parties via email with PDF attachments"""
         from notifications.notification_service import NotificationService
         from django.template.loader import render_to_string
+        from weasyprint import HTML
         
         self.reports_sent_at = timezone.now()
         self.save(update_fields=['reports_sent_at'])
         
         report_data = {
-            'transaction_id': self.id,
+            'transaction': self,
             'plot_title': self.plot.title,
             'agreed_price': self.agreed_price,
             'deposit_paid': self.deposit_paid,
@@ -547,67 +553,30 @@ class Transaction(models.Model):
             'milestones': list(self.milestones.values('milestone_type', 'achieved_at')),
         }
         
-        buyer_subject = f"Transaction Complete - {self.plot.title} - Your Land Purchase Report"
-        buyer_html = render_to_string('transactions/emails/buyer_completion_report.html', report_data)
-        buyer_text = f"""
-Transaction Complete: {self.plot.title}
-
-Property Details:
-- Plot: {self.plot.title}
-- Location: {self.plot.location}
-- Title Number: {self.plot.title_number}
-
-Financial Summary:
-- Purchase Price: KES {self.agreed_price:,.2f}
-- 10% Deposit Paid: KES {self.deposit_paid:,.2f}
-- 90% Balance Paid: KES {self.balance_paid:,.2f}
-- Stamp Duty Paid to KRA: KES {self.stamp_duty_amount:,.2f} (Receipt: {self.stamp_duty_receipt_number})
-
-Legal Documents:
-- New Title Deed issued in your name
-- LCB Consent: {self.lcb_consent_reference}
-- Completion Date: {self.completed_at.date()}
-
-Keep this report and your title deed for your records.
-        """
+        # 1. Render the HTML for the PDF
+        html_string = render_to_string('reports/transaction_pdf.html', report_data)
         
-        seller_subject = f"Transaction Complete - {self.plot.title} - Funds Disbursed"
-        seller_html = render_to_string('transactions/emails/seller_completion_report.html', report_data)
-        seller_text = f"""
-Transaction Complete: {self.plot.title}
-
-Financial Summary:
-- Sale Price: KES {self.agreed_price:,.2f}
-- Platform Fee ({self.platform_fee_percentage}%): KES {self.platform_fee_amount:,.2f}
-- Net Amount Received: KES {self.seller_net_amount:,.2f}
-
-Important Tax Information:
-- Stamp duty was paid by buyer directly to KRA
-- You are responsible for filing Capital Gains Tax (15% of profit) within 30 days
-- Consult your tax advisor for CGT filing requirements
-
-Completion Date: {self.completed_at.date()}
-        """
+        # 2. Generate the PDF from HTML
+        pdf_file = HTML(string=html_string).write_pdf()
         
+        pdf_attachment = (f"Transaction_{self.id}_Report.pdf", pdf_file, "application/pdf")
+        
+        # 3. Create the Email using NotificationService
         try:
-            NotificationService.send_email(
-                recipient=self.buyer.email,
-                subject=buyer_subject,
-                html_content=buyer_html,
-                text_content=buyer_text
+            NotificationService.notify_transaction_completed(
+                self, 
+                user=self.buyer, 
+                pdf_attachment=pdf_attachment
             )
-            
-            NotificationService.send_email(
-                recipient=self.seller.email,
-                subject=seller_subject,
-                html_content=seller_html,
-                text_content=seller_text
+            NotificationService.notify_transaction_completed(
+                self, 
+                user=self.seller, 
+                pdf_attachment=pdf_attachment
             )
-            
             self.add_event('reports_sent', f"Transaction reports sent to {self.buyer.email} and {self.seller.email}")
-            
+            logger.info(f"✅ PDF Reports successfully emailed for transaction {self.id}")
         except Exception as e:
-            self.add_event('reports_failed', f"Failed to send reports: {str(e)}")
+            logger.error(f"❌ Failed to send completion notifications with report: {e}")    
     
     def add_event(self, event_type, message, actor=None, ip_address=None):
         """Add an event to the transaction audit log"""

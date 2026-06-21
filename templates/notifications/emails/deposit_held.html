@@ -1,0 +1,32 @@
+{% extends "notifications/emails/base_email.html" %}
+
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username }},</strong>
+</div>
+{% endblock %}
+
+{% block content %}
+<p>Congratulations! Your <strong>10% deposit</strong> has been successfully received and is now securely <strong>held in escrow</strong>.</p>
+
+<div class="info-box">
+    <strong>💰 Transaction Summary:</strong>
+    <ul style="margin: 8px 0 0 20px; padding: 0;">
+        <li><strong>Plot:</strong> {{ transaction.plot.title }}</li>
+        <li><strong>Amount Held:</strong> KES {{ transaction.deposit_paid|floatformat:0|intcomma }}</li>
+        <li><strong>Total Agreed Price:</strong> KES {{ transaction.agreed_price|floatformat:0|intcomma }}</li>
+    </ul>
+</div>
+
+<p>The funds will remain in escrow until the transfer is registered and the new title deed is issued in your name.</p>
+{% endblock %}
+
+{% block button_block %}
+<div class="button-container">
+    <a href="{{ transaction_url }}" class="button">View Transaction Details</a>
+</div>
+{% endblock %}
+
+{% block footer_note %}
+This email confirms your 10% deposit for {{ transaction.plot.title }}. The funds are held securely in an AgriPlot escrow account.
+{% endblock %}

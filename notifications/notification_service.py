@@ -169,6 +169,8 @@ class NotificationService:
         plot=None,
         task=None,
         email_subject=None,
+        template=None,
+        context=None,
     ):
         """
         1. Write the in-app Notification row synchronously.
@@ -197,6 +199,8 @@ class NotificationService:
                     subject=title,
                     message=message,
                     email_subject=email_subject,
+                    template=template,
+                    context=context,
                     delay=NotificationService.notification_delay_seconds(),
                 )
                 if not queued:
@@ -205,6 +209,8 @@ class NotificationService:
                         subject=title,
                         message=message,
                         email_subject=email_subject,
+                        template=template,
+                        context=context,
                     )
 
             NotificationService._run_after_commit(
@@ -218,7 +224,7 @@ class NotificationService:
         return notification
 
     @staticmethod
-    def send_email(recipient, subject, template, context, *, immediate=False):
+    def send_email(recipient, subject, template, context, *, immediate=False, pdf_attachment=None):
         """
         Queue a templated email with a 30-second countdown.
         Also creates a pending EmailLog row synchronously so the record
@@ -246,18 +252,53 @@ class NotificationService:
         except Exception as exc:
             logger.error("EmailLog creation failed: %s", exc, exc_info=True)
 
+        # ============================================================
+        # UPDATED: Handle PDF Attachments
+        # ============================================================
+        def _send_with_attachment():
+            from django.core.mail import EmailMultiAlternatives
+            from django.template.loader import render_to_string
+            from django.utils.html import strip_tags
+
+            html_message = None
+            plain_message = message_body
+
+            if template and template != "plain" and context:
+                try:
+                    hydrated_context = NotificationService._json_safe(context)
+                    html_message = render_to_string(f"{template}.html", hydrated_context)
+                    plain_message = strip_tags(html_message)
+                except Exception as exc:
+                    logger.warning("Email template %s failed, using fallback: %s", template, exc)
+                    html_message = f"<html><body><p>{message_body}</p></body></html>"
+
+            # Create the multipart email
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=plain_message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[recipient],
+            )
+            if html_message:
+                email.attach_alternative(html_message, "text/html")
+
+            # Attach the PDF if provided
+            if pdf_attachment:
+                filename, pdf_bytes, mime_type = pdf_attachment
+                email.attach(filename, pdf_bytes, mime_type)
+
+            # Send the email
+            email.send()
+            return True
+        # ============================================================
+
         if immediate:
             try:
-                from notifications.tasks import _send_email_now
-
-                sent = _send_email_now(
-                    recipient=recipient,
-                    subject=subject,
-                    message=message_body,
-                    template=template_name,
-                    context=safe_context,
-                    email_log_id=log.pk if log else None,
-                )
+                sent = _send_with_attachment()
+                if log and sent:
+                    log.status = "sent"
+                    log.sent_at = timezone.now()
+                    log.save(update_fields=["status", "sent_at"])
                 return log if sent else None
             except Exception as exc:
                 if log:
@@ -279,22 +320,14 @@ class NotificationService:
                     context=safe_context,
                     delay=NotificationService.notification_delay_seconds(),
                     email_log_id=log.pk if log else None,
+                    pdf_attachment=pdf_attachment,  # Pass the PDF to Celery
                 )
                 if not queue_state["queued"]:
                     logger.warning(
                         "Email queue unavailable for %s. Falling back to immediate send.",
                         recipient,
                     )
-                    from notifications.tasks import _send_email_now
-
-                    sent = _send_email_now(
-                        recipient=recipient,
-                        subject=subject,
-                        message=message_body,
-                        template=template_name,
-                        context=safe_context,
-                        email_log_id=log.pk if log else None,
-                    )
+                    sent = _send_with_attachment()
                     queue_state["queued"] = sent
 
             NotificationService._run_after_commit(
@@ -367,7 +400,7 @@ class NotificationService:
             task=task,
         )
 
-        # Deferred email with full template context - UPDATED TEMPLATE
+        # Deferred email with full template context
         if task.assigned_to.email:
             NotificationService.send_email(
                 recipient=task.assigned_to.email,
@@ -572,7 +605,6 @@ class NotificationService:
                         "user": recipient,
                     },
                 )
-
 
     @staticmethod
     def notify_plot_submitted(plot):
@@ -989,48 +1021,51 @@ class NotificationService:
                 context={**context, "user": transaction.seller}
             )
 
+        # Notify Admins
+        for admin in User.objects.filter(is_staff=True):
+            NotificationService.notify_user(
+                user=admin,
+                notification_type="transaction_advanced",
+                title=title,
+                message=message,
+                plot=transaction.plot
+            )
+            if admin.email:
+                NotificationService.send_email(
+                    recipient=admin.email,
+                    subject=title,
+                    template="notifications/emails/transaction_advanced",
+                    context={**context, "user": admin}
+                )
+
     @staticmethod
-    def notify_transaction_completed(transaction):
-        """Notify buyer and seller that the transaction is fully complete"""
+    def notify_transaction_completed(transaction, user, pdf_attachment=None):
+        """Notify buyer or seller that the transaction is fully complete"""
         title = f"Transaction Completed: {transaction.plot.title}"
-        message = f"Congratulations! The transaction for {transaction.plot.title} is now successfully completed and title transferred."
+        message = f"Congratulations! The transaction for {transaction.plot.title} is now successfully completed and title transferred. Thank you for partnering with AgriPlot."
         
         context = {
+            "user": user,
             "transaction": transaction,
             "plot_title": transaction.plot.title,
             "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
         }
 
-        # Notify Buyer
-        if transaction.buyer and transaction.buyer.email:
+        if user and user.email:
             NotificationService.notify_user(
-                user=transaction.buyer,
+                user=user,
                 notification_type="transaction_completed",
                 title=title,
                 message=message,
                 plot=transaction.plot
             )
             NotificationService.send_email(
-                recipient=transaction.buyer.email,
+                recipient=user.email,
                 subject=title,
                 template="notifications/emails/transaction_completed",
-                context={**context, "user": transaction.buyer}
-            )
-
-        # Notify Seller
-        if transaction.seller and transaction.seller.email:
-            NotificationService.notify_user(
-                user=transaction.seller,
-                notification_type="transaction_completed",
-                title=title,
-                message=message,
-                plot=transaction.plot
-            )
-            NotificationService.send_email(
-                recipient=transaction.seller.email,
-                subject=title,
-                template="notifications/emails/transaction_completed",
-                context={**context, "user": transaction.seller}
+                context=context,
+                immediate=True if pdf_attachment else False,
+                pdf_attachment=pdf_attachment
             )
 
     @staticmethod
@@ -1087,6 +1122,7 @@ class NotificationService:
         message = f"Your document for {transaction.plot.title} has been verified."
         
         context = {
+            "user": uploader,
             "document": document,
             "transaction": transaction,
             "doc_type": document.get_document_type_display(),
@@ -1105,7 +1141,7 @@ class NotificationService:
                 recipient=uploader.email,
                 subject=title,
                 template="notifications/emails/document_verified",
-                context={**context, "user": uploader}
+                context=context
             )
 
     @staticmethod
@@ -1118,6 +1154,7 @@ class NotificationService:
         message = f"Your document {document.get_document_type_display()} for {transaction.plot.title} was rejected."
         
         context = {
+            "user": uploader,
             "document": document,
             "transaction": transaction,
             "doc_type": document.get_document_type_display(),
@@ -1137,8 +1174,104 @@ class NotificationService:
                 recipient=uploader.email,
                 subject=title,
                 template="notifications/emails/document_rejected",
-                context={**context, "user": uploader}
+                context=context
             )
+
+    # ------------------------------------------------------------------
+    # NEW: ESCROW & PAYMENT NOTIFICATIONS
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def notify_deposit_held(transaction, user):
+        """Notify buyer that 10% deposit is held in escrow"""
+        title = f"10% Deposit Held in Escrow - {transaction.plot.title}"
+        message = f"Your deposit of KES {transaction.deposit_paid:,.2f} is securely held in escrow."
+        
+        context = {
+            "user": user,
+            "transaction": transaction,
+            "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
+        }
+        
+        NotificationService.notify_user(
+            user=user,
+            notification_type="deposit_held",
+            title=title,
+            message=message,
+            email_subject=title,
+            template="notifications/emails/deposit_held",
+            context=context,
+            plot=transaction.plot,
+        )
+
+    @staticmethod
+    def notify_deposit_received(transaction, user):
+        """Notify seller that 10% deposit has been received"""
+        title = f"Deposit Received for {transaction.plot.title}"
+        message = f"A 10% deposit of KES {transaction.deposit_paid:,.2f} has been paid into escrow."
+        
+        context = {
+            "user": user,
+            "transaction": transaction,
+            "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
+        }
+        
+        NotificationService.notify_user(
+            user=user,
+            notification_type="deposit_received",
+            title=title,
+            message=message,
+            email_subject=title,
+            template="notifications/emails/deposit_received",
+            context=context,
+            plot=transaction.plot,
+        )
+
+    @staticmethod
+    def notify_balance_held(transaction, user):
+        """Notify buyer that 90% balance is held in escrow"""
+        title = f"90% Balance Held in Escrow - {transaction.plot.title}"
+        message = f"Your completion balance of KES {transaction.balance_paid:,.2f} is securely held in escrow."
+        
+        context = {
+            "user": user,
+            "transaction": transaction,
+            "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
+        }
+        
+        NotificationService.notify_user(
+            user=user,
+            notification_type="balance_held",
+            title=title,
+            message=message,
+            email_subject=title,
+            template="notifications/emails/balance_held",
+            context=context,
+            plot=transaction.plot,
+        )
+
+    @staticmethod
+    def notify_balance_received(transaction, user):
+        """Notify seller that 90% balance has been received"""
+        title = f"Balance Received for {transaction.plot.title}"
+        message = f"The 90% completion balance of KES {transaction.balance_paid:,.2f} has been paid into escrow."
+        
+        context = {
+            "user": user,
+            "transaction": transaction,
+            "transaction_url": settings.SITE_URL + reverse("transactions:detail", args=[transaction.pk]),
+        }
+        
+        NotificationService.notify_user(
+            user=user,
+            notification_type="balance_received",
+            title=title,
+            message=message,
+            email_subject=title,
+            template="notifications/emails/balance_received",
+            context=context,
+            plot=transaction.plot,
+        )
 
     # ------------------------------------------------------------------
     # Read helpers

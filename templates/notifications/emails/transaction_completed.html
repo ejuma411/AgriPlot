@@ -1,21 +1,39 @@
 {% extends "notifications/emails/base_email.html" %}
+{% load humanize %}
 
-{% block header_title %}Transaction Completed{% endblock %}
-
-{% block content %}
-<h2>Congratulations!</h2>
-<p>Hello {{ user.first_name|default:user.username }},</p>
-
-<p>The transaction for the property <strong>{{ plot_title }}</strong> has been officially marked as <strong>Completed</strong>.</p>
-
-<div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 15px; margin: 20px 0;">
-    <h3 style="margin-top: 0; color: #16a34a;">Title Transferred & Funds Disbursed</h3>
-    <p style="margin-bottom: 0;">All legal documents are verified, the title deed has been transferred at the Land Registry, and the escrow funds have been authorized for final payout via Jenga API.</p>
+{% block greeting %}
+<div class="greeting">
+    <strong>Hello {{ user.get_full_name|default:user.username }},</strong>
 </div>
-
-<p>Thank you for using AgriPlot to securely manage your land transaction!</p>
 {% endblock %}
 
-{% block cta %}
-<a href="{{ transaction_url }}" class="button">View Final Documents</a>
+{% block content %}
+<p>🎉 <strong>Congratulations!</strong> The transaction for <strong>{{ transaction.plot.title }}</strong> has been successfully completed.</p>
+
+<div class="info-box">
+    <strong>📋 Final Summary:</strong>
+    <ul style="margin: 8px 0 0 20px; padding: 0;">
+        <li><strong>Purchase Price:</strong> KES {{ transaction.agreed_price|floatformat:0|intcomma }}</li>
+        <li><strong>Total Paid:</strong> KES {{ transaction.deposit_paid|add:transaction.balance_paid|floatformat:0|intcomma }}</li>
+        <li><strong>New Title Deed:</strong> Issued in buyer's name</li>
+        <li><strong>Funds Disbursed:</strong> Yes (Net proceeds sent to seller)</li>
+        <li><strong>Completion Date:</strong> {{ transaction.completed_at|date:"F d, Y" }}</li>
+    </ul>
+</div>
+
+<p>Thank you for partnering with AgriPlot Connect. We wish you the very best with your new property!</p>
+{% endblock %}
+
+{% block feature_grid %}
+<!-- Hide feature grid for final email -->
+{% endblock %}
+
+{% block button_block %}
+<div class="button-container">
+    <a href="{{ transaction_url }}" class="button">View Final Report</a>
+</div>
+{% endblock %}
+
+{% block footer_note %}
+This is the official transaction completion report for {{ transaction.plot.title }}.
 {% endblock %}

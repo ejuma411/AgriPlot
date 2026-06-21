@@ -1,0 +1,118 @@
+{% load humanize %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Transaction Report - {{ transaction.id }}</title>
+    <style>
+        body { font-family: 'Helvetica', 'Arial', sans-serif; color: #333; line-height: 1.6; margin: 40px; }
+        .header { text-align: center; border-bottom: 2px solid #069132; padding-bottom: 20px; margin-bottom: 30px; }
+        .header h1 { margin: 0; color: #069132; }
+        .header p { margin: 5px 0 0; color: #666; font-size: 14px; }
+        
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 10px 12px; border-bottom: 1px solid #ddd; text-align: left; }
+        th { background-color: #f5f5f5; font-weight: bold; }
+        .text-right { text-align: right; }
+        .highlight-row { background: #e8f5e9; border-top: 2px solid #069132; border-bottom: 2px solid #069132; }
+        .fw-bold { font-weight: bold; }
+        .section-title { font-size: 18px; color: #069132; margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+        .footer { margin-top: 40px; border-top: 1px solid #ddd; padding-top: 20px; text-align: center; font-size: 12px; color: #999; }
+        .tax-box { background: #f9f9f9; padding: 15px; border-left: 4px solid #069132; margin: 15px 0; }
+        .small { font-size: 12px; color: #666; }
+        .document-list { padding-left: 20px; }
+        .document-list li { margin: 4px 0; }
+        
+        @page { margin: 2cm; }
+        .page-break { page-break-before: always; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>AgriPlot Connect</h1>
+        <p>Verified Agricultural Land Marketplace</p>
+        <p><strong>Transaction Report</strong></p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- BUYER REPORT SECTION                                          -->
+    <!-- ============================================================ -->
+    <div>
+        <p><strong>Prepared for:</strong> {{ transaction.buyer.get_full_name|default:transaction.buyer.username }}</p>
+        <p><strong>Transaction ID:</strong> #{{ transaction.id }} | <strong>Date:</strong> {{ transaction.completed_at|date:"F d, Y" }}</p>
+
+        <h2 class="section-title">Property Details</h2>
+        <table>
+            <tr><td><strong>Plot Title</strong></td><td>{{ transaction.plot.title }}</td></tr>
+            <tr><td><strong>Location / County</strong></td><td>{{ transaction.plot.county|default:"N/A" }}</td></tr>
+            <tr><td><strong>Parcel Number</strong></td><td>{{ transaction.plot.parcel_number|default:"N/A" }}</td></tr>
+            <tr><td><strong>Land Type</strong></td><td>{{ transaction.plot.get_land_type_display }}</td></tr>
+            <tr><td><strong>Area</strong></td><td>{{ transaction.plot.area }} {{ transaction.plot.get_area_unit_display|default:"Acres" }}</td></tr>
+        </table>
+
+        <h2 class="section-title">Financial Summary (Buyer)</h2>
+        <table>
+            <tr><td><strong>Agreed Purchase Price</strong></td><td class="text-right">KES {{ transaction.agreed_price|floatformat:0|intcomma }}</td></tr>
+            <tr><td><strong>10% Deposit Paid (Held in Escrow)</strong></td><td class="text-right">KES {{ transaction.deposit_paid|floatformat:0|intcomma }}</td></tr>
+            <tr><td><strong>90% Balance Paid (Held in Escrow)</strong></td><td class="text-right">KES {{ transaction.balance_paid|floatformat:0|intcomma }}</td></tr>
+            <tr><td><strong>Stamp Duty (Paid to KRA)</strong></td><td class="text-right">KES {{ transaction.stamp_duty_amount|floatformat:0|intcomma }}</td></tr>
+            <tr class="highlight-row"><td><strong>Total Cost to Buyer</strong></td><td class="text-right fw-bold">KES {{ transaction.agreed_price|add:transaction.stamp_duty_amount|floatformat:0|intcomma }}</td></tr>
+        </table>
+        <p class="small"><i>Stamp duty was paid directly to KRA via iTax by the buyer. The platform does not collect stamp duty.</i></p>
+
+        <h2 class="section-title">Legal Documents</h2>
+        <ul class="document-list">
+            {% for doc in transaction.documents.all %}
+                <li><strong>{{ doc.get_document_type_display }}</strong> (Uploaded {{ doc.uploaded_at|date:"M d, Y" }})</li>
+            {% endfor %}
+        </ul>
+
+        <h2 class="section-title">Important Tax Information</h2>
+        <div class="tax-box">
+            <p><strong>Capital Gains Tax (CGT):</strong> As per the Kenyan Income Tax Act (Cap 470), you are required to file Capital Gains Tax (15% of the profit) within 30 days of the transaction date. Please consult your tax advisor for proper filing.</p>
+            <p><strong>Stamp Duty:</strong> Your stamp duty payment of KES {{ transaction.stamp_duty_amount|floatformat:0|intcomma }} has been verified and recorded.</p>
+        </div>
+    </div>
+
+    <div class="page-break"></div>
+
+    <!-- ============================================================ -->
+    <!-- SELLER REPORT SECTION                                         -->
+    <!-- ============================================================ -->
+    <div>
+        <p><strong>Prepared for:</strong> {{ transaction.seller.get_full_name|default:transaction.seller.username }}</p>
+        <p><strong>Transaction ID:</strong> #{{ transaction.id }} | <strong>Date:</strong> {{ transaction.completed_at|date:"F d, Y" }}</p>
+
+        <h2 class="section-title">Property Details</h2>
+        <table>
+            <tr><td><strong>Plot Title</strong></td><td>{{ transaction.plot.title }}</td></tr>
+            <tr><td><strong>Location / County</strong></td><td>{{ transaction.plot.county|default:"N/A" }}</td></tr>
+            <tr><td><strong>Parcel Number</strong></td><td>{{ transaction.plot.parcel_number|default:"N/A" }}</td></tr>
+            <tr><td><strong>Land Type</strong></td><td>{{ transaction.plot.get_land_type_display }}</td></tr>
+            <tr><td><strong>Area</strong></td><td>{{ transaction.plot.area }} {{ transaction.plot.get_area_unit_display|default:"Acres" }}</td></tr>
+        </table>
+
+        <h2 class="section-title">Financial Summary (Seller)</h2>
+        <table>
+            <tr><td><strong>Agreed Sale Price</strong></td><td class="text-right">KES {{ transaction.agreed_price|floatformat:0|intcomma }}</td></tr>
+            <tr><td><strong>10% Deposit Received</strong></td><td class="text-right">KES {{ transaction.deposit_paid|floatformat:0|intcomma }}</td></tr>
+            <tr><td><strong>90% Balance Received</strong></td><td class="text-right">KES {{ transaction.balance_paid|floatformat:0|intcomma }}</td></tr>
+            <tr><td><strong>Platform Fee ({{ transaction.platform_fee_percentage }}%)</strong></td><td class="text-right">- KES {{ transaction.platform_fee_amount|floatformat:0|intcomma }}</td></tr>
+            <tr class="highlight-row"><td><strong>Net Proceeds to Seller</strong></td><td class="text-right fw-bold">KES {{ transaction.seller_net_amount|floatformat:0|intcomma }}</td></tr>
+        </table>
+        <p class="small"><i>The platform fee covers transaction facilitation, escrow management, and legal compliance support.</i></p>
+
+        <h2 class="section-title">Important Tax Information</h2>
+        <div class="tax-box">
+            <p><strong>Capital Gains Tax (CGT):</strong> As per the Kenyan Income Tax Act (Cap 470), you are required to file Capital Gains Tax (15% of the profit) within 30 days of the transaction date. Please consult your tax advisor for proper filing.</p>
+            <p><strong>Stamp Duty:</strong> The stamp duty of KES {{ transaction.stamp_duty_amount|floatformat:0|intcomma }} was paid directly by the buyer to KRA via iTax.</p>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>This report serves as the official transaction summary for your records.</p>
+        <p><strong>Warm regards,</strong><br>The AgriPlot Connect Team</p>
+        <p>&copy; {% now "Y" %} AgriPlot Connect. All rights reserved.</p>
+    </div>
+</body>
+</html>

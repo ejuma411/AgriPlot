@@ -162,13 +162,18 @@ def _send_sms_now(phone: str, message: str) -> bool:
     if not phone or not getattr(settings, "ENABLE_SMS_NOTIFICATIONS", False):
         return False
     try:
+        # Import from notifications.services where the SMS service class is defined
         from notifications.services.sms_service import SMSService
-        result = SMSService().send_sms(phone, message)
+
+        # Instantiate the class
+        sms_service = SMSService()
+
+        # Call the method we fixed earlier
+        result = sms_service.send_sms(phone, message)
         return bool(result.get("success"))
     except Exception as exc:
         logger.error("SMS to %s failed: %s", phone, exc, exc_info=True)
         return False
-
 
 # ---------------------------------------------------------------------------
 # Celery tasks

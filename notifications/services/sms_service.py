@@ -243,84 +243,103 @@ class SMSService:
             "data": result,
         }
 
-    def send_sms(self, phone_numbers, message, attempt=1):
-        """Send SMS with provider-specific HTTP retry handling."""
-        if isinstance(phone_numbers, str):
-            phone_numbers = [phone_numbers]
+        def send_sms(self, phone_numbers, message, attempt=1):
+            """Send SMS with provider-specific HTTP retry handling."""
+            if isinstance(phone_numbers, str):
+                phone_numbers = [phone_numbers]
 
-        formatted_numbers = [self._format_number(n) for n in phone_numbers]
-        recipient_blob = ",".join(formatted_numbers)
+            formatted_numbers = [self._format_number(n) for n in phone_numbers]
+            recipient_blob = ",".join(formatted_numbers)
 
-        try:
-            logger.info(
-                "Attempt %s sending SMS via %s to %s",
-                attempt,
-                self.provider,
-                formatted_numbers,
-            )
-            # OpenSMS examples/documentation are single-recipient oriented.
-            if len(formatted_numbers) == 1:
-                return self._send_via_opensms(formatted_numbers[0], message)
+            # ============================================================
+            # GRACEFUL FALLBACK: If OpenSMS fails, log to console
+            # ============================================================
+            try:
+                logger.info(
+                    "Attempt %s sending SMS via %s to %s",
+                    attempt,
+                    self.provider,
+                    formatted_numbers,
+                )
+                
+                # OpenSMS examples/documentation are single-recipient oriented.
+                if len(formatted_numbers) == 1:
+                    return self._send_via_opensms(formatted_numbers[0], message)
 
-            results = []
-            for number in formatted_numbers:
-                results.append(self._send_via_opensms(number, message))
-            all_success = all(item.get("success") for item in results)
-            return {
-                "success": all_success,
-                "data": results,
-                "message": f"SMS processed for {len(formatted_numbers)} recipient(s)",
-            }
+                results = []
+                for number in formatted_numbers:
+                    results.append(self._send_via_opensms(number, message))
+                all_success = all(item.get("success") for item in results)
+                return {
+                    "success": all_success,
+                    "data": results,
+                    "message": f"SMS processed for {len(formatted_numbers)} recipient(s)",
+                }
 
-        except Timeout as exc:
-            logger.error("SMS request timed out via %s for %s: %s", self.provider, recipient_blob, exc)
-            failure_body = {"error": str(exc), "timeout": True}
-            self._log_sms(
-                provider=self.provider,
-                phone=recipient_blob,
-                message=message,
-                status_code=None,
-                success=False,
-                response_body=failure_body,
-            )
-            return {
-                "success": False,
-                "error": f"SMS provider timed out: {exc}",
-                "data": failure_body,
-            }
-        except RequestException as exc:
-            logger.error("SMS request failed via %s for %s: %s", self.provider, recipient_blob, exc)
-            failure_body = {"error": str(exc)}
-            self._log_sms(
-                provider=self.provider,
-                phone=recipient_blob,
-                message=message,
-                status_code=None,
-                success=False,
-                response_body=failure_body,
-            )
-            return {
-                "success": False,
-                "error": f"SMS provider request failed: {exc}",
-                "data": failure_body,
-            }
-        except Exception as exc:
-            logger.error("Unexpected SMS failure via %s for %s: %s", self.provider, recipient_blob, exc)
-            failure_body = {"error": str(exc)}
-            self._log_sms(
-                provider=self.provider,
-                phone=recipient_blob,
-                message=message,
-                status_code=None,
-                success=False,
-                response_body=failure_body,
-            )
-            return {
-                "success": False,
-                "error": f"Unexpected SMS failure: {exc}",
-                "data": failure_body,
-            }
-
+            except Timeout as exc:
+                logger.error("SMS request timed out via %s for %s: %s", self.provider, recipient_blob, exc)
+                
+                # FALLBACK: Print to console
+                print(f"📱 [SMS FALLBACK - TIMEOUT] To: {recipient_blob} | Message: {message}")
+                
+                failure_body = {"error": str(exc), "timeout": True}
+                self._log_sms(
+                    provider=self.provider,
+                    phone=recipient_blob,
+                    message=message,
+                    status_code=None,
+                    success=False,
+                    response_body=failure_body,
+                )
+                return {
+                    "success": False,
+                    "error": f"SMS provider timed out: {exc}",
+                    "data": failure_body,
+                }
+                
+            except RequestException as exc:
+                logger.error("SMS request failed via %s for %s: %s", self.provider, recipient_blob, exc)
+                
+                # FALLBACK: Print to console
+                print(f"📱 [SMS FALLBACK - REQUEST ERROR] To: {recipient_blob} | Message: {message}")
+                
+                failure_body = {"error": str(exc)}
+                self._log_sms(
+                    provider=self.provider,
+                    phone=recipient_blob,
+                    message=message,
+                    status_code=None,
+                    success=False,
+                    response_body=failure_body,
+                )
+                return {
+                    "success": False,
+                    "error": f"SMS provider request failed: {exc}",
+                    "data": failure_body,
+                }
+                
+            except Exception as exc:
+                logger.error("Unexpected SMS failure via %s for %s: %s", self.provider, recipient_blob, exc)
+                
+                # FALLBACK: Print to console
+                print(f"📱 [SMS FALLBACK - UNEXPECTED] To: {recipient_blob} | Message: {message}")
+                
+                failure_body = {"error": str(exc)}
+                self._log_sms(
+                    provider=self.provider,
+                    phone=recipient_blob,
+                    message=message,
+                    status_code=None,
+                    success=False,
+                    response_body=failure_body,
+                )
+                return {
+                    "success": False,
+                    "error": f"Unexpected SMS failure: {exc}",
+                    "data": failure_body,
+                }
+            # ============================================================
+    
     def send_otp(self, phone_number, otp_code):
         if getattr(settings, "USE_SMS_MOCK", False):
             logger.info("[SMS MOCK] OTP for %s: %s", phone_number, otp_code)
