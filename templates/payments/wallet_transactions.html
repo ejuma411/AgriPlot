@@ -347,14 +347,7 @@ function showError(message) {
 
 function copyToClipboard(text) {
     navigator.clipboard.writeText(text).then(() => {
-        // Show temporary toast
-        const toast = document.createElement('div');
-        toast.className = 'position-fixed bottom-0 end-0 m-3 alert alert-success';
-        toast.style.zIndex = '9999';
-        toast.style.animation = 'fadeInOut 2s ease';
-        toast.innerHTML = '<i class="fas fa-check-circle me-2"></i>Receipt number copied!';
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 2000);
+        window.showToast('success', 'Copied', 'Receipt number copied!');
     });
 }
 

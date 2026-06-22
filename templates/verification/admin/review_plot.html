@@ -990,12 +990,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (action === 'reject' && !notes) {
             e.preventDefault();
-            alert('Please provide a reason for rejection in the notes.');
+            showToast('warning', 'Action Required', 'Please provide a reason for rejection in the notes.');
+            return;
         }
         
         if (action === 'request_changes' && !notes) {
             e.preventDefault();
-            alert('Please specify what changes are needed in the notes.');
+            showToast('warning', 'Action Required', 'Please specify what changes are needed in the notes.');
+            return;
         }
     });
 });
@@ -1021,17 +1023,17 @@ function triggerArdhisasa() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Ardhisasa verification started successfully! The page will reload to show results.');
-            location.reload();
+            showToast('success', 'Verification Started', 'Ardhisasa verification started successfully! The page will reload to show results.');
+            setTimeout(() => window.location.reload(), 2000);
         } else {
-            alert('Error: ' + data.error);
+            showToast('error', 'Error', data.error);
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
     })
     .catch(error => {
         console.error('Error:', error);
-        alert('Failed to start verification. Please try again.');
+        showToast('error', 'Error', 'Failed to start verification. Please try again.');
         btn.innerHTML = originalText;
         btn.disabled = false;
     });

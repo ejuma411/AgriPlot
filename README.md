@@ -108,6 +108,26 @@ Recommended HCI upgrades:
 - **UX analytics**: Lightweight event tracking (page funnel + drop-off points) with privacy controls.
 - **Usability testing**: Short task-based tests for onboarding and document upload flows.
 
+## Background Cleanup Jobs (Cron)
+Since AgriPlot Connect does not use Celery for scheduled tasks, system maintenance (like expiring unconfirmed verification tasks or generating 90-day lease notices) is handled via Django management commands.
+To enable these, add the master script to your server's `crontab` to run daily (e.g. at midnight):
+```bash
+0 0 * * * /path/to/agriplot/scripts/run_daily_cron.sh >> /path/to/agriplot/logs/cron.log 2>&1
+```
+
+## M-Pesa Escrow Integration & Mocking
+The platform fully implements Safaricom's M-Pesa STK Push API (`payments/daraja.py`) and a Webhook Callback receiver (`payments/views_mpesa_callback.py`) to handle the platform Escrow model (holding 10% deposits and 90% balances).
+Since local development environments cannot receive external webhooks from Safaricom without `ngrok`, a local mock tool is provided.
+
+To simulate a successful M-Pesa STK Push payment locally:
+1. Initiate a payment on the platform (which creates a pending `PaymentRequest`).
+2. Copy the `Daraja CheckoutRequestID` from the console/logs or the Database.
+3. Run the mock command:
+```bash
+python manage.py mock_mpesa_callback <CheckoutRequestID> --amount <AmountPaid>
+```
+This directly triggers the callback webhook securely, marks the payment as successful, and executes the Escrow holding logic exactly as it would in production.
+
 ## Notes
 - SMS integration supports a mock mode (`USE_SMS_MOCK=True`) for local testing.
 - Some admin templates exist in both `templates/listings/admin` and `templates/verification/admin` for backward compatibility.

@@ -499,30 +499,8 @@
         }
         
         function showAlert(message, type) {
-            // Remove existing alerts
-            const existingAlert = document.querySelector('.alert-dismissible:not(.alert-danger)');
-            if (existingAlert) {
-                existingAlert.remove();
-            }
-            
-            // Create alert
-            const alertDiv = document.createElement('div');
-            alertDiv.className = `alert alert-${type} alert-dismissible fade show mb-4`;
-            alertDiv.innerHTML = `
-                <i class="fas fa-${type === 'danger' ? 'exclamation-triangle' : 'info-circle'} me-2"></i>
-                ${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            `;
-            
-            const formContainer = document.querySelector('.upload-form');
-            formContainer.parentNode.insertBefore(alertDiv, formContainer);
-            
-            // Auto dismiss after 5 seconds
-            setTimeout(() => {
-                if (alertDiv.parentNode) {
-                    alertDiv.remove();
-                }
-            }, 5000);
+            const toastType = type === 'danger' ? 'error' : type;
+            window.showToast(toastType, 'Notice', message);
         }
     });
     

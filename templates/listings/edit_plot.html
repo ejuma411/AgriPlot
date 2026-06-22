@@ -2824,6 +2824,56 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Inline Validation & ARIA Enhancements
+    function setupInlineValidation(inputId, validationFn, feedbackMessage) {
+        const input = document.getElementById(inputId);
+        if (!input) return;
+
+        // Set initial ARIA attributes
+        input.setAttribute('aria-required', input.hasAttribute('required') ? 'true' : 'false');
+        
+        // Find or create feedback element
+        let feedbackEl = input.nextElementSibling;
+        while (feedbackEl && !feedbackEl.classList.contains('field-feedback')) {
+            feedbackEl = feedbackEl.nextElementSibling;
+        }
+        if (!feedbackEl) {
+            feedbackEl = document.createElement('div');
+            feedbackEl.className = 'field-feedback';
+            input.parentNode.appendChild(feedbackEl);
+        }
+        const feedbackId = inputId + '-feedback-err';
+        feedbackEl.id = feedbackId;
+        input.setAttribute('aria-describedby', feedbackId);
+
+        function validate() {
+            const val = input.value.trim();
+            const isValid = validationFn(val);
+            if (!isValid && val !== '') {
+                input.classList.add('is-invalid');
+                input.setAttribute('aria-invalid', 'true');
+                feedbackEl.innerHTML = `<small class="text-danger"><i class="fas fa-exclamation-circle me-1"></i> ${feedbackMessage}</small>`;
+            } else {
+                input.classList.remove('is-invalid');
+                input.setAttribute('aria-invalid', 'false');
+                feedbackEl.innerHTML = '';
+            }
+        }
+
+        input.addEventListener('input', validate);
+        input.addEventListener('change', validate);
+    }
+
+    setupInlineValidation('{{ form.title.id_for_label }}', val => val.length >= 5, 'Title must be at least 5 characters long.');
+    setupInlineValidation('{{ form.area.id_for_label }}', val => parseFloat(val) > 0, 'Area must be a number greater than 0.');
+    setupInlineValidation('{{ form.sale_price.id_for_label }}', val => {
+        const listingType = listingTypeSelect?.value;
+        if (listingType === 'sale' || listingType === 'both') {
+            return parseFloat(val) > 0;
+        }
+        return true;
+    }, 'Sale price must be greater than 0.');
 });
 </script>
 <script>

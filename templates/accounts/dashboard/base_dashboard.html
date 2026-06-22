@@ -602,97 +602,20 @@ function getCsrfToken() {
 
 // Show loading toast
 function showLoadingToast(message) {
-    const toast = document.createElement('div');
-    toast.className = 'loading-toast';
-    toast.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <i class="fas fa-spinner fa-spin"></i>
-            <span>${message}</span>
-        </div>
-    `;
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        background: #0f5c3f;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        z-index: 10001;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        animation: slideIn 0.3s ease;
-    `;
-    document.body.appendChild(toast);
-    return toast;
+    window.showToast('info', 'Loading', message);
+    return null;
 }
 
 // Show error message
 function showErrorToast(message) {
-    const toast = document.createElement('div');
-    toast.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <i class="fas fa-exclamation-circle"></i>
-            <span>${message}</span>
-        </div>
-        <button class="toast-close">&times;</button>
-    `;
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        background: #dc2626;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        z-index: 10001;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        animation: slideIn 0.3s ease;
-    `;
-    const closeBtn = toast.querySelector('.toast-close');
-    closeBtn.style.cssText = `background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 4px;`;
-    closeBtn.onclick = () => toast.remove();
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 4000);
-    return toast;
+    window.showToast('error', 'Error', message);
+    return null;
 }
 
 // Show success message
 function showSuccessToast(message) {
-    const toast = document.createElement('div');
-    toast.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <i class="fas fa-check-circle"></i>
-            <span>${message}</span>
-        </div>
-        <button class="toast-close">&times;</button>
-    `;
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 24px;
-        right: 24px;
-        background: #10b981;
-        color: white;
-        padding: 12px 20px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        z-index: 10001;
-        font-size: 14px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        animation: slideIn 0.3s ease;
-    `;
-    const closeBtn = toast.querySelector('.toast-close');
-    closeBtn.style.cssText = `background: none; border: none; color: white; font-size: 20px; cursor: pointer; padding: 0 4px;`;
-    closeBtn.onclick = () => toast.remove();
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-    return toast;
+    window.showToast('success', 'Success', message);
+    return null;
 }
 
 // Inline document verification from Finance Control Queue

@@ -1172,6 +1172,9 @@
         </footer>
     </div>
 
+    <!-- Global Toast Container -->
+    <div id="ap-toast-container" class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1055;"></div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         (function () {
@@ -1188,8 +1191,63 @@
                 }
             });
         })();
+
+        // Global Toast Notification System
+        window.showToast = function(type, title, message) {
+            const container = document.getElementById('ap-toast-container');
+            if (!container) return;
+
+            let iconClass = 'fa-info-circle text-info';
+            let bgClass = 'bg-white';
+            
+            if (type === 'success') iconClass = 'fa-check-circle text-success';
+            if (type === 'error') iconClass = 'fa-times-circle text-danger';
+            if (type === 'warning') iconClass = 'fa-exclamation-triangle text-warning';
+
+            const toastId = 'toast-' + Math.random().toString(36).substr(2, 9);
+            const toastHtml = `
+                <div id="${toastId}" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+                    <div class="toast-header">
+                        <i class="fa-solid ${iconClass} me-2"></i>
+                        <strong class="me-auto">${title}</strong>
+                        <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                    </div>
+                    <div class="toast-body">
+                        ${message}
+                    </div>
+                </div>
+            `;
+            
+            container.insertAdjacentHTML('beforeend', toastHtml);
+            const toastEl = document.getElementById(toastId);
+            const toast = new bootstrap.Toast(toastEl, { autohide: true, delay: 5000 });
+            toast.show();
+            
+            toastEl.addEventListener('hidden.bs.toast', function () {
+                toastEl.remove();
+            });
+        };
+
+        // AgriPlotUI compatibility wrapper
+        window.AgriPlotUI = {
+            showToast: function(options) {
+                const typeMap = {
+                    'danger': 'error',
+                    'success': 'success',
+                    'warning': 'warning',
+                    'info': 'info'
+                };
+                const toastType = typeMap[options.type] || options.type || 'info';
+                const title = toastType.charAt(0).toUpperCase() + toastType.slice(1);
+                window.showToast(toastType, title, options.message);
+            },
+            trackEvent: function(name, data) {
+                console.log('Event tracked:', name, data);
+            }
+        };
     </script>
     {% block extra_js %}{% endblock %}
     {% block scripts %}{% endblock %}
+    <div id="ap-toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;"></div>
 </body>
 </html>

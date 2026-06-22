@@ -814,47 +814,9 @@ document.addEventListener('DOMContentLoaded', function() {
                document.cookie.split('; ').find(row => row.startsWith('csrftoken='))?.split('=')[1] || '';
     }
     
-    // Show Toast Notification
     function showToast(message, type = 'success') {
-        const toast = document.createElement('div');
-        toast.className = 'toast-notification';
-        toast.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
-                <span>${message}</span>
-            </div>
-            <button class="toast-close">&times;</button>
-        `;
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: ${type === 'success' ? '#0f5c3f' : '#dc2626'};
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            z-index: 10000;
-            font-size: 14px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            animation: slideIn 0.3s ease;
-        `;
-        
-        const closeBtn = toast.querySelector('.toast-close');
-        closeBtn.style.cssText = `
-            background: none;
-            border: none;
-            color: white;
-            font-size: 20px;
-            cursor: pointer;
-            padding: 0 4px;
-        `;
-        closeBtn.onclick = () => toast.remove();
-        
-        document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 4000);
+        const title = type === 'success' ? 'Success' : 'Error';
+        window.showToast(type, title, message);
     }
     
     // Assign Task AJAX

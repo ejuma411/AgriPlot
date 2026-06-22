@@ -802,12 +802,12 @@ async function assignTask() {
     console.log('Assigning task:', taskId, 'to user:', userId);
     
     if (!taskId) {
-        alert('Error: No task selected');
+        showToast('error', 'Error', 'No task selected');
         return;
     }
     
     if (!userId) {
-        alert('Please select an officer');
+        showToast('warning', 'Action Required', 'Please select an officer');
         return;
     }
     
@@ -835,17 +835,16 @@ async function assignTask() {
         const data = await response.json();
         
         if (data.success) {
-            closeCustomModal();
-            alert(data.message || 'Task assigned successfully!');
-            setTimeout(() => location.reload(), 800);
+            showToast('success', 'Task Assigned', data.message || 'Task assigned successfully!');
+            setTimeout(() => window.location.reload(), 1500);
         } else {
-            alert('Error: ' + (data.message || 'Unknown error'));
+            showToast('error', 'Assignment Failed', data.message || 'Unknown error');
             confirmBtn.disabled = false;
             confirmBtn.innerHTML = originalText;
         }
     } catch (error) {
         console.error('Error:', error);
-        alert('An error occurred while assigning the task.');
+        showToast('error', 'System Error', 'An error occurred while assigning the task.');
         confirmBtn.disabled = false;
         confirmBtn.innerHTML = originalText;
     }
