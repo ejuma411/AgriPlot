@@ -1,0 +1,1 @@
+Your plot '{{ plot.title }}' has been successfully submitted and is under review.

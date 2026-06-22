@@ -1,0 +1,1 @@
+AgriPlot: The {{ task.task_type }} task for plot '{{ task.plot.title }}' was not confirmed by {{ officer.username }} and has been unassigned.

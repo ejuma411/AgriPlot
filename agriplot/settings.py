@@ -665,6 +665,8 @@ SMS_READ_TIMEOUT = float(os.environ.get("SMS_READ_TIMEOUT", "8"))
 # ENHANCED LOGGING CONFIGURATION
 # =============================================================================
 
+LOGS_WRITABLE = os.access(LOG_DIR, os.W_OK)
+
 # Log file paths - only two main log files
 SYSTEM_LOG_FILE = LOG_DIR / "system.log"      # All system activity (INFO and above)
 ERROR_LOG_FILE = LOG_DIR / "errors.log"       # Only errors and critical issues
@@ -724,6 +726,10 @@ LOGGING = {
             "level": "INFO",
             "maxBytes": 10485760,  # 10MB
             "backupCount": 5,
+        } if LOGS_WRITABLE else {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+            "level": "INFO",
         },
 
         # Error Log Handler - captures ERROR and CRITICAL only
@@ -734,6 +740,10 @@ LOGGING = {
             "level": "ERROR",
             "maxBytes": 10485760,  # 10MB
             "backupCount": 10,
+        } if LOGS_WRITABLE else {
+            "class": "logging.StreamHandler",
+            "formatter": "error_detail",
+            "level": "ERROR",
         },
 
         # Mail handler for critical errors (production only)

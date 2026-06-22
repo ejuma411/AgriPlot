@@ -1,0 +1,1 @@
+A new {{ task_type }} task for plot '{{ task.plot.title }}' is waiting to be assigned.

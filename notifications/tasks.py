@@ -12,7 +12,6 @@ clean, fast response.
 import logging
 from html import escape
 
-from celery import shared_task
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -157,10 +156,23 @@ def _send_email_now(
         return False
 
 
-def _send_sms_now(phone: str, message: str) -> bool:
+def _send_sms_now(phone: str, message: str, template: str | None = None, context: dict | None = None) -> bool:
     """Send a single SMS. Returns True on success."""
     if not phone or not getattr(settings, "ENABLE_SMS_NOTIFICATIONS", False):
         return False
+
+    if template and template != "plain" and context:
+        from django.template.loader import render_to_string
+        import os
+        try:
+            basename = os.path.basename(template)
+            sms_template = f"notifications/sms/{basename}.txt"
+            rendered_message = render_to_string(sms_template, context)
+            if rendered_message.strip():
+                message = rendered_message.strip()
+        except Exception as exc:
+            logger.warning("SMS template %s not found or failed to render: %s. Falling back to plain message.", template, exc)
+
     try:
         # Import from notifications.services where the SMS service class is defined
         from notifications.services.sms_service import SMSService
@@ -175,108 +187,7 @@ def _send_sms_now(phone: str, message: str) -> bool:
         logger.error("SMS to %s failed: %s", phone, exc, exc_info=True)
         return False
 
-# ---------------------------------------------------------------------------
-# Celery tasks
-# ---------------------------------------------------------------------------
-
-@shared_task(
-    bind=True,
-    max_retries=3,
-    default_retry_delay=60,
-    name="notifications.tasks.dispatch_sms_only",
-)
-def dispatch_sms_only(self, *, phone: str, message: str):
-    """Deferred SMS dispatch."""
-    try:
-        _send_sms_now(phone, message)
-    except Exception as exc:
-        logger.error("dispatch_sms_only to %s failed: %s", phone, exc)
-        raise self.retry(exc=exc)
-
-
-@shared_task(
-    bind=True,
-    max_retries=3,
-    default_retry_delay=60,
-    name="notifications.tasks.dispatch_notification_channels",
-)
-def dispatch_notification_channels(
-    self,
-    *,
-    user_id: int,
-    subject: str,
-    message: str,
-    email_subject: str | None = None,
-    template: str | None = None,
-    context: dict | None = None,
-):
-    """
-    Deferred outbound dispatch — email + SMS only.
-
-    The in-app Notification DB row is already saved before this task runs.
-    This task is always queued with a countdown of NOTIFICATION_DELAY_SECONDS
-    so the triggering HTTP response has returned to the browser first.
-    """
-    try:
-        user = User.objects.get(pk=user_id)
-    except User.DoesNotExist:
-        logger.warning("dispatch_notification_channels: user %s not found, skipping", user_id)
-        return
-
-    # --- Email ---
-    if getattr(user, "email", ""):
-        try:
-            _send_email_now(
-                recipient=user.email,
-                subject=email_subject or subject,
-                message=message,
-                template=template,
-                context=context,
-            )
-        except Exception as exc:
-            logger.error("dispatch_notification_channels email failed for user %s: %s", user_id, exc, exc_info=True)
-
-    # --- SMS ---
-    phone = _resolve_phone(user)
-    if phone:
-        try:
-            _send_sms_now(phone, message)
-        except Exception as exc:
-            logger.error("dispatch_notification_channels SMS failed for user %s: %s", user_id, exc, exc_info=True)
-
-
-@shared_task(
-    bind=True,
-    max_retries=3,
-    default_retry_delay=60,
-    name="notifications.tasks.dispatch_email_only",
-)
-def dispatch_email_only(
-    self,
-    *,
-    recipient_email: str,
-    subject: str,
-    message: str,
-    template: str | None = None,
-    context: dict | None = None,
-    email_log_id: int | None = None,
-):
-    """
-    Deferred email dispatch to an arbitrary address (e.g. admin alerts,
-    support ticket confirmations) where we only have an email, not a user_id.
-    """
-    try:
-        _send_email_now(
-            recipient=recipient_email,
-            subject=subject,
-            message=message,
-            template=template,
-            context=context,
-            email_log_id=email_log_id,
-        )
-    except Exception as exc:
-        logger.error("dispatch_email_only to %s failed: %s", recipient_email, exc)
-        raise self.retry(exc=exc)
+# Celery tasks have been removed to execute synchronously.
 
 
 # ---------------------------------------------------------------------------
@@ -297,79 +208,4 @@ def _resolve_phone(user) -> str:
     return ""
 
 
-def queue_notification(
-    *,
-    user_id: int,
-    subject: str,
-    message: str,
-    email_subject: str | None = None,
-    template: str | None = None,
-    context: dict | None = None,
-    delay: int | None = None,
-):
-    """
-    Queue the outbound channels for a notification.
 
-    Always call this AFTER the DB record has been saved.
-    The task runs after `delay` seconds (default 30).
-    """
-    try:
-        dispatch_notification_channels.apply_async(
-            kwargs=dict(
-                user_id=user_id,
-                subject=subject,
-                message=message,
-                email_subject=email_subject,
-                template=template,
-                context=context,
-            ),
-            countdown=_notification_delay_seconds() if delay is None else delay,
-        )
-        return True
-    except Exception as exc:
-        logger.warning("Notification queue unavailable for user %s: %s", user_id, exc)
-        return False
-
-
-def queue_email(
-    *,
-    recipient_email: str,
-    subject: str,
-    message: str,
-    template: str | None = None,
-    context: dict | None = None,
-    delay: int | None = None,
-    email_log_id: int | None = None,
-):
-    """
-    Queue a plain email to an address (no user object required).
-    Used for admin alerts, support tickets, etc.
-    """
-    try:
-        dispatch_email_only.apply_async(
-            kwargs=dict(
-                recipient_email=recipient_email,
-                subject=subject,
-                message=message,
-                template=template,
-                context=context,
-                email_log_id=email_log_id,
-            ),
-            countdown=_notification_delay_seconds() if delay is None else delay,
-        )
-        return True
-    except Exception as exc:
-        logger.warning("Email queue unavailable for %s: %s", recipient_email, exc)
-        return False
-
-
-def queue_sms(*, phone: str, message: str, delay: int | None = None):
-    try:
-        dispatch_sms_only.apply_async(
-            kwargs={"phone": phone, "message": message},
-            countdown=_notification_delay_seconds() if delay is None else delay,
-        )
-        return True
-    except Exception as exc:
-        logger.warning("SMS queue unavailable for %s: %s", phone, exc)
-        return False

@@ -144,7 +144,7 @@ class NotificationService:
             phone = _resolve_phone(user)
             if phone:
                 try:
-                    _send_sms_now(phone, message)
+                    _send_sms_now(phone, message, template=template, context=context)
                 except Exception as exc:
                     logger.error(
                         "Immediate SMS fallback failed for user %s: %s",
@@ -179,47 +179,57 @@ class NotificationService:
         if user is None:
             return None
 
+        inapp_title = title
+        inapp_message = message
+        
+        if template and template != "plain" and context:
+            from django.template.loader import render_to_string
+            import os
+            try:
+                basename = os.path.basename(template)
+                rendered_title = render_to_string(f"notifications/inapp/{basename}_title.txt", context)
+                if rendered_title.strip():
+                    inapp_title = rendered_title.strip()
+            except Exception:
+                pass
+            
+            try:
+                basename = os.path.basename(template)
+                rendered_message = render_to_string(f"notifications/inapp/{basename}.txt", context)
+                if rendered_message.strip():
+                    inapp_message = rendered_message.strip()
+            except Exception:
+                pass
+
         # Step 1 — synchronous DB write
         notification = NotificationService.create_notification(
             user=user,
             notification_type=notification_type,
-            title=title,
-            message=message,
+            title=inapp_title,
+            message=inapp_message,
             plot=plot,
             task=task,
         )
 
-        # Step 2 — deferred outbound channels
+        # Step 2 — synchronous outbound channels
         try:
-            from notifications.tasks import queue_notification
-
-            def _queue_outbound():
-                queued = queue_notification(
-                    user_id=user.pk,
+            def _dispatch_outbound():
+                NotificationService._dispatch_user_channels_immediately(
+                    user,
                     subject=title,
                     message=message,
                     email_subject=email_subject,
                     template=template,
                     context=context,
-                    delay=NotificationService.notification_delay_seconds(),
                 )
-                if not queued:
-                    NotificationService._dispatch_user_channels_immediately(
-                        user,
-                        subject=title,
-                        message=message,
-                        email_subject=email_subject,
-                        template=template,
-                        context=context,
-                    )
 
             NotificationService._run_after_commit(
-                _queue_outbound,
+                _dispatch_outbound,
                 label=f"notify_user:{notification_type}:{user.pk}",
             )
         except Exception as exc:
-            # Never let task queuing break the calling action
-            logger.error("Failed to queue notification for user %s: %s", user.pk, exc)
+            # Never let notification dispatching break the calling action
+            logger.error("Failed to dispatch notification for user %s: %s", user.pk, exc)
 
         return notification
 
@@ -309,41 +319,25 @@ class NotificationService:
                 return None
 
         try:
-            from notifications.tasks import queue_email
-
-            def _queue_email():
-                queue_state["queued"] = queue_email(
-                    recipient_email=recipient,
-                    subject=subject,
-                    message=message_body,
-                    template=template_name,
-                    context=safe_context,
-                    delay=NotificationService.notification_delay_seconds(),
-                    email_log_id=log.pk if log else None,
-                    pdf_attachment=pdf_attachment,  # Pass the PDF to Celery
-                )
-                if not queue_state["queued"]:
-                    logger.warning(
-                        "Email queue unavailable for %s. Falling back to immediate send.",
-                        recipient,
-                    )
-                    sent = _send_with_attachment()
-                    queue_state["queued"] = sent
+            def _dispatch_email():
+                sent = _send_with_attachment()
+                if log and sent:
+                    log.status = "sent"
+                    log.sent_at = timezone.now()
+                    log.save(update_fields=["status", "sent_at"])
 
             NotificationService._run_after_commit(
-                _queue_email,
+                _dispatch_email,
                 label=f"send_email:{recipient}",
             )
         except Exception as exc:
             if log:
                 log.status = "failed"
-                log.error_message = f"Queue setup failed: {exc}"
+                log.error_message = f"Email setup failed: {exc}"
                 log.save(update_fields=["status", "error_message"])
-            logger.error("Failed to queue email to %s: %s", recipient, exc, exc_info=True)
+            logger.error("Failed to setup email to %s: %s", recipient, exc, exc_info=True)
 
-        if queue_state["queued"]:
-            return log
-        return None
+        return log
 
     @staticmethod
     def send_sms(phone_number, message):
@@ -351,29 +345,17 @@ class NotificationService:
         if not phone_number or not NotificationService.sms_notifications_enabled():
             return {"success": False, "skipped": True}
         try:
-            from notifications.tasks import queue_sms
-
-            sms_state = {"queued": False}
-
-            def _queue_sms():
-                sms_state["queued"] = queue_sms(
-                    phone=phone_number,
-                    message=message,
-                    delay=NotificationService.notification_delay_seconds(),
-                )
-                if not sms_state["queued"]:
-                    logger.warning("SMS queue unavailable for %s. Falling back to immediate send.", phone_number)
-                    from notifications.tasks import _send_sms_now
-
-                    sms_state["queued"] = _send_sms_now(phone_number, message)
+            def _dispatch_sms():
+                from notifications.tasks import _send_sms_now
+                _send_sms_now(phone_number, message)
 
             NotificationService._run_after_commit(
-                _queue_sms,
+                _dispatch_sms,
                 label=f"send_sms:{phone_number}",
             )
-            return {"success": True, "queued": True}
+            return {"success": True, "queued": False}
         except Exception as exc:
-            logger.error("Failed to queue SMS to %s: %s", phone_number, exc)
+            logger.error("Failed to dispatch SMS to %s: %s", phone_number, exc)
             return {"success": False, "error": str(exc)}
 
     # ------------------------------------------------------------------

@@ -1,0 +1,1 @@
+Your plot '{{ plot.title }}' is now in stage '{{ plot.verification_stage }}' with status '{{ plot.verification_status }}'.

@@ -1,0 +1,1 @@
+AgriPlot: User {{ submitted_by.username }} has submitted plot '{{ plot.title }}' for verification.

@@ -1,0 +1,1 @@
+AgriPlot: Step '{{ step.name }}' for plot '{{ plot.title }}' has been marked as complete.

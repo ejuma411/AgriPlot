@@ -1,0 +1,1 @@
+AgriPlot: Your plot '{{ plot.title }}' has completed the verification process.

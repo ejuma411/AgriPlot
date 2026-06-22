@@ -1,0 +1,1 @@
+AgriPlot: You have been assigned to {{ task_type }} for plot '{{ task.plot.title }}'.
