@@ -149,7 +149,7 @@ def _deliver_otp(request, *, phone, email, otp, reg_data):
             email_log = NotificationService.send_email(
                 recipient=email,
                 subject="Your AgriPlot phone verification code",
-                template="otp_verification",
+                template="notifications/emails/otp_verification",
                 context={
                     "user": None,
                     "username": reg_data.get('username', 'there'),

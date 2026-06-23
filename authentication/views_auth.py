@@ -90,11 +90,21 @@ def _issue_login_otp(user, method):
     import random
     otp_code = str(random.randint(100000, 999999))
     expires_at = timezone.now() + timezone.timedelta(minutes=10)
+    # Rate-limit: block if an OTP for this user was already issued within the last 30 seconds
+    _COOLDOWN_SECONDS = 30
+    recent_cutoff = timezone.now() - timezone.timedelta(seconds=_COOLDOWN_SECONDS)
 
     if method == "email":
         email = user.email
         if not email:
             return False, "Email address not available."
+
+        # Prevent duplicate sends
+        if EmailOTP.objects.filter(
+            user=user, purpose='login', created_at__gte=recent_cutoff
+        ).exists():
+            return False, f"A code was already sent. Please wait {_COOLDOWN_SECONDS} seconds before requesting another."
+
         EmailOTP.objects.create(
             user=user,
             email=email,
@@ -105,9 +115,10 @@ def _issue_login_otp(user, method):
         NotificationService.send_email(
             recipient=email,
             subject="Your AgriPlot login verification code",
-            template="otp_verification",
+            template="notifications/emails/otp_verification",
             context={
                 "user": user,
+                "display_name": user.get_full_name() or user.username or "there",
                 "username": user.username or "there",
                 "otp": otp_code,
                 "expiry_minutes": 10,
@@ -116,10 +127,17 @@ def _issue_login_otp(user, method):
         )
         return True, "Verification code sent to email."
 
+
     if method == "sms":
         phone = getattr(user.profile, "phone", "")
         if not phone:
             return False, "Phone number not available."
+        # Prevent duplicate sends
+        from security.models import PhoneOTP as _PhoneOTP
+        if _PhoneOTP.objects.filter(
+            user=user, purpose='login', created_at__gte=recent_cutoff
+        ).exists():
+            return False, f"A code was already sent. Please wait {_COOLDOWN_SECONDS} seconds before requesting another."
         PhoneOTP.objects.create(
             user=user,
             phone=phone,
@@ -224,11 +242,12 @@ def two_factor_verify(request):
         if request.POST.get("send_code"):
             method = request.POST.get("method")
             ok, msg = _issue_login_otp(user, method)
+            from django.http import JsonResponse as _JsonResponse
             if ok:
-                messages.success(request, msg)
+                return _JsonResponse({'success': True, 'message': msg})
             else:
-                messages.error(request, msg)
-            form = TwoFactorVerifyForm(initial={'method': method})
+                return _JsonResponse({'success': False, 'error': msg}, status=400)
+
         else:
             form = TwoFactorVerifyForm(request.POST)
             if form.is_valid():

@@ -596,6 +596,7 @@
     }
 
     async function resendCode() {
+        if (resendBtn.disabled) return;
         resendBtn.disabled = true;
         const originalText = resendBtn.innerHTML;
         resendBtn.innerHTML = '<span class="spinner"></span> Sending...';
@@ -607,13 +608,14 @@
                 body: new URLSearchParams({ send_code: '1', method: currentMethod })
             });
 
-            const html = await response.text();
+            let data = {};
+            try { data = await response.json(); } catch(e) {}
 
-            if (html.includes('success-message') || html.includes('Verification code sent')) {
+            if (data.success) {
                 showMessage(`Verification code sent to ${currentMethod === 'email' ? 'your email' : 'your phone'}.`, false);
                 startResendCooldown();
             } else {
-                showMessage('Failed to send code. Please try again.');
+                showMessage(data.error || 'Failed to send code. Please try again.');
                 resendBtn.disabled = false;
             }
         } catch (error) {
@@ -645,9 +647,12 @@
     document.querySelectorAll('.twofa-method-option').forEach(option => {
         option.addEventListener('click', () => {
             const method = option.dataset.method;
+            document.querySelectorAll('.twofa-method-option').forEach(o => o.classList.remove('is-selected'));
+            option.classList.add('is-selected');
             updateMethodUI(method);
+            // Auto-send code for email/SMS only if no cooldown is active
             const needsResend = method === 'email' || method === 'sms';
-            if (needsResend && !resendCooldown) resendCode();
+            if (needsResend && resendCooldown === 0) resendCode();
         });
     });
 
