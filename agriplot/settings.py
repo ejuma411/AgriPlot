@@ -236,7 +236,7 @@ LOGOUT_REDIRECT_URL = '/'
 
 INSTALLED_APPS = [
     # Third Party Admin Theme - MUST BE FIRST
-    'jazzmin',  # Correct app name for django-jazzmin
+    'jazzmin',  # django-jazzmin admin theme
     # Django Core Apps
     "django.contrib.admin",
     "django.contrib.auth",
@@ -473,9 +473,12 @@ EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
 EMAIL_USE_TLS = _env_bool('EMAIL_USE_TLS', default=True)
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD')
+# Fallback to console backend if SMTP credentials are not set
+if not EMAIL_HOST_USER or not EMAIL_HOST_PASSWORD:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL', 
-    'AgriPlot Connect <noreply@agriplot.com>'
+    'AgriPlot Connect <[EMAIL_ADDRESS]>'
 )
 SITE_URL = _normalize_base_url(os.environ.get("SITE_URL"))
 SITE_HOST = _host_from_url(SITE_URL)

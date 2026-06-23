@@ -110,7 +110,8 @@ def _send_email_now(
     if template and template != "plain" and context:
         hydrated_context = _hydrate_context(context)
         try:
-            html_message = render_to_string(f"{template}.html", hydrated_context)
+            tpl_name = template if template.endswith('.html') else f"{template}.html"
+            html_message = render_to_string(tpl_name, hydrated_context)
             plain_message = strip_tags(html_message)
         except Exception as exc:
             logger.warning(

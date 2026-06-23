@@ -275,12 +275,15 @@ class NotificationService:
 
             if template and template != "plain" and context:
                 try:
-                    hydrated_context = NotificationService._json_safe(context)
-                    html_message = render_to_string(f"{template}.html", hydrated_context)
+                    # Use the original context with real Python/Django objects so that
+                    # template variables like {{ user.username }} resolve correctly.
+                    # _json_safe is only for DB/JSON serialisation, not template rendering.
+                    html_message = render_to_string(f"{template}.html", context)
                     plain_message = strip_tags(html_message)
                 except Exception as exc:
                     logger.warning("Email template %s failed, using fallback: %s", template, exc)
                     html_message = f"<html><body><p>{message_body}</p></body></html>"
+
 
             # Create the multipart email
             email = EmailMultiAlternatives(
