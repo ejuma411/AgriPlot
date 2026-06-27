@@ -244,3 +244,9 @@ yarn.lock
 *.sqlite3
 __pycache__/
 *.pyc
+
+# Firebase credentials – NEVER commit service account keys
+*firebase*credentials*.json
+*service_account*.json
+*serviceAccount*.json
+*-firebase-adminsdk-*.json

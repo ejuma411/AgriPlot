@@ -504,6 +504,18 @@
     background: #fff;
     box-shadow: 0 6px 14px rgba(0, 0, 0, 0.15);
     color: #1f7a4d;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    line-height: 1;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+.fb-fav i {
+    display: block;
+    line-height: 1;
+    font-size: 0.95rem;
 }
 
 .fb-logo {

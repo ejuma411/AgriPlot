@@ -7,7 +7,6 @@ from django.core.files.storage import default_storage
 from django.utils import timezone
 from django.utils.text import get_valid_filename
 from django.urls import reverse
-from django.contrib.gis.geos import Point
 from crops.services import suggest_crops
 from listings.models import (
     ExtensionOfficer,
@@ -341,12 +340,6 @@ def conduct_surveyor_inspection(request, task_id):
                 plot.longitude = report.gps_longitude
                 gps_updates.append('longitude')
             if gps_updates:
-                if plot.latitude is not None and plot.longitude is not None:
-                    try:
-                        plot.geom = Point(float(plot.longitude), float(plot.latitude), srid=4326)
-                        gps_updates.append('geom')
-                    except Exception:
-                        pass
                 plot.save(update_fields=gps_updates)
 
             if report.ground_acreage and plot.area:

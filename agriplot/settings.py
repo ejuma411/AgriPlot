@@ -5,10 +5,10 @@ Configured for development with structured logging and PostgreSQL database.
 
 from pathlib import Path
 import os
-import logging
 import importlib.util
 from urllib.parse import parse_qs, unquote, urlparse
 from dotenv import load_dotenv
+from django.core.exceptions import ImproperlyConfigured
 from django.core.management.utils import get_random_secret_key
 import importlib
 
@@ -82,7 +82,7 @@ def _env_csv(name: str, default: str = "") -> list:
     return [item.strip() for item in raw.split(",") if item.strip()]
 
 
-def _normalize_base_url(value: str, default: str = "http://127.0.0.1:8000") -> str:
+def _normalize_base_url(value: str, default: str = "https://example.com") -> str:
     """
     Normalize a base URL so the rest of the project can safely build absolute links.
 
@@ -92,7 +92,7 @@ def _normalize_base_url(value: str, default: str = "http://127.0.0.1:8000") -> s
     if not raw:
         raw = default
     if not raw.startswith(("http://", "https://")):
-        raw = f"http://{raw}"
+        raw = f"{'http' if DEBUG else 'https'}://{raw}"
     return raw.rstrip("/")
 
 
@@ -117,12 +117,12 @@ def _database_from_url(database_url: str) -> dict:
         database = dj_database_url.parse(
             database_url,
             conn_max_age=conn_max_age,
-            engine="django.contrib.gis.db.backends.postgis",
+            engine="django.db.backends.postgresql",
         )
     else:
         parsed = urlparse(database_url)
         database = {
-            "ENGINE": "django.contrib.gis.db.backends.postgis",
+            "ENGINE": "django.db.backends.postgresql",
             "NAME": unquote(parsed.path.lstrip("/") or "postgres"),
             "USER": unquote(parsed.username or ""),
             "PASSWORD": unquote(parsed.password or ""),
@@ -161,7 +161,7 @@ def _database_from_parts() -> dict:
         options["sslmode"] = "require"
 
     return {
-        "ENGINE": "django.contrib.gis.db.backends.postgis",
+        "ENGINE": "django.db.backends.postgresql",
         "NAME": config("DB_NAME", default="agriplot"),
         "USER": config("DB_USER", default="postgres"),
         "PASSWORD": config("DB_PASSWORD", default="postgres"),
@@ -185,17 +185,24 @@ def _database_config() -> dict:
 # =============================================================================
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = (
-    os.environ.get("DJANGO_SECRET_KEY")
-    or os.environ.get("SECRET_KEY")
-    or get_random_secret_key()
-)
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or os.environ.get("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = _env_bool("DJANGO_DEBUG", default=True)
+DEBUG = _env_bool("DJANGO_DEBUG", default=False)
+
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = get_random_secret_key()
+    else:
+        raise ImproperlyConfigured(
+            "DJANGO_SECRET_KEY (or SECRET_KEY) must be set when DEBUG=False."
+        )
 
 # Host/domain validation
-ALLOWED_HOSTS = _env_csv("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1,testserver")
+ALLOWED_HOSTS = _env_csv(
+    "DJANGO_ALLOWED_HOSTS",
+    default="localhost,127.0.0.1,::1,testserver" if DEBUG else "",
+)
 if DEBUG:
     for development_host in [".ngrok-free.dev"]:
         if development_host not in ALLOWED_HOSTS:
@@ -245,7 +252,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.humanize",
-    "django.contrib.gis",
     "django.contrib.postgres",  # PostgreSQL specific features
     "django.contrib.sitemaps",
 
@@ -298,81 +304,40 @@ WSGI_APPLICATION = "agriplot.wsgi.application"
 
 
 # =============================================================================
-# DATABASE CONFIGURATION - LOCAL POSTGRESQL
+# DATABASE CONFIGURATION
 # =============================================================================
+#
+# Priority order for 'default' database:
+#   1. DATABASE_URL env var  (Render, Railway, Heroku, etc.)
+#   2. SUPABASE_DATABASE_URL env var
+#   3. Individual DB_* env vars (DB_HOST, DB_NAME, DB_USER, DB_PASSWORD, ...)
+#
+# In production, set DATABASE_URL in your .env:
+#   DATABASE_URL=postgresql://user:password@host:5432/dbname
+#
+# _database_config() is defined above and handles all three cases automatically.
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-#         'NAME': os.environ.get('DB_NAME', 'agriplot_db'),
-#         'USER': os.environ.get('DB_USER', 'createch'),
-#         'PASSWORD': os.environ.get('DB_PASSWORD', 'password'),
-#         'HOST': os.environ.get('DB_HOST', 'localhost'),
-#         'PORT': os.environ.get('DB_PORT', '5432'),
-#         'CONN_MAX_AGE': int(os.environ.get('DB_CONN_MAX_AGE', '600')),
-#         'OPTIONS': {
-#             'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', '10')),
-#         },
-#     }
-# }
-
-# =============================================================================
-# DATABASE CONFIGURATION-- SUPABASE
-# =============================================================================
-    
-# DATABASES = {
-#     "default": _database_config()
-# }
-
-
-# =============================================================================
-# DATABASE CONFIGURATION - MULTIPLE DATABASES
-# =============================================================================
-
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-# Database settings with clear separation
 DATABASES = {
-    # Local PostgreSQL Database
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': os.getenv('LOCAL_DB_NAME', os.getenv('DB_NAME', 'agriplot_db')),
-        'USER': os.getenv('LOCAL_DB_USER', os.getenv('DB_USER', 'createch')),
-        'PASSWORD': os.getenv('LOCAL_DB_PASSWORD', os.getenv('DB_PASSWORD')),
-        'HOST': os.getenv('LOCAL_DB_HOST', os.getenv('DB_HOST', 'localhost')),
-        'PORT': os.getenv('LOCAL_DB_PORT', os.getenv('DB_PORT', '5432')),
-        'CONN_MAX_AGE': int(os.getenv('DB_CONN_MAX_AGE', '600')),
-        'OPTIONS': {
-            'connect_timeout': int(os.getenv('DB_CONNECT_TIMEOUT', '10')),
-            'sslmode': os.getenv('DB_SSL_MODE', os.getenv('DB_SSLMODE', 'disable')),
-        } if os.getenv('DB_SSL', 'False').lower() == 'true' else {},
-    },
-    
-    # Supabase Database (for data migration or backup)
-    'supabase': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': os.getenv('SUPABASE_DB_NAME', 'postgres'),
-        'USER': os.getenv('SUPABASE_DB_USER', 'postgres.lejqavtyzqaumiboelgv'),
-        'PASSWORD': os.getenv('SUPABASE_DB_PASSWORD'),
-        'HOST': os.getenv('SUPABASE_DB_HOST', 'aws-0-eu-west-1.pooler.supabase.com'),
-        'PORT': os.getenv('SUPABASE_DB_PORT', '5432'),
-        'CONN_MAX_AGE': int(os.getenv('SUPABASE_DB_CONN_MAX_AGE', '300')),
-        'OPTIONS': {
-            'sslmode': os.getenv('SUPABASE_DB_SSLMODE', 'require'),
-            'connect_timeout': int(os.getenv('SUPABASE_DB_CONNECT_TIMEOUT', '10')),
-        },
-    }
+    "default": _database_config(),
 }
 
-# Validate required credentials
-if not DATABASES['default']['PASSWORD']:
-    raise ValueError("Database password is required! Set DB_PASSWORD or LOCAL_DB_PASSWORD in .env")
+# Optional: keep Supabase as a named secondary connection (for scripts/migration)
+_supabase_password = os.getenv("SUPABASE_DB_PASSWORD")
+if _supabase_password:
+    DATABASES["supabase"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("SUPABASE_DB_NAME", "postgres"),
+        "USER": os.getenv("SUPABASE_DB_USER", ""),
+        "PASSWORD": _supabase_password,
+        "HOST": os.getenv("SUPABASE_DB_HOST", "aws-0-eu-west-1.pooler.supabase.com"),
+        "PORT": os.getenv("SUPABASE_DB_PORT", "5432"),
+        "CONN_MAX_AGE": int(os.getenv("SUPABASE_DB_CONN_MAX_AGE", "300")),
+        "OPTIONS": {
+            "sslmode": os.getenv("SUPABASE_DB_SSLMODE", "require"),
+            "connect_timeout": int(os.getenv("SUPABASE_DB_CONNECT_TIMEOUT", "10")),
+        },
+    }
 
-# For migration scripts, you can switch default database
-# DATABASE_ROUTERS = []  # Use this if you need to route queries
 
 
 # =============================================================================
@@ -435,7 +400,7 @@ USE_TZ = True
 # =============================================================================
 
 # Static files (CSS, JavaScript, Images)
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
@@ -480,7 +445,12 @@ DEFAULT_FROM_EMAIL = os.environ.get(
     'DEFAULT_FROM_EMAIL', 
     'AgriPlot Connect <[EMAIL_ADDRESS]>'
 )
-SITE_URL = _normalize_base_url(os.environ.get("SITE_URL"))
+SITE_URL = _normalize_base_url(
+    os.environ.get("SITE_URL"),
+    default="http://127.0.0.1:8000" if DEBUG else "https://example.com",
+)
+if not DEBUG and not os.environ.get("SITE_URL"):
+    raise ImproperlyConfigured("SITE_URL must be set when DEBUG=False.")
 SITE_HOST = _host_from_url(SITE_URL)
 
 if SITE_HOST and SITE_HOST not in ALLOWED_HOSTS:
@@ -517,6 +487,21 @@ ARDHISASA_WEBHOOK_URL = os.environ.get(
     "ARDHISASA_WEBHOOK_URL",
     f"{SITE_URL}/webhooks/ardhisasa/",
 )
+
+
+# =============================================================================
+# FIREBASE CONFIGURATION
+# =============================================================================
+
+# Absolute path to the Firebase service account JSON key file.
+# Download from: Firebase Console → Project Settings → Service accounts
+#                → Generate new private key
+# Keep this file OUT of version control (.gitignore already covers it).
+FIREBASE_CREDENTIALS_PATH = os.environ.get("FIREBASE_CREDENTIALS_PATH", "")
+
+# Firebase project ID (visible in Firebase Console URL, e.g. "agriplot-connect")
+FIREBASE_PROJECT_ID = os.environ.get("FIREBASE_PROJECT_ID", "")
+
 
 
 # =============================================================================
@@ -665,229 +650,83 @@ SMS_READ_TIMEOUT = float(os.environ.get("SMS_READ_TIMEOUT", "8"))
 
 
 # =============================================================================
-# ENHANCED LOGGING CONFIGURATION
+# LOGGING CONFIGURATION
 # =============================================================================
 
 LOGS_WRITABLE = os.access(LOG_DIR, os.W_OK)
-
-# Log file paths - only two main log files
-SYSTEM_LOG_FILE = LOG_DIR / "system.log"      # All system activity (INFO and above)
-ERROR_LOG_FILE = LOG_DIR / "errors.log"       # Only errors and critical issues
+LOG_FILE = LOG_DIR / "app.log"
+ERROR_LOG_FILE = LOG_DIR / "errors.log"
+LOG_LEVEL = os.environ.get("DJANGO_LOG_LEVEL", "DEBUG" if DEBUG else "INFO").upper()
+ERROR_LOG_LEVEL = os.environ.get("DJANGO_ERROR_LOG_LEVEL", "ERROR").upper()
 
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-
     "formatters": {
-        "verbose": {
-            "format": "{levelname} | {asctime} | {name} | {module}:{lineno} | {message}",
-            "style": "{",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
-        "simple": {
-            "format": "{levelname} | {asctime} | {message}",
-            "style": "{",
-            "datefmt": "%H:%M:%S",
-        },
-        "error_detail": {
+        "standard": {
             "format": "{levelname} | {asctime} | {name} | {module}.{funcName}:{lineno} | {message}",
             "style": "{",
             "datefmt": "%Y-%m-%d %H:%M:%S",
         },
-        "security": {
-            "format": "{levelname} | {asctime} | SECURITY | {module}:{lineno} | {message} | User: {user} | IP: {ip}",
-            "style": "{",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
     },
-
-    "filters": {
-        "require_debug_true": {
-            "()": "django.utils.log.RequireDebugTrue",
-        },
-        "require_debug_false": {
-            "()": "django.utils.log.RequireDebugFalse",
-        },
-        "security_context_defaults": {
-            "()": "agriplot.logging_filters.SecurityContextDefaultsFilter",
-        },
-    },
-
     "handlers": {
-        # Console Handler - shows all logs in terminal (development only)
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "simple" if DEBUG else "verbose",
-            "level": "DEBUG" if DEBUG else "INFO",
+            "level": LOG_LEVEL,
+            "formatter": "standard",
         },
-
-        # System Log Handler - captures all INFO and above
-        "system_file": {
+        "app_file": {
             "class": "logging.handlers.RotatingFileHandler",
-            "filename": SYSTEM_LOG_FILE,
-            "formatter": "verbose",
-            "level": "INFO",
-            "maxBytes": 10485760,  # 10MB
+            "filename": LOG_FILE,
+            "level": LOG_LEVEL,
+            "formatter": "standard",
+            "maxBytes": 10485760,
             "backupCount": 5,
         } if LOGS_WRITABLE else {
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
-            "level": "INFO",
+            "level": LOG_LEVEL,
+            "formatter": "standard",
         },
-
-        # Error Log Handler - captures ERROR and CRITICAL only
         "error_file": {
             "class": "logging.handlers.RotatingFileHandler",
             "filename": ERROR_LOG_FILE,
-            "formatter": "error_detail",
-            "level": "ERROR",
-            "maxBytes": 10485760,  # 10MB
+            "level": ERROR_LOG_LEVEL,
+            "formatter": "standard",
+            "maxBytes": 10485760,
             "backupCount": 10,
         } if LOGS_WRITABLE else {
             "class": "logging.StreamHandler",
-            "formatter": "error_detail",
-            "level": "ERROR",
-        },
-
-        # Mail handler for critical errors (production only)
-        "mail_admins": {
-            "class": "django.utils.log.AdminEmailHandler",
-            "level": "ERROR",
-            "filters": ["require_debug_false"],
-            "include_html": True,
+            "level": ERROR_LOG_LEVEL,
+            "formatter": "standard",
         },
     },
-
+    "root": {
+        "handlers": ["console", "app_file", "error_file"],
+        "level": LOG_LEVEL,
+    },
     "loggers": {
-        # Root logger - captures everything
-        "": {
-            "handlers": ["console", "system_file", "error_file"],
-            "level": "DEBUG" if DEBUG else "INFO",
-            "propagate": True,
-        },
-
-        # Django Framework Logs
-        "django": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-
-        # Django Request/Response logs (includes 4xx and 5xx errors)
         "django.request": {
-            "handlers": ["error_file", "console"],
+            "handlers": ["console", "error_file"],
             "level": "ERROR",
             "propagate": False,
         },
-
-        # Django Server logs
-        "django.server": {
-            "handlers": ["error_file", "console"],
-            "level": "ERROR",
-            "propagate": False,
-        },
-
-        # Django Security logs
         "django.security": {
-            "handlers": ["system_file", "error_file", "console"],
-            "level": "INFO",
+            "handlers": ["console", "error_file"],
+            "level": "WARNING",
             "propagate": False,
         },
-
-        # Django DB logs (only errors in production)
         "django.db.backends": {
             "handlers": ["error_file"],
             "level": "ERROR",
             "propagate": False,
         },
-
-        # Authentication logs
-        "django.contrib.auth": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-
-        # Listings App
-        "listings": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-
-        # Payments App
-        "payments": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-
-        # Verification App
-        "verification": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-
-        # Reports App
-        "reports": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-
-        # Authentication App
-        "authentication": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-
-        # Security App
-        "security": {
-            "handlers": ["system_file", "error_file", "console"],
-            "level": "DEBUG" if DEBUG else "INFO",
-            "propagate": False,
-        },
-
-        # Notifications App
-        "notifications": {
-            "handlers": ["system_file", "error_file", "console"],
-            "level": "DEBUG" if DEBUG else "INFO",
-            "propagate": False,
-        },
-
-        # Accounts App
-        "accounts": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
-            "propagate": False,
-        },
-
-        # Registry Mock App
-        "registry_mock": {
-            "handlers": ["system_file", "error_file"],
-            "level": "WARNING",
-            "propagate": False,
-        },
-
-        # Transactions App
-        "transactions": {
-            "handlers": ["system_file", "error_file"],
-            "level": "INFO",
+        "django.server": {
+            "handlers": ["console", "error_file"],
+            "level": "ERROR",
             "propagate": False,
         },
     },
 }
-
-# Create logger instances for easy access
-system_logger = logging.getLogger('')
-error_logger = logging.getLogger('django.request')
-security_logger = logging.getLogger('django.security')
-payments_logger = logging.getLogger('payments')
-listings_logger = logging.getLogger('listings')
-verification_logger = logging.getLogger('verification')
-reports_logger = logging.getLogger('reports')
 
 
 # =============================================================================

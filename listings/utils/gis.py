@@ -2,58 +2,78 @@
 
 This module provides common helpers for calculating distances between
 geometries and retrieving nearby amenities for a given Plot instance.
-It leverages Django's built‑in GIS support (PostGIS) via the `geos` and
-`measure` utilities.
+It has been rewritten to use standard math functions (Haversine formula)
+instead of Django's built-in GIS support.
 ''' 
 
-from django.contrib.gis.geos import Point
-from django.contrib.gis.measure import D  # Distance
+import math
+from django.db.models import F
+from django.db.models.functions import ACos, Cos, Radians, Sin
 
+def distance_between_coords(lat1, lon1, lat2, lon2) -> float:
+    """Return the distance in meters between two sets of coordinates using the Haversine formula."""
+    if any(coord is None for coord in (lat1, lon1, lat2, lon2)):
+        return 0.0
+        
+    R = 6371000  # Radius of earth in meters
+    lat1, lon1, lat2, lon2 = map(math.radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
+    
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    
+    a = math.sin(dlat/2)**2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon/2)**2
+    c = 2 * math.asin(math.sqrt(a))
+    
+    return R * c
 
-def distance_between_points(p1: Point, p2: Point) -> float:
-    """Return the distance in meters between two ``Point`` objects.
-
-    The function uses the ``distance`` method provided by GEOS which
-    returns the Euclidean distance in the coordinate system units. Since
-    we store geometries using SRID 4326 (WGS84 latitude/longitude), we
-    first transform them to the Web Mercator projection (SRID 3857) which
-    uses meters as units for accurate distance measurement.
-    """
-    if not isinstance(p1, Point) or not isinstance(p2, Point):
-        raise TypeError("Both arguments must be django.contrib.gis.geos.Point instances")
-    # Transform to a metric projection for reliable distance measurement.
-    p1_metric = p1.transform(3857, clone=True)
-    p2_metric = p2.transform(3857, clone=True)
-    return p1_metric.distance(p2_metric)
-
+def distance_between_points(p1, p2) -> float:
+    """Legacy wrapper for old Point objects. Replace with distance_between_coords."""
+    raise DeprecationWarning("distance_between_points is deprecated. Use distance_between_coords instead.")
 
 def get_nearest_amenities(plot, amenity_model, limit: int = 5):
     """Return a queryset of the nearest ``amenity_model`` objects to ``plot``.
 
     Parameters
     ----------
-    plot: Plot instance – must have a ``geom`` ``PointField``.
-    amenity_model: Django model class – must have a ``location`` ``PointField``.
+    plot: Plot instance – must have ``latitude`` and ``longitude``.
+    amenity_model: Django model class – must have ``latitude`` and ``longitude``.
     limit: Maximum number of results to return (default 5).
-
-    The function performs a spatial query using ``distance`` annotation and
-    orders the results by proximity. It gracefully handles the case where a
-    ``geom`` is missing by returning an empty queryset.
     """
-    if not hasattr(plot, "geom") or plot.geom is None:
+    if not plot.latitude or not plot.longitude:
         return amenity_model.objects.none()
-    # Ensure the amenity model has a ``location`` field.
-    if not hasattr(amenity_model, "location"):
+        
+    if not hasattr(amenity_model, "latitude") or not hasattr(amenity_model, "longitude"):
         raise AttributeError(
-            f"{amenity_model.__name__} does not have a 'location' PointField"
+            f"{amenity_model.__name__} does not have 'latitude' and 'longitude' fields"
         )
-    # Annotate each amenity with its distance to the plot geometry.
+        
+    # Convert plot coordinates to radians for DB calculation
+    plot_lat = math.radians(float(plot.latitude))
+    plot_lon = math.radians(float(plot.longitude))
+    
+    # 6371000 is Earth radius in meters
+    from django.db.models import ExpressionWrapper, FloatField
     qs = (
-        amenity_model.objects.filter(location__isnull=False)
-        .annotate(distance=Distance("location", plot.geom))
+        amenity_model.objects.filter(latitude__isnull=False, longitude__isnull=False)
+        .annotate(
+            distance=ExpressionWrapper(
+                6371000.0 * ACos(
+                    Cos(Radians(plot_lat)) * Cos(Radians('latitude')) * Cos(Radians('longitude') - plot_lon) +
+                    Sin(Radians(plot_lat)) * Sin(Radians('latitude'))
+                ),
+                output_field=FloatField()
+            )
+        )
         .order_by("distance")[:limit]
     )
     return qs
 
-# Helper alias used elsewhere in the codebase.
-Distance = D
+class DummyDistance:
+    """A dummy class to replace django.contrib.gis.measure.D"""
+    def __init__(self, **kwargs):
+        self.m = kwargs.get('m', 0)
+        self.km = kwargs.get('km', 0)
+        if self.km:
+            self.m = self.km * 1000
+
+Distance = DummyDistance

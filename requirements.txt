@@ -1,31 +1,78 @@
-amqp==5.3.1
+# ============================================================
+# AgriPlot – Production Dependencies
+# Run: pip install -r requirements.txt
+# ============================================================
+
+# --- Django Core ---
+Django==6.0.6
 asgiref==3.11.1
-billiard==4.2.4
+sqlparse==0.5.5
+whitenoise==6.12.0
+
+# --- Database ---
+psycopg2-binary==2.9.12
+dj-database-url==3.1.2
+python-dotenv==1.2.2
+
+# --- Celery / Task Queue ---
 celery==5.6.3
+kombu==5.6.2
+amqp==5.3.1
+billiard==4.2.4
+vine==5.1.0
+redis==8.0.0
+django-celery-beat==2.9.0
+django_celery_results==2.6.0
+django-timezone-field==7.2.2
+cron-descriptor==1.4.5
+python-crontab==3.3.0
+
+# --- HTTP & Networking ---
+requests==2.34.2
+urllib3==2.7.0
+certifi==2026.5.20
+charset-normalizer==3.4.7
+idna==3.18
+
+# --- Authentication & Security ---
+pyotp==2.9.0           # 2FA TOTP codes
+qrcode[pil]==8.2       # 2FA QR code generation
+
+# --- Payments ---
+# (daraja/jenga use requests only – no extra SDK needed)
+
+# --- Notifications ---
+africastalking==2.0.2  # Africa's Talking SMS SDK
+
+# --- PDF Generation ---
+weasyprint==69.0       # PDF reports (security, verification, transactions)
+
+# --- Admin UI ---
+django-jazzmin==3.0.4
+
+# --- Forms ---
+django-formtools==2.6.1
+
+# --- Django Optional Extensions ---
+packaging==26.2
+python-dateutil==2.9.0.post0
+six==1.17.0
+tzdata==2026.2
+tzlocal==5.3.1
+
+# --- CLI / Tooling ---
 click==8.4.1
 click-didyoumean==0.3.1
 click-plugins==1.1.1.2
 click-repl==0.3.0
-cron-descriptor==1.4.5
-Django==6.0.6
-django-celery-beat==2.9.0
-django-formtools==2.6.1
-django-jazzmin==3.0.4
-django-timezone-field==7.2.2
-django_celery_results==2.6.0
-gunicorn==26.0.0
-kombu==5.6.2
-packaging==26.2
-pillow==12.2.0
 prompt_toolkit==3.0.52
-psycopg2-binary==2.9.12
-python-crontab==3.3.0
-python-dateutil==2.9.0.post0
-redis==8.0.0
-six==1.17.0
-sqlparse==0.5.5
-tzdata==2026.2
-tzlocal==5.3.1
-vine==5.1.0
 wcwidth==0.8.0
-whitenoise==6.12.0
+
+# --- Images ---
+pillow==12.2.0
+
+# --- Firebase ---
+firebase-admin==7.4.0   # Firebase Admin SDK (Firestore, Auth, FCM)
+
+# --- WSGI Server ---
+gunicorn==26.0.0

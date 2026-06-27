@@ -2,12 +2,9 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.contenttypes.fields import GenericRelation
-from django.contrib.gis.db.models.functions import Distance as DistanceFunction
-from django.contrib.gis.geos import Point
 from django.core.exceptions import ValidationError
 from django.db import ProgrammingError
 from django.db import models
-from django.contrib.gis.db import models as gis_models
 from django.urls import reverse
 from django.utils.text import slugify
 from django.utils import timezone
@@ -138,7 +135,6 @@ class Plot(models.Model):
     location = models.CharField(max_length=300)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
-    geom = gis_models.PointField(null=True, blank=True, srid=4326)
 
     # ==========================================
     # LAND INFORMATION FIELDS
@@ -763,13 +759,6 @@ class Plot(models.Model):
             },
         )
 
-    def geo_point(self):
-        if self.geom:
-            return self.geom
-        if self.has_coordinates:
-            return Point(float(self.longitude), float(self.latitude), srid=4326)
-        return None
-
     def clean(self):
         if not self.landowner and not self.agent:
             raise ValidationError("Either landowner or agent must be associated with this plot")
@@ -809,43 +798,52 @@ class Plot(models.Model):
         self.full_clean()
         super().save(*args, **kwargs)
 
-    def distance_to(self, point):
-        origin = self.geo_point()
-        if origin is None or point is None:
-            return None
-        if not isinstance(point, Point):
-            raise TypeError("point must be a django.contrib.gis.geos.Point instance")
-        return origin.distance(point.transform(3857, clone=True)) if origin.srid == 3857 else origin.transform(3857, clone=True).distance(point.transform(3857, clone=True))
+    def distance_to(self, lat, lon):
+        from listings.utils.gis import distance_between_coords
+        return distance_between_coords(self.latitude, self.longitude, lat, lon)
 
-    def distance_to_nearest_amenity(self, amenity_qs, field_name="location"):
-        origin = self.geo_point()
-        if origin is None:
+    def distance_to_nearest_amenity(self, amenity_qs, field_name="latitude"):
+        if self.latitude is None or self.longitude is None:
             return None
+            
+        import math
+        from django.db.models.functions import ACos, Cos, Radians, Sin
+        from django.db import ProgrammingError
+        
+        plot_lat = math.radians(float(self.latitude))
+        plot_lon = math.radians(float(self.longitude))
+        
+        from django.db.models import ExpressionWrapper, FloatField
+        
         try:
-            amenity = (
-                amenity_qs.filter(**{f"{field_name}__isnull": False})
-                .annotate(distance_m=DistanceFunction(field_name, origin))
+            nearest = (
+                amenity_qs.filter(latitude__isnull=False, longitude__isnull=False)
+                .annotate(
+                    distance_m=ExpressionWrapper(
+                        6371000.0 * ACos(
+                            Cos(Radians(plot_lat)) * Cos(Radians('latitude')) * Cos(Radians('longitude') - plot_lon) +
+                            Sin(Radians(plot_lat)) * Sin(Radians('latitude'))
+                        ),
+                        output_field=FloatField()
+                    )
+                )
                 .order_by("distance_m")
                 .first()
             )
         except ProgrammingError:
             return None
-        if not amenity:
-            return None
-        distance = getattr(amenity, "distance_m", None)
-        if distance is None:
-            return None
-        if hasattr(distance, "m"):
-            return float(distance.m)
-        return float(distance)
+            
+        if nearest and hasattr(nearest, 'distance_m'):
+            return float(nearest.distance_m)
+        return None
 
     def amenity_distance_summary(self):
         amenities = [
-            ("water", self.water_sources.all(), "location"),
-            ("road", self.roads.all(), "location"),
-            ("market", self.markets.all(), "location"),
-            ("school", self.schools.all(), "location"),
-            ("health", self.health_facilities.all(), "location"),
+            ("water", self.water_sources.all(), "latitude"),
+            ("road", self.roads.all(), "latitude"),
+            ("market", self.markets.all(), "latitude"),
+            ("school", self.schools.all(), "latitude"),
+            ("health", self.health_facilities.all(), "latitude"),
         ]
         summary = {}
         for key, queryset, field_name in amenities:
@@ -1010,7 +1008,8 @@ class Plot(models.Model):
 class WaterSource(models.Model):
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="water_sources", null=True, blank=True)
     name = models.CharField(max_length=200)
-    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     description = models.TextField(blank=True)
 
     def __str__(self):
@@ -1019,7 +1018,8 @@ class WaterSource(models.Model):
 class Road(models.Model):
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="roads", null=True, blank=True)
     name = models.CharField(max_length=200)
-    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     road_type = models.CharField(max_length=20, choices=Plot.ROAD_TYPE_CHOICES, blank=True)
 
     def __str__(self):
@@ -1028,7 +1028,8 @@ class Road(models.Model):
 class Market(models.Model):
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="markets", null=True, blank=True)
     name = models.CharField(max_length=200)
-    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     description = models.TextField(blank=True)
 
     def __str__(self):
@@ -1037,7 +1038,8 @@ class Market(models.Model):
 class School(models.Model):
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="schools", null=True, blank=True)
     name = models.CharField(max_length=200)
-    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     level = models.CharField(max_length=50, blank=True)
 
     def __str__(self):
@@ -1046,7 +1048,8 @@ class School(models.Model):
 class HealthFacility(models.Model):
     plot = models.ForeignKey(Plot, on_delete=models.CASCADE, related_name="health_facilities", null=True, blank=True)
     name = models.CharField(max_length=200)
-    location = gis_models.PointField(srid=4326, null=True, blank=True)
+    latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     facility_type = models.CharField(max_length=50, blank=True)
 
     def __str__(self):
