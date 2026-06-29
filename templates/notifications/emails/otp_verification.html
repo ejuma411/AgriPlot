@@ -2,7 +2,7 @@
 
 {% block greeting %}
 <div class="greeting">
-    <strong>Hello {{ display_name|default:username|default:user.username|default:user.email|default:"there" }},</strong>
+    <strong>Hello {{ display_name|default:username|default:"there" }},</strong>
 </div>
 {% endblock %}
 

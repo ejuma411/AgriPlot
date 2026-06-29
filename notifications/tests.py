@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.template.loader import render_to_string
 from django.test import TestCase
 
 from accounts.forms import AccountDetailsForm
@@ -50,6 +51,21 @@ class RoleDecisionNotificationTests(TestCase):
         self.assertIn("rejected", notification.message.lower())
         mock_send_email.assert_called_once()
         self.assertEqual(mock_send_email.call_args.kwargs["template"], "role_rejected")
+
+    def test_otp_email_template_renders_without_user_object(self):
+        html = render_to_string(
+            "notifications/emails/otp_verification.html",
+            {
+                "user": None,
+                "username": "smsbuyer",
+                "otp": "123456",
+                "expiry_minutes": 10,
+                "support_url": "https://example.com/contact-support/",
+            },
+        )
+
+        self.assertIn("123456", html)
+        self.assertIn("Hello smsbuyer", html)
 
 
 class IntentLabelTests(TestCase):
