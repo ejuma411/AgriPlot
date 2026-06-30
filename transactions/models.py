@@ -671,7 +671,16 @@ class TransactionDocument(models.Model):
     class Meta:
         ordering = ['-uploaded_at']
         unique_together = [['transaction', 'document_type']]
-    
+
+    def save(self, *args, **kwargs):
+        if self.file and not self.filename:
+            self.filename = self.file.name.rsplit("/", 1)[-1]
+        if self.file and not self.file_size:
+            self.file_size = getattr(self.file, "size", 0) or 0
+        if self.file and not self.mime_type:
+            self.mime_type = getattr(self.file, "content_type", "") or "application/octet-stream"
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.get_document_type_display()} - Transaction {self.transaction.id}"
 
